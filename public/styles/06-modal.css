@@ -1,0 +1,136 @@
+/* Browser Agent v86 - 06-modal.css */
+
+/* Reusable confirmation modal */
+.ba-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, .38);
+  backdrop-filter: blur(3px);
+  padding: 20px;
+}
+.ba-modal-overlay.show {
+  display: flex;
+}
+.ba-modal-card {
+  width: min(560px, 96vw);
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 14px;
+  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, .24);
+  padding: 18px;
+  overflow: hidden;
+}
+.ba-modal-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+  font-weight: 900;
+}
+.ba-modal-content h3 {
+  flex: 0 0 auto;
+  margin: 0 0 8px;
+  color: #0f172a;
+  font-size: 18px;
+}
+.ba-modal-content {
+  min-width: 0;
+  min-height: 0;
+  max-height: calc(100vh - 76px);
+  max-height: calc(100dvh - 76px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.ba-modal-content p {
+  flex: 0 0 auto;
+  margin: 0 0 10px;
+  color: #334155;
+  line-height: 1.45;
+}
+#ba-modal-message {
+  max-height: min(24vh, 220px);
+  overflow: auto;
+}
+.ba-modal-detail {
+  padding: 10px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569 !important;
+  font-size: 13px;
+  max-height: min(42vh, 360px);
+  overflow: auto;
+  white-space: pre-wrap;
+}
+.ba-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0 0 4px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.ba-modal-overlay.ba-modal-panel-mode .ba-modal-card {
+  width: min(640px, 96vw);
+}
+.ba-modal-overlay.ba-modal-panel-mode .ba-modal-icon {
+  display: none;
+}
+.ba-modal-overlay.ba-modal-panel-mode .ba-modal-card {
+  grid-template-columns: 1fr;
+}
+.ba-modal-overlay.ba-modal-panel-mode .ba-modal-body {
+  flex: 1 1 auto;
+}
+.ba-modal-actions {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.ba-modal-button.primary {
+  background: #2563eb;
+  color: #fff;
+}
+.ba-modal-button.secondary {
+  background: #fff;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+}
+.ba-modal-button.danger {
+  background: #dc2626;
+  color: #fff;
+  border: 1px solid #dc2626;
+}
+.ba-modal-button.danger:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+@media (max-width: 560px) {
+  .ba-modal-card {
+    grid-template-columns: 1fr;
+  }
+  .ba-modal-actions {
+    justify-content: stretch;
+  }
+  .ba-modal-actions button {
+    flex: 1 1 auto;
+  }
+}

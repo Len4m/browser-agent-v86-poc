@@ -1,0 +1,28 @@
+# Cloudflare Pages — cabeceras estáticas
+# https://developers.cloudflare.com/pages/configuration/headers/
+#
+# Equivalente a server.mjs (COOP/COEP/CORP + caché por tipo de asset).
+# El directorio de despliegue debe ser public/ (Build output directory).
+
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Resource-Policy: same-origin
+  Access-Control-Allow-Origin: *
+  Cache-Control: no-cache
+
+/v86/images/*
+  ! Cache-Control
+  Cache-Control: no-store
+
+/v86/disks/*
+  ! Cache-Control
+  Cache-Control: no-store
+
+/v86/build/*
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
+
+/v86/bios/*
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable

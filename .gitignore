@@ -1,0 +1,34 @@
+# Dependencias
+node_modules/
+
+# Configuración local con secretos
+.env
+.env.*
+!.env.example
+
+# Estado local de herramientas/agentes
+.agent/
+.agents/
+.codex/
+
+# Artefactos generados por scripts
+build/
+
+# Bundles generados por npm run build
+public/assets/app.js
+public/assets/ai-sdk-bridge.mjs
+public/assets/chat/
+
+# Copiado o descargado por npm run build / npm run setup
+public/vendor/
+public/v86/
+
+# Paquetes locales de distribución
+*.zip
+
+# Sistema/editor
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+*~

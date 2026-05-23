@@ -1,0 +1,1176 @@
+/* Browser Agent v86 - v9.37.4 local Transformers.js panel
+   Namespaced styles only. Nothing here overrides global layout/components. */
+
+.ba-llm-panel {
+  display: grid;
+  gap: 0.82rem;
+  margin-top: 0.35rem;
+  color: #0f172a;
+}
+
+.ba-llm-hero {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+  padding: 0.95rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.18), transparent 34%),
+    linear-gradient(135deg, #eff6ff 0%, #ffffff 62%);
+  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.08);
+}
+
+.ba-llm-mark {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 15px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.32);
+}
+
+.ba-llm-hero-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.ba-llm-kicker {
+  margin-bottom: 0.18rem;
+  color: #2563eb;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ba-llm-title-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ba-llm-title-row strong {
+  font-size: 1rem;
+  color: #0f172a;
+}
+
+.ba-llm-hero p {
+  margin: 0.35rem 0 0;
+  color: #475569;
+  font-size: 0.83rem;
+  line-height: 1.42;
+}
+
+.ba-llm-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.ba-llm-field {
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 850;
+  color: #334155;
+}
+
+.ba-llm-field select,
+.ba-llm-field input:not([type="checkbox"]) {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #fff;
+  color: #0f172a;
+  font-size: 0.88rem;
+}
+
+.ba-llm-model-card {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.82rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.ba-llm-model-main {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.ba-llm-model-main strong {
+  color: #0f172a;
+  font-size: 0.94rem;
+}
+
+.ba-llm-repo-path {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  color: #2563eb;
+  font: 0.72rem/1.35 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ba-llm-model-main p {
+  margin: 0.25rem 0 0;
+  color: #64748b;
+  font-size: 0.78rem;
+  line-height: 1.38;
+}
+
+.ba-llm-model-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.42rem;
+}
+
+.ba-llm-model-meta span {
+  min-width: 0;
+  padding: 0.38rem 0.48rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  color: #475569;
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.ba-llm-model-meta b {
+  color: #0f172a;
+}
+
+.ba-llm-actions-primary,
+.ba-llm-actions-secondary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.ba-llm-actions-primary button {
+  flex: 1 1 150px;
+}
+
+.ba-llm-actions-secondary button {
+  flex: 1 1 130px;
+  padding: 8px 10px;
+  font-size: 0.82rem;
+}
+
+.ba-llm-progress-wrap {
+  display: grid;
+  gap: 0.42rem;
+  padding: 0.72rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.ba-llm-progress-wrap.is-active {
+  border-color: #bfdbfe;
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.05);
+}
+
+.ba-llm-progress-head {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  justify-content: space-between;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+#ba-llm-progress-percent {
+  color: #2563eb;
+  font-size: 0.78rem;
+}
+
+.ba-llm-progress-track {
+  position: relative;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.ba-llm-progress-bar {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2563eb, #38bdf8);
+  transition: width 0.18s ease;
+}
+
+.ba-llm-progress-bar.is-indeterminate {
+  width: 36% !important;
+  animation: ba-llm-progress-sweep 1.15s ease-in-out infinite;
+}
+
+.ba-llm-progress-detail {
+  min-height: 1rem;
+  color: #64748b;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.ba-llm-chat-state {
+  display: grid;
+  gap: 0.16rem;
+  padding: 0.72rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 0.84rem;
+}
+
+.ba-llm-chat-state small {
+  color: #64748b;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.ba-llm-note {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.ba-llm-origin-warning {
+  margin-top: 0;
+}
+
+button.danger-light {
+  border-color: #fecdd3 !important;
+  background: #fff1f2 !important;
+  color: #be123c !important;
+}
+
+button.danger-light:hover {
+  background: #ffe4e6 !important;
+}
+
+.ba-llm-msg .bubble {
+  min-width: 0;
+  max-width: min(42rem, 100%);
+}
+
+.ba-md-stream {
+  line-height: 1.55;
+}
+
+.ba-md-stream > :first-child {
+  margin-top: 0;
+}
+
+.ba-md-stream > :last-child {
+  margin-bottom: 0;
+}
+
+.ba-code-block {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  margin: 0.75rem 0;
+}
+
+.ba-code-copy-btn {
+  position: absolute;
+  top: 0.42rem;
+  right: 0.42rem;
+  z-index: 2;
+  width: 1.65rem;
+  height: 1.65rem;
+  padding: 0;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #334155;
+  font-size: 0.82rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.88;
+}
+
+.ba-code-copy-btn:hover {
+  opacity: 1;
+  background: #fff;
+  border-color: #94a3b8;
+}
+
+.ba-code-copy-btn.is-copied {
+  color: #047857;
+  border-color: #86efac;
+  background: #ecfdf5;
+}
+
+.ba-md-stream pre {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0.78rem 2.1rem 0.78rem 0.9rem;
+  border: 1px solid rgba(30, 41, 59, 0.96);
+  border-radius: 12px;
+  background: #0f172a;
+  color: #f8fafc;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  overflow-x: auto;
+  overflow-y: auto;
+  line-height: 1.34;
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ba-md-stream code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.92em;
+}
+
+.ba-md-stream pre code {
+  display: block;
+  color: #f8fafc;
+  background: transparent;
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
+  tab-size: 2;
+  /* El <pre> padre hace scroll; no forzar ancho mínimo del contenido en la burbuja. */
+  width: max-content;
+  min-width: 100%;
+  max-width: none;
+}
+
+.ba-md-stream :not(pre) > code {
+  padding: 0.12rem 0.3rem;
+  border: 1px solid rgba(37, 99, 235, 0.12);
+  border-radius: 0.4rem;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
+.ba-md-stream table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  font-size: 0.9em;
+}
+
+.ba-md-stream th,
+.ba-md-stream td {
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+}
+
+.ba-md-stream blockquote {
+  margin-left: 0;
+  padding-left: 0.8rem;
+  border-left: 3px solid rgba(96, 165, 250, 0.6);
+  color: var(--muted, #94a3b8);
+}
+
+@keyframes ba-llm-progress-sweep {
+  0% { transform: translateX(-130%); }
+  100% { transform: translateX(310%); }
+}
+
+@media (max-width: 520px) {
+  .ba-llm-hero { flex-direction: column; }
+  .ba-llm-title-row { align-items: flex-start; flex-direction: column; }
+  .ba-llm-model-meta { grid-template-columns: 1fr; }
+}
+
+/* v9.37.5 tool autonomy and tool-call cards */
+.ba-llm-tool-policy {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.78rem;
+  border: 1px solid #dbeafe;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #eff6ff, #ffffff);
+}
+
+.ba-llm-tool-policy-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  color: #0f172a;
+  font-size: 0.86rem;
+}
+
+.ba-llm-tool-policy small {
+  color: #475569;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.ba-llm-tool-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  color: #334155;
+  font-size: 0.72rem;
+}
+
+.ba-llm-tool-list span {
+  padding: 0.18rem 0.42rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #fff;
+  color: #1d4ed8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.ba-tool-card {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: min(42rem, 100%);
+  overflow: hidden;
+  padding: 0 !important;
+  border-color: #bfdbfe !important;
+  background: linear-gradient(180deg, #f8fbff, #ffffff) !important;
+  color: #0f172a !important;
+}
+
+.chat-log .msg.agent:has(.ba-tool-card) {
+  width: 100%;
+}
+
+.ba-tool-disclosure {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ba-tool-disclosure-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.58rem 0.68rem;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.ba-tool-disclosure-summary::-webkit-details-marker {
+  display: none;
+}
+
+.ba-tool-disclosure-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #1d4ed8;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.ba-tool-disclosure-state {
+  flex: 0 1 auto;
+  max-width: min(58%, 14rem);
+  text-align: right;
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ba-tool-disclosure-state.pending {
+  color: #b45309;
+}
+
+.ba-tool-disclosure-state.ok {
+  color: #166534;
+}
+
+.ba-tool-disclosure-state.bad {
+  color: #be123c;
+}
+
+.ba-tool-disclosure-body {
+  display: grid;
+  gap: 0.55rem;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0 0.65rem 0.65rem;
+  border-top: 1px solid #dbeafe;
+}
+
+.ba-tool-disclosure-reason {
+  margin: 0;
+  color: #334155;
+  font-size: 0.86rem;
+  line-height: 1.42;
+}
+
+.ba-tool-args-wrap {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.ba-tool-args-wrap summary {
+  padding: 0.35rem 0.55rem;
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #475569;
+  list-style: none;
+  user-select: none;
+}
+
+.ba-tool-args-wrap summary::-webkit-details-marker {
+  display: none;
+}
+
+.ba-tool-args-wrap .ba-tool-args {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  border-top: 1px solid #e2e8f0;
+}
+
+.ba-llm-bubble.ba-llm-planning .ba-llm-md-host {
+  display: none !important;
+}
+
+.ba-tool-meta {
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+
+.ba-tool-args {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  max-height: 180px;
+  margin: 0;
+  padding: 0.72rem;
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  background: #0f172a;
+  color: #f8fafc;
+  font: 0.78rem/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  white-space: pre;
+  overflow-x: auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ba-tool-result {
+  padding: 0.52rem 0.62rem;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.ba-tool-result.ok {
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.ba-tool-result.bad {
+  border: 1px solid #fecdd3;
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.ba-llm-resource-card {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.82rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #f8fafc;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.ba-llm-resource-lines {
+  display: grid;
+  gap: 0.28rem;
+  color: #334155;
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.ba-llm-resource-lines span {
+  display: block;
+  padding: 0.32rem 0.45rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.ba-llm-synthesis-after-tool .ba-llm-bubble {
+  border-color: #c4b5fd;
+  background: linear-gradient(180deg, #fbfaff, #ffffff);
+}
+
+/* v9.37.10: make chat text selectable again. Some browsers inherit
+   user-select restrictions from interactive panels, so force text selection
+   inside chat bubbles, including user messages. */
+.chat-log,
+.chat-log .msg,
+.chat-log .bubble,
+.chat-log .ba-md-stream {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.chat-log .msg.user .bubble {
+  cursor: text;
+}
+
+.chat-log ::selection {
+  background: rgba(96, 165, 250, 0.35);
+}
+
+/* v9.37.12: chat cleanup belongs in the chat card, not in the LLM settings panel. */
+.chat-panel-title {
+  gap: 0.75rem;
+}
+
+.chat-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.chat-clear-btn {
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #334155;
+  padding: 0.28rem 0.68rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.chat-clear-btn:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.chat-clear-btn:active {
+  transform: translateY(1px);
+}
+
+/* The base .bubble uses white-space: pre-wrap for plain text messages.
+   Markdown messages need normal flow; code blocks scroll inside the bubble width. */
+.chat-log .msg {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.chat-log .bubble,
+.chat-log .ba-llm-bubble,
+.chat-log .ba-md-stream,
+.chat-log .ba-llm-md-host {
+  min-width: 0;
+}
+
+.chat-log .msg.agent .bubble,
+.chat-log .msg.agent .ba-llm-bubble {
+  max-width: min(42rem, 100%);
+  overflow: hidden;
+}
+
+.ba-md-stream {
+  white-space: normal;
+  overflow: hidden;
+}
+
+/* v9.37.14: keep custom model input completely hidden until the custom model is selected. */
+.ba-llm-field[hidden],
+#ba-llm-custom-wrap[hidden] {
+  display: none !important;
+}
+
+/* v9.37.18: visible inference/streaming indicator in assistant bubbles. */
+.ba-llm-inference-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.48rem;
+  margin-top: 0.55rem;
+  padding: 0.42rem 0.58rem;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 999px;
+  background: rgba(239, 246, 255, 0.92);
+  color: #1d4ed8;
+  font-size: 0.78rem;
+  line-height: 1;
+  user-select: none;
+}
+
+.ba-chat-tail-indicator {
+  pointer-events: none;
+}
+
+.ba-chat-tail-indicator .ba-chat-tail-indicator-bubble {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.ba-chat-tail-indicator .ba-llm-inference-indicator {
+  margin-top: 0.2rem;
+  margin-bottom: 0.1rem;
+}
+
+.ba-llm-spinner {
+  width: 0.9rem;
+  height: 0.9rem;
+  flex: 0 0 auto;
+  border: 2px solid rgba(37, 99, 235, 0.22);
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: ba-llm-spin 0.8s linear infinite;
+}
+
+@keyframes ba-llm-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ba-llm-spinner {
+    animation: none;
+    border-top-color: rgba(37, 99, 235, 0.22);
+    background: #2563eb;
+  }
+}
+
+
+/* v9.37.19: compact capability badge in the LLM details header. */
+.ba-llm-panel-host > summary.panel-title {
+  position: relative;
+}
+
+.ba-llm-panel-host > summary.panel-title h2 {
+  margin-right: 0;
+}
+
+.ba-llm-header-status {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.ba-llm-summary-compat {
+  margin-left: auto;
+}
+
+@media (max-width: 780px) {
+  .ba-llm-header-status {
+    position: static;
+    transform: none;
+    order: 2;
+  }
+
+  .ba-llm-summary-compat {
+    margin-left: 0;
+    order: 3;
+  }
+}
+
+/* v9.37.22: el badge de estado muestra solo el nombre del modelo cargado.
+   Usamos white-space normal para evitar que nombres largos deformen el panel,
+   y centramos el texto dentro del badge. */
+#ba-llm-status {
+  white-space: normal;
+  text-align: center;
+  justify-content: center;
+  line-height: 1.18;
+  max-width: min(100%, 18rem);
+}
+
+
+/* v9.47: capacidad WebGPU/WASM como acción discreta; el check inicial sigue gestionado por JS al inicio/al abrir el panel. */
+.ba-llm-actions-primary .ba-llm-check-btn {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  border-radius: 999px;
+}
+
+.ba-llm-actions-primary #ba-llm-load {
+  flex: 1 1 170px;
+}
+
+@media (max-width: 520px) {
+  .ba-llm-actions-primary .ba-llm-check-btn,
+  .ba-llm-actions-primary #ba-llm-load {
+    flex: 1 1 auto;
+  }
+}
+
+/* v9.49: el badge WebGPU/WASM funciona como acción discreta de recomprobación.
+   La comprobación inicial sigue ejecutándose al arrancar y al abrir el panel. */
+.ba-capability-recheck-badge {
+  cursor: pointer;
+  user-select: none;
+}
+
+.ba-capability-recheck-badge:hover {
+  filter: brightness(0.98);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.ba-capability-recheck-badge:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.28);
+  outline-offset: 2px;
+}
+
+.ba-llm-actions-primary #ba-llm-load {
+  flex: 1 1 100%;
+}
+
+/* v9.50: nota compacta dentro de la lista dinámica de tools por perfil. */
+.ba-llm-tool-list small {
+  flex: 1 1 100%;
+  color: #64748b;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+/* v9.51: Recursos y Autonomía como paneles desplegables dentro del panel LLM. */
+.ba-llm-collapsible-card {
+  display: block;
+}
+
+.ba-llm-collapsible-card > summary.ba-llm-collapsible-summary {
+  margin: 0;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ba-llm-collapsible-card > summary.ba-llm-collapsible-summary::-webkit-details-marker {
+  display: none;
+}
+
+.ba-llm-collapsible-summary::after {
+  content: "▾";
+  flex: 0 0 auto;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 900;
+  transition: transform 0.15s ease;
+}
+
+.ba-llm-collapsible-card:not([open]) > .ba-llm-collapsible-summary::after {
+  transform: rotate(-90deg);
+}
+
+.ba-llm-collapsible-card > .ba-llm-resource-lines,
+.ba-llm-collapsible-card > .ba-llm-collapsible-body {
+  margin-top: 0.55rem;
+}
+
+.ba-llm-collapsible-body {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.ba-llm-collapsible-card > summary.ba-llm-collapsible-summary:hover strong,
+.ba-llm-collapsible-card > summary.ba-llm-collapsible-summary:hover::after {
+  color: #1d4ed8;
+}
+
+/* v9.52: counters in collapsible LLM card headers. */
+.ba-llm-card-count {
+  margin-left: auto;
+  padding: 0.18rem 0.48rem;
+  border: 1px solid #dbeafe;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #1d4ed8;
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.ba-llm-collapsible-card > summary.ba-llm-collapsible-summary:hover .ba-llm-card-count {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+/* v9.54: icon-only cleanup button in the chat header. */
+.chat-clear-btn.ba-icon-only {
+  width: 2rem;
+  min-width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 999px;
+}
+
+.chat-clear-btn.ba-icon-only::before {
+  content: "";
+  display: inline-block;
+  width: 0.95rem;
+  height: 0.95rem;
+  flex: 0 0 auto;
+  background: currentColor;
+  -webkit-mask-image: url("/assets/icons/lucide/trash-2.svg");
+  mask-image: url("/assets/icons/lucide/trash-2.svg");
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+/* v9.60: botón de limpiar chat más explícito y con confirmación en JS. */
+.chat-clear-btn.ba-icon-only {
+  border-color: #fecdd3;
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.chat-clear-btn.ba-icon-only:hover {
+  border-color: #fda4af;
+  background: #ffe4e6;
+  color: #9f1239;
+}
+
+.chat-clear-btn.ba-icon-only:focus-visible {
+  outline: 3px solid rgba(225, 29, 72, 0.24);
+  outline-offset: 2px;
+}
+
+/* v9.60: icono local para cargar modelo. */
+.ba-llm-actions-primary #ba-llm-load {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+}
+
+.ba-llm-actions-primary #ba-llm-load::before {
+  content: "";
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  background: currentColor;
+  -webkit-mask-image: url("/assets/icons/lucide/download.svg");
+  mask-image: url("/assets/icons/lucide/download.svg");
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.ba-llm-thinking-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #334155;
+  cursor: pointer;
+}
+
+.ba-llm-thinking-toggle input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  min-height: 0;
+  margin: 0;
+  flex: 0 0 auto;
+  cursor: pointer;
+  accent-color: #2563eb;
+}
+
+.ba-llm-thinking {
+  margin-bottom: 0.55rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  font-size: 0.82rem;
+  color: #475569;
+}
+
+.ba-llm-thinking summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #334155;
+}
+
+.ba-llm-thinking-body {
+  margin-top: 0.35rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 12rem;
+  overflow: auto;
+}
+
+.ba-llm-md-host {
+  min-height: 0.25rem;
+}
+
+.ba-tool-disclosure-body .ba-llm-md-host.ba-tool-answer {
+  margin-top: 0.15rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.ba-llm-bubble.ba-llm-bubble-tool-only .ba-llm-md-host {
+  display: none;
+}
+
+.ba-llm-bubble.ba-llm-bubble-tool-only:empty,
+.ba-llm-bubble.ba-llm-bubble-tool-only:not(:has(.ba-llm-md-host:not(:empty))) {
+  padding: 0;
+  min-height: 0;
+  border: none;
+  background: transparent;
+}
+
+.ba-llm-native-tools-picker {
+  margin: 0.35rem 0 0.6rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.ba-llm-native-tools-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.88rem;
+}
+
+#ba-llm-native-tools-count,
+.ba-native-tools-count {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #334155;
+  white-space: nowrap;
+}
+.ba-llm-native-tools-picker--modal {
+  margin-top: 0.45rem;
+}
+.ba-llm-native-tools-grid--modal {
+  max-height: min(52vh, 18rem);
+}
+.ba-chat-tools-hint {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.ba-llm-native-tools-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  max-height: 11rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0.15rem;
+}
+
+.ba-llm-native-tool-row {
+  display: grid;
+  grid-template-columns: 1.125rem minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 0.5rem;
+  row-gap: 0;
+  padding: 0.38rem 0.5rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: #334155;
+  cursor: pointer;
+  line-height: 1.25;
+  transition: background-color 0.12s ease;
+}
+
+.ba-llm-native-tool-row:hover {
+  background: #eef2f7;
+}
+
+.ba-llm-native-tool-row.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ba-llm-native-tool-row input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  flex-shrink: 0;
+  cursor: inherit;
+}
+
+.ba-llm-native-tool-name {
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, monospace;
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.ba-llm-native-tool-meta {
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  background: #e2e8f0;
+  color: #475569;
+}

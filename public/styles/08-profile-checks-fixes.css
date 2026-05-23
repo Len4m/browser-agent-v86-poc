@@ -1,0 +1,103 @@
+/* Browser Agent v86 - 08-profile-checks-fixes.css */
+
+/* v9.24: compact VM profile/config area */
+.compact-vm-options {
+  grid-template-columns: minmax(220px, 1.5fr) minmax(150px, .8fr) auto auto;
+  align-items: end;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+}
+.compact-vm-options label {
+  gap: 3px;
+  font-size: 11px;
+}
+.compact-vm-options select {
+  padding: 6px 9px;
+  border-radius: 9px;
+  min-height: 32px;
+  font-size: 12px;
+}
+.compact-vm-options .vm-field-profile {
+  grid-column: 1 / 2;
+}
+.compact-vm-options .vm-field-disk {
+  grid-column: 2 / 3;
+}
+.compact-vm-options .vm-field-ram {
+  grid-column: 2 / 3;
+}
+.compact-vm-options .vm-field-vram {
+  grid-column: 3 / 4;
+}
+body.vm-profile-preset .compact-vm-options .vm-field-manual-only {
+  display: none;
+}
+body.vm-profile-manual .compact-vm-options {
+  grid-template-columns: minmax(220px, 1.4fr) minmax(105px, .55fr) minmax(95px, .5fr) minmax(150px, .75fr);
+}
+body.vm-profile-manual .compact-vm-options .vm-field-profile { grid-column: 1 / 2; }
+body.vm-profile-manual .compact-vm-options .vm-field-ram { grid-column: 2 / 3; }
+body.vm-profile-manual .compact-vm-options .vm-field-vram { grid-column: 3 / 4; }
+body.vm-profile-manual .compact-vm-options .vm-field-disk { grid-column: 4 / 5; }
+
+.compact-vm-options #vm-profile-hint {
+  grid-column: 1 / -1;
+  margin: 0;
+  align-self: center;
+  font-size: 11px;
+  line-height: 1.25;
+  min-width: 0;
+  padding-top: 2px;
+}
+body.vm-profile-manual .compact-vm-options #vm-profile-hint {
+  grid-column: 1 / -1;
+}
+.compact-vm-options #vm-disk-hint {
+  grid-column: 1 / -1;
+  margin: -2px 0 0;
+  font-size: 11px;
+  line-height: 1.25;
+}
+.vm-options + .toolbar {
+  margin-top: 2px;
+}
+@media (max-width: 900px) {
+  .compact-vm-options,
+  body.vm-profile-manual .compact-vm-options {
+    grid-template-columns: 1fr 1fr;
+  }
+  .compact-vm-options .vm-field-profile,
+  body.vm-profile-manual .compact-vm-options .vm-field-profile {
+    grid-column: 1 / -1;
+  }
+  .compact-vm-options .vm-field-disk,
+  body.vm-profile-manual .compact-vm-options .vm-field-disk {
+    grid-column: 1 / -1;
+  }
+  body.vm-profile-manual .compact-vm-options .vm-field-ram {
+    grid-column: 1 / 2;
+  }
+  body.vm-profile-manual .compact-vm-options .vm-field-vram {
+    grid-column: 2 / 3;
+  }
+  .compact-vm-options #vm-profile-hint,
+  body.vm-profile-manual .compact-vm-options #vm-profile-hint,
+  .compact-vm-options #vm-disk-hint {
+    grid-column: 1 / -1;
+  }
+}
+
+/* v9.27: checks running state */
+#run-checks[aria-busy="true"] { cursor: progress; }
+
+
+/* v9.34: avoid the 1px/vertical console artifact before the VM starts.
+   We only hide the console frame while no VM exists. When VM is starting/running,
+   the same sizing rules as before apply, so the active terminal dimensions are unchanged. */
+body.tmux-console-mode:not(.vm-console-active) .vm-screen-wrap {
+  display: none;
+}
+body.tmux-console-mode:not(.vm-console-active) .vm-hint {
+  margin-top: 4px;
+}

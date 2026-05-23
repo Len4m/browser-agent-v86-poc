@@ -1,0 +1,7 @@
+Lucide Icons
+ISC License
+Copyright (c) Lucide Icons and Contributors
+
+This project includes selected SVG icons from Lucide for local use in the Browser Agent UI.
+Official project: https://lucide.dev/
+License: https://lucide.dev/license

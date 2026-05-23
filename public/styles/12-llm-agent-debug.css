@@ -1,0 +1,112 @@
+/* Agent loop debug panel (chat) */
+
+.ba-agent-debug-toggle {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.28rem 0.55rem;
+}
+
+.ba-agent-debug-panel {
+  flex: 0 0 auto;
+  margin: 0.35rem 0 0.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.ba-agent-debug-panel[open] {
+  overflow: hidden;
+}
+
+.ba-agent-debug-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.65rem;
+  min-height: 2.1rem;
+  line-height: 1.35;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #334155;
+  user-select: none;
+  list-style: none;
+}
+
+.ba-agent-debug-summary::-webkit-details-marker {
+  display: none;
+}
+
+.ba-agent-debug-summary::after {
+  content: "▾";
+  flex: 0 0 auto;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 900;
+  transition: transform 0.15s ease;
+}
+
+.ba-agent-debug-panel:not([open]) > .ba-agent-debug-summary::after {
+  transform: rotate(-90deg);
+}
+
+.ba-agent-debug-summary:hover,
+.ba-agent-debug-summary:hover::after {
+  color: #1d4ed8;
+}
+
+.ba-agent-debug-body {
+  display: block;
+}
+
+.ba-agent-debug-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
+  padding: 0 0.65rem 0.45rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.ba-agent-debug-enable {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.ba-agent-debug-toolbar .secondary {
+  font-size: 0.72rem;
+  padding: 0.22rem 0.5rem;
+}
+
+.ba-agent-debug-panel pre.ba-agent-debug-log,
+.ba-agent-debug-log {
+  box-sizing: border-box;
+  display: block;
+  margin: 0;
+  min-height: 2.75rem;
+  max-height: min(120px, 18vh);
+  overflow-x: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.72rem;
+  line-height: 1.42;
+  color: #0f172a !important;
+  background: #f1f5f9 !important;
+  border-top: 1px solid #e2e8f0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  -webkit-text-fill-color: #0f172a;
+}
+
+.ba-agent-debug-log:empty::before {
+  content: "Sin eventos aún. Envía un mensaje con el registro activado.";
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b;
+}

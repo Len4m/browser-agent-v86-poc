@@ -1,0 +1,112 @@
+/* Browser Agent v86 - 05-terminal-sizing.css */
+
+/* v8: in tmux mode the terminal box is sized by JS to the exact fixed
+   tmux grid (100x24). This avoids the visual bug where full-screen programs
+   like nano paint a fixed number of columns but the black HTML container remains much wider. */
+body.tmux-console-mode .vm-screen-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0;
+}
+body.tmux-console-mode #serial-console.serial-screen,
+body.tmux-console-mode #serial-textarea.serial-screen {
+  width: auto;
+  max-width: none;
+  min-height: 0;
+  max-height: none;
+  padding: 0;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+body.tmux-console-mode #serial-console .xterm {
+  width: 100% !important;
+  height: 100% !important;
+  padding: 0 !important;
+}
+body.tmux-console-mode #serial-console .xterm-viewport {
+  overflow: hidden !important;
+}
+body.tmux-console-mode #serial-console .xterm-screen {
+  width: auto !important;
+}
+body.tmux-console-mode #vm-lock-overlay {
+  inset: auto;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: var(--ba-console-width, 100%);
+  height: var(--ba-console-height, 100%);
+  box-sizing: border-box;
+}
+
+
+/* v9.4: console clipping fix.
+   Keep the terminal grid unchanged, but remove decoration from the real console.
+   The optional visual border is on an outer frame so rounded corners/padding cannot cut text. */
+.vm-console-frame {
+  display: inline-flex;
+  align-items: flex-start;
+  justify-content: center;
+  box-sizing: content-box;
+  border: 1px solid #334155;
+  border-radius: 0;
+  background: #000;
+  overflow: visible;
+  max-width: 100%;
+}
+.vm-console-shell {
+  position: relative;
+  flex: 0 0 auto;
+  background: #000;
+  overflow: visible;
+}
+body.tmux-console-mode .vm-screen-wrap {
+  justify-content: center;
+  align-items: flex-start;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 0;
+}
+body.tmux-console-mode #serial-console.serial-screen,
+body.tmux-console-mode #serial-textarea.serial-screen,
+#serial-console.serial-screen,
+#serial-textarea.serial-screen {
+  border-radius: 0 !important;
+}
+body.tmux-console-mode #serial-console.serial-screen,
+body.tmux-console-mode #serial-textarea.serial-screen {
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-sizing: content-box !important;
+  background: #000;
+  overflow: hidden !important;
+}
+body.tmux-console-mode #serial-console .xterm {
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  overflow: hidden !important;
+}
+body.tmux-console-mode #serial-console .xterm-viewport,
+body.tmux-console-mode #serial-console .xterm-screen {
+  border-radius: 0 !important;
+}
+body.tmux-console-mode #vm-lock-overlay {
+  position: absolute;
+  inset: 0;
+  top: 0;
+  left: 0;
+  transform: none;
+  width: auto;
+  height: auto;
+  border-radius: 0 !important;
+  box-sizing: border-box;
+}
+body.console-readonly:not(.agent-busy) #vm-lock-overlay {
+  border-radius: 0 !important;
+}

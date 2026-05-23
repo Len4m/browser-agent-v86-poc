@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Browser Agent v86 POC</title>
+  <link rel="stylesheet" href="./vendor/xterm/xterm.css" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div>
+        <h1>Browser Agent POC</h1>
+        <p>IA, agente y VM Linux: todo corre 100% en tu navegador.</p>
+       </div>
+      <div class="badges">
+        <span id="badge-vm" class="badge">v86 inactiva</span>
+        <span id="badge-gpu" class="badge">WebGPU</span>
+        <span id="badge-ws" class="badge">wsnic desconectado</span>
+        <a
+          class="github-repo-link"
+          href="https://github.com/Len4m/browser-agent-v86-poc"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Abrir repositorio en GitHub"
+          title="Abrir repositorio en GitHub"
+        ></a>
+      </div>
+    </header>
+
+    <section id="main-workspace" class="grid two workspace-grid">
+      <div class="panel">
+        <div class="panel-title chat-panel-title">
+          <h2>Chat</h2>
+          <div class="chat-title-actions">
+            <button id="chat-layout-toggle" type="button" class="chat-layout-toggle ba-icon-only" aria-pressed="false" aria-label="Ampliar chat" title="Ampliar chat a todo el ancho; la VM quedará debajo"></button>
+            <button id="chat-clear-memory" type="button" class="chat-clear-btn ba-icon-only" aria-label="Limpiar chat" title="Limpiar chat visible, historial interno y artefactos"></button>
+          </div>
+        </div>
+        <div id="chat-log" class="chat-log"></div>
+        <form id="chat-form" class="chat-form row">
+          <button
+            type="button"
+            id="chat-tools-btn"
+            class="chat-tools-btn ba-icon-only"
+            aria-label="Herramientas del agente"
+            title="Elegir herramientas que el agente puede usar en este chat"
+          >
+            <span id="chat-tools-badge" class="chat-tools-badge" hidden aria-hidden="true"></span>
+          </button>
+          <textarea
+            id="chat-input"
+            class="chat-input"
+            rows="2"
+            placeholder="Carga primero un modelo local en el panel Transformers.js"
+            disabled
+          ></textarea>
+          <button type="submit" id="chat-submit-btn" class="chat-submit-btn" title="Enviar mensaje (Enter)" aria-label="Enviar mensaje">Enviar</button>
+        </form>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <h2>VM v86</h2>
+          <span id="vm-detail" class="badge">sin arrancar</span>
+        </div>
+        <div class="vm-options compact-vm-options" aria-label="Configuración de la VM antes de arrancar">
+          <label class="vm-field-profile">Perfil
+            <select id="vm-profile">
+              <option value="manual" selected>Libre / manual</option>
+            </select>
+          </label>
+          <label class="vm-field-ram vm-field-manual-only">RAM
+            <select id="vm-ram-mb">
+              <option value="256">256 MB</option>
+              <option value="512" selected>512 MB</option>
+              <option value="768">768 MB</option>
+              <option value="1024">1024 MB</option>
+              <option value="1536">1536 MB</option>
+              <option value="2048">2048 MB</option>
+            </select>
+          </label>
+          <label class="vm-field-vram vm-field-manual-only">VRAM
+            <select id="vm-vram-mb">
+              <option value="8" selected>8 MB</option>
+              <option value="16">16 MB</option>
+              <option value="32">32 MB</option>
+            </select>
+          </label>
+          <label class="vm-field-disk">Disco
+            <select id="vm-disk">
+              <option value="initramfs" selected>RAM / initramfs</option>
+              <option value="hda-250">hda 250 MB</option>
+              <option value="hda-512">hda 512 MB</option>
+              <option value="hda-1024">hda 1 GB</option>
+            </select>
+          </label>
+          <div id="vm-profile-hint"></div>
+          <div id="vm-disk-hint"></div>
+        </div>
+        <div class="toolbar">
+          <button id="start-vm" type="button" class="vm-power-btn" title="Arranca o apaga la VM. Al apagar se pedirá confirmación antes de perder cambios sin snapshot.">Arrancar VM</button>
+          <button id="check-disk" type="button" class="secondary" hidden title="Monta o desmonta el disco seleccionado en /mnt/hda">Montar disco</button>
+        </div>
+        <div class="snapshot-toolbar" aria-label="Snapshots de la VM">
+          <button id="save-state" type="button" class="secondary snapshot-save-btn" disabled>Guardar snapshot</button>
+          <button id="restore-state" type="button" class="secondary snapshot-restore-btn">Restaurar snapshot</button>
+          <input id="restore-state-file" type="file" accept=".v86state,.bin,application/octet-stream" hidden />
+          <div class="snapshot-note">Guarda RAM/CPU/estado de la VM. No incluye cambios de discos hda.</div>
+        </div>
+        <div id="serial-console" class="serial-console" tabindex="0" aria-label="Consola serial de v86"></div>
+        <textarea id="serial-textarea" class="serial-fallback" aria-label="Consola serial alternativa"></textarea>
+        <pre id="terminal" class="terminal">Pulsa Arrancar VM.</pre>
+        <form id="command-form" class="row">
+          <input id="command-input" value="uname -a" />
+          <button>Ejecutar</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="grid three">
+      <details class="panel small collapsible-panel">
+        <summary class="panel-title"><h2>Red WS</h2><span id="ws-detail" class="badge">pendiente</span></summary>
+        <div class="collapsible-panel-body">
+          <div class="row">
+            <input id="ws-url" value="ws://127.0.0.1:8086/wsnic" />
+            <button id="connect-ws">Conectar</button>
+          </div>
+          <div id="ws-origin-notice" class="local-service-origin-warning" hidden></div>
+          <div class="ws-help ws-help-inline">
+            <div class="ws-help-title">Proxy local wsnic por Docker</div>
+            <p class="ws-help-note">Abrir en segundo plano:</p>
+            <div class="docker-help-box">
+              <button id="copy-docker-command" type="button" class="secondary copy-command" data-copy-target="docker-command" aria-label="Copiar comando para abrir el proxy Docker" title="Copiar comando para abrir">⧉</button>
+              <pre><code id="docker-command">docker rm -f browser-agent-wsnic 2&gt;/dev/null || true; docker run -d --name browser-agent-wsnic --restart unless-stopped --cap-add=NET_ADMIN --device /dev/net/tun:/dev/net/tun --sysctl net.ipv4.ip_forward=1 --sysctl net.ipv4.conf.all.forwarding=1 --sysctl net.ipv4.conf.default.forwarding=1 -p 127.0.0.1:8086:8086 chschnell86/wsnic -i</code></pre>
+            </div>
+            <p class="ws-help-note">Cerrar y eliminar el proxy:</p>
+            <div class="docker-help-box">
+              <button id="copy-docker-stop-command" type="button" class="secondary copy-command" data-copy-target="docker-stop-command" aria-label="Copiar comando para cerrar el proxy Docker" title="Copiar comando para cerrar">⧉</button>
+              <pre><code id="docker-stop-command">docker rm -f browser-agent-wsnic</code></pre>
+            </div>
+            <div id="copy-docker-status" class="copy-status" aria-live="polite"></div>
+          </div>
+        </div>
+      </details>
+
+      <details class="panel small collapsible-panel">
+        <summary class="panel-title"><h2>LLM</h2></summary>
+        <div class="collapsible-panel-body">
+          <p><b>Motor:</b> Transformers.js local u Ollama HTTP</p>
+          <p><b>Modelo:</b> seleccionable en el panel</p>
+          <p><b>VM:</b> Alpine x86 + apk; RAM/disco configurable antes del arranque</p>
+        </div>
+      </details>
+
+      <details class="panel small checks-panel collapsible-panel">
+        <summary class="panel-title"><h2>Comprobaciones</h2><span id="checks-summary" class="badge">—</span></summary>
+        <div class="collapsible-panel-body">
+          <div class="checks-toolbar">
+            <button id="run-checks" type="button" class="secondary">Comprobar</button>
+          </div>
+          <div id="checks" class="checks"></div>
+        </div>
+      </details>
+    </section>
+
+    <!-- Configuración interna v86: se mantiene oculta para que el arranque conserve sus rutas por defecto. -->
+    <input id="cfg-libv86" type="hidden" value="/v86/build/libv86.js" />
+      <input id="cfg-wasm" type="hidden" value="/v86/build/v86.wasm" />
+      <input id="cfg-bios" type="hidden" value="/v86/bios/seabios.bin" />
+      <input id="cfg-vga" type="hidden" value="/v86/bios/vgabios.bin" />
+      <input id="cfg-bzimage" type="hidden" value="/v86/images/alpine-vmlinuz-lts" />
+      <input id="cfg-initrd" type="hidden" value="/v86/images/profiles/alpine-base-initramfs.gz" />
+
+    <div id="screen-container" class="hidden-screen">
+      <div></div>
+      <canvas></canvas>
+    </div>
+  </main>
+
+  <!-- Runtime libraries copied from npm by scripts/download-v86-assets.mjs. -->
+  <script src="./vendor/xterm/xterm.js"></script>
+
+  <!-- AI SDK bridge generated from src/chat/provider; it imports the vendor bundle. -->
+  <script type="module" src="./assets/ai-sdk-bridge.mjs"></script>
+
+  <!-- Main application bundle generated from src. -->
+  <script src="./assets/app.js"></script>
+</body>
+</html>

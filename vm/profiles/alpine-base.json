@@ -1,0 +1,36 @@
+{
+  "id": "alpine-base",
+  "name": "Alpine Base Lite",
+  "description": "Alpine mínimo con certificados, curl y nano.",
+  "type": "initramfs",
+  "alpineVersion": "3.23.4",
+  "alpineBranch": "v3.23",
+  "arch": "x86",
+  "output": "v86/images/profiles/alpine-base-initramfs.gz",
+  "kernelOutput": "v86/images/alpine-vmlinuz-lts",
+  "minRamMb": 256,
+  "recommendedRamMb": 512,
+  "packages": [
+    "ca-certificates",
+    "curl",
+    "nano",
+    "tmux"
+  ],
+  "firstBootCommands": [
+    "update-ca-certificates >/tmp/update-ca-certificates.log 2>&1 || true"
+  ],
+  "buildCommands": [
+    "rm -rf /rootfs/var/cache/apk/* /rootfs/tmp/* /rootfs/var/tmp/*",
+    "rm -rf /rootfs/usr/share/man /rootfs/usr/share/doc"
+  ],
+  "validationCommands": [
+    "tmux -V",
+    "curl --version",
+    "nano --version || true",
+    "df -h",
+    "free -m"
+  ],
+  "bootMessage": "Browser Alpine Base Lite ready + tmux.",
+  "recommendedVramMb": 8,
+  "defaultDisk": "initramfs"
+}

@@ -1,0 +1,158 @@
+#!/bin/sh
+# Browser Agent serial1 runner.
+# Reads base64 encoded jobs from /dev/ttyS1 and writes live output back to ttyS1.
+# Protocol:
+#   __BA_S1_BEGIN:<id>:<timeout_s>:<max_bytes>:<marker>
+#   <base64 lines>
+#   __BA_S1_END:<id>
+set +e
+
+TTY="${1:-/dev/ttyS1}"
+RUN_DIR="/tmp/ba-s1-runs"
+mkdir -p "$RUN_DIR" 2>/dev/null
+chmod 700 "$RUN_DIR" 2>/dev/null || true
+
+if [ ! -e "$TTY" ]; then
+  exit 0
+fi
+
+stty -F "$TTY" 115200 cs8 -cstopb -parenb -ixon -ixoff -echo 2>/dev/null || true
+
+say() {
+  printf '%s\n' "$*" > "$TTY" 2>/dev/null || true
+}
+
+safe_id() {
+  printf '%s' "$1" | tr -c 'A-Za-z0-9_.-' '_'
+}
+
+cleanup_job_files() {
+  id="$(safe_id "$1")"
+  rm -f \
+    "$RUN_DIR/$id.cmd.b64" \
+    "$RUN_DIR/$id.sh" \
+    "$RUN_DIR/$id.raw" \
+    "$RUN_DIR/$id.fifo" \
+    "$RUN_DIR/$id.decode.err" \
+    2>/dev/null || true
+}
+
+run_job() {
+  id="$(safe_id "$1")"
+  timeout_s="${2:-25}"
+  max_bytes="${3:-65536}"
+  marker="$4"
+  b64="$RUN_DIR/$id.cmd.b64"
+  script="$RUN_DIR/$id.sh"
+  raw="$RUN_DIR/$id.raw"
+  fifo="$RUN_DIR/$id.fifo"
+  decode_err="$RUN_DIR/$id.decode.err"
+
+  case "$timeout_s" in ''|*[!0-9]*) timeout_s=25 ;; esac
+  case "$max_bytes" in ''|*[!0-9]*) max_bytes=65536 ;; esac
+
+  rm -f "$script" "$raw" "$fifo" "$decode_err" 2>/dev/null
+  if ! base64 -d "$b64" > "$script" 2>"$decode_err"; then
+    say "${marker}_START"
+    say "${marker}_LIVE_START"
+    say "BA_SERIAL1_ERROR:decode-failed"
+    cat "$decode_err" > "$TTY" 2>/dev/null || true
+    say "${marker}_LIVE_END"
+    say "${marker}_END:65"
+    cleanup_job_files "$id"
+    return
+  fi
+  chmod 700 "$script" 2>/dev/null || true
+
+  say "${marker}_START"
+  say "${marker}_LIVE_START"
+  say "[ba-s1] start id=$id timeout=${timeout_s}s max=${max_bytes}"
+
+  mkfifo "$fifo" 2>/dev/null
+  if [ ! -p "$fifo" ]; then
+    say "BA_SERIAL1_ERROR:mkfifo-failed"
+    say "${marker}_LIVE_END"
+    say "${marker}_END:66"
+    cleanup_job_files "$id"
+    return
+  fi
+
+  # Drain the whole command output so the process does not block, but only mirror
+  # a bounded amount to ttyS1 and the local raw log.
+  ( awk -v max="$max_bytes" '
+      BEGIN { n=0; cut=0 }
+      {
+        line=$0 ORS
+        add=length(line)
+        if (n + add <= max) {
+          printf "%s", line
+        } else if (!cut) {
+          printf "\n[ba-s1] output truncated at %s bytes\n", max
+          cut=1
+        }
+        n += add
+        fflush()
+      }
+    ' < "$fifo" | tee "$raw" > "$TTY" 2>/dev/null ) &
+  tee_pid="$!"
+
+  rc=0
+  if command -v timeout >/dev/null 2>&1; then
+    timeout "$timeout_s" /bin/sh "$script" > "$fifo" 2>&1
+    rc="$?"
+  else
+    /bin/sh "$script" > "$fifo" 2>&1
+    rc="$?"
+  fi
+
+  wait "$tee_pid" 2>/dev/null || true
+  rm -f "$fifo" 2>/dev/null
+
+  say ""
+  say "[ba-s1] end id=$id rc=$rc"
+  say "${marker}_LIVE_END"
+  say "${marker}_END:$rc"
+  cleanup_job_files "$id"
+}
+
+current_id=""
+current_timeout="25"
+current_max="65536"
+current_marker=""
+current_b64=""
+
+say "BA_SERIAL1_RUNNER_READY tty=$TTY"
+
+exec 3<>"$TTY"
+while IFS= read -r line <&3; do
+  line="$(printf '%s' "$line" | tr -d '\r')"
+  case "$line" in
+    __BA_S1_BEGIN:*)
+      payload="${line#__BA_S1_BEGIN:}"
+      current_id="$(printf '%s' "$payload" | cut -d: -f1)"
+      current_timeout="$(printf '%s' "$payload" | cut -d: -f2)"
+      current_max="$(printf '%s' "$payload" | cut -d: -f3)"
+      current_marker="$(printf '%s' "$payload" | cut -d: -f4-)"
+      current_id="$(safe_id "$current_id")"
+      current_b64="$RUN_DIR/$current_id.cmd.b64"
+      : > "$current_b64"
+      ;;
+    __BA_S1_END:*)
+      end_id="$(safe_id "${line#__BA_S1_END:}")"
+      if [ -n "$current_id" ] && [ "$end_id" = "$current_id" ]; then
+        run_job "$current_id" "$current_timeout" "$current_max" "$current_marker"
+      else
+        say "BA_SERIAL1_ERROR:id-mismatch"
+        [ -n "$current_id" ] && cleanup_job_files "$current_id"
+      fi
+      current_id=""
+      current_b64=""
+      current_marker=""
+      ;;
+    *)
+      if [ -n "$current_b64" ]; then
+        printf '%s\n' "$line" >> "$current_b64"
+      fi
+      ;;
+  esac
+done
