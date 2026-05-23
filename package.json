@@ -1,0 +1,42 @@
+{
+  "name": "browser-agent-v86-poc",
+  "description": "Browser Agent v86 POC",
+  "version": "0.9.0-beta.1",
+  "author": "Lenam <lenam@protonmail.com> (https://Len4m.github.io)",
+  "license": "MIT",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Len4m/browser-agent-v86-poc.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Len4m/browser-agent-v86-poc/issues"
+  },
+  "homepage": "https://github.com/Len4m/browser-agent-v86-poc#readme",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "prepare:local": "node scripts/setup.mjs && node scripts/build.mjs",
+    "setup": "node scripts/setup.mjs",
+    "build": "node scripts/build.mjs",
+    "check": "tsc --noEmit && node scripts/check-frontend-manifest.mjs && node scripts/check-js-syntax.mjs && node scripts/check-server.mjs",
+    "clean": "node scripts/clean.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@browser-ai/transformers-js": "^2.2.2",
+    "@huggingface/transformers": "^4.2.0",
+    "@xterm/xterm": "^6.0.0",
+    "ai": "^6.0.185",
+    "dompurify": "^3.4.5",
+    "esbuild": "^0.28.0",
+    "streaming-markdown": "^0.2.15",
+    "v86": "^0.5.359",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

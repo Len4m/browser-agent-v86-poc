@@ -1,0 +1,114 @@
+#!/bin/sh
+# Browser Agent serial2 console-control runner.
+# Dedicated lightweight protocol for tmux UI actions. It only accepts a small
+# allowlist of ba-consolectl actions; it is not a general shell executor.
+set +e
+
+TTY="${1:-/dev/ttyS2}"
+RUN_DIR="/tmp/ba-s2-console"
+mkdir -p "$RUN_DIR" 2>/dev/null
+chmod 700 "$RUN_DIR" 2>/dev/null || true
+
+if [ ! -e "$TTY" ]; then
+  exit 0
+fi
+
+stty -F "$TTY" 115200 cs8 -cstopb -parenb -ixon -ixoff -echo 2>/dev/null || true
+
+say() {
+  printf '%s\n' "$*" > "$TTY" 2>/dev/null || true
+}
+
+safe_id() {
+  printf '%s' "$1" | tr -c 'A-Za-z0-9_.-' '_'
+}
+
+valid_index() {
+  case "$1" in ''|*[!0-9]*) return 1 ;; esac
+  return 0
+}
+
+run_control() {
+  id="$(safe_id "$1")"
+  action="$2"
+  idx="$3"
+  arg="$4"
+  out="$RUN_DIR/$id.out"
+
+  rm -f "$out" 2>/dev/null
+  say "BA_CTL_START:$id"
+  say "BA_CTL_LIVE_START:$id"
+
+  rc=0
+  case "$action" in
+    list)
+      /usr/local/bin/ba-consolectl list >"$out" 2>&1
+      rc="$?"
+      ;;
+    new)
+      /usr/local/bin/ba-consolectl new >"$out" 2>&1
+      rc="$?"
+      ;;
+    status|select|select-redraw|zoom|close-pane|close-window|reset|clear)
+      if ! valid_index "$idx"; then
+        printf 'BA_CTL_ERROR:invalid-index\n' >"$out"
+        rc=64
+      else
+        /usr/local/bin/ba-consolectl "$action" "$idx" >"$out" 2>&1
+        rc="$?"
+      fi
+      ;;
+    split)
+      if ! valid_index "$idx"; then
+        printf 'BA_CTL_ERROR:invalid-index\n' >"$out"
+        rc=64
+      else
+        case "$arg" in
+          vertical|horizontal|v|h)
+            /usr/local/bin/ba-consolectl split "$idx" "$arg" >"$out" 2>&1
+            rc="$?"
+            ;;
+          *)
+            printf 'BA_CTL_ERROR:invalid-split\n' >"$out"
+            rc=64
+            ;;
+        esac
+      fi
+      ;;
+    *)
+      printf 'BA_CTL_ERROR:invalid-action\n' >"$out"
+      rc=64
+      ;;
+  esac
+
+  cat "$out" > "$TTY" 2>/dev/null || true
+  say "BA_CTL_LIVE_END:$id"
+  say "BA_CTL_END:$id:$rc"
+  rm -f "$out" 2>/dev/null
+}
+
+say "BA_SERIAL2_CONSOLE_READY tty=$TTY"
+
+exec 3<>"$TTY"
+while IFS= read -r line <&3; do
+  line="$(printf '%s' "$line" | tr -d '\r')"
+  case "$line" in
+    __BA_CTL:*)
+      payload="${line#__BA_CTL:}"
+      id="${payload%%:*}"
+      rest="${payload#*:}"
+      if [ "$rest" = "$payload" ]; then
+        say "BA_CTL_ERROR:bad-frame"
+        continue
+      fi
+      action="${rest%%:*}"
+      rest="${rest#*:}"
+      idx="${rest%%:*}"
+      arg="${rest#*:}"
+      if [ "$arg" = "$rest" ]; then
+        arg=""
+      fi
+      run_control "$id" "$action" "$idx" "$arg"
+      ;;
+  esac
+done

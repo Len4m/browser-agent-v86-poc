@@ -1,0 +1,50 @@
+/* Browser Agent v86 - tools background por serial1/ttyS1 */
+
+.bg-tool-details {
+  margin-top: 10px;
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  background: #eff6ff;
+  overflow: hidden;
+}
+
+.bg-tool-summary {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  color: #0f172a;
+}
+
+.bg-tool-note {
+  padding: 0 12px 8px;
+  color: #475569;
+  font-size: 12px;
+}
+
+.bg-tool-live {
+  margin: 0 10px 10px;
+  min-height: 120px;
+  max-height: 260px;
+  resize: vertical;
+  overflow: auto;
+  white-space: pre-wrap;
+  user-select: text;
+  cursor: text;
+}
+
+body.bg-tool-busy .bg-tool-details {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+body.bg-tool-busy #bg-tool-status {
+  animation: ba-bg-tool-pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes ba-bg-tool-pulse {
+  from { opacity: .65; }
+  to { opacity: 1; }
+}

@@ -1,0 +1,135 @@
+/* Browser Agent v86 - 07-collapsible-panels-config.css */
+
+/* v9.16: compact collapsible lower panels */
+.collapsible-panel {
+  padding: 14px;
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+.collapsible-panel:not([open]) {
+  min-height: 0;
+}
+.collapsible-panel > summary.panel-title {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 0;
+  gap: 10px;
+}
+.collapsible-panel[open] > summary.panel-title {
+  margin-bottom: 12px;
+}
+.collapsible-panel > summary.panel-title::-webkit-details-marker {
+  display: none;
+}
+.collapsible-panel > summary.panel-title::after {
+  content: "▾";
+  flex: 0 0 auto;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 900;
+  transition: transform .15s ease;
+}
+.collapsible-panel:not([open]) > summary.panel-title::after {
+  transform: rotate(-90deg);
+}
+.collapsible-panel > summary.panel-title:hover h2,
+.collapsible-panel > summary.panel-title:hover::after {
+  color: #1d4ed8;
+}
+.collapsible-panel-body {
+  display: grid;
+  gap: 10px;
+}
+.collapsible-panel .ws-help {
+  margin-top: 0;
+}
+.collapsible-panel:not([open]) .panel-title {
+  margin-bottom: 0;
+}
+
+
+/* v9.17: lower panels compact layout and Config v86 as information */
+.grid.three {
+  align-items: start;
+}
+.three > .collapsible-panel,
+.three > .panel.small {
+  min-height: 0;
+  align-self: start;
+}
+.collapsible-panel.small {
+  min-height: 0;
+}
+.collapsible-panel[open].small {
+  min-height: 0;
+}
+.ws-help-inline {
+  margin-top: 0;
+  border-top: 0;
+  padding-top: 0;
+}
+.ws-help-title {
+  margin: 0 0 8px;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+}
+.config-info-panel summary {
+  cursor: pointer;
+  font-weight: 800;
+  color: #334155;
+}
+.config-info-note {
+  margin: 10px 0 12px;
+  max-width: 980px;
+  color: #475569;
+  line-height: 1.45;
+}
+.config-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 8px 12px;
+}
+.config-info-grid > div {
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+.config-info-grid span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+.config-info-grid code {
+  color: #0f172a;
+  font-size: 12px;
+  word-break: break-all;
+}
+@media (max-width: 900px) {
+  .config-info-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* v9.62: alinear los badges de los desplegables inferiores junto a la flecha. */
+.collapsible-panel > summary.panel-title {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.collapsible-panel > summary.panel-title h2 {
+  margin-right: auto;
+}
+
+.collapsible-panel > summary.panel-title .badge {
+  margin-left: auto;
+}
+
+.collapsible-panel > summary.panel-title::after {
+  margin-left: 8px;
+}
