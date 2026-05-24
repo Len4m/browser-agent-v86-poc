@@ -4,9 +4,9 @@ Browser Agent v86 explora una idea simple y potente: ejecutar una **VM Linux x86
 
 El proyecto está en **beta** (`0.9.0-beta.1`). La version `1.0.0` queda reservada para la primera publicacion estable.
 
-Autor y contacto: Lenam [lenamgenx@protonmail.com](mailto:lenamgenx@protonmail.com) ([https://Len4m.github.io](https://Len4m.github.io)).   
-Repositorio: [https://github.com/Len4m/browser-agent-v86-poc](https://github.com/Len4m/browser-agent-v86-poc).
-Demo: [https://browseragent.icu/](https://browseragent.icu/).
+- Autor y contacto: Lenam [lenamgenx@protonmail.com](mailto:lenamgenx@protonmail.com) ([https://Len4m.github.io](https://Len4m.github.io)).   
+- Repositorio: [https://github.com/Len4m/browser-agent-v86-poc](https://github.com/Len4m/browser-agent-v86-poc).
+- Demo: [https://browseragent.icu/](https://browseragent.icu/).
 
 ## Requisitos para ejecutar un runtime ya generado
 
