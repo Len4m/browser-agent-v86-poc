@@ -808,6 +808,7 @@ if [ ! -s "$WORK/rootfs/etc/v86-net-modules.list" ]; then
   exit 1
 fi
 
+mkdir -p "$(dirname "$OUT")"
 (
   cd "$WORK/rootfs"
   find . -print0 | cpio --null -o -H newc 2>/dev/null | gzip -9 > "$OUT"
