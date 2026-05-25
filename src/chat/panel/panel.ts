@@ -568,12 +568,29 @@
       artifactBadge.textContent = formatCountLabel(artifactCount, "artefacto", "artefactos");
       artifactBadge.title = snap.lastArtifactId ? `Último artefacto: ${snap.lastArtifactId}` : "Artefactos guardados";
     }
+    const artifacts = window.BA_LLM_ARTIFACTS?.listSummaries?.({ limit: 3 }) || [];
+    const artifactLines = artifacts.slice().reverse().map((artifact) => {
+      const path = artifact.args?.path ? ` · ${artifact.args.path}` : "";
+      const state = artifact.ok ? "ok" : "error";
+      const size = artifact.sizeBytes ? ` · ${Math.ceil(artifact.sizeBytes / 1024)} KB` : "";
+      const truncated = artifact.truncated ? " · truncado" : "";
+      return `Artefacto: ${escapeHtml(artifact.id)} · ${escapeHtml(artifact.tool || "tool")} · ${escapeHtml(state)}${escapeHtml(size)}${escapeHtml(truncated)}${escapeHtml(path)}`;
+    });
+    const actions = artifactCount
+      ? `<button id="ba-llm-clear-artifacts" class="ba-llm-inline-action" type="button">Limpiar artefactos</button>`
+      : "";
     box.innerHTML = [
       `Artefactos: ${escapeHtml(artifactCount)}${snap.lastArtifactId ? ` · ${escapeHtml(snap.lastArtifactId)}` : ""}`,
+      ...artifactLines,
       budgetLine,
       ctx ? `Contexto: ${escapeHtml(ctx.estimatedTokens || 0)} tokens aprox. · ${escapeHtml(ctx.chars || 0)} caracteres` : "Contexto: pendiente",
       `Operación: ${escapeHtml(snap.lastOperation || "inactiva")}${snap.llmBusy ? " · LLM ocupado" : ""}${snap.toolBusy ? " · herramienta activa" : ""}`,
-    ].map((line) => `<span>${line}</span>`).join("");
+      actions,
+    ].filter(Boolean).map((line) => `<span>${line}</span>`).join("");
+    box.querySelector("#ba-llm-clear-artifacts")?.addEventListener("click", () => {
+      window.BA_LLM_ARTIFACTS?.clear?.();
+      updateResourceLines();
+    });
   }
 
   function mountPanel() {

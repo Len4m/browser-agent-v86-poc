@@ -52,10 +52,14 @@ function createWorker() {
 }
 
 function wrapAgentModel(baseModel, modelConfig) {
+  const engine = modelConfig?.engine || "transformersjs";
+  const toolCalling = modelConfig?.agent?.toolCalling || "fair";
+  const parseTextTools = engine === "transformersjs" && (toolCalling === "weak" || toolCalling === "fair");
   let model = wrapLanguageModel({
     model: baseModel,
     middleware: transformersTextToolMiddleware({
-      stripToolChoice: (modelConfig?.engine || "transformersjs") === "transformersjs",
+      stripToolChoice: engine === "transformersjs",
+      parseTextTools,
     }),
   });
   const thinking = modelConfig?.thinking;

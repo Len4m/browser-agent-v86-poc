@@ -636,6 +636,22 @@ button.danger-light:hover {
   background: #ffffff;
 }
 
+.ba-llm-inline-action {
+  min-height: 1.8rem;
+  padding: 0.22rem 0.55rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+
+.ba-llm-inline-action:hover {
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
 .ba-llm-synthesis-after-tool .ba-llm-bubble {
   border-color: #c4b5fd;
   background: linear-gradient(180deg, #fbfaff, #ffffff);

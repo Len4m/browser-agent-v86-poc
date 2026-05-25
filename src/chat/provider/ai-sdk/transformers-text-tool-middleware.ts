@@ -110,12 +110,12 @@ function withoutToolChoice(params) {
   return rest;
 }
 
-export function transformersTextToolMiddleware({ stripToolChoice = false } = {}) {
+export function transformersTextToolMiddleware({ stripToolChoice = false, parseTextTools = true } = {}) {
   return {
     wrapGenerate: async ({ doGenerate, params, model }) => {
       const generate = () => stripToolChoice ? model.doGenerate(withoutToolChoice(params)) : doGenerate();
       const allowedToolNames = getAllowedToolNames(params);
-      if (!allowedToolNames.length) return generate();
+      if (!parseTextTools || !allowedToolNames.length) return generate();
 
       const result = await generate();
       const textParts = (result.content || [])
@@ -148,7 +148,7 @@ export function transformersTextToolMiddleware({ stripToolChoice = false } = {})
     wrapStream: async ({ doStream, params, model }) => {
       const stream = () => stripToolChoice ? model.doStream(withoutToolChoice(params)) : doStream();
       const allowedToolNames = getAllowedToolNames(params);
-      if (!allowedToolNames.length) return stream();
+      if (!parseTextTools || !allowedToolNames.length) return stream();
 
       const { stream: baseStream, ...rest } = await stream();
       let accumulated = "";

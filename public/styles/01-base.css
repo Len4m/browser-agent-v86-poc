@@ -76,6 +76,7 @@ p { margin: 6px 0; color: #475569; font-size: 14px; }
 .badge.warn { background: #fffbeb; color: #b45309; border-color: #fde68a; }
 .badge.bad { background: #fff1f2; color: #be123c; border-color: #fecdd3; }
 .badge.blue { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+.app-version-badge { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
 .github-repo-link {
   width: 28px;
   height: 28px;

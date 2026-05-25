@@ -249,6 +249,18 @@
     return store.length ? store[store.length - 1] : null;
   }
 
+  function listSummaries({ limit = MAX_ARTIFACTS } = {}) {
+    const store = ensureStore();
+    const max = Math.max(0, Number(limit) || MAX_ARTIFACTS);
+    return store.slice(-max).map(summarizeArtifact);
+  }
+
+  function findById(id) {
+    const target = String(id || "");
+    if (!target) return null;
+    return ensureStore().find((artifact) => artifact.id === target) || null;
+  }
+
   function clear() {
     window.BA_LLM.artifacts = [];
     window.BA_LLM.lastArtifactId = null;
@@ -283,6 +295,9 @@
 
   window.BA_LLM_ARTIFACTS = {
     storeToolResult,
+    summarizeArtifact,
+    listSummaries,
+    findById,
     last,
     clear,
     formatArtifactForModel,
