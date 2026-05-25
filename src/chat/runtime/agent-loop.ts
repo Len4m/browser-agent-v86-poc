@@ -72,6 +72,40 @@
     return /\baborted\b|The user aborted a request/i.test(msg);
   }
 
+  function getToolCallingMode(modelConfig) {
+    return modelConfig?.agent?.toolCalling || "fair";
+  }
+
+  function canModelChooseToolsWithoutHeuristic(modelConfig) {
+    const mode = getToolCallingMode(modelConfig);
+    return modelConfig?.engine === "ollama" || mode === "good";
+  }
+
+  function buildEmptyResponseMessage({
+    modelConfig,
+    reasoningText = "",
+    showThinking = false,
+    streamIsToolPlan = false,
+    toolPhaseSeen = false,
+    runnerInfo = {},
+  } = {}) {
+    const finishReason = runnerInfo.finishReason;
+    if (reasoningText.trim() && !showThinking) {
+      return "El modelo generó razonamiento interno, pero no produjo una respuesta final visible. Activa «Mostrar razonamiento» para inspeccionarlo o prueba otro modelo.";
+    }
+    if (streamIsToolPlan) {
+      return "El modelo generó un plan de tool en JSON, pero no produjo una respuesta final en texto. Prueba con un modelo con mejor tool calling o reduce las herramientas activas.";
+    }
+    if (toolPhaseSeen || runnerInfo.hadToolWork) {
+      return "La tool se ejecutó, pero el modelo no generó una síntesis final. Revisa el artefacto generado o prueba de nuevo con menos salida de tool.";
+    }
+    if (/length|max|token/i.test(String(finishReason || ""))) {
+      return "La respuesta se cortó por límite de salida del modelo. Sube el presupuesto de salida o usa un modelo con más contexto.";
+    }
+    const label = modelConfig?.shortLabel || modelConfig?.label || modelConfig?.id || "modelo local";
+    return `El ${label} no generó texto visible. Puede ser salida vacía, incompatibilidad de streaming o un formato que el parser no puede renderizar.`;
+  }
+
   function isChatOperationActive() {
     const llm = window.BA_LLM;
     const governor = window.BA_LLM_RESOURCE_GOVERNOR?.getSnapshot?.();
@@ -292,13 +326,16 @@
     const nativeToolsMode = shouldEnableNativeTools({ referencedArtifact });
     const activeToolNames = nativeToolsMode ? resolveNativeToolNames(modelConfig) : [];
     const needsVm = userRequestLikelyNeedsVm(userText);
-    const useToolLoop = nativeToolsMode && needsVm;
+    const modelMayChooseTools = canModelChooseToolsWithoutHeuristic(modelConfig);
+    const useToolLoop = nativeToolsMode && (needsVm || modelMayChooseTools);
+    const toolCallingMode = getToolCallingMode(modelConfig);
     streamDeltaLogCount = 0;
     agentDebug("route", "runAgentTurn", {
       modelId: modelConfig?.id,
-      toolCalling: modelConfig?.agent?.toolCalling,
+      toolCalling: toolCallingMode,
       nativeToolsMode,
       needsVm,
+      modelMayChooseTools,
       useToolLoop,
       activeToolNames,
       turnMaxStepsPreview: modelConfig?.agent?.maxSteps,
@@ -336,7 +373,7 @@
 
     await createResponseStream();
 
-    const spinnerLabel = useToolLoop
+    const spinnerLabel = useToolLoop && needsVm
       ? "Agente (loop AI + tools)…"
       : "Generando respuesta…";
     setChatTailIndicator(spinnerLabel);
@@ -347,11 +384,12 @@
     let lastToolUi = null;
     let sdkAssistantText = "";
     let preToolText = "";
+    let reasoningText = "";
     let toolPhaseSeen = false;
 
     let maxSteps = modelConfig?.agent?.maxSteps || 2;
-    if (modelConfig?.agent?.toolCalling === "weak") maxSteps = 1;
-    else if (modelConfig?.agent?.toolCalling === "fair") maxSteps = Math.min(maxSteps, 2);
+    if (toolCallingMode === "weak") maxSteps = 1;
+    else if (toolCallingMode === "fair") maxSteps = Math.min(maxSteps, 2);
     const turnMaxSteps = useToolLoop ? maxSteps : 1;
 
     const tools = nativeToolsMode
@@ -412,7 +450,7 @@
       throw new Error("Activa al menos una tool en el panel LLM (límite según modelo).");
     }
 
-    const turnMaxTokens = window.BA_LLM_CONTEXT?.resolveMaxOutputTokens?.(modelConfig, useToolLoop ? "plan" : "chat")
+    const turnMaxTokens = window.BA_LLM_CONTEXT?.resolveMaxOutputTokens?.(modelConfig, useToolLoop && needsVm ? "plan" : "chat")
       ?? policy.maxNewTokensDefault
       ?? modelConfig.maxNewTokens
       ?? (useToolLoop ? 192 : 512);
@@ -422,19 +460,18 @@
     agentDebug("context", "límites de salida resueltos", {
       provider: modelConfig?.engine,
       modelId: modelConfig?.id,
-      turnKind: useToolLoop ? "plan" : "chat",
+      turnKind: useToolLoop && needsVm ? "plan" : "chat",
       turnMaxTokens,
       synthesisMaxTokens,
     });
 
-    const chatOnlyTurn = !useToolLoop;
     const llmLabel = useToolLoop
       ? `loop AI SDK (${activeToolNames.length} tools, ${turnMaxSteps} pasos)`
       : "chat";
     window.BA_LLM_RESOURCE_GOVERNOR?.start?.("llm", llmLabel);
     try {
       const streamPrompt = window.BA_LLM_CONTEXT.adaptPromptForLocalWeak?.(prompt, modelConfig) || prompt;
-      const { text } = await sdk.runAgentStreamTurn({
+      const runnerOutput = await sdk.runAgentStreamTurn({
         model: sdk.getActiveModel(),
         system: streamPrompt.system,
         messages: streamPrompt.messages,
@@ -445,6 +482,7 @@
         temperature: modelConfig.temperature ?? 0.2,
         topP: modelConfig.topP ?? 0.85,
         needsVm: useToolLoop,
+        toolCalling: toolCallingMode,
         activeToolNames: sentActiveToolNames,
         abortSignal,
         onStepFinish(event) {
@@ -467,7 +505,7 @@
 
           const textChunk = sdk.textChunkFromStreamPart(part);
           if (textChunk) {
-            if (useToolLoop && !toolPhaseSeen) {
+            if (useToolLoop && needsVm && !toolPhaseSeen) {
               preToolText += textChunk;
               agentDebugStreamPart(part, isLikelyToolPlanText(preToolText) ? " (buffer tool-plan)" : " (buffer pre-tool)");
               return;
@@ -486,11 +524,15 @@
           }
 
           const reasoningChunk = sdk.reasoningChunkFromStreamPart(part);
-          if (showThinking && reasoningChunk && !isLikelyToolPlanText(reasoningChunk)) {
-            appendThinkingChunk(bubble, reasoningChunk);
+          if (reasoningChunk && !isLikelyToolPlanText(reasoningChunk)) {
+            reasoningText += reasoningChunk;
+            if (showThinking) {
+              appendThinkingChunk(bubble, reasoningChunk);
+            }
           }
         },
       });
+      const text = runnerOutput?.text || "";
 
       const runnerText = String(text || "").trim();
       const streamRaw = sdkAssistantText.trim()
@@ -530,9 +572,22 @@
 
       if (canKeepStreamedBubble || (finalText && !isLikelyToolPlanText(finalText))) {
         // La respuesta ya quedó renderizada incrementalmente en la burbuja original.
-      } else if (chatOnlyTurn) {
-        const fallback = "El modelo local no generó texto. Recarga (Ctrl+Shift+R) o prueba otro modelo.";
-        agentDebug("ui", "chat vacío → aviso", { modelId: modelConfig?.id });
+      } else {
+        const fallback = buildEmptyResponseMessage({
+          modelConfig,
+          reasoningText,
+          showThinking,
+          streamIsToolPlan,
+          toolPhaseSeen,
+          runnerInfo: runnerOutput,
+        });
+        agentDebug("ui", "chat vacío → aviso", {
+          modelId: modelConfig?.id,
+          finishReason: runnerOutput?.finishReason,
+          reasoningChars: reasoningText.length,
+          streamIsToolPlan,
+          hadToolWork: runnerOutput?.hadToolWork,
+        });
         await appendFinalAgentBubble(fallback);
       }
 
