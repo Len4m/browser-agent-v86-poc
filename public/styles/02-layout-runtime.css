@@ -136,7 +136,7 @@
 }
 .header p { margin-bottom: 0; }
 .vm-screen-wrap { position: relative; margin: 10px 0 12px; }
-#serial-console.serial-screen, #serial-textarea.serial-screen {
+#serial-console.serial-screen {
   display: block;
   width: 100%;
   height: 420px;
@@ -150,18 +150,11 @@
   color: #d1d5db;
   box-sizing: border-box;
 }
-#serial-console.serial-screen:focus, #serial-textarea.serial-screen:focus { outline: 3px solid rgba(59,130,246,.35); outline-offset: 2px; }
+#serial-console.serial-screen:focus { outline: 3px solid rgba(59,130,246,.35); outline-offset: 2px; }
 #serial-console .xterm { width: 100%; height: 100%; box-sizing: border-box; overflow: hidden; }
 #serial-console .xterm-viewport { background: #000 !important; overflow-y: auto !important; }
 #serial-console .xterm-screen { width: 100% !important; }
 #serial-console .xterm-helper-textarea { left: 0 !important; top: 0 !important; }
-#serial-textarea.serial-screen {
-  padding: 10px;
-  font: 15px/18px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  white-space: pre;
-  overflow: auto;
-  outline: none;
-}
 #screen-container.hidden-vga { display: none !important; }
 #vm-lock-overlay {
   display: none;

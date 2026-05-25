@@ -10,14 +10,6 @@
   opacity: 0;
 }
 
-/* v86 serial console fallback must stay hidden when xterm.js is available.
-   The previous display:block rule overrode the HTML hidden attribute,
-   showing a second black textarea under the real xterm terminal. */
-#serial-textarea[hidden],
-#serial-textarea.serial-screen[hidden] {
-  display: none !important;
-}
-
 .snapshot-toolbar {
   display: flex;
   flex-wrap: wrap;

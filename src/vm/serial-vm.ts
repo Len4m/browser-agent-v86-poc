@@ -32,7 +32,6 @@ function sizeSerialContainerToGrid(container, term, cols, rows) {
   const height = Math.ceil((cell.height || 18) * rows + 6);
   const targets = [
     container,
-    $("serial-textarea"),
     $("vm-console-shell"),
   ].filter(Boolean);
 
@@ -129,8 +128,6 @@ function resetSerialConsoleDom() {
   teardownSerialTerminalHelpers();
   const serialConsole = $("serial-console");
   if (serialConsole) serialConsole.replaceChildren();
-  const fallback = $("serial-textarea");
-  if (fallback) fallback.value = "";
 }
 
 function focusSerialConsole() {
@@ -142,8 +139,6 @@ function focusSerialConsole() {
   if (term && typeof term.focus === "function") {
     try { term.focus(); return; } catch {}
   }
-  const fallback = $("serial-textarea");
-  if (fallback && !fallback.hidden) fallback.focus();
 }
 
 async function resyncVmAfterRestore() {
@@ -229,6 +224,7 @@ async function startVm(options = {}) {
 
     const Starter = window.V86Starter || window.V86;
     if (!Starter) throw new Error("window.V86Starter no existe");
+    if (!window.Terminal) throw new Error("xterm.js no cargado");
 
     resetSerialConsoleDom();
     window.BA_BG_TOOLS?.reset?.("vm-starting");
@@ -272,9 +268,7 @@ async function startVm(options = {}) {
       autostart: !restoreStateBuffer,
       disable_keyboard: true,
       screen_container: $("screen-container"),
-      serial_console: window.Terminal
-        ? { type: "xtermjs", container: $("serial-console"), xterm_lib: window.Terminal }
-        : { type: "textarea", container: $("serial-textarea") },
+      serial_console: { type: "xtermjs", container: $("serial-console"), xterm_lib: window.Terminal },
     });
     setupSerialTerminalHelpers();
 

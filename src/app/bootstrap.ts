@@ -81,11 +81,10 @@ function enhanceInterface() {
   const toolbar = vmPanel?.querySelector(".toolbar");
 
   const serialConsole = $("serial-console");
-  const serialTextarea = $("serial-textarea");
   if (screen) {
     screen.classList.add("hidden-vga");
   }
-  if ((serialConsole || serialTextarea) && toolbar) {
+  if (serialConsole && toolbar) {
     const tabs = document.createElement("div");
     tabs.id = "console-tabs";
     tabs.className = "console-tabs";
@@ -117,13 +116,6 @@ function enhanceInterface() {
     if (serialConsole) {
       serialConsole.classList.add("serial-screen");
       shell.appendChild(serialConsole);
-    }
-    if (serialTextarea) {
-      serialTextarea.classList.add("serial-screen");
-      // Only show the fallback textarea when xterm.js is not available.
-      // With xterm.js enabled, showing it creates a second fake console.
-      serialTextarea.hidden = Boolean(window.Terminal);
-      shell.appendChild(serialTextarea);
     }
 
     const overlay = document.createElement("div");

@@ -13,11 +13,6 @@ function getActiveConsoleTab() {
     || null;
 }
 
-function isDedicatedConsoleControlReady() {
-  const diag = window.BA_CONSOLE_CONTROL?.diagnostics?.();
-  return Boolean(diag?.serial2Available && diag?.runnerReady);
-}
-
 function isConsoleControlBusy() {
   return Boolean(state.pending || state.agentBusy || state.consoleTabs.controlBusy);
 }
@@ -35,26 +30,6 @@ function rawSerialSend(text) {
     logTool(`${NL}[consola] error enviando entrada: ${error.message}${NL}`);
     return false;
   }
-}
-
-function clearSerialTerminalBuffer() {
-  const term = getSerialTerm();
-  try {
-    if (term && typeof term.clear === "function") term.clear();
-    if (term && typeof term.write === "function") term.write("\x1b[3J\x1b[H\x1b[2J");
-    if (term && typeof term.scrollToBottom === "function") term.scrollToBottom();
-  } catch {}
-
-  const fallback = $("serial-textarea");
-  if (fallback && !fallback.hidden) fallback.value = "";
-}
-
-function setTerminalScrollbackForConsole(enabled) {
-  const term = getSerialTerm();
-  if (!term) return;
-  try {
-    term.options.scrollback = enabled ? 2000 : 2000;
-  } catch {}
 }
 
 function ensureDirectConsoleHost() {
@@ -318,7 +293,6 @@ function renderConsoleTabs() {
 }
 
 function resetConsoleTabs() {
-  setTerminalScrollbackForConsole(false);
   if (state.consoleTabs.outputDisposable?.dispose) {
     try { state.consoleTabs.outputDisposable.dispose(); } catch {}
   }
@@ -342,10 +316,6 @@ function resetConsoleTabs() {
   document.body.classList.remove("xterm-direct-console-mode");
   document.body.classList.add("xterm-direct-console-mode-pending");
   renderConsoleTabs();
-}
-
-function isSelectedRuntimeExpectedToHaveConsole() {
-  return Boolean(getSelectedProfile());
 }
 
 async function initConsoleTabsAfterBoot() {
