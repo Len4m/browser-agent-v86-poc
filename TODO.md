@@ -14,9 +14,9 @@ Lista de temas detectados para revisar antes de una publicación estable.
 
 - [x] Crear repositorio público `https://github.com/Len4m/browser-agent-v86-poc` cuando se decida publicar.
 
-## Consola, tmux y xterm.js
+## Consola y xterm.js
 
-- [ ] Reevaluar la arquitectura de consola: tmux fue una elección razonable para multiplexar sesiones sobre `serial0`, pero no conviene seguir invirtiendo en splits/paneles visuales de tmux sobre la UART fija de v86. Mantener tmux como session manager/fallback si aporta valor, degradar o simplificar los panes de tmux a corto plazo, y estudiar una arquitectura donde xterm.js renderice paneles del navegador con PTYs/sesiones independientes dentro de la VM.
+- [ ] Revisar manualmente la rama `xterm-direct-consoles`: consolas xterm con PTYs independientes dentro de la VM, máximo 4 sesiones, transporte multiplexado por `serial2` y tools separadas por `serial1`.
 
 ## i18n
 
