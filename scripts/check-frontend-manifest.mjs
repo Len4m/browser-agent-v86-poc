@@ -19,8 +19,8 @@ function extract(pattern, text) {
 const indexHtml = readFileSync(join(publicRoot, "index.html"), "utf8");
 const styleCss = readFileSync(join(publicRoot, "style.css"), "utf8");
 
-const loadedJs = extract(/src="\.\/(js\/[^"]+\.(?:js|mjs))"/g, indexHtml);
-const loadedAssets = extract(/src="\.\/(assets\/[^"]+\.(?:js|mjs))"/g, indexHtml);
+const loadedJs = extract(/src="\.\/(js\/[^"?]+\.(?:js|mjs))(?:\?[^"]*)?"/g, indexHtml);
+const loadedAssets = extract(/src="\.\/(assets\/[^"?]+\.(?:js|mjs))(?:\?[^"]*)?"/g, indexHtml);
 const loadedCss = extract(/@import url\("\.\/(styles\/[^"]+\.css)"\)/g, styleCss);
 
 const allCss = readdirSync(join(publicRoot, "styles")).filter((f) => f.endsWith(".css")).map((f) => `styles/${f}`);

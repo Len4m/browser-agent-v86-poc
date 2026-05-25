@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const outFile = join(root, "public/assets/app.js");
 const bridgeOutFile = join(root, "public/assets/ai-sdk-bridge.mjs");
+const indexFile = join(root, "public/index.html");
 const tempFile = join(root, "build/browser/app-entry.js");
 const generatedVersionFile = join(root, "build/browser/generated/00-app-version.js");
 const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
@@ -79,6 +80,11 @@ writeFileSync(generatedVersionFile, [
   "  else render();",
   "})();",
 ].join("\n"), "utf8");
+
+const indexHtml = readFileSync(indexFile, "utf8")
+  .replace(/src="\.\/assets\/ai-sdk-bridge\.mjs(?:\?v=[^"]*)?"/g, `src="./assets/ai-sdk-bridge.mjs?v=${packageJson.version}"`)
+  .replace(/src="\.\/assets\/app\.js(?:\?v=[^"]*)?"/g, `src="./assets/app.js?v=${packageJson.version}"`);
+writeFileSync(indexFile, indexHtml, "utf8");
 
 await esbuild.build({
   entryPoints: [join(root, "src/main.ts")],
