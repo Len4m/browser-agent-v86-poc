@@ -1,10 +1,10 @@
 // @ts-nocheck
 // Browser Agent v86 - 19 LLM context budget
-// v9.37.12: conservative context builder + payload-focused synthesis mode.
+// v9.52: single source of truth for prompt/output budgets.
 //
-// This module is language-agnostic on purpose. It budgets by provider/model,
-// approximate tokens and artifact sizes, not by trying to understand every
-// possible human language. Intent detection lives in ToolResultPolicy.
+// contextWindowTokens comes from the model catalog. This module reserves part
+// of that window for input (safeInputTokens) and derives max output from the
+// remaining room. Keep extra caps explicit and rare.
 
 (function initLLMContextBudget() {
   const DEFAULT_LOCAL_POLICY = {
@@ -22,9 +22,6 @@
     maxToolResultChars: 2400,
     maxToolResultCharsForSynthesis: 1400,
     maxArtifacts: 1,
-    maxNewTokensDefault: 512,
-    maxNewTokensForSynthesis: 384,
-    maxNewTokensForPlan: 192,
   };
 
   const DEFAULT_OLLAMA_POLICY = {
@@ -39,9 +36,6 @@
     maxToolResultChars: 18000,
     maxToolResultCharsForSynthesis: 7000,
     maxArtifacts: 4,
-    maxNewTokensDefault: 2048,
-    maxNewTokensForSynthesis: 1536,
-    maxNewTokensForPlan: 768,
   };
 
   const MODEL_POLICIES = {
@@ -54,9 +48,6 @@
       maxHistoryChars: 0,
       maxToolResultChars: 900,
       maxToolResultCharsForSynthesis: 700,
-      maxNewTokensDefault: 256,
-      maxNewTokensForSynthesis: 192,
-      maxNewTokensForPlan: 96,
     },
     "llama-3.2-1b-instruct-onnx-q4": {
       ...DEFAULT_LOCAL_POLICY,
@@ -67,9 +58,6 @@
       maxHistoryChars: 400,
       maxToolResultChars: 2200,
       maxToolResultCharsForSynthesis: 1400,
-      maxNewTokensDefault: 640,
-      maxNewTokensForSynthesis: 512,
-      maxNewTokensForPlan: 160,
     },
     "llama-3.2-1b-instruct-onnx-q4f16": {
       ...DEFAULT_LOCAL_POLICY,
@@ -80,9 +68,6 @@
       maxHistoryChars: 400,
       maxToolResultChars: 2200,
       maxToolResultCharsForSynthesis: 1400,
-      maxNewTokensDefault: 640,
-      maxNewTokensForSynthesis: 512,
-      maxNewTokensForPlan: 160,
     },
     "llama-3.2-3b-instruct-onnx-q4": {
       ...DEFAULT_LOCAL_POLICY,
@@ -91,9 +76,6 @@
       maxToolResultCharsForSynthesis: 1200,
       maxHistoryMessages: 1,
       maxHistoryChars: 600,
-      maxNewTokensDefault: 512,
-      maxNewTokensForSynthesis: 384,
-      maxNewTokensForPlan: 160,
     },
     "llama-3.2-3b-instruct-onnx-q4f16": {
       ...DEFAULT_LOCAL_POLICY,
@@ -102,9 +84,6 @@
       maxToolResultCharsForSynthesis: 1200,
       maxHistoryMessages: 1,
       maxHistoryChars: 600,
-      maxNewTokensDefault: 640,
-      maxNewTokensForSynthesis: 512,
-      maxNewTokensForPlan: 160,
     },
     "qwen2.5-coder-0.5b-instruct-q4": {
       ...DEFAULT_LOCAL_POLICY,
@@ -115,9 +94,6 @@
       maxHistoryChars: 350,
       maxToolResultChars: 1800,
       maxToolResultCharsForSynthesis: 1000,
-      maxNewTokensDefault: 512,
-      maxNewTokensForSynthesis: 384,
-      maxNewTokensForPlan: 128,
     },
     "qwen3-0.6b-onnx-q4f16": {
       ...DEFAULT_LOCAL_POLICY,
@@ -128,9 +104,6 @@
       maxHistoryChars: 350,
       maxToolResultChars: 1800,
       maxToolResultCharsForSynthesis: 1000,
-      maxNewTokensDefault: 512,
-      maxNewTokensForSynthesis: 384,
-      maxNewTokensForPlan: 128,
     },
     "qwen2.5-1.5b-instruct-q4": {
       ...DEFAULT_LOCAL_POLICY,
@@ -141,9 +114,6 @@
       maxHistoryChars: 700,
       maxToolResultChars: 2600,
       maxToolResultCharsForSynthesis: 1600,
-      maxNewTokensDefault: 768,
-      maxNewTokensForSynthesis: 640,
-      maxNewTokensForPlan: 192,
     },
     "smollm2-1.7b-instruct-q4f16": {
       ...DEFAULT_LOCAL_POLICY,
@@ -154,44 +124,9 @@
       maxHistoryChars: 600,
       maxToolResultChars: 2200,
       maxToolResultCharsForSynthesis: 1400,
-      maxNewTokensDefault: 640,
-      maxNewTokensForSynthesis: 512,
-      maxNewTokensForPlan: 160,
     },
     "custom-transformersjs": {
       ...DEFAULT_LOCAL_POLICY,
-      maxNewTokensDefault: 512,
-      maxNewTokensForSynthesis: 384,
-      maxNewTokensForPlan: 160,
-    },
-    "future-openai": {
-      provider: "openai",
-      contextWindowTokens: 128000,
-      safeInputTokens: 90000,
-      reservedOutputTokens: 4096,
-      maxSystemChars: 16000,
-      maxRuntimeChars: 8000,
-      maxHistoryMessages: 40,
-      maxHistoryChars: 120000,
-      maxToolResultChars: 100000,
-      maxArtifacts: 8,
-      maxNewTokensDefault: 4096,
-      maxNewTokensForSynthesis: 2048,
-    },
-    "future-anthropic": {
-      provider: "anthropic",
-      contextWindowTokens: 200000,
-      safeInputTokens: 140000,
-      reservedOutputTokens: 4096,
-      maxSystemChars: 16000,
-      maxRuntimeChars: 8000,
-      maxHistoryMessages: 40,
-      maxHistoryChars: 160000,
-      maxToolResultChars: 150000,
-      maxArtifacts: 8,
-      maxNewTokensDefault: 4096,
-      maxNewTokensForSynthesis: 2048,
-      supportsPromptCache: true,
     },
     "ollama-qwen3-4b": {
       ...DEFAULT_OLLAMA_POLICY,
@@ -212,9 +147,6 @@
       maxHistoryChars: 9000,
       maxToolResultChars: 16000,
       maxToolResultCharsForSynthesis: 6000,
-      maxNewTokensDefault: 1536,
-      maxNewTokensForSynthesis: 1024,
-      maxNewTokensForPlan: 640,
     },
     "ollama-llama3.2-latest": {
       ...DEFAULT_OLLAMA_POLICY,
@@ -246,9 +178,19 @@
     };
   }
 
+  function localOutputCeiling(policy, safeInput) {
+    if (policy.provider !== "transformersjs") return Infinity;
+    if (safeInput <= 1000) return 512;
+    if (safeInput <= 1200) return 1024;
+    return 1536;
+  }
+
   /**
-   * Máximo de tokens de salida para el modelo activo: ventana de contexto menos
-   * reserva de entrada (safeInputTokens). Respeta model.maxNewTokens si es menor.
+   * Máximo de tokens de salida:
+   *   contextWindowTokens (catálogo) - safeInputTokens (presupuesto de prompt) - margen.
+   *
+   * `model.maxNewTokens` o `policy.maxOutputTokens` son hard caps opcionales.
+   * Solo `plan` tiene un cap bajo fijo porque debe emitir tool calls, no prosa.
    * @param {"chat"|"synthesis"|"plan"} kind
    */
   function resolveMaxOutputTokens(modelConfig = getModelConfig(), kind = "chat") {
@@ -261,19 +203,20 @@
     const safeInput = Number(policy.safeInputTokens ?? DEFAULT_LOCAL_POLICY.safeInputTokens);
     const fromWindow = Math.max(128, contextWindow - safeInput - 48);
 
-    const catalogCap = Number(modelConfig?.maxNewTokens);
     let target = fromWindow;
-    if (Number.isFinite(catalogCap) && catalogCap > 0) {
-      target = Math.min(fromWindow, catalogCap);
+    const runtimeCap = localOutputCeiling(policy, safeInput);
+    if (Number.isFinite(runtimeCap) && runtimeCap > 0) {
+      target = Math.min(target, runtimeCap);
     }
 
-    const policyCap = kind === "synthesis"
-      ? Number(policy.maxNewTokensForSynthesis)
-      : kind === "plan"
-        ? Number(policy.maxNewTokensForPlan)
-        : Number(policy.maxNewTokensDefault);
+    const policyCap = Number(policy.maxOutputTokens);
     if (Number.isFinite(policyCap) && policyCap > 0) {
       target = Math.min(target, policyCap);
+    }
+
+    const catalogCap = Number(modelConfig?.maxNewTokens);
+    if (Number.isFinite(catalogCap) && catalogCap > 0) {
+      target = Math.min(target, catalogCap);
     }
 
     if (kind === "plan") {
@@ -330,6 +273,7 @@
       ...base,
       maxNewTokensDefault: maxChat,
       maxNewTokensForSynthesis: maxSynth,
+      maxNewTokensForPlan: resolveMaxOutputTokens(modelConfig, "plan"),
       reservedOutputTokens: maxChat,
     };
   }

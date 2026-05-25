@@ -109,7 +109,7 @@
     if (model.engine === "ollama") {
       return {
         contextWindowTokens,
-        maxNewTokens: model.maxNewTokens || 2048,
+        maxNewTokens: model.maxNewTokens,
         contextPolicy: {
           provider: "ollama",
           contextWindowTokens,
@@ -130,10 +130,8 @@
     else if (id.includes("0.5b") || (id.includes("qwen3") && id.includes("0.6")) || id.includes("270m")) {
       safeInputTokens = 1100;
     }
-    const maxNewTokens = Math.max(256, contextWindowTokens - safeInputTokens - 48);
     return {
       contextWindowTokens,
-      maxNewTokens,
       contextPolicy: { contextWindowTokens, safeInputTokens },
     };
   }
