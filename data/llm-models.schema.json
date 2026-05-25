@@ -107,7 +107,7 @@
       },
       "toolProfile": {
         "type": "string",
-        "enum": ["strong-json", "middle-tools", "reasoning-light", "tiny-fallback"],
+        "enum": ["strong-json", "middle-tools", "reasoning-light", "tiny-fallback", "balanced"],
         "description": "Tool capability profile used by chat-state.ts to derive tool limits and defaults."
       },
       "temperature": {
