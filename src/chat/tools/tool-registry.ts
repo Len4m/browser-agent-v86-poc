@@ -18,16 +18,16 @@
 
   const PROFILE_TOOL_NAMES = {
     "alpine-base": [
-      "vm.fs.list", "vm.fs.read", "vm.cmd.which", "vm.sys.info", "vm.tmux.status", "vm.pkg.info",
+      "vm.fs.list", "vm.fs.read", "vm.cmd.which", "vm.sys.info", "vm.console.status", "vm.pkg.info",
       "web.curl.head", "web.curl.fetch_text", "vm.sh.exec",
     ],
     "alpine-pentest-lite": [
-      "vm.fs.list", "vm.fs.read", "vm.cmd.which", "vm.sys.info", "vm.tmux.status", "vm.pkg.info",
+      "vm.fs.list", "vm.fs.read", "vm.cmd.which", "vm.sys.info", "vm.console.status", "vm.pkg.info",
       "web.curl.head", "web.curl.fetch_text", "net.dns.lookup", "net.ip.status", "net.nmap.quick",
       "web.ffuf.dir_light", "vm.python.exec", "vm.sh.exec",
     ],
     "alpine-pentest-web": [
-      "vm.fs.list", "vm.fs.read", "vm.cmd.which", "vm.sys.info", "vm.tmux.status", "vm.pkg.info",
+      "vm.fs.list", "vm.fs.read", "vm.cmd.which", "vm.sys.info", "vm.console.status", "vm.pkg.info",
       "web.curl.head", "web.curl.fetch_text", "net.dns.lookup", "net.ip.status", "net.nmap.quick",
       "web.ffuf.dir_light", "vm.python.exec", "web.httpx.probe", "web.nikto.quick", "tls.openssl.cert", "vm.sh.exec",
     ],
@@ -180,7 +180,7 @@
     return {
       vmPresent: Boolean(state.vm),
       vmReady: Boolean(state.vmReady),
-      tmuxReady: Boolean(state.consoleTabs?.ready),
+      consoleReady: Boolean(state.consoleTabs?.ready),
       backgroundToolsReady: Boolean(window.BA_BG_TOOLS?.enabled?.()),
       toolsConsoleAvailable: Boolean(window.BA_BG_TOOLS?.enabled?.() || state.consoleTabs?.tabs?.some((tab) => tab.id === "tools")),
       pendingCommand: Boolean(state.pending),
@@ -203,9 +203,9 @@
     const ctx = baseRuntimeContext();
     if (!ctx.vmPresent) throw new Error("La VM no está arrancada. Arranca v86 antes de usar tools de VM.");
     if (!ctx.vmReady) throw new Error("La shell de la VM todavía no está lista.");
-    if (!ctx.tmuxReady) throw new Error("La consola tmux del usuario todavía no está lista.");
+    if (!ctx.consoleReady) throw new Error("La consola xterm del usuario todavía no está lista.");
     if (!ctx.toolsConsoleAvailable) throw new Error("Las tools necesitan serial1/ttyS1 activo. Reconstruye perfiles y espera a que el runner esté listo.");
-    // Las tools del agente LLM van por serial1 (BA_BG_TOOLS), no por serial0/tmux visible.
+    // Las tools del agente LLM van por serial1 (BA_BG_TOOLS), no por serial0/consola visible.
     // state.agentBusy solo marca bloqueo de la consola principal (snapshot, comandos manuales, etc.)
     // y no debe impedir vm.fs.* mientras el modelo planifica en GPU.
     if (ctx.backgroundToolBusy) throw new Error("Hay otra tool en serial1/ttyS1. Espera a que termine.");
@@ -219,7 +219,7 @@
   const TOOLS = {
     "vm.fs.list": {
       name: "vm.fs.list", label: "Listar archivos en la VM", riskLevel: 1, category: "vm.fs",
-      requiresVm: true, requiresTmux: true, timeoutMs: 12000, maxOutputBytes: 32768,
+      requiresVm: true, requiresConsole: true, timeoutMs: 12000, maxOutputBytes: 32768,
       description: "Lista un directorio dentro de la VM Alpine usando serial1/ttyS1 en background.",
       promptDescription: "Listar un directorio de la VM. Argumentos: {\"path\":\"/ruta\",\"maxEntries\":120}.",
       normalizeArgs: normalizeListArgs,
@@ -232,7 +232,7 @@
 
     "vm.fs.read": {
       name: "vm.fs.read", label: "Leer archivo en la VM", riskLevel: 1, category: "vm.fs",
-      requiresVm: true, requiresTmux: true, timeoutMs: 12000, maxOutputBytes: 32768,
+      requiresVm: true, requiresConsole: true, timeoutMs: 12000, maxOutputBytes: 32768,
       description: "Lee un archivo de texto dentro de la VM con límite de bytes para no saturar la consola serial.",
       promptDescription: "Leer un archivo de la VM. Argumentos: {\"path\":\"/ruta/archivo\",\"maxBytes\":8192}.",
       normalizeArgs: normalizeReadArgs,
@@ -245,7 +245,7 @@
 
     "vm.cmd.which": {
       name: "vm.cmd.which", label: "Comprobar comandos instalados", riskLevel: 1, category: "vm.system",
-      requiresVm: true, requiresTmux: true, timeoutMs: 8000, maxOutputBytes: 12000,
+      requiresVm: true, requiresConsole: true, timeoutMs: 8000, maxOutputBytes: 12000,
       description: "Comprueba si una o varias utilidades existen en la VM usando command -v.",
       promptDescription: "Comprobar comandos instalados. Argumentos: {\"commands\":[\"curl\",\"nmap\"]}.",
       normalizeArgs(args = {}) {
@@ -264,7 +264,7 @@
 
     "vm.sys.info": {
       name: "vm.sys.info", label: "Estado básico del sistema VM", riskLevel: 1, category: "vm.system",
-      requiresVm: true, requiresTmux: true, timeoutMs: 10000, maxOutputBytes: 24000,
+      requiresVm: true, requiresConsole: true, timeoutMs: 10000, maxOutputBytes: 24000,
       description: "Muestra kernel, Alpine, memoria, disco y uptime de la VM.",
       promptDescription: "Estado básico de la VM. Argumentos: {}.",
       normalizeArgs() { return {}; },
@@ -272,19 +272,19 @@
       formatResult(result) { return standardFormat(this, result, {}, () => "Estado básico de la VM", () => "No se pudo obtener estado básico"); },
     },
 
-    "vm.tmux.status": {
-      name: "vm.tmux.status", label: "Estado tmux en la VM", riskLevel: 1, category: "vm.system",
-      requiresVm: true, requiresTmux: true, timeoutMs: 8000, maxOutputBytes: 16000,
-      description: "Comprueba versión y sesiones tmux dentro de la VM.",
-      promptDescription: "Estado tmux. Argumentos: {}.",
+    "vm.console.status": {
+      name: "vm.console.status", label: "Estado de consolas xterm", riskLevel: 1, category: "vm.system",
+      requiresVm: true, requiresConsole: true, timeoutMs: 8000, maxOutputBytes: 16000,
+      description: "Comprueba el daemon xterm/PTY y los dispositivos seriales dentro de la VM.",
+      promptDescription: "Estado de consolas xterm. Argumentos: {}.",
       normalizeArgs() { return {}; },
-      buildCommand() { return captureCommand("ba-tmux-status", ["tmux"], "tmux -V; printf '\\n--- sessions ---\\n'; tmux list-sessions 2>&1 || true; printf '\\n--- windows ---\\n'; tmux list-windows -a 2>&1 || true"); },
-      formatResult(result) { return standardFormat(this, result, {}, () => "Estado tmux", () => "No se pudo obtener estado tmux"); },
+      buildCommand() { return captureCommand("ba-console-status", [], "printf '%s\\n' '--- serial devices ---'; ls -l /dev/ttyS0 /dev/ttyS1 /dev/ttyS2 2>&1 || true; printf '%s\\n' '--- xterm daemon ---'; ps | grep '[b]a-serial2-console-runner' || true; printf '%s\\n' '--- python ---'; python3 --version 2>&1 || true; printf '%s\\n' '--- runner log ---'; tail -40 /tmp/ba-serial2-console-runner.log 2>/dev/null || true"); },
+      formatResult(result) { return standardFormat(this, result, {}, () => "Estado de consolas xterm", () => "No se pudo obtener estado de consolas"); },
     },
 
     "vm.pkg.info": {
       name: "vm.pkg.info", label: "Paquetes instalados en Alpine", riskLevel: 1, category: "vm.system",
-      requiresVm: true, requiresTmux: true, timeoutMs: 10000, maxOutputBytes: 24000,
+      requiresVm: true, requiresConsole: true, timeoutMs: 10000, maxOutputBytes: 24000,
       description: "Consulta paquetes instalados mediante apk info, con filtro opcional.",
       promptDescription: "Consultar paquetes instalados. Argumentos: {\"filter\":\"curl\"}.",
       normalizeArgs(args = {}) { return { filter: String(args.filter || "").trim().slice(0, 80) }; },
@@ -297,7 +297,7 @@
 
     "web.curl.head": {
       name: "web.curl.head", label: "HTTP HEAD con curl", riskLevel: 2, category: "web.http",
-      requiresVm: true, requiresTmux: true, timeoutMs: 15000, maxOutputBytes: 24000,
+      requiresVm: true, requiresConsole: true, timeoutMs: 15000, maxOutputBytes: 24000,
       description: "Obtiene cabeceras HTTP/HTTPS con curl y timeouts bajos.",
       promptDescription: "Probar cabeceras HTTP. Argumentos: {\"url\":\"https://example.com\",\"followRedirects\":true,\"insecure\":true,\"timeoutSec\":8}.",
       normalizeArgs(args = {}) { return { url: normalizeUrl(args.url || args.target), followRedirects: normalizeBool(args.followRedirects, true), insecure: normalizeBool(args.insecure, true), timeoutSec: clampInt(args.timeoutSec, 3, 20, 8) }; },
@@ -312,7 +312,7 @@
 
     "web.curl.fetch_text": {
       name: "web.curl.fetch_text", label: "Descargar texto con curl", riskLevel: 2, category: "web.http",
-      requiresVm: true, requiresTmux: true, timeoutMs: 18000, maxOutputBytes: 32768,
+      requiresVm: true, requiresConsole: true, timeoutMs: 18000, maxOutputBytes: 32768,
       description: "Descarga una URL con curl con límite estricto de bytes.",
       promptDescription: "Descargar texto HTTP limitado. Argumentos: {\"url\":\"https://example.com\",\"maxBytes\":8192}.",
       normalizeArgs(args = {}) { return { url: normalizeUrl(args.url || args.target), followRedirects: normalizeBool(args.followRedirects, true), insecure: normalizeBool(args.insecure, true), timeoutSec: clampInt(args.timeoutSec, 3, 25, 10), maxBytes: clampInt(args.maxBytes, 512, 32768, 8192) }; },
@@ -327,7 +327,7 @@
 
     "net.dns.lookup": {
       name: "net.dns.lookup", label: "Consulta DNS", riskLevel: 2, category: "net.dns",
-      requiresVm: true, requiresTmux: true, timeoutMs: 10000, maxOutputBytes: 16000,
+      requiresVm: true, requiresConsole: true, timeoutMs: 10000, maxOutputBytes: 16000,
       description: "Consulta DNS con dig usando timeouts bajos.",
       promptDescription: "Resolver DNS. Argumentos: {\"host\":\"example.com\",\"type\":\"A\"}.",
       normalizeArgs(args = {}) { return { host: normalizeHost(args.host || args.domain || args.target), type: normalizeDnsType(args.type) }; },
@@ -337,7 +337,7 @@
 
     "net.ip.status": {
       name: "net.ip.status", label: "Estado de red VM", riskLevel: 1, category: "net.local",
-      requiresVm: true, requiresTmux: true, timeoutMs: 10000, maxOutputBytes: 24000,
+      requiresVm: true, requiresConsole: true, timeoutMs: 10000, maxOutputBytes: 24000,
       description: "Muestra direcciones, rutas y sockets de la VM con ip/ss.",
       promptDescription: "Estado local de red. Argumentos: {}.",
       normalizeArgs() { return {}; },
@@ -347,7 +347,7 @@
 
     "net.nmap.quick": {
       name: "net.nmap.quick", label: "Nmap rápido y prudente", riskLevel: 3, category: "net.scan",
-      requiresVm: true, requiresTmux: true, timeoutMs: 70000, maxOutputBytes: 32768,
+      requiresVm: true, requiresConsole: true, timeoutMs: 70000, maxOutputBytes: 32768,
       description: "Escaneo nmap acotado para objetivos autorizados. Baja concurrencia y host-timeout.",
       promptDescription: "Escaneo nmap ligero. Argumentos: {\"target\":\"192.168.1.10\",\"topPorts\":30}.",
       normalizeArgs(args = {}) { return { target: normalizeHost(args.target || args.host), topPorts: clampInt(args.topPorts || args.ports, 10, 100, 30) }; },
@@ -357,7 +357,7 @@
 
     "web.ffuf.dir_light": {
       name: "web.ffuf.dir_light", label: "FFUF directorios ligero", riskLevel: 3, category: "web.fuzz",
-      requiresVm: true, requiresTmux: true, timeoutMs: 70000, maxOutputBytes: 32768,
+      requiresVm: true, requiresConsole: true, timeoutMs: 70000, maxOutputBytes: 32768,
       description: "Fuzzing web ligero con ffuf. Requiere autorización del objetivo.",
       promptDescription: "Fuzzing ligero de rutas. Argumentos: {\"url\":\"http://host/FUZZ\",\"wordlist\":\"quickhits\",\"threads\":3,\"rate\":20,\"maxTimeSec\":45}.",
       normalizeArgs(args = {}) {
@@ -371,7 +371,7 @@
 
     "vm.python.exec": {
       name: "vm.python.exec", label: "Ejecutar Python acotado", riskLevel: 3, category: "vm.exec",
-      requiresVm: true, requiresTmux: true, timeoutMs: 25000, maxOutputBytes: 32768,
+      requiresVm: true, requiresConsole: true, timeoutMs: 25000, maxOutputBytes: 32768,
       description: "Ejecuta un fragmento Python corto dentro de la VM. Confirmación recomendada.",
       promptDescription: "Ejecutar Python corto. Argumentos: {\"code\":\"print('hi')\"}.",
       normalizeArgs(args = {}) {
@@ -386,7 +386,7 @@
 
     "web.httpx.probe": {
       name: "web.httpx.probe", label: "HTTPX fingerprint prudente", riskLevel: 3, category: "web.http",
-      requiresVm: true, requiresTmux: true, timeoutMs: 45000, maxOutputBytes: 24000,
+      requiresVm: true, requiresConsole: true, timeoutMs: 45000, maxOutputBytes: 24000,
       description: "Fingerprint HTTP con ProjectDiscovery httpx usando threads/rate bajos.",
       promptDescription: "Probar HTTPX. Argumentos: {\"url\":\"https://example.com\",\"rate\":10,\"threads\":2}.",
       normalizeArgs(args = {}) { return { url: normalizeUrl(args.url || args.target), rate: clampInt(args.rate, 1, 30, 10), threads: clampInt(args.threads, 1, 5, 2), timeoutSec: clampInt(args.timeoutSec, 3, 12, 6) }; },
@@ -396,7 +396,7 @@
 
     "web.nikto.quick": {
       name: "web.nikto.quick", label: "Nikto rápido", riskLevel: 3, category: "web.scan",
-      requiresVm: true, requiresTmux: true, timeoutMs: 80000, maxOutputBytes: 32768,
+      requiresVm: true, requiresConsole: true, timeoutMs: 80000, maxOutputBytes: 32768,
       description: "Nikto acotado con maxtime para comprobaciones web autorizadas.",
       promptDescription: "Nikto rápido. Argumentos: {\"url\":\"https://example.com\",\"maxTimeSec\":45}.",
       normalizeArgs(args = {}) { return { url: normalizeUrl(args.url || args.target), maxTimeSec: clampInt(args.maxTimeSec, 15, 70, 40) }; },
@@ -406,7 +406,7 @@
 
     "tls.openssl.cert": {
       name: "tls.openssl.cert", label: "Certificado TLS con OpenSSL", riskLevel: 2, category: "tls",
-      requiresVm: true, requiresTmux: true, timeoutMs: 18000, maxOutputBytes: 16000,
+      requiresVm: true, requiresConsole: true, timeoutMs: 18000, maxOutputBytes: 16000,
       description: "Obtiene datos básicos del certificado TLS de un host.",
       promptDescription: "Ver certificado TLS. Argumentos: {\"host\":\"example.com\",\"port\":443}.",
       normalizeArgs(args = {}) { return { host: normalizeHost(args.host || args.target), port: clampInt(args.port, 1, 65535, 443) }; },
@@ -416,7 +416,7 @@
 
     "vm.sh.exec": {
       name: "vm.sh.exec", label: "Ejecutar comando sh en la VM", riskLevel: 3, category: "vm.exec",
-      requiresVm: true, requiresTmux: true, timeoutMs: 30000, maxOutputBytes: 32768,
+      requiresVm: true, requiresConsole: true, timeoutMs: 30000, maxOutputBytes: 32768,
       description: "Ejecuta un comando /bin/sh -lc dentro de la VM con timeout y salida limitada. Confirmación recomendada siempre.",
       promptDescription: "Ejecutar comando sh arbitrario. Argumentos: {\"command\":\"uname -a\",\"timeoutMs\":10000,\"maxOutputBytes\":8192}. Usar solo si no existe una tool específica.",
       normalizeArgs(args = {}) { return { command: normalizeShellCommand(args.command || args.cmd), timeoutMs: clampInt(args.timeoutMs, 1000, 30000, 10000), maxOutputBytes: clampInt(args.maxOutputBytes, 512, 32768, 8192) }; },
@@ -443,7 +443,7 @@
         description: tool.description,
         promptDescription: tool.promptDescription,
         requiresVm: tool.requiresVm,
-        requiresTmux: tool.requiresTmux,
+        requiresConsole: tool.requiresConsole,
         timeoutMs: tool.timeoutMs,
       }));
   }
@@ -453,7 +453,7 @@
       `- ${tool.name}`,
       `  Nivel seguridad: ${tool.riskLevel}`,
       `  Uso: ${tool.promptDescription}`,
-      `  Requisitos: ${tool.requiresVm ? "VM arrancada" : "sin VM"}${tool.requiresTmux ? ", tmux usuario + serial1/ttyS1 activo" : ""}`,
+      `  Requisitos: ${tool.requiresVm ? "VM arrancada" : "sin VM"}${tool.requiresConsole ? ", consola xterm + serial1/ttyS1 activo" : ""}`,
     ].join("\n")).join("\n");
   }
 
@@ -480,7 +480,7 @@
       "Contexto runtime actual:",
       `- VM arrancada: ${ctx.vmPresent ? "sí" : "no"}`,
       `- Shell VM lista: ${ctx.vmReady ? "sí" : "no"}`,
-      `- tmux usuario listo: ${ctx.tmuxReady ? "sí" : "no"}`,
+      `- consola xterm lista: ${ctx.consoleReady ? "sí" : "no"}`,
       `- serial1/ttyS1 herramientas listas: ${ctx.toolsConsoleAvailable ? "sí" : "no"}`,
       `- Perfil activo/seleccionado: ${ctx.activeProfile || "manual"}`,
       `- Red VM configurada: ${ctx.networkConfigured ? "sí" : "no"}`,

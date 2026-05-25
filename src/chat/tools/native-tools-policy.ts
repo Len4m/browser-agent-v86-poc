@@ -41,7 +41,7 @@
       "vm.fs.list",
       "vm.fs.read",
       "vm.sys.info",
-      "vm.tmux.status",
+      "vm.console.status",
       "vm.cmd.which",
       "net.ip.status",
       "web.curl.head",

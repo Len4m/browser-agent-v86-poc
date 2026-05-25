@@ -1,6 +1,6 @@
 // @ts-nocheck
 // Browser Agent v86 - background tools over serial1/ttyS1
-// Tools run through UART1 while the user keeps the serial0/tmux console interactive.
+// Tools run through UART1 while the user keeps interactive xterm consoles separate.
 
 (function initBackgroundToolsSerial1() {
   const MAX_LIVE_CHARS = 64 * 1024;

@@ -95,9 +95,11 @@ body.vm-profile-manual .compact-vm-options #vm-profile-hint {
 /* v9.34: avoid the 1px/vertical console artifact before the VM starts.
    We only hide the console frame while no VM exists. When VM is starting/running,
    the same sizing rules as before apply, so the active terminal dimensions are unchanged. */
-body.tmux-console-mode:not(.vm-console-active) .vm-screen-wrap {
+body.xterm-direct-console-mode-pending:not(.vm-console-active) .vm-screen-wrap,
+body.xterm-direct-console-mode:not(.vm-console-active) .vm-screen-wrap{
   display: none;
 }
-body.tmux-console-mode:not(.vm-console-active) .vm-hint {
+body.xterm-direct-console-mode-pending:not(.vm-console-active) .vm-hint,
+body.xterm-direct-console-mode:not(.vm-console-active) .vm-hint{
   margin-top: 4px;
 }

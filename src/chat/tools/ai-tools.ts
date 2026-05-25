@@ -48,7 +48,7 @@
         commands: z.array(z.string()).describe("Comandos a comprobar"),
       }),
       "vm.sys.info": z.object({}),
-      "vm.tmux.status": z.object({}),
+      "vm.console.status": z.object({}),
       "vm.pkg.info": z.object({
         filter: z.string().optional().describe("Filtro de nombre de paquete"),
       }),

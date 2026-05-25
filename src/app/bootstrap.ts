@@ -35,7 +35,7 @@ function initChatLayoutToggle() {
 }
 
 function enhanceInterface() {
-  document.body.classList.add("tmux-console-mode");
+  document.body.classList.add("xterm-direct-console-mode-pending");
 
   if (!$('loading-overlay')) {
     const overlay = document.createElement("div");
@@ -92,15 +92,12 @@ function enhanceInterface() {
     tabs.innerHTML = `
       <div id="console-tabs-list" class="console-tabs-list"></div>
       <div class="console-tabs-actions">
-        <button id="new-console" type="button" class="secondary console-action-btn new-console-btn" aria-label="Nueva consola" title="Crear una consola tmux nueva (máximo 4)"></button>
-        <button id="split-console-vertical" type="button" class="secondary console-action-btn split-vertical-btn" aria-label="Dividir vertical" title="Dividir la consola activa en dos paneles izquierda/derecha"></button>
-        <button id="split-console-horizontal" type="button" class="secondary console-action-btn split-horizontal-btn" aria-label="Dividir horizontal" title="Dividir la consola activa en dos paneles arriba/abajo"></button>
-        <button id="zoom-console-pane" type="button" class="secondary console-action-btn zoom-pane-btn" aria-label="Maximizar panel" title="Maximizar o restaurar el panel activo sin cerrarlo"></button>
-        <button id="redraw-console" type="button" class="secondary console-action-btn redraw-console-btn" aria-label="Refrescar consola" title="Refrescar la consola activa"></button>
-        <button id="close-console-pane" type="button" class="secondary danger-light console-action-btn close-pane-btn" aria-label="Cerrar panel" title="Cerrar el panel activo de la consola"></button>
-        <button id="tmux-help" type="button" class="secondary console-action-btn tmux-help-btn" aria-label="Ayuda tmux" title="Atajos de tmux, scroll, tools en background y uso desde el navegador"></button>
+        <button id="new-console" type="button" class="secondary console-action-btn new-console-btn" aria-label="Nueva consola" title="Crear una consola xterm nueva (máximo 4)"></button>
+        <button id="redraw-console" type="button" class="secondary console-action-btn redraw-console-btn" aria-label="Refrescar consola" title="Limpiar la consola activa y enviar Ctrl+L"></button>
+        <button id="close-console" type="button" class="secondary danger-light console-action-btn close-console-btn" aria-label="Cerrar consola" title="Cerrar la consola activa"></button>
+        <button id="console-help" type="button" class="secondary console-action-btn console-help-btn" aria-label="Ayuda consola" title="Consolas xterm, PTYs y tools en background"></button>
         <button id="cancel-tool" type="button" class="secondary danger-light" disabled>Cancelar tool</button>
-        <span id="console-tabs-status" class="badge">sin tmux</span>
+        <span id="console-tabs-status" class="badge">sin consola</span>
       </div>
     `;
     toolbar.after(tabs);
@@ -136,7 +133,7 @@ function enhanceInterface() {
 
   if (terminal && vmPanel) {
     terminal.className = "terminal tool-log";
-    terminal.textContent = "Log de tools. La consola interactiva es la pantalla superior.\n";
+    terminal.textContent = "Log de tools. Las consolas interactivas son las pestañas xterm superiores.\n";
 
     const details = document.createElement("details");
     details.className = "tool-log-details";
@@ -183,14 +180,11 @@ function init() {
   loadProfiles();
   renderConsoleTabs();
 
-  $("tmux-help")?.addEventListener("click", showTmuxHelpModal);
+  $("console-help")?.addEventListener("click", showConsoleHelpModal);
   $("cancel-tool")?.addEventListener("click", cancelCurrentTool);
   $("new-console")?.addEventListener("click", createHumanConsoleTab);
-  $("split-console-vertical")?.addEventListener("click", () => splitActiveConsolePane("vertical"));
-  $("split-console-horizontal")?.addEventListener("click", () => splitActiveConsolePane("horizontal"));
-  $("zoom-console-pane")?.addEventListener("click", toggleActiveConsolePaneZoom);
   $("redraw-console")?.addEventListener("click", redrawActiveConsoleScreen);
-  $("close-console-pane")?.addEventListener("click", closeActiveConsolePane);
+  $("close-console")?.addEventListener("click", () => closeHumanConsoleTab(getActiveConsoleTab()?.id));
   $("start-vm").addEventListener("click", toggleVmPower);
   $("save-state")?.addEventListener("click", saveSnapshot);
   $("restore-state")?.addEventListener("click", openRestoreSnapshotPicker);
