@@ -138,7 +138,7 @@ async function runVmCheck(command, { label = "Check usando la VM…", timeoutMs 
   });
 }
 
-async function runChecks() {
+async function runChecks({ probeWsRelay = true } = {}) {
   if (state.checksRunning) return;
   state.checksRunning = true;
   syncChecksButton();
@@ -158,8 +158,12 @@ async function runChecks() {
     add("WebSocket API", Boolean(window.WebSocket), window.WebSocket ? "OK" : "No disponible");
 
     const wsRelayUrl = getWsRelayUrl();
-    const wsRelayCheck = await checkWsRelayEndpoint(wsRelayUrl);
-    add("wsnic relay disponible", wsRelayCheck.ok, `${wsRelayUrl} · ${wsRelayCheck.detail}`);
+    if (probeWsRelay) {
+      const wsRelayCheck = await checkWsRelayEndpoint(wsRelayUrl);
+      add("wsnic relay disponible", wsRelayCheck.ok, `${wsRelayUrl} · ${wsRelayCheck.detail}`);
+    } else {
+      addSkippedCheck(container, "wsnic relay disponible", `${wsRelayUrl} · comprobación omitida hasta que pulses Conectar o Comprobaciones`);
+    }
 
     const wsConnected = isWsConnected();
     const wsConfigured = Boolean(state.networkConfigured);
