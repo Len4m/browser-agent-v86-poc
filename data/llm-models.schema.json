@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Len4m/browser-agent-v86-poc/schemas/llm-models.schema.json",
+  "title": "Browser Agent v86 LLM model catalog",
+  "description": "Schema for data/llm-models.json. The catalog is an array of model entries shown in the LLM panel.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "id",
+      "label",
+      "shortLabel",
+      "engine",
+      "engineLabel",
+      "model",
+      "task",
+      "device",
+      "dtype",
+      "sizeLabel",
+      "repoSizeLabel",
+      "minMemoryLabel",
+      "languageLabel",
+      "requiresShaderF16",
+      "compatibilityLabel",
+      "temperature",
+      "topP",
+      "description"
+    ],
+    "properties": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Stable unique identifier used by selection, policies and local state. Do not rename without migrating references."
+      },
+      "label": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Full model name shown in selectors and panels."
+      },
+      "shortLabel": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Short model name for badges, status text and compact UI."
+      },
+      "engine": {
+        "type": "string",
+        "enum": ["ollama", "transformersjs"],
+        "description": "Runtime used to execute the model."
+      },
+      "engineLabel": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Human-readable runtime label shown in the UI."
+      },
+      "model": {
+        "type": "string",
+        "description": "Runtime model identifier. For Ollama this is the local tag; for Transformers.js it is usually a compatible Hugging Face repository."
+      },
+      "task": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Model task. Current values are typically chat for Ollama and text-generation for Transformers.js."
+      },
+      "device": {
+        "type": "string",
+        "enum": ["remote", "webgpu", "wasm"],
+        "description": "Execution device. Ollama uses remote; Transformers.js uses webgpu or wasm."
+      },
+      "dtype": {
+        "type": "string",
+        "enum": ["host", "auto", "fp32", "fp16", "q8", "q4", "q4f16"],
+        "description": "Numeric format or quantization requested from the runtime."
+      },
+      "sizeLabel": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Approximate model size displayed in the UI. Informational only."
+      },
+      "repoSizeLabel": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Repository, tag or quantization detail shown in the UI. Informational only."
+      },
+      "minMemoryLabel": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Approximate RAM/VRAM note shown in the UI. Informational only."
+      },
+      "languageLabel": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Short language/capability summary shown in the UI."
+      },
+      "requiresShaderF16": {
+        "type": "boolean",
+        "description": "true when a WebGPU model requires shader-f16 support."
+      },
+      "requiresWebGPU": {
+        "type": "boolean",
+        "description": "false allows remote or WASM models; true means WebGPU is required."
+      },
+      "compatibilityLabel": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Human-readable compatibility or requirement summary."
+      },
+      "toolProfile": {
+        "type": "string",
+        "enum": ["strong-json", "middle-tools", "reasoning-light", "tiny-fallback"],
+        "description": "Tool capability profile used by chat-state.ts to derive tool limits and defaults."
+      },
+      "temperature": {
+        "type": "number",
+        "minimum": 0,
+        "description": "Sampling temperature sent to the model. Lower values are more deterministic."
+      },
+      "topP": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1,
+        "description": "Nucleus sampling top_p value sent to the model."
+      },
+      "ollamaThink": {
+        "type": "boolean",
+        "description": "Ollama-only thinking toggle when supported by the model and server."
+      },
+      "contextWindowTokens": {
+        "type": "integer",
+        "minimum": 256,
+        "description": "Context window budget used by src/chat/runtime/context-budget.ts to derive prompt and output limits."
+      },
+      "maxNewTokens": {
+        "type": "integer",
+        "minimum": 1,
+        "description": "Optional explicit output hard cap. If omitted, context-budget.ts derives output from contextWindowTokens - safeInputTokens."
+      },
+      "contextPolicy": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Optional advanced budget overrides for a specific model. Use sparingly to avoid duplicating context-budget.ts logic."
+      },
+      "custom": {
+        "type": "boolean",
+        "description": "true for entries that let the user type a model name in the UI."
+      },
+      "experimental": {
+        "type": "boolean",
+        "description": "true for test, fallback, slow or less recommended models."
+      },
+      "description": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Human-readable description shown in the LLM panel."
+      }
+    },
+    "allOf": [
+      {
+        "if": {
+          "properties": { "engine": { "const": "ollama" } },
+          "required": ["engine"]
+        },
+        "then": {
+          "properties": {
+            "device": { "const": "remote" },
+            "dtype": { "const": "host" }
+          }
+        }
+      }
+    ]
+  }
+}
