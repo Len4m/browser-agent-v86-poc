@@ -105,6 +105,7 @@ async function consumeTextStream(result, { onStreamPart, phase = "main" } = {}) 
  * @param {number} [options.temperature]
  * @param {number} [options.topP]
  * @param {boolean} [options.needsVm] - si false, prepareStep fuerza toolChoice 'none' (solo chat)
+ * @param {"weak"|"fair"|"good"} [options.toolCalling] - controla cuántos pasos pueden exponer tools.
  * @param {string[]} [options.activeToolNames] - subconjunto de tools para activeTools
  * @param {AbortSignal} [options.abortSignal]
  * @param {(part: object) => void} [options.onStreamPart]
@@ -121,6 +122,7 @@ export async function runAgentStreamTurn({
   temperature,
   topP,
   needsVm = true,
+  toolCalling = "fair",
   activeToolNames = null,
   abortSignal,
   onStreamPart,
@@ -161,8 +163,12 @@ export async function runAgentStreamTurn({
     if (!useToolsThisTurn) {
       return { tools: {} };
     }
-    // Paso 2+: síntesis en prosa; no volver a exponer tools al modelo weak.
-    if (stepNumber > 0) {
+    // Modelos débiles: un paso de tool y luego síntesis. Modelos fair pueden
+    // encadenar una segunda tool si el AI SDK lo decide; good mantiene el loop.
+    if (toolCalling === "weak" && stepNumber > 0) {
+      return { tools: {} };
+    }
+    if (toolCalling === "fair" && stepNumber > 1) {
       return { tools: {} };
     }
     if (activeTools.length > 0) {
@@ -251,5 +257,15 @@ export async function runAgentStreamTurn({
     }
   }
 
-  return { text: fullText, result };
+  const hadToolWork = steps.some(
+    (s) => (s.toolCalls?.length ?? 0) > 0 || (s.toolResults?.length ?? 0) > 0,
+  );
+
+  return {
+    text: fullText,
+    result,
+    steps,
+    finishReason: steps[steps.length - 1]?.finishReason || null,
+    hadToolWork,
+  };
 }
