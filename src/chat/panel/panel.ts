@@ -326,7 +326,7 @@
       ollamaEndpointWrap.style.display = isOllama ? "grid" : "none";
       const input = document.getElementById("ba-llm-ollama-endpoint");
       if (input && !input.value) {
-        input.value = localStorage.getItem("ba.llm.ollama.endpoint") || selected.endpoint || "http://127.0.0.1:11434";
+        input.value = localStorage.getItem("ba.llm.ollama.endpoint") || "http://127.0.0.1:11434";
       }
     }
     const ollamaOriginNotice = document.getElementById("ba-llm-ollama-origin-notice");

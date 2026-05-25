@@ -74,7 +74,6 @@ function wrapAgentModel(baseModel, modelConfig) {
 function resolveOllamaEndpoint(modelConfig) {
   return String(
     window.localStorage?.getItem("ba.llm.ollama.endpoint")
-      || modelConfig?.endpoint
       || "http://127.0.0.1:11434",
   ).replace(/\/+$/g, "");
 }
