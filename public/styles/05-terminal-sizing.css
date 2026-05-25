@@ -33,9 +33,7 @@ body.xterm-direct-console-mode-pending .vm-screen-wrap {
 }
 
 body.xterm-direct-console-mode-pending #serial-console.serial-screen,
-body.xterm-direct-console-mode-pending #serial-textarea.serial-screen,
-#serial-console.serial-screen,
-#serial-textarea.serial-screen {
+#serial-console.serial-screen {
   width: auto;
   max-width: none;
   min-height: 0;
@@ -96,8 +94,7 @@ body.xterm-direct-console-mode .xterm-console-host {
   display: block;
 }
 
-body.xterm-direct-console-mode #serial-console.serial-screen,
-body.xterm-direct-console-mode #serial-textarea.serial-screen {
+body.xterm-direct-console-mode #serial-console.serial-screen {
   display: none !important;
 }
 
