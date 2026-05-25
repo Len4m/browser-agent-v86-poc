@@ -1,32 +1,39 @@
-# Uso, desarrollo y distribucion
+# Uso, desarrollo y distribución
 
-Esta guia resume lo necesario para ejecutar, desarrollar y empaquetar Browser Agent v86 POC.
+Esta guía cubre cómo ejecutar Browser Agent v86 POC, preparar el entorno de desarrollo, usar la VM/LLM/red y empaquetar un runtime.
 
-## Requisitos para ejecutar un runtime ya generado
+## Demo online
+
+La forma más sencilla de usar Browser Agent v86 POC es la demo publicada:
+
+[https://browseragent.icu/](https://browseragent.icu/)
+
+No necesitas instalar Node.js, Docker ni clonar el repositorio para probarla. La VM, el chat y los assets se sirven desde la web; los modelos Transformers.js se descargan/cachean en tu navegador. Ollama y wsnic, si los usas, siguen siendo servicios locales de tu máquina porque el navegador llama a tu propio `127.0.0.1`.
+
+## Requisitos
+
+Para usar un runtime ya generado basta con:
 
 - Navegador moderno.
-- WebGPU recomendado para modelos locales.
-- Servidor HTTP con COOP/COEP, MIME correcto para `.wasm` y soporte `Range`.
-- Conexion a Internet para la primera descarga de modelos locales, salvo que ya esten cacheados por el navegador.
+- WebGPU recomendado para modelos Transformers.js locales; existe alternativa WASM cuando el modelo/configuración lo permite.
+- Servidor HTTP con COOP/COEP/CORP, MIME `application/wasm` y soporte `Range`.
+- Conexion a Internet para la primera descarga de modelos, salvo que ya esten en cache del navegador.
 
-No necesitas Node.js, Docker ni herramientas de sistema si ya tienes el zip runtime de `public/` y lo sirves con un servidor adecuado.
+Para preparar el proyecto desde el repo necesitas además:
 
-## Requisitos para preparar o desarrollar
-
-- Node.js 18+
-- Linux/macOS para construir initramfs Alpine.
-- Herramientas de sistema: `tar`, `cpio`, `gzip`, `zstd`, `curl`, `e2fsprogs`, `findutils`.
-- Docker para `npm run prepare:local` / `npm run setup` con los perfiles incluidos.
-- Conexion a Internet para descargar assets base, paquetes Alpine y modelos locales.
+- Node.js 18+.
+- Linux/macOS.
+- Docker para construir los perfiles Alpine incluidos.
+- Herramientas de sistema: `tar`, `cpio`, `gzip`, `zstd`, `xz`, `curl`, `e2fsprogs`, `find`, `awk`, `grep` y `sed`.
 - 1-2 GB libres para runtime v86, initramfs, perfiles y discos sparse.
 
 En Debian/Ubuntu:
 
 ```bash
-sudo apt install -y cpio gzip tar curl zstd e2fsprogs findutils
+sudo apt install -y cpio gzip tar curl zstd xz-utils e2fsprogs findutils gawk grep sed
 ```
 
-## Preparacion local desde el repo
+## Preparacion local
 
 ```bash
 git clone https://github.com/Len4m/browser-agent-v86-poc.git
@@ -38,51 +45,59 @@ npm start
 
 Abre `http://127.0.0.1:5173/`.
 
-Primer uso:
+`npm run prepare:local` ejecuta `setup` y despues `build`. La VM no arrancara correctamente hasta que existan los assets generados en `public/v86/`, `public/vendor/` y `public/assets/`.
 
-1. Pulsa `Comprobar`.
-2. Arranca la VM.
-3. Carga un modelo en el panel LLM si vas a usar el chat.
-4. Usa la consola tmux, el formulario manual o el chat.
+## Primer uso
 
-## Scripts
+1. Pulsa **Comprobar** para validar cabeceras, assets, serial1 y runners de la VM cuando corresponda.
+2. Antes de arrancar, elige perfil, RAM, VRAM y disco.
+3. Pulsa **Arrancar VM** y espera a que la shell este lista.
+4. Para usar chat, abre el panel **LLM**, selecciona backend/modelo y pulsa cargar.
+5. Usa la consola tmux visible, el formulario manual o el chat con tools habilitadas.
 
-| Comando | Uso |
-| --- | --- |
-| `npm run prepare:local` | Preparacion completa: setup VM + build frontend/LLM/assets |
-| `npm run setup` | Regenera initramfs, perfiles VM y discos |
-| `npm run build` | Regenera frontend, catalogo LLM, vendors y workers |
-| `npm run check` | Valida TypeScript, manifest, sintaxis JS y servidor |
-| `npm start` | Sirve la app con headers COOP/COEP |
+Los perfiles generados aparecen desde `/v86/images/profiles/index.json`. Si no aparecen, ejecuta `npm run setup`.
 
-Usa `npm run setup` despues de tocar `vm/profiles/`, `vm/overlay/common/`, runners seriales o `scripts/build-alpine-initramfs.sh`.
+## VM, perfiles y discos
 
-Usa `npm run build` despues de tocar `src/`, `public/index.html`, `public/styles/` o `data/llm-models.json`.
+Perfiles incluidos:
 
-## Que se genera
-
-| Fuente | Salida | Regenerar |
+| Perfil | Uso | RAM recomendada |
 | --- | --- | --- |
-| `src/`, `public/index.html`, `public/styles/` | `public/assets/app.js`, `public/assets/ai-sdk-bridge.mjs` | `npm run build` |
-| `src/chat/provider/`, `data/llm-models.json` | `public/assets/chat/`, `build/browser/generated/` | `npm run build` |
-| `vm/profiles/*.json`, `vm/overlay/common/` | `build/profiles/`, `public/v86/images/profiles/` | `npm run setup` |
-| Runtime v86, BIOS, vendor y Alpine base | `public/vendor/`, `public/v86/` | `npm run build` o `npm run setup` |
-| Discos HDA locales | `public/v86/disks/` | `npm run setup` |
+| `alpine-base` | Alpine mínimo con certificados, curl, nano y tmux | 512 MB |
+| `alpine-pentest-lite` | Herramientas ligeras: nmap, ffuf, Python, DNS y wordlists web pequeñas | 1024 MB |
+| `alpine-pentest-web` | Pentest web ampliado: nikto, httpx, SSL Perl y wordlists | 1536 MB |
 
-## VM, consola y tools
+La opción **Libre / manual** usa el kernel e initramfs por defecto y permite cambiar RAM/VRAM. Al elegir un perfil generado, la UI aplica sus valores recomendados.
 
-- `serial0` / `/dev/ttyS0`: consola tmux visible del usuario.
-- `serial1` / `/dev/ttyS1`: tools del agente y checks en background.
-- `serial2` / `/dev/ttyS2`: control de consolas tmux desde la UI.
+Discos:
 
-Los runners se instalan dentro del initramfs desde:
+- `RAM / initramfs`: el sistema vive en memoria; los cambios se pierden al apagar salvo snapshot.
+- `hda 250 MB`, `hda 512 MB`, `hda 1 GB`: imágenes ext2 raw creadas por `npm run setup`.
+- Los discos HDA son datos montables en `/mnt/hda`; el sistema sigue arrancando desde initramfs.
+- Los snapshots guardan RAM/CPU/estado de v86, pero no incluyen cambios persistidos en discos HDA.
+
+## Consola y tools
+
+Canales seriales actuales:
+
+| Canal | Dispositivo VM | Uso |
+| --- | --- | --- |
+| `serial0` | `/dev/ttyS0` | Consola tmux visible del usuario |
+| `serial1` | `/dev/ttyS1` | Tools del agente, checks y formulario manual |
+| `serial2` | `/dev/ttyS2` | Acciones de UI sobre tmux: consolas, splits, zoom y refresco |
+
+Los runners instalados en el initramfs vienen de:
 
 - `vm/overlay/common/usr/local/bin/ba-serial1-runner`
 - `vm/overlay/common/usr/local/bin/ba-serial2-console-runner`
 
-Tras cambiar cualquiera de esos ficheros, ejecuta `npm run setup` y reinicia la VM.
+Después de cambiar perfiles, overlay, runners o scripts de initramfs, ejecuta:
 
-Validacion rapida dentro de la VM:
+```bash
+npm run setup
+```
+
+Validación rápida dentro de la VM:
 
 ```sh
 ls -l /dev/ttyS*
@@ -90,13 +105,81 @@ ps | grep '[b]a-serial1-runner'
 ps | grep '[b]a-serial2-console-runner'
 ```
 
-Desde la UI, `Comprobar` debe validar serial1, runner serial1 y los checks de VM. Una tool lenta debe mostrar salida en `Tools background` mientras la consola visible sigue aceptando comandos.
+## LLM
 
-## Zip runtime
+Backends soportados:
 
-El zip runtime de la aplicacion debe ser la carpeta `public/`. Esa carpeta es la unica raiz servida al navegador y contiene HTML, CSS, JS generado, vendors, v86, perfiles, initramfs y discos.
+- **Transformers.js**: corre en el navegador con worker propio. WebGPU es lo recomendado; algunos modelos pueden caer a WASM si WebGPU falla.
+- **Ollama HTTP**: el navegador llama directamente al endpoint local, por defecto `http://127.0.0.1:11434`.
 
-Crear zip runtime estatico:
+Los modelos disponibles se declaran en `data/llm-models.json` y se regeneran con `npm run build`.
+
+Notas de uso:
+
+- El chat está deshabilitado hasta que cargues un backend/modelo.
+- La primera carga de modelos Transformers.js puede descargar ficheros grandes y quedar cacheada por el navegador.
+- Si usas Ollama desde otro origen distinto al permitido, arranca Ollama con `OLLAMA_ORIGINS` incluyendo el origen de la pagina. Ejemplo: `OLLAMA_ORIGINS=http://127.0.0.1:5173`.
+- En una publicación web, Ollama sigue siendo local para cada usuario: el navegador llama a su propio `127.0.0.1`.
+
+## Red WS
+
+La red de la VM es opcional y usa un proxy local `wsnic`. La UI muestra comandos Docker para abrir y cerrar el contenedor.
+
+Endpoint por defecto:
+
+```txt
+ws://127.0.0.1:8086/wsnic
+```
+
+Flujo recomendado:
+
+1. Arranca el contenedor `wsnic` con el comando de la UI.
+2. Pulsa **Conectar** en el panel **Red WS**.
+3. Arranca la VM o espera a que la UI configure la red si ya estaba arrancada.
+4. Valida con **Comprobar** o con comandos como `curl -I https://example.com` dentro de la VM.
+
+## Scripts
+
+| Comando | Uso |
+| --- | --- |
+| `npm install` | Instala dependencias npm; no genera los assets pesados |
+| `npm run prepare:local` | Ejecuta `setup` y `build` para dejar un entorno local usable |
+| `npm run setup` | Descarga/copia assets base, genera initramfs, perfiles y discos |
+| `npm run build` | Genera catálogo LLM, vendors, worker/bridge LLM y bundle frontend |
+| `npm run check` | Valida TypeScript, manifest frontend, sintaxis JS y servidor |
+| `npm run clean` | Borra bundles y artefactos generados no versionados |
+| `npm start` | Sirve `public/` con `server.mjs` en `127.0.0.1:5173` |
+
+Regenera con `npm run setup` despues de tocar:
+
+- `vm/profiles/*.json`
+- `vm/overlay/common/`
+- `scripts/build-alpine-initramfs.sh`
+- runners seriales
+
+Regenera con `npm run build` despues de tocar:
+
+- `src/`
+- `public/index.html`
+- `public/styles/`
+- `data/llm-models.json`
+- provider AI SDK o worker LLM
+
+## Artefactos generados
+
+| Fuente | Salida | Regenerar |
+| --- | --- | --- |
+| `src/`, `public/index.html`, `public/styles/` | `public/assets/app.js`, `public/assets/ai-sdk-bridge.mjs` | `npm run build` |
+| `src/chat/provider/ai-sdk/`, `data/llm-models.json` | `public/assets/chat/`, `build/browser/generated/` | `npm run build` |
+| `vm/profiles/*.json`, `vm/overlay/common/` | `build/profiles/`, `public/v86/images/profiles/` | `npm run setup` |
+| v86, xterm, DOMPurify, streaming-markdown, BIOS y Alpine base | `public/vendor/`, `public/v86/build/`, `public/v86/bios/`, `public/v86/images/` | `npm run build` o `npm run setup` |
+| Discos HDA locales | `public/v86/disks/` | `npm run setup` |
+
+## Runtime zip
+
+El runtime estático es la carpeta `public/`. Debe contener HTML, CSS, JS generado, vendors, v86, BIOS, initramfs, perfiles y discos.
+
+Crear zip:
 
 ```bash
 npm run prepare:local
@@ -105,7 +188,7 @@ cd public
 zip -r ../browser-agent-v86-poc-runtime-public.zip .
 ```
 
-Contenido minimo dentro de `public/`:
+Contenido mínimo:
 
 - `index.html`, `style.css`, `styles/`
 - `assets/`
@@ -114,16 +197,17 @@ Contenido minimo dentro de `public/`:
 - `v86/bios/`
 - `v86/images/`
 - `v86/disks/`
+- `_headers` si despliegas en una plataforma compatible como Cloudflare Pages
 
-Para usar ese zip necesitas servirlo con un servidor que envie COOP/COEP, MIME correcto para `.wasm` y soporte `Range` para assets grandes.
+El servidor final debe enviar COOP/COEP/CORP y soportar `Range`. `public/_headers` documenta esas cabeceras para Cloudflare Pages, pero otros servidores necesitan configuración equivalente.
 
-Si quieres un paquete local que incluya el servidor de desarrollo, crea otro zip con `public/`, `server.mjs`, `package.json` y `package-lock.json`:
+Paquete local con servidor incluido:
 
 ```bash
 zip -r browser-agent-v86-poc-local-server.zip public server.mjs package.json package-lock.json
 ```
 
-Uso del paquete local con servidor:
+Uso:
 
 ```bash
 unzip browser-agent-v86-poc-local-server.zip -d destino/
@@ -132,20 +216,15 @@ npm install
 npm start
 ```
 
-## Servidor y publicacion
-
-Usa `npm start` o un servidor equivalente que envie COOP/COEP. No abras `index.html` como `file://` ni uses `python3 -m http.server` para VM con discos, porque faltan headers para `SharedArrayBuffer`.
-
-Para una publicacion web, documenta que Ollama y wsnic son servicios locales externos: el navegador del usuario llama a su propio `127.0.0.1`, no al servidor publicado.
-
-El proyecto esta preparado como beta `0.9.0-beta.1`. La version `1.0.0` queda reservada para la primera publicacion estable.
-
-Licencia: MIT. Autor y contacto: Lenam <lenam@protonmail.com> (https://Len4m.github.io). Repositorio: https://github.com/Len4m/browser-agent-v86-poc.
-
 ## Problemas habituales
 
-- VM no arranca: ejecuta `npm run prepare:local`, luego `npm run check`.
-- Cambiaste initramfs/runners/perfiles: ejecuta `npm run setup` y arranca una VM nueva.
-- tmux muestra restos visuales: usa el boton de refresco; al cambiar a una consola con paneles la UI usa `select-redraw` por serial2.
-- Tools o checks afectan a la consola visible: comprueba `/dev/ttyS1`, `/dev/ttyS2` y los procesos `ba-serial1-runner` / `ba-serial2-console-runner`.
-- Ollama falla desde el navegador: revisa `OLLAMA_ORIGINS` para permitir el origen de `npm start`.
+- **VM no arranca**: ejecuta `npm run prepare:local` y despues `npm run check`.
+- **No aparecen perfiles**: falta `/v86/images/profiles/index.json`; ejecuta `npm run setup`.
+- **Cambiaste initramfs, runners o perfiles**: ejecuta `npm run setup` y arranca una VM nueva.
+- **Disco HDA no monta**: verifica que existe `public/v86/disks/alpine-hda-*.img`; `npm run setup` los crea.
+- **Tools o checks afectan a la consola visible**: valida `/dev/ttyS1`, `/dev/ttyS2` y los procesos `ba-serial1-runner` / `ba-serial2-console-runner`.
+- **tmux muestra restos visuales**: usa el botón de refresco; la UI usa `serial2` y `ba-consolectl` para redibujar.
+- **LLM local falla por WebGPU**: prueba un modelo WASM o reduce el modelo; algunas rutas intentan fallback WASM.
+- **Ollama falla por CORS**: configura `OLLAMA_ORIGINS` con el origen exacto desde el que sirves la página.
+- **Ollama no responde con el modelo elegido**: comprueba que el modelo está instalado en tu Ollama local con `ollama list` o instálalo con `ollama pull <modelo>`.
+- **Red de VM sin salida**: revisa que `wsnic` esté corriendo, que la UI esté conectada y que la VM haya ejecutado la configuración de red.
