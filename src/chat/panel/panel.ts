@@ -3,7 +3,7 @@
 // v9.37.20: LLM panel consumes the shared capability service used by the page header.
 //
 // This panel is intentionally isolated inside the existing "LLM objetivo" card.
-// It does not replace the chat, VM, tmux, tools or global layout. All selectors
+// It does not replace the chat, VM, consoles, tools or global layout. All selectors
 // are namespaced with ba-llm-* to keep future maintenance predictable.
 
 (function initLLMUIPanel() {

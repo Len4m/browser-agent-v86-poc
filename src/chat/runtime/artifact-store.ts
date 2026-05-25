@@ -40,7 +40,7 @@
       }
     }
 
-    // Serial/tmux output can sometimes arrive visually as line + blank + line + blank.
+    // Serial/consola output can sometimes arrive visually as line + blank + line + blank.
     // Only collapse that very specific pattern; real blank paragraphs are preserved.
     const oddRatio = totalOdd ? blankOdd / totalOdd : 0;
     const evenRatio = totalEven ? blankEven / totalEven : 0;

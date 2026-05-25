@@ -34,14 +34,16 @@ const state = {
     initializing: false,
     initTimer: 0,
     activeId: "human-1",
-    // Consolas tmux visibles para el usuario. Las acciones de control usan
-    // UART2/ttyS2 con fallback a UART1/ttyS1 para no escribir comandos visibles.
+    // Consolas xterm visibles para el usuario. Cada pestaña se respalda con
+    // una PTY dentro de la VM y se multiplexa por UART2/ttyS2.
     fixedCols: 100,
     fixedRows: 24,
     maxHumanConsoles: 4,
     controlBusy: false,
+    outputDisposable: null,
+    eventDisposable: null,
     tabs: [
-      { id: "human-1", owner: "human", title: "Consola usuario", tmuxIndex: 0, humanNumber: 1, closable: false },
+      { id: "human-1", owner: "human", title: "Consola 1", sessionId: "1", humanNumber: 1, closable: false, status: "pending" },
     ],
   },
   bgTools: {

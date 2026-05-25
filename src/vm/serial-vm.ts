@@ -25,9 +25,9 @@ function getXtermCellSize(term, container) {
 function sizeSerialContainerToGrid(container, term, cols, rows) {
   const cell = getXtermCellSize(term, container);
 
-  // tmux/v86 serial no recibe SIGWINCH real desde el navegador.
-  // Mantenemos la geometría estable (100x24) y dimensionamos una capa interior
-  // exacta. El borde visual está fuera de la consola real para no recortar texto.
+  // v86 serial no recibe SIGWINCH real desde el navegador. La consola de
+  // arranque mantiene una geometría estable; las consolas de usuario directas
+  // usan sus propios xterm dentro del mismo marco visual.
   const width = Math.ceil((cell.width || 9) * cols);
   const height = Math.ceil((cell.height || 18) * rows + 6);
   const targets = [
@@ -134,6 +134,10 @@ function resetSerialConsoleDom() {
 }
 
 function focusSerialConsole() {
+  const activeTab = typeof getActiveConsoleTab === "function" ? getActiveConsoleTab() : null;
+  if (activeTab?.term && document.body.classList.contains("xterm-direct-console-mode")) {
+    try { activeTab.term.focus(); return; } catch {}
+  }
   const term = getSerialTerm();
   if (term && typeof term.focus === "function") {
     try { term.focus(); return; } catch {}
@@ -143,7 +147,7 @@ function focusSerialConsole() {
 }
 
 async function resyncVmAfterRestore() {
-  logTool(`[snapshot] revalidando seriales y estado tmux tras restore...${NL}`);
+  logTool(`[snapshot] revalidando seriales y consolas xterm tras restore...${NL}`);
 
   const serial1Probe = window.BA_BG_TOOLS?.probeRunnerReady?.({ timeoutMs: 1800 }) || Promise.resolve(false);
   const serial2Probe = window.BA_CONSOLE_CONTROL?.probeRunnerReady?.({ timeoutMs: 1600 }) || Promise.resolve(false);
@@ -156,21 +160,20 @@ async function resyncVmAfterRestore() {
   else logTool(`[snapshot] aviso: serial1/ttyS1 no ha respondido al probe; las tools pueden no estar listas.${NL}`);
 
   if (serial2Ok) logTool(`[snapshot] serial2/ttyS2 revalidado.${NL}`);
-  else logTool(`[snapshot] aviso: serial2/ttyS2 no ha respondido al probe; los controles tmux pueden usar fallback o quedar limitados.${NL}`);
+  else logTool(`[snapshot] aviso: serial2/ttyS2 no ha respondido al probe; las consolas xterm pueden no estar listas.${NL}`);
 
-  const tmuxSynced = typeof syncConsoleTabsFromTmux === "function"
-    ? await syncConsoleTabsFromTmux({ repaint: false }).catch(() => false)
+  const consolesSynced = typeof syncConsoleTabsFromDaemon === "function"
+    ? await syncConsoleTabsFromDaemon({ repaint: false }).catch(() => false)
     : false;
-  if (tmuxSynced) {
+  if (consolesSynced) {
     state.consoleTabs.initializing = false;
     state.consoleTabs.ready = true;
-    setTerminalScrollbackForTmux(true);
-    logTool(`[snapshot] consolas tmux sincronizadas con el snapshot.${NL}`);
-  } else if (typeof isSelectedRuntimeExpectedToHaveTmux === "function" && isSelectedRuntimeExpectedToHaveTmux()) {
+    logTool(`[snapshot] consolas xterm sincronizadas con el snapshot.${NL}`);
+  } else {
     state.consoleTabs.initializing = true;
     renderConsoleTabs();
     window.setTimeout(() => finalizeConsoleTabsReady(), 700);
-    logTool(`[snapshot] no se pudo leer tmux todavía; se reintentará por inicialización normal.${NL}`);
+    logTool(`[snapshot] se reintentará la inicialización de consolas xterm.${NL}`);
   }
 
   renderConsoleTabs();
@@ -261,8 +264,8 @@ async function startVm(options = {}) {
       net_device: { type: "ne2k", relay_url: relayUrl },
       filesystem: {},
       // UART1 queda reservado para tools background no interactivas.
-      // UART2 queda reservado para control tmux del navegador.
-      // La consola humana sigue en serial0/ttyS0.
+      // UART2 queda reservado para el daemon xterm/PTY del navegador.
+      // serial0/ttyS0 queda como consola de arranque y fallback.
       uart1: true,
       uart2: true,
       cmdline: "rw rdinit=/init console=ttyS0,115200 console=tty0 edd=off nowatchdog tsc=reliable mitigations=off random.trust_cpu=on",
@@ -326,7 +329,7 @@ async function startVm(options = {}) {
 
     setBadge($("badge-vm"), "v86 arrancando", "warn");
     setBadge($("vm-detail"), "esperando shell", "warn");
-    logTool(`[host] v86 arrancando. Usa la consola serial superior.${NL}`);
+    logTool(`[host] v86 arrancando. La consola de arranque se sustituira por xterm directo al detectar el daemon.${NL}`);
     if (state.networkAutoRequested) {
       logTool(`[network] wsnic ya verificado. La red se comprobará automáticamente al detectar la shell.${NL}`);
     } else {
@@ -389,6 +392,7 @@ async function stopVm({ confirmShutdown = true } = {}) {
     state.vmReady = false;
     state.pending = null;
     window.BA_BG_TOOLS?.reset?.("vm-stopped");
+    window.BA_CONSOLE_CONTROL?.reset?.("vm-stopped");
     state.bootBuffer = "";
     state.networkConfigured = false;
     state.networkConfiguring = false;
@@ -415,10 +419,8 @@ function escapeRegExp(text) {
 }
 
 function normalizeTerminalStreamForMarkers(text) {
-  // Con tmux no recibimos stdout puro: recibimos el render VT100 que tmux envía
-  // al terminal serial. Por eso los marcadores pueden venir mezclados con CSI,
-  // CR, cursor moves, etc. Para detectar fin de tool limpiamos ANSI y buscamos
-  // los tokens por contenido, no por línea exacta.
+  // serial0 es un terminal visual, no un canal stdout puro. Los marcadores
+  // pueden venir mezclados con CSI, CR o movimientos de cursor.
   let value = stripAnsi(String(text || "")).split(CR).join(NL);
   for (let i = 0; i < 8 && value.includes("\b"); i += 1) {
     value = value.replace(/[^\n]\b/g, "");
@@ -453,7 +455,7 @@ function parsePendingCommandBuffer(pending) {
   /*
     v9.44: execVm emite stdout/stderr en secciones únicas escritas desde
     ficheros temporales a /dev/ttyS0. Si esas secciones están presentes, las
-    usamos como fuente de verdad y no el transcript visual de tmux.
+    usamos como fuente de verdad y no el transcript visual de la consola.
   */
   const endRegex = new RegExp(`${escapeRegExp(endToken)}\\s*(-?\\d+)`);
   const endMatch = clean.match(endRegex);
@@ -493,13 +495,6 @@ function parsePendingCommandBuffer(pending) {
 function onSerialChar(char) {
   state.bootBuffer = safeTrim(state.bootBuffer + char, 6000);
 
-  if (state.consoleTabs.initializing && state.bootBuffer.includes("__BA_TMUX_MISSING__")) {
-    failConsoleTabsInit("tmux no disponible en la VM");
-  } else if (state.consoleTabs.initializing && state.bootBuffer.includes("__BA_TMUX_ATTACHING__")) {
-    // Damos un pequeño margen para que tmux adjunte y repinte la pantalla.
-    window.setTimeout(() => finalizeConsoleTabsReady(), 450);
-  }
-
   const prompts = ["~% ", "~# ", "/ # ", "# ", "$ "];
   if (!state.vmReady && prompts.some((prompt) => state.bootBuffer.endsWith(prompt))) {
     state.vmReady = true;
@@ -520,7 +515,7 @@ function onSerialChar(char) {
   }
   pending.bytesSinceParse = (pending.bytesSinceParse || 0) + 1;
 
-  // En tmux el render puede no llegar como líneas limpias. Parseamos en salto de
+  // El render serial puede no llegar como líneas limpias. Parseamos en salto de
   // línea y también cada 128 bytes para detectar tokens visibles aunque no haya NL.
   if (char !== NL && char !== CR && pending.bytesSinceParse < 128) return;
   pending.bytesSinceParse = 0;
