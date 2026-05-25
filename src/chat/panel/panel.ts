@@ -337,6 +337,7 @@
     }
     if (select) window.BA_LLM.selectedModelId = select.value;
     updateSelectedModelCard();
+    updateResourceLines();
     setProgress(null, true);
     const caps = window.BA_LLM.capabilities;
     const needsWebGPU = (selected?.engine || "transformersjs") === "transformersjs" && (selected?.device || "webgpu") === "webgpu";
@@ -552,6 +553,15 @@
     const snap = window.BA_LLM_RESOURCE_GOVERNOR?.getSnapshot?.() || {};
     const ctx = extra.context || window.BA_LLM.lastContextInspect || null;
     if (extra.context) window.BA_LLM.lastContextInspect = extra.context;
+    const selected = getSelectedModel();
+    const policy = window.BA_LLM_CONTEXT?.getPolicy?.(selected) || {};
+    const contextWindow = selected?.contextWindowTokens ?? policy.contextWindowTokens;
+    const safeInput = policy.safeInputTokens;
+    const maxOutput = policy.maxNewTokensDefault;
+    const planOutput = policy.maxNewTokensForPlan;
+    const budgetLine = contextWindow && safeInput && maxOutput
+      ? `Presupuesto: contexto ${escapeHtml(contextWindow)} · entrada ${escapeHtml(safeInput)} · salida ${escapeHtml(maxOutput)}${planOutput ? ` · plan ${escapeHtml(planOutput)}` : ""}`
+      : "Presupuesto: pendiente";
     const artifactCount = snap.artifacts ?? window.BA_LLM?.artifacts?.length ?? 0;
     const artifactBadge = document.getElementById("ba-llm-artifact-count");
     if (artifactBadge) {
@@ -560,6 +570,7 @@
     }
     box.innerHTML = [
       `Artefactos: ${escapeHtml(artifactCount)}${snap.lastArtifactId ? ` · ${escapeHtml(snap.lastArtifactId)}` : ""}`,
+      budgetLine,
       ctx ? `Contexto: ${escapeHtml(ctx.estimatedTokens || 0)} tokens aprox. · ${escapeHtml(ctx.chars || 0)} caracteres` : "Contexto: pendiente",
       `Operación: ${escapeHtml(snap.lastOperation || "inactiva")}${snap.llmBusy ? " · LLM ocupado" : ""}${snap.toolBusy ? " · herramienta activa" : ""}`,
     ].map((line) => `<span>${line}</span>`).join("");
