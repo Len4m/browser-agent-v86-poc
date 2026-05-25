@@ -203,7 +203,6 @@
     const ctx = baseRuntimeContext();
     if (!ctx.vmPresent) throw new Error("La VM no está arrancada. Arranca v86 antes de usar tools de VM.");
     if (!ctx.vmReady) throw new Error("La shell de la VM todavía no está lista.");
-    if (!ctx.consoleReady) throw new Error("La consola xterm del usuario todavía no está lista.");
     if (!ctx.toolsConsoleAvailable) throw new Error("Las tools necesitan serial1/ttyS1 activo. Reconstruye perfiles y espera a que el runner esté listo.");
     // Las tools del agente LLM van por serial1 (BA_BG_TOOLS), no por serial0/consola visible.
     // state.agentBusy solo marca bloqueo de la consola principal (snapshot, comandos manuales, etc.)
@@ -453,7 +452,7 @@
       `- ${tool.name}`,
       `  Nivel seguridad: ${tool.riskLevel}`,
       `  Uso: ${tool.promptDescription}`,
-      `  Requisitos: ${tool.requiresVm ? "VM arrancada" : "sin VM"}${tool.requiresConsole ? ", consola xterm + serial1/ttyS1 activo" : ""}`,
+      `  Requisitos: ${tool.requiresVm ? "VM arrancada" : "sin VM"}${tool.requiresConsole ? ", serial1/ttyS1 activo" : ""}`,
     ].join("\n")).join("\n");
   }
 
