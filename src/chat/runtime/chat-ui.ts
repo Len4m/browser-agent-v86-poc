@@ -71,7 +71,7 @@
     details.className = "ba-llm-thinking";
 
     const summary = document.createElement("summary");
-    summary.textContent = "Razonamiento";
+    summary.textContent = "Razonamiento del modelo";
 
     const body = document.createElement("div");
     body.className = "ba-llm-thinking-body";

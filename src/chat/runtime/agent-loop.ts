@@ -90,8 +90,10 @@
     runnerInfo = {},
   } = {}) {
     const finishReason = runnerInfo.finishReason;
-    if (reasoningText.trim() && !showThinking) {
-      return "El modelo generó razonamiento interno, pero no produjo una respuesta final visible. Activa «Mostrar razonamiento» para inspeccionarlo o prueba otro modelo.";
+    if (reasoningText.trim()) {
+      return showThinking
+        ? "El modelo solo emitió razonamiento, pero no produjo una respuesta final separada. Lo mostrado en «Razonamiento del modelo» no se guarda como respuesta final."
+        : "El modelo generó razonamiento interno, pero no produjo una respuesta final visible. Activa «Mostrar razonamiento» para inspeccionarlo o prueba otro modelo.";
     }
     if (streamIsToolPlan) {
       return "El modelo generó un plan de tool en JSON, pero no produjo una respuesta final en texto. Prueba con un modelo con mejor tool calling o reduce las herramientas activas.";
