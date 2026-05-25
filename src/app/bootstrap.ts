@@ -221,7 +221,7 @@ function init() {
   $("chat-form").addEventListener("submit", sendChat);
   initChatInputKeys();
 
-  window.setTimeout(runChecks, 400);
+  window.setTimeout(() => runChecks({ probeWsRelay: false }), 400);
 }
 
 function initChatInputKeys() {
