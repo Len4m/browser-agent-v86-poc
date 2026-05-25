@@ -89,10 +89,12 @@
   function defaultThinkingMeta(model) {
     const id = model.id || "";
     if (model.engine === "ollama") {
+      const enabled = Boolean(model.ollamaThink)
+        || /qwen|deepseek|reason/i.test(`${id} ${model.model || ""}`);
       return {
-        enabled: false,
+        enabled,
         tagName: "think",
-        startWithReasoning: false,
+        startWithReasoning: enabled,
       };
     }
     const enabled = model.toolProfile === "reasoning-light" || id.includes("qwen3");
