@@ -13,9 +13,9 @@ Estado actual: **beta `0.9.0-beta.2`**. La versión `1.0.0` queda reservada para
 ## Que incluye
 
 - **VM Alpine x86 en el navegador**: arranque por initramfs, perfiles generados y discos HDA opcionales como discos de datos.
-- **Consola tmux visible**: hasta 4 consolas de usuario sobre `serial0` / `/dev/ttyS0`.
+- **Consolas xterm directas**: hasta 4 consolas de usuario, cada una con PTY propia dentro de la VM.
 - **Tools de agente en background**: comandos del chat y checks por `serial1` / `/dev/ttyS1`, separados de la consola visible.
-- **Control de consola dedicado**: acciones tmux de la UI por `serial2` / `/dev/ttyS2`.
+- **Transporte de consola dedicado**: multiplexado xterm/PTY por `serial2` / `/dev/ttyS2`.
 - **LLM en navegador u Ollama local**: Transformers.js con WebGPU/WASM y provider Ollama HTTP opcional.
 - **Red opcional vía wsnic**: proxy WebSocket local para dar salida de red a la VM.
 
