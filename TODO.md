@@ -16,7 +16,7 @@ Lista de temas detectados para revisar antes de una publicación estable.
 
 ## Consola y xterm.js
 
-- [ ] Revisar manualmente la rama `xterm-direct-consoles`: consolas xterm con PTYs independientes dentro de la VM, máximo 4 sesiones, transporte multiplexado por `serial2` y tools separadas por `serial1`.
+- [x] Revisar manualmente la rama `xterm-direct-consoles`: consolas xterm con PTYs independientes dentro de la VM, máximo 4 sesiones, transporte multiplexado por `serial2` y tools separadas por `serial1`.
 
 ## i18n
 
