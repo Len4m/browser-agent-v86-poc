@@ -1,7 +1,7 @@
 {
   "name": "browser-agent-v86-poc",
   "description": "Browser Agent v86 POC",
-  "version": "0.9.1-beta.1",
+  "version": "0.9.1-beta.2",
   "author": "Lenam <lenamgenx@protonmail.com> (https://Len4m.github.io)",
   "license": "MIT",
   "private": true,
