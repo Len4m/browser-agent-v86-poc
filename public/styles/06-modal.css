@@ -87,12 +87,10 @@
 }
 .ba-modal-overlay.ba-modal-panel-mode .ba-modal-card {
   width: min(640px, 96vw);
+  grid-template-columns: 1fr;
 }
 .ba-modal-overlay.ba-modal-panel-mode .ba-modal-icon {
   display: none;
-}
-.ba-modal-overlay.ba-modal-panel-mode .ba-modal-card {
-  grid-template-columns: 1fr;
 }
 .ba-modal-overlay.ba-modal-panel-mode .ba-modal-body {
   flex: 1 1 auto;

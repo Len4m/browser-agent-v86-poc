@@ -50,9 +50,6 @@ body.vm-profile-manual .compact-vm-options .vm-field-disk { grid-column: 4 / 5; 
   min-width: 0;
   padding-top: 2px;
 }
-body.vm-profile-manual .compact-vm-options #vm-profile-hint {
-  grid-column: 1 / -1;
-}
 .compact-vm-options #vm-disk-hint {
   grid-column: 1 / -1;
   margin: -2px 0 0;
