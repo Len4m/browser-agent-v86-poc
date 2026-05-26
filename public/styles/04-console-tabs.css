@@ -40,10 +40,10 @@
   text-overflow: ellipsis;
 }
 .console-tab.human {
-  max-width: none;
+  max-width: 190px;
 }
 .console-tab.human .console-tab-label {
-  overflow: visible;
+  overflow: hidden;
 }
 .console-tab:hover { background: #f1f5f9; }
 .console-tab.active {

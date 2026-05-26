@@ -98,6 +98,33 @@ function shouldConfirmConsoleClose(tab) {
   return Boolean(tab?.userInputSeen && tab.status !== "closed" && !isSerialConsoleTab(tab));
 }
 
+function defaultConsoleTitle(tab) {
+  return `Consola ${tab?.humanNumber || 1}`;
+}
+
+function displayConsoleTitle(tab) {
+  return String(tab?.title || defaultConsoleTitle(tab));
+}
+
+function shortConsoleLabel(tab) {
+  const title = displayConsoleTitle(tab).trim();
+  const fallback = defaultConsoleTitle(tab);
+  return title || fallback;
+}
+
+async function renameConsoleTab(id) {
+  const tab = getConsoleTab(id);
+  if (!tab || tab.owner !== "human" || isConsoleControlBusy()) return;
+
+  const currentTitle = displayConsoleTitle(tab);
+  const next = window.prompt("Nombre de la consola", currentTitle);
+  if (next === null) return;
+
+  const clean = String(next).replace(/\s+/g, " ").trim().slice(0, 32);
+  tab.title = clean || defaultConsoleTitle(tab);
+  renderConsoleTabs();
+}
+
 async function ensureConsoleSession(tab) {
   if (isSerialConsoleTab(tab)) {
     tab.status = state.vmReady ? "ready" : "pending";
@@ -352,13 +379,20 @@ function renderConsoleTabs() {
     button.disabled = !ready || busy;
     const labelEl = document.createElement("span");
     labelEl.className = "console-tab-label";
-    labelEl.textContent = String(tab.humanNumber || 1);
+    labelEl.textContent = shortConsoleLabel(tab);
     button.appendChild(labelEl);
-    button.setAttribute("aria-label", tab.title || `Consola ${tab.humanNumber || 1}`);
-    button.title = isSerialConsoleTab(tab)
+    button.setAttribute("aria-label", displayConsoleTitle(tab));
+    button.title = `${displayConsoleTitle(tab)} · doble clic para renombrar · ${
+      isSerialConsoleTab(tab)
       ? "Consola serial0 real de arranque de la VM."
-      : "Consola xterm con PTY propia dentro de la VM.";
+      : "Consola xterm con PTY propia dentro de la VM."
+    }`;
     button.addEventListener("click", () => selectConsoleTab(tab.id));
+    button.addEventListener("dblclick", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      renameConsoleTab(tab.id);
+    });
 
     if (tab.closable) {
       const close = document.createElement("span");
