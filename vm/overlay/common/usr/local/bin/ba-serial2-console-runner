@@ -55,6 +55,62 @@ class XtermDaemon:
         attrs[6][termios.VTIME] = 0
         termios.tcsetattr(self.tty_fd, termios.TCSANOW, attrs)
 
+    def set_termios_flag(self, attrs, index, name, enabled=True):
+        value = getattr(termios, name, None)
+        if value is None:
+            return
+        if enabled:
+            attrs[index] |= value
+        else:
+            attrs[index] &= ~value
+
+    def set_control_char(self, attrs, name, value):
+        index = getattr(termios, name, None)
+        if index is None:
+            return
+        current = attrs[6][index]
+        attrs[6][index] = bytes([value]) if isinstance(current, bytes) else value
+
+    def configure_pty_slave(self, slave_fd):
+        attrs = termios.tcgetattr(slave_fd)
+
+        for name in ("IGNBRK", "PARMRK", "ISTRIP", "INLCR", "IGNCR", "IXOFF"):
+            self.set_termios_flag(attrs, 0, name, False)
+        for name in ("BRKINT", "ICRNL", "IXON"):
+            self.set_termios_flag(attrs, 0, name, True)
+
+        for name in ("OPOST", "ONLCR"):
+            self.set_termios_flag(attrs, 1, name, True)
+
+        self.set_termios_flag(attrs, 2, "PARENB", False)
+        self.set_termios_flag(attrs, 2, "CSTOPB", False)
+        csize = getattr(termios, "CSIZE", None)
+        if csize is not None:
+            attrs[2] &= ~csize
+        for name in ("CS8", "CREAD"):
+            self.set_termios_flag(attrs, 2, name, True)
+
+        for name in ("ECHO", "ECHOE", "ECHOK", "ICANON", "ISIG", "IEXTEN"):
+            self.set_termios_flag(attrs, 3, name, True)
+
+        self.set_control_char(attrs, "VINTR", 3)    # Ctrl+C -> SIGINT
+        self.set_control_char(attrs, "VQUIT", 28)   # Ctrl+\
+        self.set_control_char(attrs, "VERASE", 127)
+        self.set_control_char(attrs, "VKILL", 21)   # Ctrl+U
+        self.set_control_char(attrs, "VEOF", 4)     # Ctrl+D
+        self.set_control_char(attrs, "VSUSP", 26)   # Ctrl+Z
+        attrs[6][termios.VMIN] = 1
+        attrs[6][termios.VTIME] = 0
+
+        termios.tcsetattr(slave_fd, termios.TCSANOW, attrs)
+
+    def reset_child_signal_handlers(self):
+        for signum in range(1, signal.NSIG):
+            try:
+                signal.signal(signum, signal.SIG_DFL)
+            except (OSError, RuntimeError, ValueError):
+                pass
+
     def write_line(self, line):
         data = (line + "\n").encode("ascii", "replace")
         while data:
@@ -86,12 +142,18 @@ class XtermDaemon:
             raise RuntimeError("max-sessions")
 
         master, slave = pty.openpty()
+        self.configure_pty_slave(slave)
         self.set_winsize(master, cols, rows)
         pid = os.fork()
         if pid == 0:
             try:
+                self.reset_child_signal_handlers()
                 os.setsid()
                 fcntl.ioctl(slave, termios.TIOCSCTTY, 0)
+                try:
+                    os.tcsetpgrp(slave, os.getpgrp())
+                except OSError:
+                    pass
                 os.dup2(slave, 0)
                 os.dup2(slave, 1)
                 os.dup2(slave, 2)
