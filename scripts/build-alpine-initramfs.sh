@@ -465,20 +465,29 @@ export TERM=${TERM:-xterm-256color}
 export HISTFILE=/dev/null
 cd /root 2>/dev/null || cd /
 
-# Las tools internas se ejecutan por /dev/ttyS1. Las consolas interactivas
-# xterm usan /dev/ttyS2 como transporte multiplexado hacia PTYs reales.
-if [ -e /dev/ttyS1 ] && ! ps | grep '[b]a-serial1-runner /dev/ttyS1' >/dev/null 2>&1; then
-  /usr/local/bin/ba-serial1-runner /dev/ttyS1 >/tmp/ba-serial1-runner.log 2>&1 &
-fi
-
-if [ -e /dev/ttyS2 ] && ! ps | grep '[b]a-serial2-console-runner /dev/ttyS2' >/dev/null 2>&1; then
-  /usr/local/bin/ba-serial2-console-runner /dev/ttyS2 >/tmp/ba-serial2-console-runner.log 2>&1 &
-fi
-
 stty rows 24 cols 100 </dev/ttyS0 2>/dev/null || stty rows 24 cols 100 2>/dev/null || true
 exec /bin/sh -l
 LOGIN
 chmod +x /sbin/browser-agent-login
+
+supervise_browser_agent_runner() {
+  name="$1"
+  tty="$2"
+  command="$3"
+  log="/tmp/${name}.log"
+
+  (
+    while true; do
+      if [ -e "$tty" ]; then
+        "$command" "$tty" >"$log" 2>&1
+      fi
+      sleep 1
+    done
+  ) &
+}
+
+supervise_browser_agent_runner ba-serial1-runner /dev/ttyS1 /usr/local/bin/ba-serial1-runner
+supervise_browser_agent_runner ba-serial2-console-runner /dev/ttyS2 /usr/local/bin/ba-serial2-console-runner
 
 if [ -x /etc/browser-agent-firstboot.sh ]; then
   /etc/browser-agent-firstboot.sh >>/tmp/browser-agent-firstboot.log 2>&1 || true
