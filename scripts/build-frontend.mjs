@@ -68,7 +68,11 @@ function cacheKeyForContent(content) {
 }
 
 function cacheKeyForPublicFile(relativePath) {
-  return cacheKeyForContent(readFileSync(join(root, "public", relativePath), "utf8"));
+  return cacheKeyForContent(readFileSync(join(root, "public", relativePath)));
+}
+
+function versionedPublicPath(relativePath) {
+  return `/${relativePath.replace(/^\/+/, "")}?v=${cacheKeyForPublicFile(relativePath)}`;
 }
 
 mkdirSync(dirname(tempFile), { recursive: true });
@@ -101,6 +105,8 @@ writeFileSync(styleFile, styleCss, "utf8");
 const indexHtml = readFileSync(indexFile, "utf8")
   .replace(/href="\.\/vendor\/xterm\/xterm\.css(?:\?v=[^"]*)?"/g, `href="./vendor/xterm/xterm.css?v=${cacheKeyForPublicFile("vendor/xterm/xterm.css")}"`)
   .replace(/href="\.\/style\.css(?:\?v=[^"]*)?"/g, `href="./style.css?v=${cacheKeyForContent(styleCss)}"`)
+  .replace(/id="cfg-bzimage" type="hidden" value="[^"]*"/g, `id="cfg-bzimage" type="hidden" value="${versionedPublicPath("v86/images/alpine-vmlinuz-lts")}"`)
+  .replace(/id="cfg-initrd" type="hidden" value="[^"]*"/g, `id="cfg-initrd" type="hidden" value="${versionedPublicPath("v86/images/profiles/alpine-base-initramfs.gz")}"`)
   .replace(/src="\.\/assets\/ai-sdk-bridge\.mjs(?:\?v=[^"]*)?"/g, `src="./assets/ai-sdk-bridge.mjs?v=${packageJson.version}"`)
   .replace(/src="\.\/assets\/app\.js(?:\?v=[^"]*)?"/g, `src="./assets/app.js?v=${packageJson.version}"`);
 writeFileSync(indexFile, indexHtml, "utf8");
