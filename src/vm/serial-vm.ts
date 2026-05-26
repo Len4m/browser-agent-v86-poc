@@ -336,7 +336,7 @@ async function startVm(options = {}) {
 
     setBadge($("badge-vm"), "v86 arrancando", "warn");
     setBadge($("vm-detail"), "esperando shell", "warn");
-    logTool(`[host] v86 arrancando. La consola 1 es serial0; las consolas extra usan PTYs por serial2.${NL}`);
+    logTool(`[host] v86 arrancando. La pestaña 1 es serial0; las pestañas extra usan PTYs por serial2.${NL}`);
     if (state.networkAutoRequested) {
       logTool(`[network] wsnic ya verificado. La red se comprobará automáticamente al detectar la shell.${NL}`);
     } else {

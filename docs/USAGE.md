@@ -82,9 +82,9 @@ Canales seriales actuales:
 
 | Canal | Dispositivo VM | Uso |
 | --- | --- | --- |
-| `serial0` | `/dev/ttyS0` | Arranque, login base y fallback serial |
+| `serial0` | `/dev/ttyS0` | Arranque, login base y pestaña 1 de usuario |
 | `serial1` | `/dev/ttyS1` | Tools del agente, checks y formulario manual |
-| `serial2` | `/dev/ttyS2` | Daemon xterm/PTY: hasta 4 consolas interactivas |
+| `serial2` | `/dev/ttyS2` | Daemon xterm/PTY para las pestañas interactivas 2-4 |
 
 Los runners instalados en el initramfs vienen de:
 
@@ -223,7 +223,7 @@ npm start
 - **Cambiaste initramfs, runners o perfiles**: ejecuta `npm run setup` y arranca una VM nueva.
 - **Disco HDA no monta**: verifica que existe `public/v86/disks/alpine-hda-*.img`; `npm run setup` los crea.
 - **Tools o checks afectan a la consola visible**: valida `/dev/ttyS1`, `/dev/ttyS2` y los procesos `ba-serial1-runner` / `ba-serial2-console-runner`.
-- **Una consola xterm queda desincronizada**: usa refrescar; limpia el xterm local y envia `Ctrl+L` a la PTY activa.
+- **Una consola xterm queda desincronizada**: usa refrescar; limpia el xterm local y envia `Ctrl+L` al shell activo.
 - **LLM local falla por WebGPU**: prueba un modelo WASM o reduce el modelo; algunas rutas intentan fallback WASM.
 - **Ollama falla por CORS**: configura `OLLAMA_ORIGINS` con el origen exacto desde el que sirves la página.
 - **Ollama no responde con el modelo elegido**: comprueba que el modelo está instalado en tu Ollama local con `ollama list` o instálalo con `ollama pull <modelo>`.
