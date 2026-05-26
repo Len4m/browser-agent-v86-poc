@@ -458,247 +458,6 @@ if [ -e /sys/bus/pci/drivers/ne2k-pci/bind ]; then
   echo 0000:00:05.0 > /sys/bus/pci/drivers/ne2k-pci/bind 2>>/tmp/v86-net-modules.log || true
 fi
 
-cat > /usr/local/bin/ba-consolectl <<'BA_CONSOLECTL'
-#!/bin/sh
-set -eu
-
-# The UI runs this through ttyS1/serial1. It controls tmux directly, so commands
-# never get typed into the user's visible shell.
-export TMUX_TMPDIR="${TMUX_TMPDIR:-/run/tmux}"
-
-SESSION="${BA_TMUX_SESSION:-ba}"
-ACTION="${1:-}"
-IDX="${2:-}"
-MAX_WINDOWS="${BA_CONSOLE_MAX_WINDOWS:-4}"
-SHELL_CMD='exec env HISTFILE=/dev/null /bin/sh -l'
-
-die() {
-  echo "BA_CONSOLE_ERROR:$*" >&2
-  exit 1
-}
-
-resolve_session() {
-  command -v tmux >/dev/null 2>&1 || die "tmux-not-found"
-
-  if tmux has-session -t "$SESSION" 2>/dev/null; then
-    return 0
-  fi
-
-  # If we are inside a tmux pane but the session name is not "ba" for any
-  # reason, use the current session. This avoids false session-not-found errors.
-  current="$(tmux display-message -p '#S' 2>/dev/null || true)"
-  if [ -n "$current" ] && tmux has-session -t "$current" 2>/dev/null; then
-    SESSION="$current"
-    return 0
-  fi
-
-  # Last fallback: if there is exactly one tmux session, use it.
-  sessions="$(tmux list-sessions -F '#S' 2>/dev/null || true)"
-  count="$(printf '%s\n' "$sessions" | sed '/^$/d' | wc -l | tr -d ' ')"
-  if [ "$count" = "1" ]; then
-    SESSION="$(printf '%s\n' "$sessions" | sed '/^$/d' | head -n1)"
-    return 0
-  fi
-
-  die "session-not-found"
-}
-
-ensure_tmux() {
-  resolve_session
-}
-
-validate_index() {
-  idx="$1"
-  case "$idx" in ''|*[!0-9]*) die "invalid-index" ;; esac
-}
-
-target_window() {
-  validate_index "$1"
-  echo "$SESSION:$1"
-}
-
-active_pane_for_window() {
-  target="$(target_window "$1")"
-  tmux list-panes -t "$target" -F '#{pane_active}:#{pane_id}' 2>/dev/null \
-    | awk -F: '$1=="1"{print $2; exit}'
-}
-
-target_pane() {
-  pane="$(active_pane_for_window "$1")"
-  [ -n "$pane" ] || die "pane-not-found"
-  echo "$pane"
-}
-
-select_client_window() {
-  idx="$1"
-  target="$(target_window "$idx")"
-  selected=0
-  clients="$(tmux list-clients -t "$SESSION" -F '#{client_tty}' 2>/dev/null || true)"
-  if [ -n "$clients" ]; then
-    while IFS= read -r client; do
-      [ -n "$client" ] || continue
-      tmux switch-client -c "$client" -t "$target" >/dev/null 2>&1 && selected=1 || true
-    done <<EOF
-$clients
-EOF
-  fi
-  tmux select-window -t "$target" >/dev/null 2>&1 || die "select-failed"
-}
-
-window_count() {
-  tmux list-windows -t "$SESSION" -F '#{window_index}' 2>/dev/null | sed '/^$/d' | wc -l | tr -d ' '
-}
-
-window_exists() {
-  validate_index "$1"
-  tmux list-windows -t "$SESSION" -F '#{window_index}' 2>/dev/null | grep -Fxq "$1"
-}
-
-next_free_index() {
-  i=0
-  while [ "$i" -lt "$MAX_WINDOWS" ]; do
-    if ! tmux list-windows -t "$SESSION" -F '#{window_index}' 2>/dev/null | grep -Fxq "$i"; then
-      echo "$i"
-      return 0
-    fi
-    i=$((i + 1))
-  done
-  return 1
-}
-
-sanitize_name() {
-  raw="$*"
-  raw="${raw:-Consola}"
-  printf '%s' "$raw" | tr -cd 'A-Za-z0-9 ._-áéíóúÁÉÍÓÚñÑ' | cut -c1-24
-}
-
-case "$ACTION" in
-  list)
-    ensure_tmux
-    tmux list-windows -t "$SESSION" -F 'BA_CONSOLE_WINDOW:#{window_id}:#{window_index}:#{window_name}:#{window_active}:#{window_panes}:#{window_zoomed_flag}' 2>/dev/null || true
-    tmux list-panes -a -F 'BA_CONSOLE_PANE:#{window_index}:#{pane_id}:#{pane_index}:#{pane_active}:#{pane_current_command}' 2>/dev/null || true
-    ;;
-
-  status)
-    ensure_tmux
-    validate_index "$IDX"
-    cmd="$(tmux display-message -p -t "$(target_pane "$IDX")" '#{pane_current_command}' 2>/dev/null || true)"
-    printf 'BA_CONSOLE_STATUS:%s\n' "$cmd"
-    ;;
-
-  new)
-    ensure_tmux
-    count="$(window_count)"
-    [ "$count" -lt "$MAX_WINDOWS" ] || die "max-consoles"
-    idx="$(next_free_index)" || die "max-consoles"
-    name="$(sanitize_name "${3:-Consola $((idx + 1))}")"
-    [ -n "$name" ] || name="Consola $((idx + 1))"
-    tmux new-window -d -t "$SESSION:$idx" -n "$name" "$SHELL_CMD" >/dev/null 2>&1 || die "new-window-failed"
-    select_client_window "$idx"
-    printf 'BA_CONSOLE_NEW_OK:%s:%s\n' "$idx" "$name"
-    ;;
-
-  select)
-    ensure_tmux
-    validate_index "$IDX"
-    window_exists "$IDX" || die "window-not-found"
-    select_client_window "$IDX"
-    printf 'BA_CONSOLE_SELECT_OK:%s\n' "$IDX"
-    ;;
-
-  select-redraw)
-    ensure_tmux
-    validate_index "$IDX"
-    window_exists "$IDX" || die "window-not-found"
-    tmux clear-history -t "$(target_pane "$IDX")" >/dev/null 2>&1 || true
-    tmux send-keys -t "$(target_pane "$IDX")" C-l >/dev/null 2>&1 || true
-    select_client_window "$IDX"
-    printf 'BA_CONSOLE_SELECT_REDRAW_OK:%s\n' "$IDX"
-    ;;
-
-  rename)
-    ensure_tmux
-    validate_index "$IDX"
-    name="$(sanitize_name "${3:-}")"
-    [ -n "$name" ] || die "empty-name"
-    tmux rename-window -t "$(target_window "$IDX")" "$name" >/dev/null 2>&1 || die "rename-failed"
-    printf 'BA_CONSOLE_RENAME_OK:%s:%s\n' "$IDX" "$name"
-    ;;
-
-  split)
-    ensure_tmux
-    validate_index "$IDX"
-    direction="${3:-}"
-    case "$direction" in
-      vertical|v) flag="-h" ;;
-      horizontal|h) flag="-v" ;;
-      *) die "invalid-split" ;;
-    esac
-    target="$(target_pane "$IDX")"
-    tmux split-window "$flag" -t "$target" "$SHELL_CMD" >/dev/null 2>&1 || die "split-failed"
-    select_client_window "$IDX"
-    printf 'BA_CONSOLE_SPLIT_OK:%s:%s\n' "$IDX" "$direction"
-    ;;
-
-  zoom)
-    ensure_tmux
-    validate_index "$IDX"
-    tmux resize-pane -Z -t "$(target_pane "$IDX")" >/dev/null 2>&1 || die "zoom-failed"
-    select_client_window "$IDX"
-    printf 'BA_CONSOLE_ZOOM_OK:%s\n' "$IDX"
-    ;;
-
-  close-pane)
-    ensure_tmux
-    validate_index "$IDX"
-    panes="$(tmux list-panes -t "$(target_window "$IDX")" 2>/dev/null | wc -l | tr -d ' ')"
-    [ "$panes" -gt 1 ] || die "last-pane"
-    pane="$(target_pane "$IDX")"
-    tmux kill-pane -t "$pane" >/dev/null 2>&1 || die "kill-pane-failed"
-    select_client_window "$IDX"
-    printf 'BA_CONSOLE_CLOSE_PANE_OK:%s\n' "$IDX"
-    ;;
-
-  close-window)
-    ensure_tmux
-    validate_index "$IDX"
-    windows="$(window_count)"
-    [ "$windows" -gt 1 ] || die "last-window"
-    tmux kill-window -t "$(target_window "$IDX")" >/dev/null 2>&1 || die "kill-window-failed"
-    fallback="$(tmux list-windows -t "$SESSION" -F '#{window_index}' 2>/dev/null | sort -n | head -n1)"
-    [ -n "$fallback" ] && select_client_window "$fallback"
-    printf 'BA_CONSOLE_CLOSE_WINDOW_OK:%s\n' "$IDX"
-    ;;
-
-  reset)
-    ensure_tmux
-    validate_index "$IDX"
-
-    target="$(target_pane "$IDX")"
-    tmux set-option -g history-limit 1000 >/dev/null 2>&1 || true
-
-    tmux respawn-pane -k -t "$target" 'exec env HISTFILE=/dev/null /bin/sh -l' >/dev/null 2>&1 || die "respawn-failed"
-    tmux clear-history -t "$target" >/dev/null 2>&1 || true
-    tmux send-keys -t "$target" C-l >/dev/null 2>&1 || true
-    printf 'BA_CONSOLE_RESET_OK\n'
-    ;;
-
-  clear)
-    ensure_tmux
-    validate_index "$IDX"
-    tmux clear-history -t "$(target_pane "$IDX")" >/dev/null 2>&1 || true
-    tmux send-keys -t "$(target_pane "$IDX")" C-l >/dev/null 2>&1 || true
-    select_client_window "$IDX"
-    printf 'BA_CONSOLE_CLEAR_OK\n'
-    ;;
-
-  *)
-    die "usage: ba-consolectl list|status|new|select|select-redraw|rename|split|zoom|close-pane|close-window|reset|clear"
-    ;;
-esac
-BA_CONSOLECTL
-chmod +x /usr/local/bin/ba-consolectl
-
 cat > /sbin/browser-agent-login <<'LOGIN'
 #!/bin/sh
 export HOME=/root
@@ -706,59 +465,29 @@ export TERM=${TERM:-xterm-256color}
 export HISTFILE=/dev/null
 cd /root 2>/dev/null || cd /
 
-# Una sesión tmux visible para el usuario. Las tools internas se ejecutan por
-# /dev/ttyS1 y el control de consolas/paneles por /dev/ttyS2.
-if command -v tmux >/dev/null 2>&1 && [ "${BA_DISABLE_TMUX:-0}" != "1" ]; then
-  export TMUX_TMPDIR=/run/tmux
-  mkdir -p "$TMUX_TMPDIR"
-  chmod 700 "$TMUX_TMPDIR" 2>/dev/null || true
-
-  # Arranca el runner de UART1 una sola vez si v86 expone /dev/ttyS1.
-  if [ -e /dev/ttyS1 ] && ! ps | grep '[b]a-serial1-runner /dev/ttyS1' >/dev/null 2>&1; then
-    /usr/local/bin/ba-serial1-runner /dev/ttyS1 >/tmp/ba-serial1-runner.log 2>&1 &
-  fi
-
-  # Arranca el runner ligero de UART2 para acciones de tmux del navegador.
-  if [ -e /dev/ttyS2 ] && ! ps | grep '[b]a-serial2-console-runner /dev/ttyS2' >/dev/null 2>&1; then
-    /usr/local/bin/ba-serial2-console-runner /dev/ttyS2 >/tmp/ba-serial2-console-runner.log 2>&1 &
-  fi
-
-  # La serial de v86 no propaga dinámicamente el tamaño del terminal como una
-  # PTY normal. Fijamos una geometría conocida y hacemos que xterm.js use la
-  # misma geometría para evitar cursor desplazado y restos visuales.
-  stty rows 24 cols 100 </dev/ttyS0 2>/dev/null || stty rows 24 cols 100 2>/dev/null || true
-
-  SESSION="ba"
-  if ! tmux has-session -t "$SESSION" 2>/dev/null; then
-    tmux new-session -d -s "$SESSION" -n consola 'exec env HISTFILE=/dev/null /bin/sh -l'
-    tmux set-option -t "$SESSION" -g base-index 0 >/dev/null 2>&1 || true
-    tmux set-option -t "$SESSION" -g renumber-windows off >/dev/null 2>&1 || true
-    tmux set-option -t "$SESSION" -g history-limit 1000 >/dev/null 2>&1 || true
-    tmux set-option -t "$SESSION" -g default-size 100x24 >/dev/null 2>&1 || true
-    tmux set-option -t "$SESSION" -g default-command 'exec env HISTFILE=/dev/null /bin/sh -l' >/dev/null 2>&1 || true
-    tmux set-option -t "$SESSION" -g status on >/dev/null 2>&1 || true
-    tmux set-option -t "$SESSION" -g mouse off >/dev/null 2>&1 || true
-
-    # Simplificación UX: la gestión de consolas/paneles se expone como botones
-    # del navegador. No se considera frontera de seguridad; la separación real
-    # de tools está en ttyS1.
-    tmux unbind-key -T prefix c >/dev/null 2>&1 || true
-    tmux unbind-key -T prefix '"' >/dev/null 2>&1 || true
-    tmux unbind-key -T prefix % >/dev/null 2>&1 || true
-    tmux unbind-key -T prefix : >/dev/null 2>&1 || true
-  fi
-
-  tmux set-environment -t "$SESSION" TMUX_TMPDIR "$TMUX_TMPDIR" >/dev/null 2>&1 || true
-  tmux set-environment -t "$SESSION" BA_TMUX_SESSION "$SESSION" >/dev/null 2>&1 || true
-
-  tmux rename-window -t "$SESSION:0" "Consola 1" >/dev/null 2>&1 || true
-  tmux select-window -t "$SESSION:0" >/dev/null 2>&1 || true
-  exec tmux attach-session -t "$SESSION"
-fi
-
+stty rows 24 cols 100 </dev/ttyS0 2>/dev/null || stty rows 24 cols 100 2>/dev/null || true
 exec /bin/sh -l
 LOGIN
 chmod +x /sbin/browser-agent-login
+
+supervise_browser_agent_runner() {
+  name="$1"
+  tty="$2"
+  command="$3"
+  log="/tmp/${name}.log"
+
+  (
+    while true; do
+      if [ -e "$tty" ]; then
+        "$command" "$tty" >"$log" 2>&1
+      fi
+      sleep 1
+    done
+  ) &
+}
+
+supervise_browser_agent_runner ba-serial1-runner /dev/ttyS1 /usr/local/bin/ba-serial1-runner
+supervise_browser_agent_runner ba-serial2-console-runner /dev/ttyS2 /usr/local/bin/ba-serial2-console-runner
 
 if [ -x /etc/browser-agent-firstboot.sh ]; then
   /etc/browser-agent-firstboot.sh >>/tmp/browser-agent-firstboot.log 2>&1 || true

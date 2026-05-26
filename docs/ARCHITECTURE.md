@@ -10,7 +10,7 @@ La VM corre con **v86** y Alpine x86. La capa LLM usa **AI SDK v6** con backends
 flowchart LR
   subgraph Browser["Navegador"]
     UI["UI<br/>public/index.html + app.js"]
-    Xterm["xterm/tmux"]
+    Xterm["xterm.js<br/>hasta 4 pestañas"]
     Chat["Chat LLM"]
     Bridge["AI SDK bridge<br/>assets/ai-sdk-bridge.mjs"]
     AiBundle["AI SDK bundle<br/>assets/chat/ai-sdk-browser.mjs"]
@@ -19,10 +19,9 @@ flowchart LR
   end
 
   subgraph VM["VM Alpine x86"]
-    Tmux["tmux usuario"]
+    PTY["PTYs de usuario 2-4<br/>/bin/sh, nano, top..."]
     S1["ba-serial1-runner<br/>tools/checks"]
-    S2["ba-serial2-console-runner<br/>control tmux"]
-    Ctl["ba-consolectl"]
+    S2["ba-serial2-console-runner<br/>daemon xterm/PTY"]
     Tools["Comandos Alpine"]
   end
 
@@ -39,14 +38,12 @@ flowchart LR
   AiBundle --> Worker
   Bridge --> Ollama
   Chat -->|"execVm / tools"| V86
-  Xterm <-->|"serial0 / ttyS0"| V86
-  V86 <-->|"ttyS0"| Tmux
+  Xterm <-->|"serial0 / ttyS0<br/>arranque real"| V86
+  Xterm <-->|"serial2 / ttyS2<br/>frames base64"| V86
   V86 -->|"ttyS1"| S1
   S1 --> Tools
-  UI -->|"serial2 control"| V86
   V86 -->|"ttyS2"| S2
-  S2 --> Ctl
-  Ctl --> Tmux
+  S2 <-->|"openpty/select"| PTY
   V86 <-->|"red WS opcional"| Wsnic
 ```
 
@@ -113,7 +110,7 @@ Solo se descargan remotamente los assets que no son librerías npm del runtime: 
 | --- | --- |
 | `src/app/` | Estado global, bootstrap, helpers de texto y avisos de origen |
 | `src/vm/` | v86, perfiles, assets, seriales, red, discos, snapshots y operaciones VM |
-| `src/console/` | Pestañas tmux, splits, zoom, cierre y refresco |
+| `src/console/` | Pestañas xterm, sesiones PTY, cierre y refresco |
 | `src/ui/` | Estado visual, modales, checks y tooltips |
 | `src/chat/state/` | Estado LLM, modelos y capacidades |
 | `src/chat/panel/` | Panel LLM, controles y vista de capacidades |
@@ -132,7 +129,7 @@ Globals principales:
 - `window.BA`: versión, origen y eventos públicos.
 - `window.BA_TEXT_UTILS`: helpers de texto y shell.
 - `window.BA_BG_TOOLS`: ejecución por `serial1`.
-- `window.BA_CONSOLE_CONTROL`: control tmux por `serial2`.
+- `window.BA_CONSOLE_CONTROL`: control xterm/PTY por `serial2`.
 - `window.BA_AISDK`: bridge/provider LLM.
 - `window.BA_LLM_*`: estado, UI, tools, artifacts, contexto y recursos del chat.
 
@@ -153,9 +150,9 @@ Usuario / LLM
 
 Contratos actuales:
 
-- `serial0` / `/dev/ttyS0`: consola tmux visible. Es para el usuario.
+- `serial0` / `/dev/ttyS0`: arranque, login base y pestaña 1 de usuario.
 - `serial1` / `/dev/ttyS1`: tools del LLM, checks, formulario manual y operaciones internas que no deben ensuciar la consola visible.
-- `serial2` / `/dev/ttyS2`: acciones de UI sobre tmux mediante `ba-serial2-console-runner` y `ba-consolectl`.
+- `serial2` / `/dev/ttyS2`: daemon xterm/PTY. Multiplexa las pestañas 2-4 como PTYs reales hacia xterm.js con frames base64.
 - No hay fallback silencioso de `serial1` a `serial0` en `execVm(targetTools=true)`.
 
 Fuentes de runners:
@@ -176,7 +173,7 @@ Fuentes de runners:
 
 `scripts/build-vm-profile.mjs` genera manifests en `public/v86/images/profiles/` y mantiene `index.json`. Los perfiles usan initramfs; los discos HDA creados por `scripts/create-v86-disks.sh` son imágenes ext2 raw para datos.
 
-`ba-consolectl` se genera dentro del script `init` del initramfs. Tras cambiar overlay, perfiles, runners o build de Alpine, ejecutar `npm run setup`.
+El daemon de consola se instala desde `vm/overlay/common/usr/local/bin/ba-serial2-console-runner`. Tras cambiar overlay, perfiles, runners o build de Alpine, ejecutar `npm run setup`.
 
 ## Capa LLM
 
@@ -242,4 +239,4 @@ Archivos clave:
 7. Cambios en perfiles, overlay o runners requieren `npm run setup`.
 8. Cambios en provider AI SDK o worker requieren `npm run build`.
 9. Mantener limites explicitos para logs, artifacts, historial y salidas de tools.
-10. Probar tmux, splits, refresco y tools tras tocar seriales o geometría de consola.
+10. Probar consolas xterm, cierre, refresco, programas de pantalla completa y tools tras tocar seriales o geometría de consola.

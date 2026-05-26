@@ -102,7 +102,6 @@ function getExpectedToolChecks(profile) {
   if (packages.has("py3-pip")) addTool("pip", "command -v pip3 || command -v pip");
   if (packages.has("bind-tools")) addTool("dig", "command -v dig");
   if (packages.has("iproute2")) addTool("ip", "command -v ip");
-  if (packages.has("tmux")) addTool("tmux", "command -v tmux");
   if (packages.has("nikto")) addTool("nikto", "command -v nikto || command -v nikto.pl || [ -f /usr/share/nikto/program/nikto.pl ] || [ -f /usr/bin/nikto.pl ]");
   if (packages.has("httpx")) addTool("httpx", "command -v httpx || command -v httpx-pd || command -v httpx-toolkit || ls /usr/bin/httpx* /usr/local/bin/httpx* >/dev/null 2>&1");
 
@@ -309,7 +308,7 @@ async function runChecks({ probeWsRelay = true } = {}) {
 
     updateChecksSummaryFromDom();
 
-    // El retorno visual a Consola 1 se hace en finally, también si algún
+    // El retorno visual a la pestaña 1 se hace en finally, también si algún
     // check lanza una excepción.
   } catch (error) {
     const message = error?.message || String(error);

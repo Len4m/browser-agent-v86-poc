@@ -31,7 +31,7 @@
 
   function userRequestLikelyNeedsVm(userText) {
     const t = String(userText || "").toLowerCase();
-    return /\b(vm|lista|listar|listado|archivos?|ficheros?|directorios?|carpetas?|\/etc|\/var|\/home|tmux|serial|curl|wget|ip\b|red\b|docker|alpine|kernel|ejecuta|comando|which|leer|lee\b|muestra|mostrar|contenido|ruta)\b/i.test(t)
+    return /\b(vm|lista|listar|listado|archivos?|ficheros?|directorios?|carpetas?|\/etc|\/var|\/home|serial|curl|wget|ip\b|red\b|docker|alpine|kernel|ejecuta|comando|which|leer|lee\b|muestra|mostrar|contenido|ruta)\b/i.test(t)
       || /\bde\s+\/[\w./-]+/.test(t)
       || /\ben\s+\/[\w./-]+/.test(t);
   }

@@ -53,7 +53,7 @@ Abre `http://127.0.0.1:5173/`.
 2. Antes de arrancar, elige perfil, RAM, VRAM y disco.
 3. Pulsa **Arrancar VM** y espera a que la shell este lista.
 4. Para usar chat, abre el panel **LLM**, selecciona backend/modelo y pulsa cargar.
-5. Usa la consola tmux visible, el formulario manual o el chat con tools habilitadas.
+5. Usa las consolas xterm, el formulario manual o el chat con tools habilitadas.
 
 Los perfiles generados aparecen desde `/v86/images/profiles/index.json`. Si no aparecen, ejecuta `npm run setup`.
 
@@ -63,7 +63,7 @@ Perfiles incluidos:
 
 | Perfil | Uso | RAM recomendada |
 | --- | --- | --- |
-| `alpine-base` | Alpine mínimo con certificados, curl, nano y tmux | 512 MB |
+| `alpine-base` | Alpine mínimo con certificados, curl, nano y Python para el daemon xterm | 512 MB |
 | `alpine-pentest-lite` | Herramientas ligeras: nmap, ffuf, Python, DNS y wordlists web pequeñas | 1024 MB |
 | `alpine-pentest-web` | Pentest web ampliado: nikto, httpx, SSL Perl y wordlists | 1536 MB |
 
@@ -82,9 +82,9 @@ Canales seriales actuales:
 
 | Canal | Dispositivo VM | Uso |
 | --- | --- | --- |
-| `serial0` | `/dev/ttyS0` | Consola tmux visible del usuario |
+| `serial0` | `/dev/ttyS0` | Arranque, login base y pestaña 1 de usuario |
 | `serial1` | `/dev/ttyS1` | Tools del agente, checks y formulario manual |
-| `serial2` | `/dev/ttyS2` | Acciones de UI sobre tmux: consolas, splits, zoom y refresco |
+| `serial2` | `/dev/ttyS2` | Daemon xterm/PTY para las pestañas interactivas 2-4 |
 
 Los runners instalados en el initramfs vienen de:
 
@@ -223,7 +223,7 @@ npm start
 - **Cambiaste initramfs, runners o perfiles**: ejecuta `npm run setup` y arranca una VM nueva.
 - **Disco HDA no monta**: verifica que existe `public/v86/disks/alpine-hda-*.img`; `npm run setup` los crea.
 - **Tools o checks afectan a la consola visible**: valida `/dev/ttyS1`, `/dev/ttyS2` y los procesos `ba-serial1-runner` / `ba-serial2-console-runner`.
-- **tmux muestra restos visuales**: usa el botón de refresco; la UI usa `serial2` y `ba-consolectl` para redibujar.
+- **Una consola xterm queda desincronizada**: usa refrescar; limpia el xterm local y envia `Ctrl+L` al shell activo.
 - **LLM local falla por WebGPU**: prueba un modelo WASM o reduce el modelo; algunas rutas intentan fallback WASM.
 - **Ollama falla por CORS**: configura `OLLAMA_ORIGINS` con el origen exacto desde el que sirves la página.
 - **Ollama no responde con el modelo elegido**: comprueba que el modelo está instalado en tu Ollama local con `ollama list` o instálalo con `ollama pull <modelo>`.

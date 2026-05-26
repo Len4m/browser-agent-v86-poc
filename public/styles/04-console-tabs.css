@@ -1,6 +1,6 @@
 /* Browser Agent v86 - 04-console-tabs.css */
 
-/* Console tabs: simple tmux-backed UI. */
+/* Console tabs: direct xterm-backed UI. */
 .console-tabs {
   display: flex;
   align-items: center;
@@ -40,10 +40,10 @@
   text-overflow: ellipsis;
 }
 .console-tab.human {
-  max-width: none;
+  max-width: 190px;
 }
 .console-tab.human .console-tab-label {
-  overflow: visible;
+  overflow: hidden;
 }
 .console-tab:hover { background: #f1f5f9; }
 .console-tab.active {
@@ -88,6 +88,32 @@
   border-radius: 11px;
   font-size: 12px;
   white-space: nowrap;
+}
+.ba-console-rename-field {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+}
+.ba-console-rename-field input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px 11px;
+  background: #fff;
+  color: #0f172a;
+  font: 14px/1.35 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  outline: none;
+  box-shadow: none;
+}
+.ba-console-rename-field input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, .18);
 }
 .console-action-btn {
   width: 36px;
@@ -135,9 +161,13 @@
   -webkit-mask-image: url("/assets/icons/lucide/square-x.svg");
   mask-image: url("/assets/icons/lucide/square-x.svg");
 }
-.tmux-help-btn::before {
+.console-help-btn::before {
   -webkit-mask-image: url("/assets/icons/lucide/circle-help.svg");
   mask-image: url("/assets/icons/lucide/circle-help.svg");
+}
+.close-console-btn::before {
+  -webkit-mask-image: url("/assets/icons/lucide/square-x.svg");
+  mask-image: url("/assets/icons/lucide/square-x.svg");
 }
 .redraw-console-btn::before {
   -webkit-mask-image: url("/assets/icons/lucide/refresh-ccw-dot.svg");
@@ -214,19 +244,19 @@ body.console-readonly:not(.agent-busy) #vm-lock-overlay {
   mask-image: url("/assets/icons/lucide/square-terminal.svg");
 }
 
-/* Modal de ayuda tmux (js/03-console-tabs.js) */
-.ba-tmux-help {
+/* Modal de ayuda consola */
+.ba-console-help {
   font-size: 0.9rem;
   line-height: 1.45;
   color: #334155;
 }
-.ba-tmux-help-lead {
+.ba-console-help-lead {
   margin: 0 0 0.85rem;
 }
-.ba-tmux-help-section {
+.ba-console-help-section {
   margin: 0 0 0.85rem;
 }
-.ba-tmux-help-section h4 {
+.ba-console-help-section h4 {
   margin: 0 0 0.4rem;
   font-size: 0.82rem;
   font-weight: 800;
@@ -234,26 +264,26 @@ body.console-readonly:not(.agent-busy) #vm-lock-overlay {
   text-transform: uppercase;
   color: #0f172a;
 }
-.ba-tmux-help-table {
+.ba-console-help-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.88rem;
 }
-.ba-tmux-help-table td {
+.ba-console-help-table td {
   padding: 0.35rem 0.45rem;
   vertical-align: top;
   border-bottom: 1px solid #e2e8f0;
 }
-.ba-tmux-help-table tr:last-child td {
+.ba-console-help-table tr:last-child td {
   border-bottom: none;
 }
-.ba-tmux-help-keys {
+.ba-console-help-keys {
   width: 42%;
   white-space: nowrap;
   font-weight: 600;
   color: #0f172a;
 }
-.ba-tmux-help kbd {
+.ba-console-help kbd {
   display: inline-block;
   padding: 0.1rem 0.38rem;
   border: 1px solid #cbd5e1;
@@ -266,26 +296,26 @@ body.console-readonly:not(.agent-busy) #vm-lock-overlay {
   color: #0f172a;
   box-shadow: 0 1px 0 #e2e8f0;
 }
-.ba-tmux-help-plus {
+.ba-console-help-plus {
   margin: 0 0.12rem;
   color: #64748b;
   font-weight: 700;
 }
-.ba-tmux-help-list {
+.ba-console-help-list {
   margin: 0;
   padding-left: 1.15rem;
 }
-.ba-tmux-help-list li + li {
+.ba-console-help-list li + li {
   margin-top: 0.35rem;
 }
-.ba-tmux-help code {
+.ba-console-help code {
   font-size: 0.84em;
   padding: 0.05rem 0.28rem;
   border-radius: 5px;
   background: #f1f5f9;
   color: #0f172a;
 }
-.ba-tmux-help-foot {
+.ba-console-help-foot {
   margin: 0;
   padding: 0.55rem 0.65rem;
   border-radius: 10px;

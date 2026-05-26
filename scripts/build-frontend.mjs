@@ -28,7 +28,7 @@ const browserSourceOrder = [
   "src/app/origin-awareness.ts",
   "src/ui/status-controls.ts",
   "src/ui/modal.ts",
-  "src/console/tmux-tabs.ts",
+  "src/console/xterm-consoles.ts",
   "src/vm/profile-config.ts",
   "src/vm/runtime-assets.ts",
   "src/vm/serial-vm.ts",

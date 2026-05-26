@@ -14,7 +14,7 @@
     "ca-certificates",
     "curl",
     "nano",
-    "tmux"
+    "python3"
   ],
   "firstBootCommands": [
     "update-ca-certificates >/tmp/update-ca-certificates.log 2>&1 || true"
@@ -24,13 +24,13 @@
     "rm -rf /rootfs/usr/share/man /rootfs/usr/share/doc"
   ],
   "validationCommands": [
-    "tmux -V",
     "curl --version",
     "nano --version || true",
+    "python3 --version",
     "df -h",
     "free -m"
   ],
-  "bootMessage": "Browser Alpine Base Lite ready + tmux.",
+  "bootMessage": "Browser Alpine Base Lite ready.",
   "recommendedVramMb": 8,
   "defaultDisk": "initramfs"
 }

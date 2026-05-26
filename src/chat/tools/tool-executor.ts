@@ -3,7 +3,7 @@
 // v9.37.5: async tool execution coordinator with permission levels.
 //
 // The VM execution itself must stay on the main thread because it talks to the
-// v86 serial adapter and tmux state. It is still non-blocking for the browser:
+// v86 serial adapter and console state. It is still non-blocking for the browser:
 // execVm returns a Promise and completes from serial events/timeouts. CPU-heavy
 // parsing can later move to workers without changing the public API here.
 
@@ -60,7 +60,7 @@
     const toolDef = registry.getTool(normalized.tool);
     if (!toolDef) throw new Error(`Herramienta no disponible: ${normalized.tool}`);
 
-    if (toolDef.requiresVm || toolDef.requiresTmux) {
+    if (toolDef.requiresVm || toolDef.requiresConsole) {
       try {
         registry.assertVmToolPreconditions();
       } catch (error) {

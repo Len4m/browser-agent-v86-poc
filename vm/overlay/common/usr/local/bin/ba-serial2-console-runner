@@ -1,114 +1,265 @@
-#!/bin/sh
-# Browser Agent serial2 console-control runner.
-# Dedicated lightweight protocol for tmux UI actions. It only accepts a small
-# allowlist of ba-consolectl actions; it is not a general shell executor.
-set +e
+#!/usr/bin/env python3
+"""Browser Agent xterm console daemon over serial2/ttyS2.
 
-TTY="${1:-/dev/ttyS2}"
-RUN_DIR="/tmp/ba-s2-console"
-mkdir -p "$RUN_DIR" 2>/dev/null
-chmod 700 "$RUN_DIR" 2>/dev/null || true
+The browser owns the visual terminals. This daemon owns the guest PTYs and
+multiplexes their bytes over a line-framed serial protocol.
+"""
 
-if [ ! -e "$TTY" ]; then
-  exit 0
-fi
+import base64
+import fcntl
+import json
+import os
+import pty
+import select
+import signal
+import struct
+import sys
+import termios
+import time
 
-stty -F "$TTY" 115200 cs8 -cstopb -parenb -ixon -ixoff -echo 2>/dev/null || true
+TTY = sys.argv[1] if len(sys.argv) > 1 else "/dev/ttyS2"
+MAX_SESSIONS = 4
+MAX_INPUT_BYTES = 32 * 1024
+OUT_CHUNK_BYTES = 768
 
-say() {
-  printf '%s\n' "$*" > "$TTY" 2>/dev/null || true
-}
 
-safe_id() {
-  printf '%s' "$1" | tr -c 'A-Za-z0-9_.-' '_'
-}
+def safe_token(value):
+    text = str(value or "")
+    return "".join(ch for ch in text if ch.isalnum() or ch in "_.-")[:32]
 
-valid_index() {
-  case "$1" in ''|*[!0-9]*) return 1 ;; esac
-  return 0
-}
 
-run_control() {
-  id="$(safe_id "$1")"
-  action="$2"
-  idx="$3"
-  arg="$4"
-  out="$RUN_DIR/$id.out"
+def b64_bytes(data):
+    return base64.b64encode(data).decode("ascii")
 
-  rm -f "$out" 2>/dev/null
-  say "BA_CTL_START:$id"
-  say "BA_CTL_LIVE_START:$id"
 
-  rc=0
-  case "$action" in
-    list)
-      /usr/local/bin/ba-consolectl list >"$out" 2>&1
-      rc="$?"
-      ;;
-    new)
-      /usr/local/bin/ba-consolectl new >"$out" 2>&1
-      rc="$?"
-      ;;
-    status|select|select-redraw|zoom|close-pane|close-window|reset|clear)
-      if ! valid_index "$idx"; then
-        printf 'BA_CTL_ERROR:invalid-index\n' >"$out"
-        rc=64
-      else
-        /usr/local/bin/ba-consolectl "$action" "$idx" >"$out" 2>&1
-        rc="$?"
-      fi
-      ;;
-    split)
-      if ! valid_index "$idx"; then
-        printf 'BA_CTL_ERROR:invalid-index\n' >"$out"
-        rc=64
-      else
-        case "$arg" in
-          vertical|horizontal|v|h)
-            /usr/local/bin/ba-consolectl split "$idx" "$arg" >"$out" 2>&1
-            rc="$?"
-            ;;
-          *)
-            printf 'BA_CTL_ERROR:invalid-split\n' >"$out"
-            rc=64
-            ;;
-        esac
-      fi
-      ;;
-    *)
-      printf 'BA_CTL_ERROR:invalid-action\n' >"$out"
-      rc=64
-      ;;
-  esac
+def b64_text(text):
+    return b64_bytes(str(text).encode("utf-8", "replace"))
 
-  cat "$out" > "$TTY" 2>/dev/null || true
-  say "BA_CTL_LIVE_END:$id"
-  say "BA_CTL_END:$id:$rc"
-  rm -f "$out" 2>/dev/null
-}
 
-say "BA_SERIAL2_CONSOLE_READY tty=$TTY"
+class XtermDaemon:
+    def __init__(self, tty_path):
+        self.tty_path = tty_path
+        self.tty_fd = os.open(tty_path, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
+        self.configure_tty()
+        self.sessions = {}
+        self.input_buffer = b""
+        self.running = True
 
-exec 3<>"$TTY"
-while IFS= read -r line <&3; do
-  line="$(printf '%s' "$line" | tr -d '\r')"
-  case "$line" in
-    __BA_CTL:*)
-      payload="${line#__BA_CTL:}"
-      id="${payload%%:*}"
-      rest="${payload#*:}"
-      if [ "$rest" = "$payload" ]; then
-        say "BA_CTL_ERROR:bad-frame"
-        continue
-      fi
-      action="${rest%%:*}"
-      rest="${rest#*:}"
-      idx="${rest%%:*}"
-      arg="${rest#*:}"
-      if [ "$arg" = "$rest" ]; then
-        arg=""
-      fi
-      run_control "$id" "$action" "$idx" "$arg"
-      ;;
-  esac
-done
+    def configure_tty(self):
+        attrs = termios.tcgetattr(self.tty_fd)
+        attrs[0] = attrs[0] & ~(termios.IGNBRK | termios.BRKINT | termios.PARMRK | termios.ISTRIP | termios.INLCR | termios.IGNCR | termios.ICRNL | termios.IXON | termios.IXOFF)
+        attrs[1] = attrs[1] & ~termios.OPOST
+        attrs[2] = attrs[2] | termios.CS8 | termios.CREAD | termios.CLOCAL
+        attrs[3] = attrs[3] & ~(termios.ECHO | termios.ECHONL | termios.ICANON | termios.ISIG | termios.IEXTEN)
+        attrs[6][termios.VMIN] = 0
+        attrs[6][termios.VTIME] = 0
+        termios.tcsetattr(self.tty_fd, termios.TCSANOW, attrs)
+
+    def write_line(self, line):
+        data = (line + "\n").encode("ascii", "replace")
+        while data:
+            try:
+                sent = os.write(self.tty_fd, data)
+                data = data[sent:]
+            except BlockingIOError:
+                time.sleep(0.01)
+            except OSError:
+                return
+
+    def reply(self, request_id, code, message=""):
+        self.write_line(f"BA_XTERM_REPLY:{safe_token(request_id)}:{int(code)}:{b64_text(message)}")
+
+    def event(self, kind, session_id, detail=""):
+        self.write_line(f"BA_XTERM_EVENT:{safe_token(kind)}:{safe_token(session_id)}:{safe_token(detail)}")
+
+    def set_winsize(self, master_fd, cols, rows):
+        cols = max(20, min(240, int(cols or 100)))
+        rows = max(8, min(80, int(rows or 24)))
+        packed = struct.pack("HHHH", rows, cols, 0, 0)
+        fcntl.ioctl(master_fd, termios.TIOCSWINSZ, packed)
+
+    def spawn_session(self, session_id, cols=100, rows=24):
+        if session_id in self.sessions:
+            self.set_winsize(self.sessions[session_id]["master"], cols, rows)
+            return
+        if len(self.sessions) >= MAX_SESSIONS:
+            raise RuntimeError("max-sessions")
+
+        master, slave = pty.openpty()
+        self.set_winsize(master, cols, rows)
+        pid = os.fork()
+        if pid == 0:
+            try:
+                os.setsid()
+                fcntl.ioctl(slave, termios.TIOCSCTTY, 0)
+                os.dup2(slave, 0)
+                os.dup2(slave, 1)
+                os.dup2(slave, 2)
+                if master > 2:
+                    os.close(master)
+                if slave > 2:
+                    os.close(slave)
+                env = os.environ.copy()
+                env["HOME"] = "/root"
+                env["TERM"] = "xterm-256color"
+                env["HISTFILE"] = "/dev/null"
+                try:
+                    os.chdir("/root")
+                except OSError:
+                    os.chdir("/")
+                os.execve("/bin/sh", ["/bin/sh", "-l"], env)
+            except BaseException as exc:
+                os.write(2, f"exec shell failed: {exc}\n".encode("utf-8", "replace"))
+                os._exit(127)
+
+        os.close(slave)
+        os.set_blocking(master, False)
+        self.sessions[session_id] = {"pid": pid, "master": master, "cols": int(cols), "rows": int(rows)}
+        self.event("created", session_id)
+
+    def close_session(self, session_id):
+        session = self.sessions.pop(session_id, None)
+        if not session:
+            return
+        try:
+            os.killpg(session["pid"], signal.SIGHUP)
+        except OSError:
+            try:
+                os.kill(session["pid"], signal.SIGHUP)
+            except OSError:
+                pass
+        try:
+            os.close(session["master"])
+        except OSError:
+            pass
+        self.event("closed", session_id)
+
+    def reap_children(self):
+        for session_id, session in list(self.sessions.items()):
+            try:
+                pid, _status = os.waitpid(session["pid"], os.WNOHANG)
+            except ChildProcessError:
+                pid = session["pid"]
+            if pid:
+                self.close_session(session_id)
+
+    def list_sessions(self):
+        return [
+            {
+                "id": session_id,
+                "pid": session["pid"],
+                "cols": session["cols"],
+                "rows": session["rows"],
+                "alive": True,
+            }
+            for session_id, session in sorted(self.sessions.items())
+        ]
+
+    def handle_frame(self, line):
+        if line == "__BA_XTERM_PING":
+            self.write_line(f"BA_XTERM_READY tty={self.tty_path} max={MAX_SESSIONS}")
+            return
+
+        if line.startswith("__BA_XTERM_IN:"):
+            _prefix, session_id, payload = line.split(":", 2)
+            session_id = safe_token(session_id)
+            session = self.sessions.get(session_id)
+            if not session:
+                return
+            data = base64.b64decode(payload.encode("ascii"), validate=False)
+            if len(data) > MAX_INPUT_BYTES:
+                data = data[:MAX_INPUT_BYTES]
+            os.write(session["master"], data)
+            return
+
+        if not line.startswith("__BA_XTERM:"):
+            return
+
+        parts = line.split(":")
+        request_id = safe_token(parts[1] if len(parts) > 1 else "")
+        action = safe_token(parts[2] if len(parts) > 2 else "")
+        session_id = safe_token(parts[3] if len(parts) > 3 else "")
+        arg1 = parts[4] if len(parts) > 4 else ""
+        arg2 = parts[5] if len(parts) > 5 else ""
+
+        try:
+            if action == "create":
+                self.spawn_session(session_id, int(arg1 or 100), int(arg2 or 24))
+                self.reply(request_id, 0, "created")
+            elif action == "close":
+                self.close_session(session_id)
+                self.reply(request_id, 0, "closed")
+            elif action == "resize":
+                session = self.sessions.get(session_id)
+                if not session:
+                    raise RuntimeError("session-not-found")
+                self.set_winsize(session["master"], int(arg1 or 100), int(arg2 or 24))
+                session["cols"] = int(arg1 or 100)
+                session["rows"] = int(arg2 or 24)
+                self.reply(request_id, 0, "resized")
+            elif action == "list":
+                self.reply(request_id, 0, json.dumps(self.list_sessions(), separators=(",", ":")))
+            else:
+                self.reply(request_id, 64, "invalid-action")
+        except BaseException as exc:
+            self.reply(request_id, 1, str(exc))
+
+    def read_tty(self):
+        try:
+            data = os.read(self.tty_fd, 4096)
+        except BlockingIOError:
+            return
+        if not data:
+            return
+        self.input_buffer += data
+        if len(self.input_buffer) > 128 * 1024:
+            self.input_buffer = self.input_buffer[-64 * 1024 :]
+        while b"\n" in self.input_buffer:
+            raw, self.input_buffer = self.input_buffer.split(b"\n", 1)
+            line = raw.decode("ascii", "ignore").rstrip("\r")
+            self.handle_frame(line)
+
+    def read_session(self, session_id, session):
+        try:
+            data = os.read(session["master"], 4096)
+        except BlockingIOError:
+            return
+        except OSError:
+            self.close_session(session_id)
+            return
+        if not data:
+            self.close_session(session_id)
+            return
+        for i in range(0, len(data), OUT_CHUNK_BYTES):
+            self.write_line(f"BA_XTERM_OUT:{session_id}:{b64_bytes(data[i:i + OUT_CHUNK_BYTES])}")
+
+    def serve(self):
+        self.write_line(f"BA_XTERM_READY tty={self.tty_path} max={MAX_SESSIONS}")
+        while self.running:
+            self.reap_children()
+            fds = [self.tty_fd] + [session["master"] for session in self.sessions.values()]
+            try:
+                readable, _w, _x = select.select(fds, [], [], 0.25)
+            except OSError:
+                continue
+            if self.tty_fd in readable:
+                self.read_tty()
+            for session_id, session in list(self.sessions.items()):
+                if session["master"] in readable:
+                    self.read_session(session_id, session)
+
+
+def main():
+    if not os.path.exists(TTY):
+        return 0
+    daemon = XtermDaemon(TTY)
+    try:
+        daemon.serve()
+    finally:
+        for session_id in list(daemon.sessions):
+            daemon.close_session(session_id)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
