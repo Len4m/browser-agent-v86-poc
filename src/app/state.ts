@@ -26,16 +26,18 @@ const state = {
   serialFitRaf: 0,
   serialScrollRaf: 0,
   serialWriteDisposable: null,
+  serialKeyHandlerAttached: false,
   snapshotRestoring: false,
   diskMounted: false,
   consoleTabs: {
     uiReady: false,
     ready: false,
+    extraReady: false,
     initializing: false,
     initTimer: 0,
     activeId: "human-1",
-    // Consolas xterm visibles para el usuario. Cada pestaña se respalda con
-    // una PTY dentro de la VM y se multiplexa por UART2/ttyS2.
+    // Consola 1 usa serial0 real. Las consolas adicionales se respaldan con
+    // PTYs dentro de la VM y se multiplexan por UART2/ttyS2.
     fixedCols: 100,
     fixedRows: 24,
     maxHumanConsoles: 4,
@@ -43,7 +45,7 @@ const state = {
     outputDisposable: null,
     eventDisposable: null,
     tabs: [
-      { id: "human-1", owner: "human", title: "Consola 1", sessionId: "1", humanNumber: 1, closable: false, status: "pending" },
+      { id: "human-1", owner: "human", title: "Consola 1", transport: "serial0", humanNumber: 1, closable: false, status: "pending" },
     ],
   },
   bgTools: {

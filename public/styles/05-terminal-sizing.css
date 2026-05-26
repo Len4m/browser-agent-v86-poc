@@ -48,22 +48,28 @@ body.xterm-direct-console-mode-pending #serial-console.serial-screen,
   flex: 0 0 auto;
 }
 
-body.xterm-direct-console-mode-pending #serial-console .xterm {
+#serial-console .xterm {
   width: 100% !important;
   height: 100% !important;
   padding: 0 !important;
   margin: 0 !important;
+  box-sizing: content-box !important;
   border-radius: 0 !important;
   overflow: hidden !important;
 }
 
-body.xterm-direct-console-mode-pending #serial-console .xterm-viewport {
+#serial-console .xterm-viewport {
   overflow: hidden !important;
 }
 
-body.xterm-direct-console-mode-pending #serial-console .xterm-screen {
+#serial-console .xterm-screen {
   width: auto !important;
   border-radius: 0 !important;
+}
+
+#serial-console .xterm-screen canvas {
+  left: 0 !important;
+  top: 0 !important;
 }
 
 body.xterm-direct-console-mode #vm-lock-overlay,
@@ -90,11 +96,11 @@ body.console-readonly:not(.agent-busy) #vm-lock-overlay {
   background: #000;
 }
 
-body.xterm-direct-console-mode .xterm-console-host {
+body.xterm-direct-console-mode.console-extra-active .xterm-console-host {
   display: block;
 }
 
-body.xterm-direct-console-mode #serial-console.serial-screen {
+body.xterm-direct-console-mode.console-extra-active #serial-console.serial-screen {
   display: none !important;
 }
 

@@ -100,6 +100,7 @@ function teardownSerialTerminalHelpers() {
     try { state.serialWriteDisposable.dispose(); } catch {}
   }
   state.serialWriteDisposable = null;
+  state.serialKeyHandlerAttached = false;
 }
 
 function setupSerialTerminalHelpers() {
@@ -114,6 +115,18 @@ function setupSerialTerminalHelpers() {
 
   if (!state.serialWriteDisposable && typeof term.onWriteParsed === "function") {
     state.serialWriteDisposable = term.onWriteParsed(() => scheduleSerialScrollToBottom());
+  }
+
+  if (!state.serialKeyHandlerAttached && typeof term.attachCustomKeyEventHandler === "function") {
+    term.attachCustomKeyEventHandler((event) => {
+      if (event.type !== "keydown") return true;
+      if (!event.ctrlKey || event.shiftKey || event.altKey || event.metaKey) return true;
+      if (String(event.key || "").toLowerCase() !== "c") return true;
+      if (typeof term.hasSelection === "function" && term.hasSelection()) return true;
+      try { state.vm?.serial0_send?.("\x03"); } catch {}
+      return false;
+    });
+    state.serialKeyHandlerAttached = true;
   }
 
   try {
@@ -323,7 +336,7 @@ async function startVm(options = {}) {
 
     setBadge($("badge-vm"), "v86 arrancando", "warn");
     setBadge($("vm-detail"), "esperando shell", "warn");
-    logTool(`[host] v86 arrancando. La consola de arranque se sustituira por xterm directo al detectar el daemon.${NL}`);
+    logTool(`[host] v86 arrancando. La consola 1 es serial0; las consolas extra usan PTYs por serial2.${NL}`);
     if (state.networkAutoRequested) {
       logTool(`[network] wsnic ya verificado. La red se comprobará automáticamente al detectar la shell.${NL}`);
     } else {
