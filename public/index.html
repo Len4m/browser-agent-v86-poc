@@ -104,13 +104,31 @@
           <button id="start-vm" type="button" class="vm-power-btn" title="Arranca o apaga la VM. Al apagar se pedirá confirmación antes de perder cambios sin snapshot.">Arrancar VM</button>
           <button id="check-disk" type="button" class="secondary" hidden title="Monta o desmonta el disco seleccionado en /mnt/hda">Montar disco</button>
         </div>
+        <div id="console-tabs" class="console-tabs">
+          <div id="console-tabs-list" class="console-tabs-list"></div>
+          <div class="console-tabs-actions">
+            <button id="new-console" type="button" class="secondary console-action-btn new-console-btn" aria-label="Nueva consola" title="Crear una consola xterm nueva (máximo 4)"></button>
+            <button id="redraw-console" type="button" class="secondary console-action-btn redraw-console-btn" aria-label="Refrescar consola" title="Limpiar la consola activa y enviar Ctrl+L"></button>
+            <button id="close-console" type="button" class="secondary danger-light console-action-btn close-console-btn" aria-label="Cerrar consola" title="Cerrar la consola activa"></button>
+            <button id="console-help" type="button" class="secondary console-action-btn console-help-btn" aria-label="Ayuda consola" title="Consolas xterm, PTYs y tools en background"></button>
+            <button id="cancel-tool" type="button" class="secondary danger-light" disabled>Cancelar tool</button>
+            <span id="console-tabs-status" class="badge">sin consola</span>
+          </div>
+        </div>
+        <div class="vm-screen-wrap">
+          <div class="vm-console-frame">
+            <div id="vm-console-shell" class="vm-console-shell">
+              <div id="serial-console" class="serial-console" tabindex="0" aria-label="Consola serial de v86"></div>
+              <div id="vm-lock-overlay"></div>
+            </div>
+          </div>
+        </div>
         <div class="snapshot-toolbar" aria-label="Snapshots de la VM">
           <button id="save-state" type="button" class="secondary snapshot-save-btn" disabled>Guardar snapshot</button>
           <button id="restore-state" type="button" class="secondary snapshot-restore-btn">Restaurar snapshot</button>
           <input id="restore-state-file" type="file" accept=".v86state,.bin,application/octet-stream" hidden />
           <div class="snapshot-note">Guarda RAM/CPU/estado de la VM. No incluye cambios de discos hda.</div>
         </div>
-        <div id="serial-console" class="serial-console" tabindex="0" aria-label="Consola serial de v86"></div>
         <pre id="terminal" class="terminal">Pulsa Arrancar VM.</pre>
         <form id="command-form" class="row">
           <input id="command-input" value="uname -a" />
@@ -178,6 +196,31 @@
       <canvas></canvas>
     </div>
   </main>
+
+  <div id="loading-overlay" aria-hidden="true">
+    <div class="loading-card" role="status" aria-live="polite">
+      <div class="loading-head">
+        <div class="loading-spinner"></div>
+        <div id="loading-title">Cargando</div>
+      </div>
+      <div id="loading-detail"></div>
+      <div class="loading-progress"><div id="loading-bar"></div></div>
+      <div id="loading-percent"></div>
+    </div>
+  </div>
+
+  <div id="ba-modal-overlay" class="ba-modal-overlay" aria-hidden="true">
+    <div class="ba-modal-card" role="dialog" aria-modal="true" aria-labelledby="ba-modal-title">
+      <div class="ba-modal-icon">!</div>
+      <div class="ba-modal-content">
+        <h3 id="ba-modal-title">Confirmar acción</h3>
+        <p id="ba-modal-message"></p>
+        <p id="ba-modal-detail" class="ba-modal-detail" hidden></p>
+        <div id="ba-modal-body" class="ba-modal-body" hidden></div>
+        <div id="ba-modal-actions" class="ba-modal-actions"></div>
+      </div>
+    </div>
+  </div>
 
   <!-- Runtime libraries copied from npm by scripts/download-v86-assets.mjs. -->
   <script src="./vendor/xterm/xterm.js"></script>

@@ -37,90 +37,16 @@ function initChatLayoutToggle() {
 function enhanceInterface() {
   document.body.classList.add("xterm-direct-console-mode-pending");
 
-  if (!$('loading-overlay')) {
-    const overlay = document.createElement("div");
-    overlay.id = "loading-overlay";
-    overlay.setAttribute("aria-hidden", "true");
-    overlay.innerHTML = `
-      <div class="loading-card" role="status" aria-live="polite">
-        <div class="loading-head">
-          <div class="loading-spinner"></div>
-          <div id="loading-title">Cargando</div>
-        </div>
-        <div id="loading-detail"></div>
-        <div class="loading-progress"><div id="loading-bar"></div></div>
-        <div id="loading-percent"></div>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-  }
-
-  if (!$("ba-modal-overlay")) {
-    const modal = document.createElement("div");
-    modal.id = "ba-modal-overlay";
-    modal.className = "ba-modal-overlay";
-    modal.setAttribute("aria-hidden", "true");
-    modal.innerHTML = `
-      <div class="ba-modal-card" role="dialog" aria-modal="true" aria-labelledby="ba-modal-title">
-        <div class="ba-modal-icon">!</div>
-        <div class="ba-modal-content">
-          <h3 id="ba-modal-title">Confirmar acción</h3>
-          <p id="ba-modal-message"></p>
-          <p id="ba-modal-detail" class="ba-modal-detail" hidden></p>
-          <div id="ba-modal-body" class="ba-modal-body" hidden></div>
-          <div id="ba-modal-actions" class="ba-modal-actions"></div>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(modal);
-  }
-
   const terminal = $("terminal");
   const screen = $("screen-container");
   const vmPanel = terminal?.closest(".panel");
-  const toolbar = vmPanel?.querySelector(".toolbar");
 
   const serialConsole = $("serial-console");
   if (screen) {
     screen.classList.add("hidden-vga");
   }
-  if (serialConsole && toolbar) {
-    const tabs = document.createElement("div");
-    tabs.id = "console-tabs";
-    tabs.className = "console-tabs";
-    tabs.innerHTML = `
-      <div id="console-tabs-list" class="console-tabs-list"></div>
-      <div class="console-tabs-actions">
-        <button id="new-console" type="button" class="secondary console-action-btn new-console-btn" aria-label="Nueva consola" title="Crear una consola xterm nueva (máximo 4)"></button>
-        <button id="redraw-console" type="button" class="secondary console-action-btn redraw-console-btn" aria-label="Refrescar consola" title="Limpiar la consola activa y enviar Ctrl+L"></button>
-        <button id="close-console" type="button" class="secondary danger-light console-action-btn close-console-btn" aria-label="Cerrar consola" title="Cerrar la consola activa"></button>
-        <button id="console-help" type="button" class="secondary console-action-btn console-help-btn" aria-label="Ayuda consola" title="Consolas xterm, PTYs y tools en background"></button>
-        <button id="cancel-tool" type="button" class="secondary danger-light" disabled>Cancelar tool</button>
-        <span id="console-tabs-status" class="badge">sin consola</span>
-      </div>
-    `;
-    toolbar.after(tabs);
-
-    const wrap = document.createElement("div");
-    wrap.className = "vm-screen-wrap";
-    tabs.after(wrap);
-
-    const frame = document.createElement("div");
-    frame.className = "vm-console-frame";
-    const shell = document.createElement("div");
-    shell.id = "vm-console-shell";
-    shell.className = "vm-console-shell";
-    frame.appendChild(shell);
-    wrap.appendChild(frame);
-
-    if (serialConsole) {
-      serialConsole.classList.add("serial-screen");
-      shell.appendChild(serialConsole);
-    }
-
-    const overlay = document.createElement("div");
-    overlay.id = "vm-lock-overlay";
-    shell.appendChild(overlay);
+  if (serialConsole) {
+    serialConsole.classList.add("serial-screen");
   }
 
   if (terminal && vmPanel) {
@@ -150,7 +76,6 @@ function enhanceInterface() {
     commandButton.classList.add("manual-tool-btn");
     commandButton.title = commandButton.title || "Ejecutar comando en la VM por serial1/ttyS1 sin bloquear la consola del usuario";
   }
-
 
   window.BA_BG_TOOLS?.mountUi?.();
 
