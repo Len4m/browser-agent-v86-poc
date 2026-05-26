@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -56,6 +57,16 @@ function publicFilePath(path) {
 
 function publicUrl(path) {
   return `/${String(path || "").replace(/^\/?public\//, "").replace(/^\/+/, "")}`;
+}
+
+function contentHash(path) {
+  return createHash("sha256").update(readFileSync(path)).digest("hex").slice(0, 12);
+}
+
+function versionedPublicUrl(path) {
+  const abs = join(root, path);
+  const url = publicUrl(path);
+  return `${url}?v=${contentHash(abs)}`;
 }
 
 if (!existsSync(profilePath)) fail(`no existe el perfil ${profilePath}`);
@@ -142,8 +153,8 @@ const manifest = {
   alpineVersion,
   alpineBranch,
   arch,
-  output: publicUrl(outputFile),
-  kernelOutput: publicUrl(kernelOutputFile),
+  output: versionedPublicUrl(outputFile),
+  kernelOutput: versionedPublicUrl(kernelOutputFile),
   initramfsBytes: bytes(outputAbs),
   kernelBytes: bytes(kernelAbs),
   packages,
