@@ -173,15 +173,6 @@
   -webkit-mask-image: url("/assets/icons/lucide/refresh-ccw-dot.svg");
   mask-image: url("/assets/icons/lucide/refresh-ccw-dot.svg");
 }
-button.danger-light {
-  border: 1px solid #fecdd3;
-  background: #fff1f2;
-  color: #be123c;
-}
-button.danger-light:hover {
-  background: #ffe4e6;
-  color: #9f1239;
-}
 body.console-readonly:not(.agent-busy) #vm-lock-overlay {
   display: flex;
   align-items: flex-start;
@@ -257,25 +248,6 @@ body.console-readonly:not(.agent-busy) #vm-lock-overlay::after {
   font-weight: 800;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: #0f172a;
-}
-.ba-console-help-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.88rem;
-}
-.ba-console-help-table td {
-  padding: 0.35rem 0.45rem;
-  vertical-align: top;
-  border-bottom: 1px solid #e2e8f0;
-}
-.ba-console-help-table tr:last-child td {
-  border-bottom: none;
-}
-.ba-console-help-keys {
-  width: 42%;
-  white-space: nowrap;
-  font-weight: 600;
   color: #0f172a;
 }
 .ba-console-help kbd {

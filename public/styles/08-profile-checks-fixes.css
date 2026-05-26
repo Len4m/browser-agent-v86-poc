@@ -96,7 +96,3 @@ body.xterm-direct-console-mode-pending:not(.vm-console-active) .vm-screen-wrap,
 body.xterm-direct-console-mode:not(.vm-console-active) .vm-screen-wrap{
   display: none;
 }
-body.xterm-direct-console-mode-pending:not(.vm-console-active) .vm-hint,
-body.xterm-direct-console-mode:not(.vm-console-active) .vm-hint{
-  margin-top: 4px;
-}

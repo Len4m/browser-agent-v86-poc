@@ -78,47 +78,6 @@
   font-size: 12px;
   font-weight: 800;
 }
-.config-info-panel summary {
-  cursor: pointer;
-  font-weight: 800;
-  color: #334155;
-}
-.config-info-note {
-  margin: 10px 0 12px;
-  max-width: 980px;
-  color: #475569;
-  line-height: 1.45;
-}
-.config-info-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(220px, 1fr));
-  gap: 8px 12px;
-}
-.config-info-grid > div {
-  display: grid;
-  gap: 4px;
-  padding: 8px 10px;
-  border-radius: 12px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-}
-.config-info-grid span {
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 800;
-}
-.config-info-grid code {
-  color: #0f172a;
-  font-size: 12px;
-  word-break: break-all;
-}
-@media (max-width: 900px) {
-  .config-info-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-
 .collapsible-panel > summary.panel-title h2 {
   margin-right: auto;
 }
