@@ -9,6 +9,7 @@
  * be typed/refactored incrementally without exposing load order in public/.
  */
 import * as esbuild from "esbuild";
+import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,6 +18,7 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const outFile = join(root, "public/assets/app.js");
 const bridgeOutFile = join(root, "public/assets/ai-sdk-bridge.mjs");
 const indexFile = join(root, "public/index.html");
+const styleFile = join(root, "public/style.css");
 const tempFile = join(root, "build/browser/app-entry.js");
 const generatedVersionFile = join(root, "build/browser/generated/00-app-version.js");
 const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
@@ -61,6 +63,14 @@ const browserSourceOrder = [
 
 const minify = process.env.BA_MINIFY === "1" || process.argv.includes("--minify");
 
+function cacheKeyForContent(content) {
+  return createHash("sha256").update(content).digest("hex").slice(0, 12);
+}
+
+function cacheKeyForPublicFile(relativePath) {
+  return cacheKeyForContent(readFileSync(join(root, "public", relativePath), "utf8"));
+}
+
 mkdirSync(dirname(tempFile), { recursive: true });
 mkdirSync(dirname(outFile), { recursive: true });
 mkdirSync(dirname(generatedVersionFile), { recursive: true });
@@ -81,7 +91,16 @@ writeFileSync(generatedVersionFile, [
   "})();",
 ].join("\n"), "utf8");
 
+const styleCss = readFileSync(styleFile, "utf8")
+  .replace(/@import url\("(\.\/styles\/[^"?]+\.css)(?:\?v=[^"]*)?"\);/g, (_match, url) => {
+    const relativePath = url.replace(/^\.\//, "");
+    return `@import url("${url}?v=${cacheKeyForPublicFile(relativePath)}");`;
+  });
+writeFileSync(styleFile, styleCss, "utf8");
+
 const indexHtml = readFileSync(indexFile, "utf8")
+  .replace(/href="\.\/vendor\/xterm\/xterm\.css(?:\?v=[^"]*)?"/g, `href="./vendor/xterm/xterm.css?v=${cacheKeyForPublicFile("vendor/xterm/xterm.css")}"`)
+  .replace(/href="\.\/style\.css(?:\?v=[^"]*)?"/g, `href="./style.css?v=${cacheKeyForContent(styleCss)}"`)
   .replace(/src="\.\/assets\/ai-sdk-bridge\.mjs(?:\?v=[^"]*)?"/g, `src="./assets/ai-sdk-bridge.mjs?v=${packageJson.version}"`)
   .replace(/src="\.\/assets\/app\.js(?:\?v=[^"]*)?"/g, `src="./assets/app.js?v=${packageJson.version}"`);
 writeFileSync(indexFile, indexHtml, "utf8");

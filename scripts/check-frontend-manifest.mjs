@@ -21,7 +21,7 @@ const styleCss = readFileSync(join(publicRoot, "style.css"), "utf8");
 
 const loadedJs = extract(/src="\.\/(js\/[^"?]+\.(?:js|mjs))(?:\?[^"]*)?"/g, indexHtml);
 const loadedAssets = extract(/src="\.\/(assets\/[^"?]+\.(?:js|mjs))(?:\?[^"]*)?"/g, indexHtml);
-const loadedCss = extract(/@import url\("\.\/(styles\/[^"]+\.css)"\)/g, styleCss);
+const loadedCss = extract(/@import url\("\.\/(styles\/[^"?]+\.css)(?:\?v=[^"]*)?"\)/g, styleCss);
 
 const allCss = readdirSync(join(publicRoot, "styles")).filter((f) => f.endsWith(".css")).map((f) => `styles/${f}`);
 
