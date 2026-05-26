@@ -133,6 +133,18 @@
     if (!chatPanel || !chatForm || document.getElementById("ba-agent-debug-panel")) return;
 
     let skipNextDetailsLock = false;
+    let chatLogObserver = null;
+
+    function stopChatLogObserver() {
+      chatLogObserver?.disconnect();
+      chatLogObserver = null;
+    }
+
+    function startChatLogObserver() {
+      if (!chatLog || chatLogObserver) return;
+      chatLogObserver = new MutationObserver(() => syncChatPanelLayout());
+      chatLogObserver.observe(chatLog, { childList: true });
+    }
 
     function clearChatPanelDebugLayout() {
       chatPanel.style.minHeight = "";
@@ -152,10 +164,12 @@
 
     function syncChatPanelLayout() {
       if (panelEl.hidden || !panelEl.open) {
+        stopChatLogObserver();
         clearChatPanelDebugLayout();
         return;
       }
 
+      startChatLogObserver();
       chatPanel.classList.add("ba-chat-panel-debug-open");
       requestAnimationFrame(() => {
         if (panelEl.hidden || !panelEl.open) return;
@@ -218,10 +232,6 @@
       }
     });
     panelEl.addEventListener("toggle", syncChatPanelLayout);
-
-    if (chatLog) {
-      new MutationObserver(() => syncChatPanelLayout()).observe(chatLog, { childList: true });
-    }
 
     syncChatPanelLayout();
 
