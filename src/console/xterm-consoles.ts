@@ -278,9 +278,6 @@ function createBrowserTerminal(tab) {
     cursorBlink: true,
     scrollback: 2000,
     convertEol: false,
-    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace",
-    fontSize: 15,
-    lineHeight: 1.2,
     theme: {
       background: "#000000",
       foreground: "#e5e7eb",
