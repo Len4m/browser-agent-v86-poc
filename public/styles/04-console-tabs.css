@@ -174,12 +174,12 @@
   mask-image: url("/assets/icons/lucide/refresh-ccw-dot.svg");
 }
 button.danger-light {
-  background: #fff;
-  color: #be123c;
   border: 1px solid #fecdd3;
+  background: #fff1f2;
+  color: #be123c;
 }
 button.danger-light:hover {
-  background: #fff1f2;
+  background: #ffe4e6;
   color: #9f1239;
 }
 body.console-readonly:not(.agent-busy) #vm-lock-overlay {
@@ -192,12 +192,10 @@ body.console-readonly:not(.agent-busy) #vm-lock-overlay {
   padding: 10px;
   text-align: right;
   font-size: 12px;
+  text-shadow: 0 1px 2px rgba(0,0,0,.85);
 }
 body.console-readonly:not(.agent-busy) #vm-lock-overlay::after {
   content: attr(data-readonly-message);
-}
-body.console-readonly:not(.agent-busy) #vm-lock-overlay {
-  text-shadow: 0 1px 2px rgba(0,0,0,.85);
 }
 @media (max-width: 900px) {
   .console-tabs { align-items: stretch; flex-direction: column; }
@@ -231,17 +229,14 @@ body.console-readonly:not(.agent-busy) #vm-lock-overlay {
   height: 0.95rem;
   flex: 0 0 auto;
   background: currentColor;
+  -webkit-mask-image: url("/assets/icons/lucide/square-terminal.svg");
+  mask-image: url("/assets/icons/lucide/square-terminal.svg");
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
   -webkit-mask-position: center;
   mask-position: center;
   -webkit-mask-size: contain;
   mask-size: contain;
-}
-
-.console-tab.human::before {
-  -webkit-mask-image: url("/assets/icons/lucide/square-terminal.svg");
-  mask-image: url("/assets/icons/lucide/square-terminal.svg");
 }
 
 /* Modal de ayuda consola */

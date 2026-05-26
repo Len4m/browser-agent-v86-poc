@@ -257,16 +257,6 @@
   margin-top: 0;
 }
 
-button.danger-light {
-  border-color: #fecdd3 !important;
-  background: #fff1f2 !important;
-  color: #be123c !important;
-}
-
-button.danger-light:hover {
-  background: #ffe4e6 !important;
-}
-
 .ba-llm-msg .bubble {
   min-width: 0;
   max-width: min(42rem, 100%);
@@ -841,7 +831,7 @@ button.danger-light:hover {
 }
 
 .ba-llm-actions-primary #ba-llm-load {
-  flex: 1 1 170px;
+  flex: 1 1 100%;
 }
 
 @media (max-width: 520px) {
@@ -866,10 +856,6 @@ button.danger-light:hover {
 .ba-capability-recheck-badge:focus-visible {
   outline: 3px solid rgba(37, 99, 235, 0.28);
   outline-offset: 2px;
-}
-
-.ba-llm-actions-primary #ba-llm-load {
-  flex: 1 1 100%;
 }
 
 /* v9.50: nota compacta dentro de la lista dinámica de tools por perfil. */

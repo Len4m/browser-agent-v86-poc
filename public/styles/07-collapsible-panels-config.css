@@ -9,6 +9,9 @@
   min-height: 0;
 }
 .collapsible-panel > summary.panel-title {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
   list-style: none;
   cursor: pointer;
   user-select: none;
@@ -27,6 +30,7 @@
   color: #64748b;
   font-size: 13px;
   font-weight: 900;
+  margin-left: 8px;
   transition: transform .15s ease;
 }
 .collapsible-panel:not([open]) > summary.panel-title::after {
@@ -115,21 +119,10 @@
 }
 
 
-/* v9.62: alinear los badges de los desplegables inferiores junto a la flecha. */
-.collapsible-panel > summary.panel-title {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-}
-
 .collapsible-panel > summary.panel-title h2 {
   margin-right: auto;
 }
 
 .collapsible-panel > summary.panel-title .badge {
   margin-left: auto;
-}
-
-.collapsible-panel > summary.panel-title::after {
-  margin-left: 8px;
 }
