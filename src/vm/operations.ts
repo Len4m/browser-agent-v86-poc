@@ -15,7 +15,7 @@ function buildExecVmWrappedCommand(command, marker, maxOutputBytes) {
   const markerEnd = `${marker}_END`;
 
   /*
-    v9.44: stdout/stderr no se capturan desde el repintado visual de tmux.
+    v9.44: stdout/stderr no se capturan desde el repintado visual de la consola.
     El comando real se redirige a ficheros temporales y solo después se emite
     una copia limitada directamente a /dev/ttyS0 entre secciones únicas.
     Esto evita fragmentos de eco como "__rc", "___END:$__rc" o letras sueltas
@@ -44,7 +44,7 @@ async function execVm(command, { lock = true, label = "El agente está usando la
   if (!state.vm) return { code: 1, stdout: "", stderr: "v86 no está arrancada" };
   if (!state.vmReady) return { code: 1, stdout: "", stderr: "la VM está arrancando" };
 
-  // Las operaciones internas/tools usan UART1/ttyS1 y no cambian la consola tmux visible.
+  // Las operaciones internas/tools usan UART1/ttyS1 y no cambian la consola visible.
   // No hacemos fallback silencioso a serial0 para evitar interferir con el usuario.
   if (targetTools) {
     if (window.BA_BG_TOOLS?.execVm) {

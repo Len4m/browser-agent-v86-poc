@@ -6,7 +6,7 @@
 // Transformers.js v4 running ONNX models in a Web Worker with WebGPU.
 // q4 is the default because q4f16 requires the WebGPU "shader-f16" feature.
 // All state is namespaced under window.BA_LLM so future providers
-// (OpenAI/Anthropic/WebLLM/etc.) can be added without touching VM/tmux code.
+// (OpenAI/Anthropic/WebLLM/etc.) can be added without touching VM/console code.
 
 (function initBrowserAgentLLMState() {
   if (window.BA_LLM) return;
@@ -19,7 +19,7 @@
         maxSteps: 4,
         maxNativeTools: 10,
         toolCalling: "good",
-        defaultNativeTools: [...vmRead, "vm.tmux.status", "vm.cmd.which", "net.ip.status", "web.curl.head"],
+        defaultNativeTools: [...vmRead, "vm.console.status", "vm.cmd.which", "net.ip.status", "web.curl.head"],
       };
     }
     if (model.toolProfile === "tiny-fallback" || id.includes("270m")) {
@@ -43,7 +43,7 @@
         maxSteps: 3,
         maxNativeTools: 8,
         toolCalling: "fair",
-        defaultNativeTools: [...vmRead, "vm.tmux.status", "vm.cmd.which", "net.ip.status", "web.curl.head"],
+        defaultNativeTools: [...vmRead, "vm.console.status", "vm.cmd.which", "net.ip.status", "web.curl.head"],
       };
     }
     if (id.includes("llama") && (id.includes("1b-instruct") || id.includes("1b-instruct-onnx"))) {
@@ -59,7 +59,7 @@
         maxSteps: 3,
         maxNativeTools: 5,
         toolCalling: "fair",
-        defaultNativeTools: [...vmRead, "vm.tmux.status", "vm.cmd.which"],
+        defaultNativeTools: [...vmRead, "vm.console.status", "vm.cmd.which"],
       };
     }
     if (model.toolProfile === "reasoning-light" || id.includes("qwen3")) {
@@ -67,7 +67,7 @@
         maxSteps: 3,
         maxNativeTools: 4,
         toolCalling: "good",
-        defaultNativeTools: [...vmRead, "vm.tmux.status"],
+        defaultNativeTools: [...vmRead, "vm.console.status"],
       };
     }
     if (model.toolProfile === "middle-tools" || model.toolProfile === "strong-json") {
@@ -75,14 +75,14 @@
         maxSteps: 3,
         maxNativeTools: 6,
         toolCalling: "good",
-        defaultNativeTools: [...vmRead, "vm.tmux.status", "vm.cmd.which", "web.curl.head"],
+        defaultNativeTools: [...vmRead, "vm.console.status", "vm.cmd.which", "web.curl.head"],
       };
     }
     return {
       maxSteps: 3,
       maxNativeTools: 5,
       toolCalling: "fair",
-      defaultNativeTools: [...vmRead, "vm.tmux.status"],
+      defaultNativeTools: [...vmRead, "vm.console.status"],
     };
   }
 

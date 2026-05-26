@@ -1,52 +1,18 @@
 /* Browser Agent v86 - 05-terminal-sizing.css */
 
-/* v8: in tmux mode the terminal box is sized by JS to the exact fixed
-   tmux grid (100x24). This avoids the visual bug where full-screen programs
-   like nano paint a fixed number of columns but the black HTML container remains much wider. */
-body.tmux-console-mode .vm-screen-wrap {
+/* Direct xterm consoles use a fixed initial grid and keep the visual frame
+   separate from the actual terminal surface. */
+body.xterm-direct-console-mode .vm-screen-wrap,
+body.xterm-direct-console-mode-pending .vm-screen-wrap {
   position: relative;
   display: flex;
   justify-content: center;
   align-items: flex-start;
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: visible;
   padding: 0;
 }
-body.tmux-console-mode #serial-console.serial-screen,
-body.tmux-console-mode #serial-textarea.serial-screen {
-  width: auto;
-  max-width: none;
-  min-height: 0;
-  max-height: none;
-  padding: 0;
-  overflow: hidden;
-  flex: 0 0 auto;
-}
-body.tmux-console-mode #serial-console .xterm {
-  width: 100% !important;
-  height: 100% !important;
-  padding: 0 !important;
-}
-body.tmux-console-mode #serial-console .xterm-viewport {
-  overflow: hidden !important;
-}
-body.tmux-console-mode #serial-console .xterm-screen {
-  width: auto !important;
-}
-body.tmux-console-mode #vm-lock-overlay {
-  inset: auto;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: var(--ba-console-width, 100%);
-  height: var(--ba-console-height, 100%);
-  box-sizing: border-box;
-}
 
-
-/* v9.4: console clipping fix.
-   Keep the terminal grid unchanged, but remove decoration from the real console.
-   The optional visual border is on an outer frame so rounded corners/padding cannot cut text. */
 .vm-console-frame {
   display: inline-flex;
   align-items: flex-start;
@@ -58,45 +24,56 @@ body.tmux-console-mode #vm-lock-overlay {
   overflow: visible;
   max-width: 100%;
 }
+
 .vm-console-shell {
   position: relative;
   flex: 0 0 auto;
   background: #000;
   overflow: visible;
 }
-body.tmux-console-mode .vm-screen-wrap {
-  justify-content: center;
-  align-items: flex-start;
-  overflow-x: auto;
-  overflow-y: visible;
-  padding: 0;
-}
-body.tmux-console-mode #serial-console.serial-screen,
-body.tmux-console-mode #serial-textarea.serial-screen,
-#serial-console.serial-screen,
-#serial-textarea.serial-screen {
-  border-radius: 0 !important;
-}
-body.tmux-console-mode #serial-console.serial-screen,
-body.tmux-console-mode #serial-textarea.serial-screen {
+
+body.xterm-direct-console-mode-pending #serial-console.serial-screen,
+#serial-console.serial-screen {
+  width: auto;
+  max-width: none;
+  min-height: 0;
+  max-height: none;
   border: 0 !important;
+  border-radius: 0 !important;
   padding: 0 !important;
   margin: 0 !important;
   box-sizing: content-box !important;
   background: #000;
   overflow: hidden !important;
+  flex: 0 0 auto;
 }
-body.tmux-console-mode #serial-console .xterm {
+
+#serial-console .xterm {
+  width: 100% !important;
+  height: 100% !important;
   padding: 0 !important;
   margin: 0 !important;
+  box-sizing: content-box !important;
   border-radius: 0 !important;
   overflow: hidden !important;
 }
-body.tmux-console-mode #serial-console .xterm-viewport,
-body.tmux-console-mode #serial-console .xterm-screen {
+
+#serial-console .xterm-viewport {
+  overflow: hidden !important;
+}
+
+#serial-console .xterm-screen {
+  width: auto !important;
   border-radius: 0 !important;
 }
-body.tmux-console-mode #vm-lock-overlay {
+
+#serial-console .xterm-screen canvas {
+  left: 0 !important;
+  top: 0 !important;
+}
+
+body.xterm-direct-console-mode #vm-lock-overlay,
+body.xterm-direct-console-mode-pending #vm-lock-overlay {
   position: absolute;
   inset: 0;
   top: 0;
@@ -107,6 +84,44 @@ body.tmux-console-mode #vm-lock-overlay {
   border-radius: 0 !important;
   box-sizing: border-box;
 }
+
 body.console-readonly:not(.agent-busy) #vm-lock-overlay {
   border-radius: 0 !important;
+}
+
+.xterm-console-host {
+  display: none;
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+
+body.xterm-direct-console-mode.console-extra-active .xterm-console-host {
+  display: block;
+}
+
+body.xterm-direct-console-mode.console-extra-active #serial-console.serial-screen {
+  display: none !important;
+}
+
+.xterm-console-pane {
+  width: var(--ba-console-width, 900px);
+  height: var(--ba-console-height, 438px);
+  min-height: var(--ba-console-height, 438px);
+  background: #000;
+  overflow: hidden;
+}
+
+.xterm-console-pane[hidden] {
+  display: none !important;
+}
+
+.xterm-console-pane .xterm {
+  width: 100% !important;
+  height: 100% !important;
+  padding: 0 !important;
+}
+
+.xterm-console-pane .xterm-viewport {
+  overflow-y: auto !important;
 }

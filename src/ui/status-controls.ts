@@ -102,7 +102,7 @@ function syncChecksButton() {
 
 function blurSerialConsole() {
   const active = document.activeElement;
-  if (active?.closest?.("#serial-console, #serial-textarea, .xterm, .xterm-helper-textarea")) {
+  if (active?.closest?.("#serial-console, .xterm, .xterm-helper-textarea")) {
     try { active.blur(); } catch {}
   }
 }
