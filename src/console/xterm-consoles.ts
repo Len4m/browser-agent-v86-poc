@@ -1,7 +1,7 @@
 // @ts-nocheck
 // Browser Agent v86 - direct xterm console sessions
-// The UI manages up to four xterm.js terminals backed by PTYs inside the VM
-// through the serial2 daemon.
+// Console 1 uses the real boot serial0 xterm. Extra consoles use PTYs inside
+// the VM through the serial2 daemon.
 
 function getConsoleTab(id) {
   return state.consoleTabs.tabs.find((tab) => tab.id === id) || null;
@@ -17,9 +17,13 @@ function isConsoleControlBusy() {
   return Boolean(state.pending || state.agentBusy || state.consoleTabs.controlBusy);
 }
 
+function isSerialConsoleTab(tab) {
+  return tab?.transport === "serial0" || tab?.id === "human-1";
+}
+
 function rawSerialSend(text) {
   const active = getActiveConsoleTab();
-  if (active?.sessionId && window.BA_CONSOLE_CONTROL?.sendInput) {
+  if (active?.sessionId && !isSerialConsoleTab(active) && window.BA_CONSOLE_CONTROL?.sendInput) {
     return window.BA_CONSOLE_CONTROL.sendInput(active.sessionId, text);
   }
   if (!state.vm?.serial0_send) return false;
@@ -86,21 +90,77 @@ function writeToConsoleTab(tab, bytes) {
   try { tab.term.scrollToBottom?.(); } catch {}
 }
 
+function findConsoleTabBySession(sessionId) {
+  return state.consoleTabs.tabs.find((item) => item.sessionId === String(sessionId)) || null;
+}
+
+function shouldConfirmConsoleClose(tab) {
+  return Boolean(tab?.userInputSeen && tab.status !== "closed" && !isSerialConsoleTab(tab));
+}
+
+async function ensureConsoleSession(tab) {
+  if (isSerialConsoleTab(tab)) {
+    tab.status = state.vmReady ? "ready" : "pending";
+    return { code: 0, stdout: "", stderr: "" };
+  }
+  if (!tab?.sessionId || !window.BA_CONSOLE_CONTROL?.createSession) return { code: 1, stderr: "control de consola no disponible" };
+  tab.status = "connecting";
+  renderConsoleTabs();
+  const result = await window.BA_CONSOLE_CONTROL.createSession(tab.sessionId, {
+    cols: directConsoleCols(),
+    rows: directConsoleRows(),
+  });
+  tab.status = result.code === 0 ? "ready" : "error";
+  if (result.code === 0) tab.userInputSeen = false;
+  return result;
+}
+
+async function restartConsoleTab(tab, { announce = true } = {}) {
+  if (!tab || tab.restarting) return false;
+  tab.restarting = true;
+  try {
+    try {
+      tab.term?.clear?.();
+      tab.term?.write?.("\x1b[3J\x1b[H\x1b[2J");
+      if (announce) tab.term?.write?.("[reiniciando consola]\r\n");
+    } catch {}
+    const result = await ensureConsoleSession(tab);
+    if (result.code !== 0) {
+      tab.term?.write?.(`\r\n[error reiniciando PTY: ${result.stderr || result.stdout || result.code}]\r\n`);
+      return false;
+    }
+    window.setTimeout(() => tab.term?.focus?.(), 100);
+    return true;
+  } finally {
+    tab.restarting = false;
+    renderConsoleTabs();
+  }
+}
+
+function handleConsoleClosedEvent(sessionId) {
+  const tab = findConsoleTabBySession(sessionId);
+  if (!tab) return;
+  tab.status = "closed";
+  renderConsoleTabs();
+
+  tab.term?.write?.("\r\n[la shell termino; puedes refrescar para reiniciar o cerrar esta consola]\r\n");
+}
+
 function ensureConsoleOutputSubscription() {
   if (state.consoleTabs.outputDisposable || !window.BA_CONSOLE_CONTROL?.onOutput) return;
   state.consoleTabs.outputDisposable = window.BA_CONSOLE_CONTROL.onOutput((sessionId, bytes) => {
-    const tab = state.consoleTabs.tabs.find((item) => item.sessionId === sessionId);
+    const tab = findConsoleTabBySession(sessionId);
     if (tab) writeToConsoleTab(tab, bytes);
   });
   state.consoleTabs.eventDisposable = window.BA_CONSOLE_CONTROL.onEvent?.((event) => {
     if (event?.type === "closed") {
-      const tab = state.consoleTabs.tabs.find((item) => item.sessionId === event.sessionId);
-      if (tab?.term) tab.term.write("\r\n[consola cerrada dentro de la VM]\r\n");
+      handleConsoleClosedEvent(event.sessionId);
     }
   });
 }
 
 function createBrowserTerminal(tab) {
+  if (isSerialConsoleTab(tab)) return getSerialTerm();
   if (tab.term) return tab.term;
   const host = ensureDirectConsoleHost();
   if (!host || !window.Terminal) return null;
@@ -131,8 +191,23 @@ function createBrowserTerminal(tab) {
   term.open(container);
   tab.container = container;
   tab.term = term;
+  if (typeof term.attachCustomKeyEventHandler === "function") {
+    term.attachCustomKeyEventHandler((event) => {
+      if (event.type !== "keydown") return true;
+      if (!event.ctrlKey || event.shiftKey || event.altKey || event.metaKey) return true;
+      if (String(event.key || "").toLowerCase() !== "c") return true;
+      if (typeof term.hasSelection === "function" && term.hasSelection()) return true;
+      if (tab.status !== "closed" && tab.sessionId) {
+        tab.userInputSeen = true;
+        window.BA_CONSOLE_CONTROL?.sendInput?.(tab.sessionId, "\x03");
+      }
+      return false;
+    });
+  }
   tab.inputDisposable = term.onData((data) => {
     if (!tab.sessionId) return;
+    if (tab.status === "closed") return;
+    if (data) tab.userInputSeen = true;
     window.BA_CONSOLE_CONTROL?.sendInput?.(tab.sessionId, data);
   });
 
@@ -141,12 +216,17 @@ function createBrowserTerminal(tab) {
 }
 
 function setActiveConsolePane(id) {
+  const active = getConsoleTab(id);
+  const serialActive = isSerialConsoleTab(active);
+  document.body.classList.toggle("console-serial-active", serialActive);
+  document.body.classList.toggle("console-extra-active", Boolean(active && !serialActive));
   for (const tab of state.consoleTabs.tabs) {
     if (tab.container) tab.container.hidden = tab.id !== id;
   }
+  if (serialActive) scheduleSerialFit({ focus: false });
 }
 
-async function finalizeConsoleTabsReady() {
+async function finalizeConsoleTabsReady({ extraReady = true } = {}) {
   if (!state.consoleTabs.initializing && state.consoleTabs.ready) return;
   if (state.consoleTabs.initTimer) {
     window.clearTimeout(state.consoleTabs.initTimer);
@@ -155,9 +235,10 @@ async function finalizeConsoleTabsReady() {
 
   state.consoleTabs.initializing = false;
   state.consoleTabs.ready = true;
+  state.consoleTabs.extraReady = Boolean(extraReady);
   document.body.classList.add("xterm-direct-console-mode");
   document.body.classList.remove("xterm-direct-console-mode-pending");
-  ensureConsoleOutputSubscription();
+  if (state.consoleTabs.extraReady) ensureConsoleOutputSubscription();
 
   if (!state.consoleTabs.tabs.length) {
     state.consoleTabs.tabs = [];
@@ -167,10 +248,11 @@ async function finalizeConsoleTabsReady() {
       id: "human-1",
       owner: "human",
       title: "Consola 1",
-      sessionId: "1",
+      transport: "serial0",
       humanNumber: 1,
       closable: false,
-      status: "connecting",
+      status: state.vmReady ? "ready" : "pending",
+      userInputSeen: false,
     });
   }
   state.consoleTabs.activeId = state.consoleTabs.activeId || "human-1";
@@ -181,21 +263,24 @@ async function finalizeConsoleTabsReady() {
   setActiveConsolePane(state.consoleTabs.activeId);
   renderConsoleTabs();
 
-  const first = getConsoleTab("human-1");
-  if (first && window.BA_CONSOLE_CONTROL?.createSession) {
-    const result = await window.BA_CONSOLE_CONTROL.createSession(first.sessionId, {
-      cols: directConsoleCols(),
-      rows: directConsoleRows(),
-    });
-    first.status = result.code === 0 ? "ready" : "error";
-    if (result.code !== 0 && first.term) first.term.write(`\r\n[error creando PTY: ${result.stderr || result.stdout || result.code}]\r\n`);
+  for (const tab of state.consoleTabs.tabs) {
+    if (isSerialConsoleTab(tab)) {
+      tab.status = state.vmReady ? "ready" : "pending";
+      continue;
+    }
+    if (!state.consoleTabs.extraReady) {
+      tab.status = "error";
+      continue;
+    }
+    const result = await ensureConsoleSession(tab);
+    if (result.code !== 0 && tab.term) tab.term.write(`\r\n[error creando PTY: ${result.stderr || result.stdout || result.code}]\r\n`);
   }
 
   renderConsoleTabs();
   window.setTimeout(() => {
     focusSerialConsole();
   }, 120);
-  logTool(`[consola] xterm directo activo: hasta 4 consolas PTY por serial2/ttyS2.${NL}`);
+  logTool(`[consola] consola 1 por serial0; consolas 2-4 por PTY serial2.${NL}`);
 }
 
 function failConsoleTabsInit(message = "consola xterm no disponible") {
@@ -219,9 +304,17 @@ async function syncConsoleTabsFromDaemon({ repaint = true } = {}) {
   if (!state.vm || !state.vmReady || !window.BA_CONSOLE_CONTROL?.listSessions) return false;
   const sessions = await window.BA_CONSOLE_CONTROL.listSessions().catch(() => []);
   if (!Array.isArray(sessions)) return false;
+  state.consoleTabs.extraReady = true;
+  const seen = new Set();
   for (const session of sessions) {
-    const tab = state.consoleTabs.tabs.find((item) => item.sessionId === String(session.id));
+    seen.add(String(session.id));
+    const tab = findConsoleTabBySession(session.id);
     if (tab) tab.status = session.alive ? "ready" : "closed";
+  }
+  for (const tab of state.consoleTabs.tabs) {
+    if (!isSerialConsoleTab(tab) && tab.owner === "human" && tab.sessionId && tab.status === "ready" && !seen.has(String(tab.sessionId))) {
+      tab.status = "closed";
+    }
   }
   if (repaint) renderConsoleTabs();
   return true;
@@ -248,6 +341,7 @@ function renderConsoleTabs() {
   const busy = isConsoleControlBusy();
   const humanCount = state.consoleTabs.tabs.filter((tab) => tab.owner === "human").length;
   const ready = Boolean(state.consoleTabs.ready);
+  const extraReady = Boolean(state.consoleTabs.extraReady);
 
   list.replaceChildren();
   for (const tab of state.consoleTabs.tabs) {
@@ -261,7 +355,9 @@ function renderConsoleTabs() {
     labelEl.textContent = String(tab.humanNumber || 1);
     button.appendChild(labelEl);
     button.setAttribute("aria-label", tab.title || `Consola ${tab.humanNumber || 1}`);
-    button.title = "Consola xterm con PTY propia dentro de la VM.";
+    button.title = isSerialConsoleTab(tab)
+      ? "Consola serial0 real de arranque de la VM."
+      : "Consola xterm con PTY propia dentro de la VM.";
     button.addEventListener("click", () => selectConsoleTab(tab.id));
 
     if (tab.closable) {
@@ -280,12 +376,12 @@ function renderConsoleTabs() {
   }
 
   if (cancelButton) cancelButton.disabled = !state.bgTools?.pending;
-  if (newButton) newButton.disabled = !ready || busy || humanCount >= state.consoleTabs.maxHumanConsoles;
+  if (newButton) newButton.disabled = !ready || !extraReady || busy || humanCount >= state.consoleTabs.maxHumanConsoles;
   if (redrawButton) redrawButton.disabled = !ready || busy || !active;
   if (closeConsoleButton) closeConsoleButton.disabled = !ready || busy || !active || !active.closable;
 
   if (state.consoleTabs.controlBusy) setConsoleTabsStatus("actualizando", "warn");
-  else if (state.consoleTabs.ready) setConsoleTabsStatus(`${humanCount}/4 consolas`, "good");
+  else if (state.consoleTabs.ready) setConsoleTabsStatus(extraReady ? `${humanCount}/4 consolas` : "solo serial0", extraReady ? "good" : "warn");
   else if (state.consoleTabs.initializing) setConsoleTabsStatus("iniciando xterm", "warn");
   else setConsoleTabsStatus("sin consola", "");
 
@@ -303,6 +399,7 @@ function resetConsoleTabs() {
   state.consoleTabs.outputDisposable = null;
   state.consoleTabs.eventDisposable = null;
   state.consoleTabs.ready = false;
+  state.consoleTabs.extraReady = false;
   state.consoleTabs.initializing = false;
   state.consoleTabs.controlBusy = false;
   if (state.consoleTabs.initTimer) {
@@ -311,9 +408,11 @@ function resetConsoleTabs() {
   }
   state.consoleTabs.activeId = "human-1";
   state.consoleTabs.tabs = [
-    { id: "human-1", owner: "human", title: "Consola 1", sessionId: "1", humanNumber: 1, closable: false, status: "pending" },
+    { id: "human-1", owner: "human", title: "Consola 1", transport: "serial0", humanNumber: 1, closable: false, status: "pending", userInputSeen: false },
   ];
   document.body.classList.remove("xterm-direct-console-mode");
+  document.body.classList.remove("console-extra-active");
+  document.body.classList.add("console-serial-active");
   document.body.classList.add("xterm-direct-console-mode-pending");
   renderConsoleTabs();
 }
@@ -335,10 +434,11 @@ async function initConsoleTabsAfterBoot() {
 
   const ready = await window.BA_CONSOLE_CONTROL?.probeRunnerReady?.({ timeoutMs: 3500 }).catch(() => false);
   if (!ready) {
-    failConsoleTabsInit("daemon xterm/PTY no disponible en la VM");
+    logTool(`${NL}[consola] aviso: daemon xterm/PTY no disponible; queda activa la consola 1 por serial0.${NL}`);
+    await finalizeConsoleTabsReady({ extraReady: false });
     return;
   }
-  await finalizeConsoleTabsReady();
+  await finalizeConsoleTabsReady({ extraReady: true });
 }
 
 async function selectConsoleTab(id, { force = false } = {}) {
@@ -350,7 +450,9 @@ async function selectConsoleTab(id, { force = false } = {}) {
   state.consoleTabs.activeId = id;
   setActiveConsolePane(id);
   renderConsoleTabs();
-  if (tab.owner === "human") {
+  if (isSerialConsoleTab(tab)) {
+    focusSerialConsole();
+  } else if (tab.owner === "human") {
     try { tab.term?.focus?.(); } catch {}
   } else {
     blurSerialConsole();
@@ -360,6 +462,7 @@ async function selectConsoleTab(id, { force = false } = {}) {
 
 async function createHumanConsoleTab() {
   if (!state.consoleTabs.ready || isConsoleControlBusy()) return;
+  if (!state.consoleTabs.extraReady) return;
   const humanCount = state.consoleTabs.tabs.filter((tab) => tab.owner === "human").length;
   if (humanCount >= state.consoleTabs.maxHumanConsoles) return;
   const number = getNextHumanConsoleNumber();
@@ -373,6 +476,7 @@ async function createHumanConsoleTab() {
     humanNumber: number,
     closable: true,
     status: "connecting",
+    userInputSeen: false,
   };
   state.consoleTabs.tabs.push(tab);
   state.consoleTabs.activeId = tab.id;
@@ -382,11 +486,7 @@ async function createHumanConsoleTab() {
 
   state.consoleTabs.controlBusy = true;
   try {
-    const result = await window.BA_CONSOLE_CONTROL.createSession(tab.sessionId, {
-      cols: directConsoleCols(),
-      rows: directConsoleRows(),
-    });
-    tab.status = result.code === 0 ? "ready" : "error";
+    const result = await ensureConsoleSession(tab);
     if (result.code !== 0) {
       tab.term?.write?.(`\r\n[error creando PTY: ${result.stderr || result.stdout || result.code}]\r\n`);
     }
@@ -399,12 +499,25 @@ async function createHumanConsoleTab() {
 
 async function redrawConsoleScreen(tab, { sync = true } = {}) {
   if (!tab) return false;
+  if (isSerialConsoleTab(tab)) {
+    try {
+      const term = getSerialTerm();
+      term?.clear?.();
+      term?.write?.("\x1b[3J\x1b[H\x1b[2J");
+    } catch {}
+    state.vm?.serial0_send?.("\x0c");
+    window.setTimeout(() => focusSerialConsole(), 100);
+    return true;
+  }
+  if (sync) await syncConsoleTabsFromDaemon({ repaint: false }).catch(() => false);
+  if (tab.status === "closed") {
+    return restartConsoleTab(tab);
+  }
   try {
     tab.term?.clear?.();
     tab.term?.write?.("\x1b[3J\x1b[H\x1b[2J");
   } catch {}
   window.BA_CONSOLE_CONTROL?.sendInput?.(tab.sessionId, "\x0c");
-  if (sync) await syncConsoleTabsFromDaemon({ repaint: false }).catch(() => false);
   window.setTimeout(() => tab.term?.focus?.(), 100);
   return true;
 }
@@ -422,20 +535,24 @@ async function closeHumanConsoleTab(id) {
   const tab = getConsoleTab(id);
   if (!tab || tab.owner !== "human" || !tab.closable) return;
 
-  const decision = await showBaModal({
-    title: `Cerrar ${tab.title}`,
-    message: "Cerrar la consola terminara el shell y cualquier proceso activo dentro de esa PTY.",
-    detail: "Las otras consolas y las tools por serial1 no se veran afectadas.",
-    buttons: [
-      { id: "cancel", label: "Mantener abierta", variant: "secondary", cancel: true },
-      { id: "close", label: "Cerrar y detener", variant: "danger" },
-    ],
-  });
-  if (decision !== "close") return;
+  if (shouldConfirmConsoleClose(tab)) {
+    const decision = await showBaModal({
+      title: `Cerrar ${tab.title}`,
+      message: "Cerrar la consola terminara el shell y cualquier proceso activo dentro de esa PTY.",
+      detail: "Las otras consolas y las tools por serial1 no se veran afectadas.",
+      buttons: [
+        { id: "cancel", label: "Mantener abierta", variant: "secondary", cancel: true },
+        { id: "close", label: "Cerrar y detener", variant: "danger" },
+      ],
+    });
+    if (decision !== "close") return;
+  }
 
   state.consoleTabs.controlBusy = true;
   try {
-    const result = await window.BA_CONSOLE_CONTROL.closeSession(tab.sessionId);
+    const result = tab.status === "closed"
+      ? { code: 0 }
+      : await window.BA_CONSOLE_CONTROL.closeSession(tab.sessionId);
     if (result.code !== 0) {
       logTool(`${NL}[consola] no se pudo cerrar ${tab.title}: ${result.stderr || `exit ${result.code}`}${NL}`);
       return;
@@ -449,7 +566,7 @@ async function closeHumanConsoleTab(id) {
   } finally {
     state.consoleTabs.controlBusy = false;
     renderConsoleTabs();
-    getActiveConsoleTab()?.term?.focus?.();
+    focusSerialConsole();
   }
 }
 
@@ -487,14 +604,15 @@ function buildConsoleHelpHtml() {
   return `
     <div class="ba-console-help">
       <p class="ba-console-help-lead">
-        Cada pestaña es una consola <strong>xterm.js</strong> conectada a una PTY real dentro de la VM.
+        La consola 1 usa <strong>serial0</strong>; las consolas extra usan <strong>xterm.js</strong> con PTY real dentro de la VM.
       </p>
 
       <section class="ba-console-help-section">
         <h4>Modelo de consola</h4>
         <ul class="ba-console-help-list">
-          <li><strong>Hasta 4 consolas de usuario</strong>, cada una con shell y PTY propios.</li>
-          <li><strong>Programas de pantalla completa</strong> como <code>nano</code>, <code>vim</code>, <code>top</code> o <code>less</code> escriben directamente en el xterm de su pestaña.</li>
+          <li><strong>Consola 1</strong> es la consola real de arranque por <code>serial0</code>.</li>
+          <li><strong>Consolas 2-4</strong> tienen shell y PTY propios por <code>serial2</code>.</li>
+          <li><strong>Programas de pantalla completa</strong> como <code>nano</code>, <code>vim</code>, <code>watch</code>, <code>top</code> o <code>less</code> escriben directamente en el xterm de su pestaña.</li>
           <li><strong>Herramientas del LLM y comprobaciones</strong> siguen ejecutandose por <code>serial1</code> / <code>ttyS1</code>, separadas de estas consolas.</li>
         </ul>
       </section>
@@ -509,7 +627,7 @@ function buildConsoleHelpHtml() {
       </section>
 
       <p class="ba-console-help-foot">
-        El boton de refrescar limpia la pantalla local y envia <code>Ctrl+L</code> al shell activo.
+        El boton de refrescar limpia la pantalla local y envia <code>Ctrl+L</code> al shell activo. <code>Ctrl+C</code> interrumpe el proceso activo si no hay texto seleccionado.
       </p>
     </div>
   `;
@@ -520,9 +638,10 @@ function buildConsoleHelpPlainText() {
     "Consolas xterm directas",
     "",
     "- Hasta 4 consolas de usuario.",
-    "- Cada consola tiene una PTY propia dentro de la VM.",
-    "- No hay prefijo Ctrl+b ni multiplexor intermedio.",
-    "- nano, vim, top y less se ejecutan directamente sobre la PTY de la pestaña.",
+    "- Consola 1 usa serial0 y muestra el arranque real.",
+    "- Consolas 2-4 tienen una PTY propia dentro de la VM.",
+    "- No hay prefijos especiales para cambiar de consola.",
+    "- nano, vim, watch, top y less se ejecutan directamente sobre la consola activa.",
     "- Tools y checks siguen separados por serial1/ttyS1.",
     "",
     "Navegador: clic en la consola para foco; pegar con Ctrl+Shift+V.",
