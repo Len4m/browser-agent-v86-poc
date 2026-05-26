@@ -1,6 +1,6 @@
 // @ts-nocheck
 // Browser Agent v86 - direct xterm console sessions
-// Console 1 uses the real boot serial0 xterm. Extra consoles use PTYs inside
+// Tab 1 uses the real boot serial0 xterm. Extra tabs use PTYs inside
 // the VM through the serial2 daemon.
 
 function getConsoleTab(id) {
@@ -99,7 +99,7 @@ function shouldConfirmConsoleClose(tab) {
 }
 
 function defaultConsoleTitle(tab) {
-  return `Consola ${tab?.humanNumber || 1}`;
+  return String(tab?.humanNumber || 1);
 }
 
 function displayConsoleTitle(tab) {
@@ -115,14 +115,88 @@ function shortConsoleLabel(tab) {
 async function renameConsoleTab(id) {
   const tab = getConsoleTab(id);
   if (!tab || tab.owner !== "human" || isConsoleControlBusy()) return;
+  if (state.consoleTabs.renameOpen) return;
 
   const currentTitle = displayConsoleTitle(tab);
-  const next = window.prompt("Nombre de la consola", currentTitle);
-  if (next === null) return;
+  let next = null;
+
+  state.consoleTabs.renameOpen = true;
+  try {
+    if (typeof showBaModalPanel === "function") {
+      const inputId = "ba-console-rename-input";
+      let modalValue = currentTitle;
+      const result = await showBaModalPanel({
+        title: `Renombrar ${currentTitle}`,
+        closeOnBackdrop: false,
+        buttons: [
+          { id: "cancel", label: "Cancelar", variant: "secondary", cancel: true },
+          { id: "save", label: "Guardar", variant: "primary" },
+        ],
+        onMount(bodyEl) {
+          const wrap = document.createElement("label");
+          wrap.className = "ba-console-rename-field";
+          wrap.textContent = "Nombre";
+
+          const input = document.createElement("input");
+          input.id = inputId;
+          input.type = "text";
+          input.maxLength = 32;
+          input.value = currentTitle;
+          input.autocomplete = "off";
+          input.spellcheck = false;
+          input.addEventListener("input", () => {
+            modalValue = input.value;
+          });
+          input.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              $("ba-modal-actions")?.querySelector(".ba-modal-button.primary")?.click?.();
+            }
+          });
+
+          wrap.appendChild(input);
+          bodyEl.appendChild(wrap);
+          window.setTimeout(() => {
+            try {
+              input.focus();
+              input.select();
+            } catch {}
+          }, 0);
+        },
+      });
+      if (result !== "save") return;
+      next = modalValue;
+    } else {
+      next = window.prompt("Nombre", currentTitle);
+      if (next === null) return;
+    }
+  } finally {
+    state.consoleTabs.renameOpen = false;
+  }
 
   const clean = String(next).replace(/\s+/g, " ").trim().slice(0, 32);
   tab.title = clean || defaultConsoleTitle(tab);
   renderConsoleTabs();
+}
+
+function handleConsoleTabClick(event, tab) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (state.consoleTabs.clickTimer) {
+    window.clearTimeout(state.consoleTabs.clickTimer);
+    state.consoleTabs.clickTimer = 0;
+  }
+
+  if (event.detail >= 2) {
+    renameConsoleTab(tab.id);
+    return;
+  }
+
+  state.consoleTabs.clickTimer = window.setTimeout(() => {
+    state.consoleTabs.clickTimer = 0;
+    selectConsoleTab(tab.id);
+  }, 180);
 }
 
 async function ensureConsoleSession(tab) {
@@ -274,7 +348,7 @@ async function finalizeConsoleTabsReady({ extraReady = true } = {}) {
     state.consoleTabs.tabs.push({
       id: "human-1",
       owner: "human",
-      title: "Consola 1",
+      title: "1",
       transport: "serial0",
       humanNumber: 1,
       closable: false,
@@ -307,7 +381,7 @@ async function finalizeConsoleTabsReady({ extraReady = true } = {}) {
   window.setTimeout(() => {
     focusSerialConsole();
   }, 120);
-  logTool(`[consola] consola 1 por serial0; consolas 2-4 por PTY serial2.${NL}`);
+  logTool(`[consola] pestaña 1 por serial0; pestañas 2-4 por PTY serial2.${NL}`);
 }
 
 function failConsoleTabsInit(message = "consola xterm no disponible") {
@@ -384,15 +458,10 @@ function renderConsoleTabs() {
     button.setAttribute("aria-label", displayConsoleTitle(tab));
     button.title = `${displayConsoleTitle(tab)} · doble clic para renombrar · ${
       isSerialConsoleTab(tab)
-      ? "Consola serial0 real de arranque de la VM."
-      : "Consola xterm con PTY propia dentro de la VM."
+      ? "Pestaña serial0 real de arranque de la VM."
+      : "Pestaña xterm con PTY propia dentro de la VM."
     }`;
-    button.addEventListener("click", () => selectConsoleTab(tab.id));
-    button.addEventListener("dblclick", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      renameConsoleTab(tab.id);
-    });
+    button.addEventListener("click", (event) => handleConsoleTabClick(event, tab));
 
     if (tab.closable) {
       const close = document.createElement("span");
@@ -432,6 +501,10 @@ function resetConsoleTabs() {
   for (const tab of state.consoleTabs.tabs || []) disposeConsoleTab(tab);
   state.consoleTabs.outputDisposable = null;
   state.consoleTabs.eventDisposable = null;
+  if (state.consoleTabs.clickTimer) {
+    window.clearTimeout(state.consoleTabs.clickTimer);
+    state.consoleTabs.clickTimer = 0;
+  }
   state.consoleTabs.ready = false;
   state.consoleTabs.extraReady = false;
   state.consoleTabs.initializing = false;
@@ -442,7 +515,7 @@ function resetConsoleTabs() {
   }
   state.consoleTabs.activeId = "human-1";
   state.consoleTabs.tabs = [
-    { id: "human-1", owner: "human", title: "Consola 1", transport: "serial0", humanNumber: 1, closable: false, status: "pending", userInputSeen: false },
+    { id: "human-1", owner: "human", title: "1", transport: "serial0", humanNumber: 1, closable: false, status: "pending", userInputSeen: false },
   ];
   document.body.classList.remove("xterm-direct-console-mode");
   document.body.classList.remove("console-extra-active");
@@ -468,7 +541,7 @@ async function initConsoleTabsAfterBoot() {
 
   const ready = await window.BA_CONSOLE_CONTROL?.probeRunnerReady?.({ timeoutMs: 3500 }).catch(() => false);
   if (!ready) {
-    logTool(`${NL}[consola] aviso: daemon xterm/PTY no disponible; queda activa la consola 1 por serial0.${NL}`);
+    logTool(`${NL}[consola] aviso: daemon xterm/PTY no disponible; queda activa la pestaña 1 por serial0.${NL}`);
     await finalizeConsoleTabsReady({ extraReady: false });
     return;
   }
@@ -505,7 +578,7 @@ async function createHumanConsoleTab() {
   const tab = {
     id: `human-${number}`,
     owner: "human",
-    title: `Consola ${number}`,
+    title: String(number),
     sessionId: String(number),
     humanNumber: number,
     closable: true,
@@ -638,14 +711,14 @@ function buildConsoleHelpHtml() {
   return `
     <div class="ba-console-help">
       <p class="ba-console-help-lead">
-        La consola 1 usa <strong>serial0</strong>; las consolas extra usan <strong>xterm.js</strong> con PTY real dentro de la VM.
+        La pestaña 1 usa <strong>serial0</strong>; las pestañas extra usan <strong>xterm.js</strong> con PTY real dentro de la VM.
       </p>
 
       <section class="ba-console-help-section">
         <h4>Modelo de consola</h4>
         <ul class="ba-console-help-list">
-          <li><strong>Consola 1</strong> es la consola real de arranque por <code>serial0</code>.</li>
-          <li><strong>Consolas 2-4</strong> tienen shell y PTY propios por <code>serial2</code>.</li>
+          <li><strong>Pestaña 1</strong> es la consola real de arranque por <code>serial0</code>.</li>
+          <li><strong>Pestañas 2-4</strong> tienen shell y PTY propios por <code>serial2</code>.</li>
           <li><strong>Programas de pantalla completa</strong> como <code>nano</code>, <code>vim</code>, <code>watch</code>, <code>top</code> o <code>less</code> escriben directamente en el xterm de su pestaña.</li>
           <li><strong>Herramientas del LLM y comprobaciones</strong> siguen ejecutandose por <code>serial1</code> / <code>ttyS1</code>, separadas de estas consolas.</li>
         </ul>
@@ -654,6 +727,7 @@ function buildConsoleHelpHtml() {
       <section class="ba-console-help-section">
         <h4>Navegador</h4>
         <ul class="ba-console-help-list">
+          <li><strong>Pestañas</strong>: clic para cambiar y doble clic sobre el nombre para renombrar.</li>
           <li>Haz <strong>clic dentro de la consola</strong> antes de escribir para asegurar el foco.</li>
           <li><strong>Pegar</strong>: ${consoleHelpKbd(["Ctrl", "Shift", "V"])} o menu contextual del navegador.</li>
           <li><strong>Cancelar proceso</strong>: ${consoleHelpKbd(["Ctrl", "C"])} dentro de la consola activa.</li>
@@ -672,8 +746,9 @@ function buildConsoleHelpPlainText() {
     "Consolas xterm directas",
     "",
     "- Hasta 4 consolas de usuario.",
-    "- Consola 1 usa serial0 y muestra el arranque real.",
-    "- Consolas 2-4 tienen una PTY propia dentro de la VM.",
+    "- Pestaña 1 usa serial0 y muestra el arranque real.",
+    "- Pestañas 2-4 tienen una PTY propia dentro de la VM.",
+    "- Clic para cambiar de pestaña; doble clic en el nombre para renombrar.",
     "- No hay prefijos especiales para cambiar de consola.",
     "- nano, vim, watch, top y less se ejecutan directamente sobre la consola activa.",
     "- Tools y checks siguen separados por serial1/ttyS1.",

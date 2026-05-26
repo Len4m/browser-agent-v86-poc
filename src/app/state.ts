@@ -36,16 +36,18 @@ const state = {
     initializing: false,
     initTimer: 0,
     activeId: "human-1",
-    // Consola 1 usa serial0 real. Las consolas adicionales se respaldan con
+    // La pestaña 1 usa serial0 real. Las pestañas adicionales se respaldan con
     // PTYs dentro de la VM y se multiplexan por UART2/ttyS2.
     fixedCols: 100,
     fixedRows: 24,
     maxHumanConsoles: 4,
     controlBusy: false,
+    renameOpen: false,
+    clickTimer: 0,
     outputDisposable: null,
     eventDisposable: null,
     tabs: [
-      { id: "human-1", owner: "human", title: "Consola 1", transport: "serial0", humanNumber: 1, closable: false, status: "pending" },
+      { id: "human-1", owner: "human", title: "1", transport: "serial0", humanNumber: 1, closable: false, status: "pending", userInputSeen: false },
     ],
   },
   bgTools: {

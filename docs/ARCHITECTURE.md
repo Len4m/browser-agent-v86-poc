@@ -10,7 +10,7 @@ La VM corre con **v86** y Alpine x86. La capa LLM usa **AI SDK v6** con backends
 flowchart LR
   subgraph Browser["Navegador"]
     UI["UI<br/>public/index.html + app.js"]
-    Xterm["xterm.js<br/>hasta 4 consolas"]
+    Xterm["xterm.js<br/>hasta 4 pestañas"]
     Chat["Chat LLM"]
     Bridge["AI SDK bridge<br/>assets/ai-sdk-bridge.mjs"]
     AiBundle["AI SDK bundle<br/>assets/chat/ai-sdk-browser.mjs"]
@@ -19,7 +19,7 @@ flowchart LR
   end
 
   subgraph VM["VM Alpine x86"]
-    PTY["PTYs de usuario<br/>/bin/sh, nano, top..."]
+    PTY["PTYs de usuario 2-4<br/>/bin/sh, nano, top..."]
     S1["ba-serial1-runner<br/>tools/checks"]
     S2["ba-serial2-console-runner<br/>daemon xterm/PTY"]
     Tools["Comandos Alpine"]
@@ -38,6 +38,7 @@ flowchart LR
   AiBundle --> Worker
   Bridge --> Ollama
   Chat -->|"execVm / tools"| V86
+  Xterm <-->|"serial0 / ttyS0<br/>arranque real"| V86
   Xterm <-->|"serial2 / ttyS2<br/>frames base64"| V86
   V86 -->|"ttyS1"| S1
   S1 --> Tools
@@ -149,9 +150,9 @@ Usuario / LLM
 
 Contratos actuales:
 
-- `serial0` / `/dev/ttyS0`: arranque, login base y fallback serial.
+- `serial0` / `/dev/ttyS0`: arranque, login base y pestaña 1 de usuario.
 - `serial1` / `/dev/ttyS1`: tools del LLM, checks, formulario manual y operaciones internas que no deben ensuciar la consola visible.
-- `serial2` / `/dev/ttyS2`: daemon xterm/PTY. Multiplexa hasta 4 PTYs reales hacia xterm.js con frames base64.
+- `serial2` / `/dev/ttyS2`: daemon xterm/PTY. Multiplexa las pestañas 2-4 como PTYs reales hacia xterm.js con frames base64.
 - No hay fallback silencioso de `serial1` a `serial0` en `execVm(targetTools=true)`.
 
 Fuentes de runners:

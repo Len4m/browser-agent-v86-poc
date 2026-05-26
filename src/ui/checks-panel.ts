@@ -308,7 +308,7 @@ async function runChecks({ probeWsRelay = true } = {}) {
 
     updateChecksSummaryFromDom();
 
-    // El retorno visual a Consola 1 se hace en finally, también si algún
+    // El retorno visual a la pestaña 1 se hace en finally, también si algún
     // check lanza una excepción.
   } catch (error) {
     const message = error?.message || String(error);
