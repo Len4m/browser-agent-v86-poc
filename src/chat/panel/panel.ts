@@ -577,7 +577,7 @@
       return `Artefacto: ${escapeHtml(artifact.id)} · ${escapeHtml(artifact.tool || "tool")} · ${escapeHtml(state)}${escapeHtml(size)}${escapeHtml(truncated)}${escapeHtml(path)}`;
     });
     const actions = artifactCount
-      ? `<button id="ba-llm-clear-artifacts" class="ba-llm-inline-action" type="button">Limpiar artefactos</button>`
+      ? `<button id="ba-llm-clear-artifacts" type="button">Limpiar artefactos</button>`
       : "";
     box.innerHTML = [
       `Artefactos: ${escapeHtml(artifactCount)}${snap.lastArtifactId ? ` · ${escapeHtml(snap.lastArtifactId)}` : ""}`,
