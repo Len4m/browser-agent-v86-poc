@@ -1,4 +1,5 @@
 {
+  "$schema": "./profile.schema.json",
   "id": "alpine-base",
   "name": "Alpine Base Lite",
   "description": "Alpine mínimo con certificados, curl y nano.",
