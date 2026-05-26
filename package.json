@@ -19,7 +19,7 @@
     "prepare:local": "node scripts/setup.mjs && node scripts/build.mjs",
     "setup": "node scripts/setup.mjs",
     "build": "node scripts/build.mjs",
-    "check": "tsc --noEmit && node scripts/check-llm-models.mjs && node scripts/check-frontend-manifest.mjs && node scripts/check-js-syntax.mjs && node scripts/check-server.mjs",
+    "check": "tsc --noEmit && node scripts/check-llm-models.mjs && node scripts/check-vm-profiles.mjs && node scripts/check-frontend-manifest.mjs && node scripts/check-js-syntax.mjs && node scripts/check-server.mjs",
     "clean": "node scripts/clean.mjs"
   },
   "engines": {
