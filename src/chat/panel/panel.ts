@@ -261,6 +261,21 @@
     return `Transformers.js · ${device}${dtype}${fallback}`;
   }
 
+  function createTextElement(tagName, className, text = "") {
+    const el = document.createElement(tagName);
+    if (className) el.className = className;
+    el.textContent = text;
+    return el;
+  }
+
+  function createMetaItem(key, value) {
+    const item = document.createElement("span");
+    const label = document.createElement("b");
+    label.textContent = `${key}:`;
+    item.append(label, document.createTextNode(` ${value}`));
+    return item;
+  }
+
   function updateSelectedModelCard() {
     const selected = getSelectedModel();
     const active = window.BA_LLM?.activeModel || null;
@@ -274,7 +289,7 @@
     if (desc) desc.textContent = model.description || "Modelo compatible con AI SDK.";
     if (repo) repo.textContent = model.custom ? "Introduce un modelo compatible antes de cargar." : model.model;
     if (meta) {
-      meta.innerHTML = [
+      const items = [
         window.BA_LLM?.loaded ? ["Backend cargado", activeBackendLabel(model) || "—"] : null,
         ["Motor", model.engineLabel || "Transformers.js"],
         ["Descarga", model.sizeLabel || "—"],
@@ -284,7 +299,8 @@
         ["Idiomas", model.languageLabel || "—"],
         ["Herramientas", model.agent?.toolCalling || "—"],
         ["Razonamiento", model.thinking?.enabled ? "sí" : "no"],
-      ].filter(Boolean).map(([key, value]) => `<span><b>${escapeHtml(key)}:</b> ${escapeHtml(value)}</span>`).join("");
+      ].filter(Boolean).map(([key, value]) => createMetaItem(key, value));
+      meta.replaceChildren(...items);
     }
     syncThinkingToggleUi();
   }
@@ -308,7 +324,6 @@
     const selected = getSelectedModel();
     if (customWrap) {
       customWrap.hidden = !selected?.custom;
-      customWrap.style.display = selected?.custom ? "grid" : "none";
       const text = selected?.engine === "ollama"
         ? "Modelo de Ollama"
         : "Modelo custom compatible con Transformers.js";
@@ -323,7 +338,6 @@
     if (ollamaEndpointWrap) {
       const isOllama = selected?.engine === "ollama";
       ollamaEndpointWrap.hidden = !isOllama;
-      ollamaEndpointWrap.style.display = isOllama ? "grid" : "none";
       const input = document.getElementById("ba-llm-ollama-endpoint");
       if (input && !input.value) {
         input.value = localStorage.getItem("ba.llm.ollama.endpoint") || "http://127.0.0.1:11434";
@@ -426,39 +440,60 @@
 
     const { model, profileId, max, active, available, policy } = getNativeToolsPickerState();
     if (!policy) {
-      picker.innerHTML = "<small>Política de tools nativas no cargada.</small>";
+      picker.replaceChildren(createTextElement("small", "", "Política de tools nativas no cargada."));
       updateChatToolsButton();
       return;
     }
 
     if (hint) hint.textContent = nativeToolsHintText(model, active.size, max);
 
-    const rows = available.map((tool) => {
-      const checked = active.has(tool.name) ? "checked" : "";
-      const atMax = active.size >= max && !active.has(tool.name);
-      const disabled = atMax ? "disabled" : "";
-      return `<label class="ba-llm-native-tool-row${atMax ? " is-disabled" : ""}" title="${escapeHtml(tool.label || tool.name)}">
-        <input type="checkbox" data-tool="${escapeHtml(tool.name)}" ${checked} ${disabled} />
-        <span class="ba-llm-native-tool-name">${escapeHtml(tool.name)}</span>
-        <span class="ba-llm-native-tool-meta">niv. ${escapeHtml(tool.riskLevel)}</span>
-      </label>`;
-    }).join("");
+    const head = document.createElement("div");
+    head.className = "ba-llm-native-tools-head";
+    const title = document.createElement("strong");
+    title.textContent = "Herramientas en el bucle";
+    const count = document.createElement("span");
+    count.className = "ba-native-tools-count";
+    count.dataset.nativeToolsCount = "";
+    count.textContent = `${active.size}/${max}`;
+    head.append(title, count);
 
-    picker.innerHTML = `
-      <div class="ba-llm-native-tools-head">
-        <strong>Herramientas en el bucle</strong>
-        <span class="ba-native-tools-count" data-native-tools-count>${active.size}/${max}</span>
-      </div>
-      <div class="ba-llm-native-tools-grid ba-llm-native-tools-grid--modal">${rows || "<small>Sin tools para este perfil.</small>"}</div>
-    `;
+    const grid = document.createElement("div");
+    grid.className = "ba-llm-native-tools-grid ba-llm-native-tools-grid--modal";
+    if (available.length) {
+      for (const tool of available) {
+        const isActive = active.has(tool.name);
+        const atMax = active.size >= max && !isActive;
+        const row = document.createElement("label");
+        row.className = `ba-llm-native-tool-row${atMax ? " is-disabled" : ""}`;
+        row.title = tool.label || tool.name;
 
-    picker.querySelectorAll("input[data-tool]").forEach((input) => {
-      input.addEventListener("change", () => {
-        const name = input.getAttribute("data-tool");
-        policy.toggleToolName(model, name, input.checked, profileId);
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.dataset.tool = tool.name;
+        input.checked = isActive;
+        input.disabled = atMax;
+
+        const name = createTextElement("span", "ba-llm-native-tool-name", tool.name);
+        const meta = createTextElement("span", "ba-llm-native-tool-meta", `niv. ${tool.riskLevel}`);
+        row.append(input, name, meta);
+        grid.appendChild(row);
+      }
+    } else {
+      grid.appendChild(createTextElement("small", "", "Sin tools para este perfil."));
+    }
+
+    if (picker.dataset.nativeToolsPickerBound !== "1") {
+      picker.dataset.nativeToolsPickerBound = "1";
+      picker.addEventListener("change", (event) => {
+        const input = event.target?.closest?.("input[data-tool]");
+        if (!input || !picker.contains(input)) return;
+        const { model: nextModel, profileId: nextProfileId, policy: nextPolicy } = getNativeToolsPickerState();
+        nextPolicy?.toggleToolName(nextModel, input.getAttribute("data-tool"), input.checked, nextProfileId);
         updateNativeToolsPickerUi();
       });
-    });
+    }
+
+    picker.replaceChildren(head, grid);
     const nextGrid = picker.querySelector(".ba-llm-native-tools-grid");
     if (nextGrid) {
       nextGrid.scrollTop = previousScrollTop;
@@ -504,10 +539,13 @@
     showBaModalPanel({
       title: "Herramientas del agente",
       onMount(bodyEl) {
-        bodyEl.innerHTML = `
-          <small id="ba-chat-tools-hint" class="ba-llm-note ba-chat-tools-hint"></small>
-          <div id="ba-chat-tools-picker" class="ba-llm-native-tools-picker ba-llm-native-tools-picker--modal"></div>
-        `;
+        const hint = document.createElement("small");
+        hint.id = "ba-chat-tools-hint";
+        hint.className = "ba-llm-note ba-chat-tools-hint";
+        const picker = document.createElement("div");
+        picker.id = "ba-chat-tools-picker";
+        picker.className = "ba-llm-native-tools-picker ba-llm-native-tools-picker--modal";
+        bodyEl.replaceChildren(hint, picker);
         updateNativeToolsPickerUi();
       },
       buttons: [{ id: "close", label: "Listo", variant: "primary" }],
@@ -522,7 +560,9 @@
     const countBadge = document.getElementById("ba-llm-tool-count");
     if (!registry?.listTools) {
       if (countBadge) countBadge.textContent = "—";
-      box.innerHTML = `<b>Herramientas disponibles:</b><span>Registro no disponible</span>`;
+      const title = document.createElement("b");
+      title.textContent = "Herramientas disponibles:";
+      box.replaceChildren(title, createTextElement("span", "", "Registro no disponible"));
       return;
     }
 
@@ -533,18 +573,22 @@
       countBadge.textContent = formatCountLabel(tools.length, "herramienta", "herramientas");
       countBadge.title = `Herramientas disponibles para ${profileLabel}`;
     }
-    const chips = tools.length
-      ? tools.map((tool) => {
-          const title = `${tool.label || tool.name} · nivel ${tool.riskLevel}`;
-          return `<span title="${escapeHtml(title)}">${escapeHtml(tool.name)} · nivel ${escapeHtml(tool.riskLevel)}</span>`;
-        }).join("")
-      : `<span>Sin herramientas disponibles para este perfil</span>`;
-
-    const manualHint = profileId === "manual"
-      ? `<small>Perfil manual: se muestran todas las tools registradas. Algunas pueden fallar si el binario no está instalado.</small>`
-      : "";
-
-    box.innerHTML = `<b>Herramientas disponibles para ${escapeHtml(profileLabel)}:</b>${chips}${manualHint}`;
+    const title = document.createElement("b");
+    title.textContent = `Herramientas disponibles para ${profileLabel}:`;
+    const children = [title];
+    if (tools.length) {
+      for (const tool of tools) {
+        const chip = createTextElement("span", "", `${tool.name} · nivel ${tool.riskLevel}`);
+        chip.title = `${tool.label || tool.name} · nivel ${tool.riskLevel}`;
+        children.push(chip);
+      }
+    } else {
+      children.push(createTextElement("span", "", "Sin herramientas disponibles para este perfil"));
+    }
+    if (profileId === "manual") {
+      children.push(createTextElement("small", "", "Perfil manual: se muestran todas las tools registradas. Algunas pueden fallar si el binario no está instalado."));
+    }
+    box.replaceChildren(...children);
   }
 
   function updateResourceLines(extra = {}) {
@@ -560,7 +604,7 @@
     const maxOutput = policy.maxNewTokensDefault;
     const planOutput = policy.maxNewTokensForPlan;
     const budgetLine = contextWindow && safeInput && maxOutput
-      ? `Presupuesto: contexto ${escapeHtml(contextWindow)} · entrada ${escapeHtml(safeInput)} · salida ${escapeHtml(maxOutput)}${planOutput ? ` · plan ${escapeHtml(planOutput)}` : ""}`
+      ? `Presupuesto: contexto ${contextWindow} · entrada ${safeInput} · salida ${maxOutput}${planOutput ? ` · plan ${planOutput}` : ""}`
       : "Presupuesto: pendiente";
     const artifactCount = snap.artifacts ?? window.BA_LLM?.artifacts?.length ?? 0;
     const artifactBadge = document.getElementById("ba-llm-artifact-count");
@@ -574,23 +618,27 @@
       const state = artifact.ok ? "ok" : "error";
       const size = artifact.sizeBytes ? ` · ${Math.ceil(artifact.sizeBytes / 1024)} KB` : "";
       const truncated = artifact.truncated ? " · truncado" : "";
-      return `Artefacto: ${escapeHtml(artifact.id)} · ${escapeHtml(artifact.tool || "tool")} · ${escapeHtml(state)}${escapeHtml(size)}${escapeHtml(truncated)}${escapeHtml(path)}`;
+      return `Artefacto: ${artifact.id} · ${artifact.tool || "tool"} · ${state}${size}${truncated}${path}`;
     });
-    const actions = artifactCount
-      ? `<button id="ba-llm-clear-artifacts" type="button">Limpiar artefactos</button>`
-      : "";
-    box.innerHTML = [
-      `Artefactos: ${escapeHtml(artifactCount)}${snap.lastArtifactId ? ` · ${escapeHtml(snap.lastArtifactId)}` : ""}`,
+    const lines = [
+      `Artefactos: ${artifactCount}${snap.lastArtifactId ? ` · ${snap.lastArtifactId}` : ""}`,
       ...artifactLines,
       budgetLine,
-      ctx ? `Contexto: ${escapeHtml(ctx.estimatedTokens || 0)} tokens aprox. · ${escapeHtml(ctx.chars || 0)} caracteres` : "Contexto: pendiente",
-      `Operación: ${escapeHtml(snap.lastOperation || "inactiva")}${snap.llmBusy ? " · LLM ocupado" : ""}${snap.toolBusy ? " · herramienta activa" : ""}`,
-      actions,
-    ].filter(Boolean).map((line) => `<span>${line}</span>`).join("");
-    box.querySelector("#ba-llm-clear-artifacts")?.addEventListener("click", () => {
-      window.BA_LLM_ARTIFACTS?.clear?.();
-      updateResourceLines();
-    });
+      ctx ? `Contexto: ${ctx.estimatedTokens || 0} tokens aprox. · ${ctx.chars || 0} caracteres` : "Contexto: pendiente",
+      `Operación: ${snap.lastOperation || "inactiva"}${snap.llmBusy ? " · LLM ocupado" : ""}${snap.toolBusy ? " · herramienta activa" : ""}`,
+    ].filter(Boolean).map((line) => createTextElement("span", "", line));
+    if (artifactCount) {
+      const button = document.createElement("button");
+      button.id = "ba-llm-clear-artifacts";
+      button.type = "button";
+      button.textContent = "Limpiar artefactos";
+      button.addEventListener("click", () => {
+        window.BA_LLM_ARTIFACTS?.clear?.();
+        updateResourceLines();
+      });
+      lines.push(button);
+    }
+    box.replaceChildren(...lines);
   }
 
   function mountPanel() {
