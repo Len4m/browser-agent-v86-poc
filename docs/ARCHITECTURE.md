@@ -49,10 +49,13 @@ flowchart LR
 
 ## Raiz servida
 
-`public/` es la única raíz HTTP:
+`public/` es la única raíz HTTP. El HTML/CSS editable vive fuera y se regenera con `npm run build`:
 
-- `public/index.html`: shell estático de la UI.
-- `public/style.css`: único CSS enlazado desde HTML; importa `public/styles/*.css`.
+- `src/app/index.html`: plantilla fuente del shell de UI.
+- `src/styles/style.css`: entry CSS fuente; importa `src/styles/*.css`.
+- `public/index.html`: shell generado con hashes de cache.
+- `public/style.css` y `public/styles/`: CSS generado/copied para desarrollo.
+- `public/assets/app.css`: CSS bundle minificado generado por `npm run build:release`.
 - `public/assets/app.js`: bundle principal generado.
 - `public/assets/ai-sdk-bridge.mjs`: bridge ESM generado.
 - `public/assets/chat/`: bundle AI SDK y worker LLM generados.
@@ -66,8 +69,12 @@ flowchart LR
 
 `scripts/build-frontend.mjs` genera:
 
+- `public/index.html`
+- `public/style.css`
+- `public/styles/`
 - `public/assets/app.js`
 - `public/assets/ai-sdk-bridge.mjs`
+- `public/assets/app.css` cuando se ejecuta con `--minify` o `BA_MINIFY=1`
 
 El entry `src/main.ts` instala `window.BA` desde `src/compat/window-api.ts`. Después el script concatena fuentes TypeScript en el orden `browserSourceOrder`. Este orden mantiene contratos globales históricos mientras los módulos se migran por dominio.
 
@@ -232,7 +239,7 @@ Archivos clave:
 
 1. Codigo nuevo de aplicación en `src/` con TypeScript.
 2. Cambios de orden del bundle principal solo en `browserSourceOrder`.
-3. Nuevo CSS en `public/styles/` y `@import` desde `public/style.css`.
+3. Nuevo CSS en `src/styles/` y `@import` desde `src/styles/style.css`.
 4. Nuevas librerías browser vía `package.json` + script de copia/bundle, no copiadas a mano en `public/vendor/`.
 5. Nuevo modelo en `data/llm-models.json` y regeneracion con `npm run build`.
 6. Nueva tool en `src/chat/tools/tool-registry.ts`; no duplicar catálogos.
