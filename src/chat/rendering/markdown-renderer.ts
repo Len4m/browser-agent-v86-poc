@@ -139,13 +139,15 @@
     let purifier = null;
     let ended = false;
     let enhanceTimer = null;
+    let codeBlockCandidate = false;
 
     const scheduleEnhance = () => {
+      if (!codeBlockCandidate) return;
       if (enhanceTimer) window.clearTimeout(enhanceTimer);
       enhanceTimer = window.setTimeout(() => {
         enhanceTimer = null;
         enhanceCodeBlocksWithCopy(root);
-      }, 150);
+      }, 800);
     };
 
     try {
@@ -162,6 +164,9 @@
       write(chunk) {
         if (ended || !chunk) return;
         raw += chunk;
+        if (!codeBlockCandidate && /```|<pre[\s>]/i.test(raw)) {
+          codeBlockCandidate = true;
+        }
         if (parser && smd) {
           smd.parser_write(parser, chunk);
         } else {

@@ -92,10 +92,13 @@
     wrap.className = "ba-llm-inference-indicator";
     wrap.setAttribute("role", "status");
     wrap.setAttribute("aria-live", "polite");
-    wrap.innerHTML = `
-      <span class="ba-llm-spinner" aria-hidden="true"></span>
-      <span>${label}</span>
-    `;
+    const spinner = document.createElement("span");
+    spinner.className = "ba-llm-spinner";
+    spinner.setAttribute("aria-hidden", "true");
+    const text = document.createElement("span");
+    text.className = "ba-llm-inference-label";
+    text.textContent = label;
+    wrap.append(spinner, text);
     return wrap;
   }
 
@@ -103,6 +106,7 @@
     const log = document.getElementById("chat-log");
     if (!log) return null;
     let indicator = document.getElementById("ba-chat-tail-indicator");
+    let created = false;
     if (!indicator) {
       indicator = document.createElement("div");
       indicator.id = "ba-chat-tail-indicator";
@@ -110,12 +114,24 @@
       const bubble = document.createElement("div");
       bubble.className = "bubble ba-chat-tail-indicator-bubble";
       indicator.appendChild(bubble);
+      created = true;
     }
     const bubble = indicator.querySelector(".ba-chat-tail-indicator-bubble");
     if (bubble) {
-      bubble.replaceChildren(createInferenceSpinner(label));
+      let status = bubble.querySelector(".ba-llm-inference-indicator");
+      if (!status) {
+        status = createInferenceSpinner(label);
+        bubble.replaceChildren(status);
+      } else {
+        const text = status.querySelector(".ba-llm-inference-label");
+        if (text && text.textContent !== label) {
+          text.textContent = label;
+        }
+      }
     }
-    log.appendChild(indicator);
+    if (created || indicator.parentElement !== log || log.lastElementChild !== indicator) {
+      log.appendChild(indicator);
+    }
     log.scrollTop = log.scrollHeight;
     return indicator;
   }

@@ -4,8 +4,10 @@
  * Sin quickInfer, plan weak ni segunda pasada de síntesis: el loop es el de la librería.
  */
 
-import { streamText, stepCountIs } from "ai";
+import { smoothStream, streamText, stepCountIs } from "ai";
 import { looksLikeTextToolPlan } from "./text-tool-parser";
+
+const STREAM_SMOOTHING = smoothStream();
 
 export function textChunkFromStreamPart(part) {
   if (!part) return "";
@@ -189,6 +191,7 @@ export async function runAgentStreamTurn({
     abortSignal: signal,
     prepareStep,
     onStepFinish,
+    experimental_transform: STREAM_SMOOTHING,
   });
 
   let fullText = "";
@@ -235,6 +238,7 @@ export async function runAgentStreamTurn({
           temperature,
           topP,
           abortSignal: signal,
+          experimental_transform: STREAM_SMOOTHING,
         });
         const synthText = await consumeTextStream(synth, { onStreamPart, phase: "synthesis" });
         if (synthText.trim() && !looksLikeTextToolPlan(synthText)) {
