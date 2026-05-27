@@ -402,6 +402,8 @@
   border-top-color: #2563eb;
   border-radius: 50%;
   animation: ba-llm-spin 0.8s linear infinite;
+  transform-origin: center;
+  will-change: transform;
 }
 
 @keyframes ba-llm-spin {
