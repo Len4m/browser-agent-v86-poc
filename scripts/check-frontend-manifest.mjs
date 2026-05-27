@@ -23,6 +23,11 @@ const loadedJs = extract(/src="\.\/(js\/[^"?]+\.(?:js|mjs))(?:\?[^"]*)?"/g, inde
 const loadedAssets = extract(/src="\.\/(assets\/[^"?]+\.(?:js|mjs))(?:\?[^"]*)?"/g, indexHtml);
 const indexCss = extract(/href="\.\/((?:style|assets\/app)\.css)(?:\?v=[^"]*)?"/g, indexHtml);
 const loadedCss = extract(/@import url\("\.\/(styles\/[^"?]+\.css)(?:\?v=[^"]*)?"\)/g, styleCss);
+const hashedRuntimeRefs = [
+  ["vendor/xterm/xterm.js", /src="\.\/vendor\/xterm\/xterm\.js\?v=[a-f0-9]{12}"/],
+  ["assets/ai-sdk-bridge.mjs", /src="\.\/assets\/ai-sdk-bridge\.mjs\?v=[a-f0-9]{12}"/],
+  ["assets/app.js", /src="\.\/assets\/app\.js\?v=[a-f0-9]{12}"/],
+];
 
 const allCss = readdirSync(join(publicRoot, "styles")).filter((f) => f.endsWith(".css")).map((f) => `styles/${f}`);
 const expectedVendorFiles = [
@@ -68,6 +73,13 @@ if (!loadedAssets.includes("assets/ai-sdk-bridge.mjs")) {
 if (!indexCss.includes("style.css") && !indexCss.includes("assets/app.css")) {
   failed = true;
   console.error("index.html debe cargar ./style.css o ./assets/app.css");
+}
+
+for (const [file, pattern] of hashedRuntimeRefs) {
+  if (!pattern.test(indexHtml)) {
+    failed = true;
+    console.error(`index.html debe cargar ./${file} con hash de contenido ?v=`);
+  }
 }
 
 for (const file of requiredFiles) {
