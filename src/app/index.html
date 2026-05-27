@@ -4,8 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Browser Agent v86 POC</title>
-  <link rel="stylesheet" href="./vendor/xterm/xterm.css?v=854a7c0fb70e" />
-  <link rel="stylesheet" href="./style.css?v=0e03426c249f" />
+  <link rel="stylesheet" href="./vendor/xterm/xterm.css" />
+  <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
   <main class="app">
@@ -13,7 +13,7 @@
       <div>
         <h1>Browser Agent POC</h1>
         <p>IA, agente y VM Linux: todo corre 100% en tu navegador.</p>
-       </div>
+      </div>
       <div class="badges">
         <span id="badge-version" class="badge app-version-badge" title="Versión de la aplicación">v—</span>
         <span id="badge-vm" class="badge">v86 inactiva</span>
@@ -185,11 +185,11 @@
 
     <!-- Configuración interna v86: se mantiene oculta para que el arranque conserve sus rutas por defecto. -->
     <input id="cfg-libv86" type="hidden" value="/v86/build/libv86.js" />
-      <input id="cfg-wasm" type="hidden" value="/v86/build/v86.wasm" />
-      <input id="cfg-bios" type="hidden" value="/v86/bios/seabios.bin" />
-      <input id="cfg-vga" type="hidden" value="/v86/bios/vgabios.bin" />
-      <input id="cfg-bzimage" type="hidden" value="/v86/images/alpine-vmlinuz-lts?v=436e4c42c351" />
-      <input id="cfg-initrd" type="hidden" value="/v86/images/profiles/alpine-base-initramfs.gz?v=b08c53eedbeb" />
+    <input id="cfg-wasm" type="hidden" value="/v86/build/v86.wasm" />
+    <input id="cfg-bios" type="hidden" value="/v86/bios/seabios.bin" />
+    <input id="cfg-vga" type="hidden" value="/v86/bios/vgabios.bin" />
+    <input id="cfg-bzimage" type="hidden" value="/v86/images/alpine-vmlinuz-lts" />
+    <input id="cfg-initrd" type="hidden" value="/v86/images/profiles/alpine-base-initramfs.gz" />
 
     <div id="screen-container" class="hidden-screen">
       <div></div>
@@ -226,9 +226,9 @@
   <script src="./vendor/xterm/xterm.js"></script>
 
   <!-- AI SDK bridge generated from src/chat/provider; it imports the vendor bundle. -->
-  <script type="module" src="./assets/ai-sdk-bridge.mjs?v=0.9.1-beta.3"></script>
+  <script type="module" src="./assets/ai-sdk-bridge.mjs"></script>
 
   <!-- Main application bundle generated from src. -->
-  <script src="./assets/app.js?v=0.9.1-beta.3"></script>
+  <script src="./assets/app.js"></script>
 </body>
 </html>

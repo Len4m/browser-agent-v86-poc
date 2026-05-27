@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * Verifica el shell frontend generado:
- * - index.html carga el bundle principal y el bridge ESM externo.
- * - style.css sigue importando todas las hojas públicas.
+ * - public/index.html generado carga el bundle principal y el bridge ESM externo.
+ * - public/style.css generado sigue importando todas las hojas públicas.
  * - los bundles/assets mínimos existen.
  */
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
@@ -21,9 +21,18 @@ const styleCss = readFileSync(join(publicRoot, "style.css"), "utf8");
 
 const loadedJs = extract(/src="\.\/(js\/[^"?]+\.(?:js|mjs))(?:\?[^"]*)?"/g, indexHtml);
 const loadedAssets = extract(/src="\.\/(assets\/[^"?]+\.(?:js|mjs))(?:\?[^"]*)?"/g, indexHtml);
+const indexCss = extract(/href="\.\/((?:style|assets\/app)\.css)(?:\?v=[^"]*)?"/g, indexHtml);
 const loadedCss = extract(/@import url\("\.\/(styles\/[^"?]+\.css)(?:\?v=[^"]*)?"\)/g, styleCss);
 
 const allCss = readdirSync(join(publicRoot, "styles")).filter((f) => f.endsWith(".css")).map((f) => `styles/${f}`);
+const expectedVendorFiles = [
+  "vendor/llm/dompurify/LICENSE",
+  "vendor/llm/dompurify/purify.es.mjs",
+  "vendor/llm/streaming-markdown/LICENSE",
+  "vendor/llm/streaming-markdown/smd.js",
+  "vendor/xterm/xterm.css",
+  "vendor/xterm/xterm.js",
+];
 
 const orphanCss = allCss.filter((f) => !loadedCss.includes(f));
 const requiredFiles = [
@@ -31,9 +40,20 @@ const requiredFiles = [
   "assets/ai-sdk-bridge.mjs",
   "assets/chat/ai-sdk-browser.mjs",
   "assets/chat/workers/llm-browser-ai.worker.mjs",
+  ...expectedVendorFiles,
 ];
+if (indexCss.includes("assets/app.css")) requiredFiles.push("assets/app.css");
 
 let failed = false;
+
+function walkFiles(dir, prefix = "") {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const name = prefix ? `${prefix}/${entry.name}` : entry.name;
+    const abs = join(dir, entry.name);
+    if (entry.isDirectory()) return walkFiles(abs, name);
+    return [name];
+  });
+}
 
 if (!loadedAssets.includes("assets/app.js")) {
   failed = true;
@@ -43,6 +63,11 @@ if (!loadedAssets.includes("assets/app.js")) {
 if (!loadedAssets.includes("assets/ai-sdk-bridge.mjs")) {
   failed = true;
   console.error("index.html debe cargar ./assets/ai-sdk-bridge.mjs como bridge ESM");
+}
+
+if (!indexCss.includes("style.css") && !indexCss.includes("assets/app.css")) {
+  failed = true;
+  console.error("index.html debe cargar ./style.css o ./assets/app.css");
 }
 
 for (const file of requiredFiles) {
@@ -59,5 +84,30 @@ if (orphanCss.length) {
   orphanCss.forEach((f) => console.error(`  - ${f}`));
 }
 
+const vendorRoot = join(publicRoot, "vendor");
+const actualVendorFiles = existsSync(vendorRoot)
+  ? walkFiles(vendorRoot).map((file) => `vendor/${file}`).sort()
+  : [];
+const unexpectedVendorFiles = actualVendorFiles.filter((file) => !expectedVendorFiles.includes(file));
+const missingVendorFiles = expectedVendorFiles.filter((file) => !actualVendorFiles.includes(file));
+if (unexpectedVendorFiles.length) {
+  failed = true;
+  console.error("Assets vendor inesperados en public/vendor:");
+  unexpectedVendorFiles.forEach((f) => console.error(`  - ${f}`));
+}
+if (missingVendorFiles.length) {
+  failed = true;
+  console.error("Assets vendor requeridos no encontrados:");
+  missingVendorFiles.forEach((f) => console.error(`  - ${f}`));
+}
+
+const publicSourceMaps = walkFiles(publicRoot)
+  .filter((file) => file.endsWith(".map"));
+if (publicSourceMaps.length && process.env.BA_ALLOW_SOURCEMAPS !== "1") {
+  failed = true;
+  console.error("Sourcemaps públicos encontrados; usa BA_ALLOW_SOURCEMAPS=1 si son intencionados:");
+  publicSourceMaps.forEach((f) => console.error(`  - ${f}`));
+}
+
 if (failed) process.exit(1);
-console.log(`OK manifest: ${loadedAssets.length} app bundle, ${loadedJs.length} external js, ${loadedCss.length} css`);
+console.log(`OK manifest: ${loadedAssets.length} app bundle, ${loadedJs.length} external js, ${loadedCss.length} css imports, ${indexCss.length} css entry, ${actualVendorFiles.length} vendor`);

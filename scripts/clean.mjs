@@ -3,7 +3,11 @@ import { rmSync } from "node:fs";
 
 const targets = [
   "build",
+  "public/index.html",
+  "public/style.css",
+  "public/styles",
   "public/assets/app.js",
+  "public/assets/app.css",
   "public/assets/ai-sdk-bridge.mjs",
   "public/assets/chat",
 ];
