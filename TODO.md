@@ -24,9 +24,9 @@ Lista de temas detectados para revisar antes de una publicación estable.
 
 ## Build, CSS y tamaño
 
-- [ ] Revisar HTML/CSS generado o inyectado desde JavaScript (p. ej. plantillas del panel LLM): decidir qué puede vivir directamente en`index.html` o ficheros estáticos para evitar construcción en runtime, reducir JS y simplificar mantenimiento.
-- [ ] Optimizar el render markdown durante streaming: AI SDK entrega los deltas, pero el DOM lo gestiona `streaming-markdown`; reducir pasadas repetidas de mejora de bloques de código durante la generación.
-- [ ] Reducir reconstrucciones del panel LLM con `innerHTML`: tools nativas, recursos/contexto y metadatos deberían tender a DOM persistente, event delegation y actualizaciones puntuales.
-- [ ] Revisar CSS: ahora hay muchos ficheros; agrupar o simplificar reglas si mejora mantenimiento y permite reducir bytes sin perder claridad.
+- [x] Revisar HTML/CSS generado o inyectado desde JavaScript (p. ej. plantillas del panel LLM): decidir qué puede vivir directamente en`index.html` o ficheros estáticos para evitar construcción en runtime, reducir JS y simplificar mantenimiento.
+- [x] Optimizar el render markdown durante streaming: AI SDK entrega los deltas, pero el DOM lo gestiona `streaming-markdown`; reducir pasadas repetidas de mejora de bloques de código durante la generación.
+- [x] Reducir reconstrucciones del panel LLM con `innerHTML`: tools nativas, recursos/contexto y metadatos deberían tender a DOM persistente, event delegation y actualizaciones puntuales.
+- [x] Revisar CSS: ahora hay muchos ficheros; agrupar o simplificar reglas si mejora mantenimiento y permite reducir bytes sin perder claridad.
 - [ ] Revisar configuración de esbuild para reducir tamaño: minify en runtime zip, sourcemaps opcionales, splitting si aporta valor, tree shaking real y separación de bundles pesados.
 - [ ] Revisar qué assets se copian a`public/vendor/` y asegurar que solo se incluyen los necesarios para ejecución.
