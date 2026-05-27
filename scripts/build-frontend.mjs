@@ -109,14 +109,19 @@ function versionedPublicPath(relativePath) {
   return `/${relativePath.replace(/^\/+/, "")}?v=${cacheKeyForPublicFile(relativePath)}`;
 }
 
-function renderIndexHtml(cssHref) {
+function publicHref(relativePath) {
+  return `./${relativePath.replace(/^\/+/, "")}?v=${cacheKeyForPublicFile(relativePath)}`;
+}
+
+function renderIndexHtml({ cssHref, bridgeHref, appHref }) {
   return readFileSync(sourceIndexFile, "utf8")
     .replace(/href="\.\/vendor\/xterm\/xterm\.css(?:\?v=[^"]*)?"/g, `href="./vendor/xterm/xterm.css?v=${cacheKeyForPublicFile("vendor/xterm/xterm.css")}"`)
     .replace(/href="\.\/(?:style\.css|assets\/app\.css)(?:\?v=[^"]*)?"/g, `href="${cssHref}"`)
     .replace(/id="cfg-bzimage" type="hidden" value="[^"]*"/g, `id="cfg-bzimage" type="hidden" value="${versionedPublicPath("v86/images/alpine-vmlinuz-lts")}"`)
     .replace(/id="cfg-initrd" type="hidden" value="[^"]*"/g, `id="cfg-initrd" type="hidden" value="${versionedPublicPath("v86/images/profiles/alpine-base-initramfs.gz")}"`)
-    .replace(/src="\.\/assets\/ai-sdk-bridge\.mjs(?:\?v=[^"]*)?"/g, `src="./assets/ai-sdk-bridge.mjs?v=${packageJson.version}"`)
-    .replace(/src="\.\/assets\/app\.js(?:\?v=[^"]*)?"/g, `src="./assets/app.js?v=${packageJson.version}"`);
+    .replace(/src="\.\/vendor\/xterm\/xterm\.js(?:\?v=[^"]*)?"/g, `src="${publicHref("vendor/xterm/xterm.js")}"`)
+    .replace(/src="\.\/assets\/ai-sdk-bridge\.mjs(?:\?v=[^"]*)?"/g, `src="${bridgeHref}"`)
+    .replace(/src="\.\/assets\/app\.js(?:\?v=[^"]*)?"/g, `src="${appHref}"`);
 }
 
 function copyCssSources() {
@@ -175,7 +180,6 @@ if (minify) {
   });
   cssHref = `./assets/app.css?v=${cacheKeyForPublicFile("assets/app.css")}`;
 }
-writeFileSync(indexFile, renderIndexHtml(cssHref), "utf8");
 
 await esbuild.build({
   entryPoints: [join(root, "src/main.ts")],
@@ -218,6 +222,11 @@ for (const script of browserSourceOrder) {
 }
 
 writeFileSync(outFile, chunks.join("\n"), "utf8");
+writeFileSync(indexFile, renderIndexHtml({
+  cssHref,
+  bridgeHref: publicHref("assets/ai-sdk-bridge.mjs"),
+  appHref: publicHref("assets/app.js"),
+}), "utf8");
 console.log(`OK frontend bundle: public/assets/app.js (${browserSourceOrder.length} ordered sources, ${sizeSummary(outFile)})`);
 console.log(`OK AI SDK bridge: public/assets/ai-sdk-bridge.mjs (${sizeSummary(bridgeOutFile)})`);
 if (minify) console.log(`OK CSS bundle: public/assets/app.css (${sizeSummary(cssBundleFile)})`);
