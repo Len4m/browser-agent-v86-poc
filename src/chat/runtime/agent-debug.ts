@@ -11,6 +11,11 @@
 
   let logEl = null;
   let panelEl = null;
+  let renderDirty = false;
+
+  function isPanelVisible() {
+    return Boolean(panelEl && !panelEl.hidden && panelEl.open);
+  }
 
   function isEnabled() {
     return window.BA_LLM_AGENT_DEBUG?.enabled !== false
@@ -47,7 +52,15 @@
   }
 
   function render() {
-    if (!logEl) return;
+    if (!logEl) {
+      renderDirty = true;
+      return;
+    }
+    if (!isPanelVisible()) {
+      renderDirty = true;
+      return;
+    }
+    renderDirty = false;
     logEl.textContent = entries.map((e) => {
       const extra = e.data != null && e.data !== "" ? ` ${e.data}` : "";
       return `${e.time} [${e.category}] ${e.message}${extra}`;
@@ -203,6 +216,7 @@
           clearChatPanelDebugLayout();
         }
         syncChatPanelLayout();
+        if (show && renderDirty) render();
       });
     }
 
@@ -232,6 +246,9 @@
       }
     });
     panelEl.addEventListener("toggle", syncChatPanelLayout);
+    panelEl.addEventListener("toggle", () => {
+      if (isPanelVisible() && renderDirty) render();
+    });
 
     syncChatPanelLayout();
 
@@ -241,6 +258,7 @@
     enabledToggle.addEventListener("change", () => setEnabled(enabledToggle.checked));
     document.getElementById("ba-agent-debug-clear")?.addEventListener("click", () => {
       entries.length = 0;
+      renderDirty = true;
       render();
     });
     document.getElementById("ba-agent-debug-copy")?.addEventListener("click", () => {
