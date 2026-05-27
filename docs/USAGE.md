@@ -147,7 +147,9 @@ Flujo recomendado:
 | `npm run setup` | Descarga/copia assets base, genera initramfs, perfiles y discos |
 | `npm run build` | Genera catálogo LLM, vendors, worker/bridge LLM y bundle frontend |
 | `npm run check` | Valida TypeScript, manifest frontend, sintaxis JS y servidor |
-| `npm run clean` | Borra bundles y artefactos generados no versionados |
+| `npm run clean` | Borra salidas rápidas de build: `build/`, HTML/CSS generado y bundles |
+| `npm run clean:runtime` | Borra runtime pesado generado por `setup`: `public/vendor/` y `public/v86/` |
+| `npm run clean:all` | Ejecuta la limpieza de build y runtime |
 | `npm start` | Sirve `public/` con `server.mjs` en `127.0.0.1:5173` |
 
 Regenera con `npm run setup` despues de tocar:
@@ -175,6 +177,14 @@ Regenera con `npm run build` despues de tocar:
 | `vm/profiles/*.json`, `vm/overlay/common/` | `build/profiles/`, `public/v86/images/profiles/` | `npm run setup` |
 | v86, xterm, DOMPurify, streaming-markdown, BIOS y Alpine base | `public/vendor/`, `public/v86/build/`, `public/v86/bios/`, `public/v86/images/` | `npm run build` o `npm run setup` |
 | Discos HDA locales | `public/v86/disks/` | `npm run setup` |
+
+## Limpieza
+
+Usa `npm run clean` durante el desarrollo normal. Solo borra salidas rápidas que se regeneran con `npm run build`.
+
+Usa `npm run clean:runtime` cuando quieras forzar una regeneración completa de vendors, v86, BIOS, initramfs, perfiles y discos. Después ejecuta `npm run setup` o `npm run prepare:local` antes de arrancar la VM.
+
+Usa `npm run clean:all` para limpiar ambos grupos.
 
 ## Runtime zip
 

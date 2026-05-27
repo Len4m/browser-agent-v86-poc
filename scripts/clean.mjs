@@ -1,18 +1,4 @@
 #!/usr/bin/env node
-import { rmSync } from "node:fs";
+import { buildTargets, cleanTargets } from "./clean-targets.mjs";
 
-const targets = [
-  "build",
-  "public/index.html",
-  "public/style.css",
-  "public/styles",
-  "public/assets/app.js",
-  "public/assets/app.css",
-  "public/assets/ai-sdk-bridge.mjs",
-  "public/assets/chat",
-];
-
-for (const target of targets) {
-  rmSync(target, { recursive: true, force: true });
-  console.log(`clean ${target}`);
-}
+cleanTargets("clean build", buildTargets);

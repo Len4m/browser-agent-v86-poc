@@ -235,6 +235,14 @@ Archivos clave:
 
 `check-server` arranca `server.mjs` en `127.0.0.1:5199` y valida COOP, COEP, CORP y `Range`.
 
+## Limpieza
+
+`npm run clean` borra solo salidas rápidas del build frontend: `build/`, `public/index.html`, CSS generado y bundles.
+
+`npm run clean:runtime` borra el runtime pesado generado por `setup`: `public/vendor/` y `public/v86/`. Después hay que ejecutar `npm run setup` o `npm run prepare:local` antes de arrancar la VM.
+
+`npm run clean:all` combina ambos alcances.
+
 ## Reglas de mantenimiento
 
 1. Codigo nuevo de aplicación en `src/` con TypeScript.
