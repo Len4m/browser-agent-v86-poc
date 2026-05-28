@@ -49,10 +49,13 @@ flowchart LR
 
 ## Raiz servida
 
-`public/` es la única raíz HTTP:
+`public/` es la única raíz HTTP. El HTML/CSS editable vive fuera y se regenera con `npm run build`:
 
-- `public/index.html`: shell estático de la UI.
-- `public/style.css`: único CSS enlazado desde HTML; importa `public/styles/*.css`.
+- `src/web/index.html`: plantilla fuente del shell de UI.
+- `src/web/styles/style.css`: entry CSS fuente; importa `src/web/styles/*.css`.
+- `public/index.html`: shell generado con hashes de cache.
+- `public/style.css` y `public/styles/`: CSS generado/copied para desarrollo.
+- `public/assets/app.css`: CSS bundle minificado generado por `npm run build:prod`.
 - `public/assets/app.js`: bundle principal generado.
 - `public/assets/ai-sdk-bridge.mjs`: bridge ESM generado.
 - `public/assets/chat/`: bundle AI SDK y worker LLM generados.
@@ -66,10 +69,14 @@ flowchart LR
 
 `scripts/build-frontend.mjs` genera:
 
+- `public/index.html`
+- `public/style.css`
+- `public/styles/`
 - `public/assets/app.js`
 - `public/assets/ai-sdk-bridge.mjs`
+- `public/assets/app.css` cuando se ejecuta con `--minify` o `BA_MINIFY=1`
 
-El entry `src/main.ts` instala `window.BA` desde `src/compat/window-api.ts`. Después el script concatena fuentes TypeScript en el orden `browserSourceOrder`. Este orden mantiene contratos globales históricos mientras los módulos se migran por dominio.
+El entry `src/browser/main.ts` instala `window.BA` desde `src/browser/compat/window-api.ts`. Después el script concatena fuentes TypeScript en el orden `browserSourceOrder`. Este orden mantiene contratos globales históricos mientras los módulos se migran por dominio.
 
 Regla: si cambia el orden de inicializacion del browser, se modifica solo `browserSourceOrder` en `scripts/build-frontend.mjs`.
 
@@ -85,9 +92,9 @@ Regla: si cambia el orden de inicializacion del browser, se modifica solo `brows
 Salidas LLM:
 
 - `build/browser/generated/10a-llm-models-catalog.js`, generado desde `data/llm-models.json`.
-- `public/assets/chat/ai-sdk-browser.mjs`, generado desde `src/chat/provider/ai-sdk/entry.ts`.
-- `public/assets/chat/workers/llm-browser-ai.worker.mjs`, generado desde `src/chat/provider/ai-sdk/llm-browser-ai.worker.ts`.
-- `public/assets/ai-sdk-bridge.mjs`, generado desde `src/chat/provider/ai-sdk-bridge.ts`.
+- `public/assets/chat/ai-sdk-browser.mjs`, generado desde `src/browser/chat/provider/ai-sdk/entry.ts`.
+- `public/assets/chat/workers/llm-browser-ai.worker.mjs`, generado desde `src/browser/chat/provider/ai-sdk/llm-browser-ai.worker.ts`.
+- `public/assets/ai-sdk-bridge.mjs`, generado desde `src/browser/chat/provider/ai-sdk-bridge.ts`.
 
 El bridge importa el bundle generado con query versionada y expone `window.BA_AISDK`.
 
@@ -106,23 +113,30 @@ Solo se descargan remotamente los assets que no son librerías npm del runtime: 
 
 ## Dominios de código
 
+`src/` separa el código ejecutable de las fuentes estáticas:
+
+- `src/browser/`: TypeScript del frontend que acaba en bundles JavaScript.
+- `src/web/`: plantilla HTML y CSS fuente que se generan hacia `public/`.
+
+Dentro de `src/browser/`, el TypeScript se organiza por dominio:
+
 | Ruta | Responsabilidad |
 | --- | --- |
-| `src/app/` | Estado global, bootstrap, helpers de texto y avisos de origen |
-| `src/vm/` | v86, perfiles, assets, seriales, red, discos, snapshots y operaciones VM |
-| `src/console/` | Pestañas xterm, sesiones PTY, cierre y refresco |
-| `src/ui/` | Estado visual, modales, checks y tooltips |
-| `src/chat/state/` | Estado LLM, modelos y capacidades |
-| `src/chat/panel/` | Panel LLM, controles y vista de capacidades |
-| `src/chat/runtime/` | Agent loop, UI de chat, routing, artifacts, contexto y recursos |
-| `src/chat/tools/` | Registry de tools, políticas y ejecutor |
-| `src/chat/provider/` | Bridge AI SDK, provider Ollama, Transformers.js worker y parser/middleware de tool calls |
-| `src/compat/` | API publica `window.BA` |
-| `src/core/` | Eventos compartidos |
+| `src/browser/app/` | Estado global, bootstrap, helpers de texto y avisos de origen |
+| `src/browser/vm/` | v86, perfiles, assets, seriales, red, discos, snapshots y operaciones VM |
+| `src/browser/console/` | Pestañas xterm, sesiones PTY, cierre y refresco |
+| `src/browser/ui/` | Estado visual, modales, checks y tooltips |
+| `src/browser/chat/state/` | Estado LLM, modelos y capacidades |
+| `src/browser/chat/panel/` | Panel LLM, controles y vista de capacidades |
+| `src/browser/chat/runtime/` | Agent loop, UI de chat, routing, artifacts, contexto y recursos |
+| `src/browser/chat/tools/` | Registry de tools, políticas y ejecutor |
+| `src/browser/chat/provider/` | Bridge AI SDK, provider Ollama, Transformers.js worker y parser/middleware de tool calls |
+| `src/browser/compat/` | API publica `window.BA` |
+| `src/browser/core/` | Eventos compartidos |
 
 ## Globals y API publica
 
-La aplicación aun expone varios `window.BA_*` porque el bundle principal conserva dependencias globales ordenadas. El punto de compatibilidad público es `window.BA`, instalado por `src/compat/window-api.ts`.
+La aplicación aun expone varios `window.BA_*` porque el bundle principal conserva dependencias globales ordenadas. El punto de compatibilidad público es `window.BA`, instalado por `src/browser/compat/window-api.ts`.
 
 Globals principales:
 
@@ -133,13 +147,13 @@ Globals principales:
 - `window.BA_AISDK`: bridge/provider LLM.
 - `window.BA_LLM_*`: estado, UI, tools, artifacts, contexto y recursos del chat.
 
-Regla: los módulos nuevos deben vivir en `src/` y exponer globals solo cuando haya consumidores reales.
+Regla: los módulos TypeScript nuevos deben vivir en `src/browser/` y exponer globals solo cuando haya consumidores reales.
 
 ## Seriales y ejecución VM
 
 ```txt
 Usuario / LLM
-  -> execVm() [src/vm/operations.ts]
+  -> execVm() [src/browser/vm/operations.ts]
     -> targetTools=true (por defecto)
       -> window.BA_BG_TOOLS.execVm()
       -> serial1 / ttyS1
@@ -206,16 +220,16 @@ Archivos clave:
 
 | Archivo | Responsabilidad |
 | --- | --- |
-| `src/chat/provider/ai-sdk-bridge.ts` | Crea/carga modelos, fallback WebGPU->WASM, Ollama y `window.BA_AISDK` |
-| `src/chat/provider/ai-sdk/browser-agent-runner.ts` | Turno AI SDK, steps, streaming y síntesis de respaldo |
-| `src/chat/provider/ai-sdk/ollama-browser-model.ts` | Provider Ollama HTTP browser |
-| `src/chat/provider/ai-sdk/llm-browser-ai.worker.ts` | Worker Transformers.js |
-| `src/chat/tools/ai-tools.ts` | Adaptador registry -> `tool()` del AI SDK |
-| `src/chat/tools/tool-executor.ts` | Ejecuta tools vía `execVm` y publica eventos |
-| `src/chat/tools/tool-registry.ts` | Catálogo único de tools por contexto/perfil |
-| `src/chat/runtime/context-budget.ts` | Presupuesto de contexto y tokens |
-| `src/chat/runtime/artifact-store.ts` | Persistencia compacta de resultados de tools |
-| `src/chat/rendering/markdown-renderer.ts` | Markdown streaming sin React |
+| `src/browser/chat/provider/ai-sdk-bridge.ts` | Crea/carga modelos, fallback WebGPU->WASM, Ollama y `window.BA_AISDK` |
+| `src/browser/chat/provider/ai-sdk/browser-agent-runner.ts` | Turno AI SDK, steps, streaming y síntesis de respaldo |
+| `src/browser/chat/provider/ai-sdk/ollama-browser-model.ts` | Provider Ollama HTTP browser |
+| `src/browser/chat/provider/ai-sdk/llm-browser-ai.worker.ts` | Worker Transformers.js |
+| `src/browser/chat/tools/ai-tools.ts` | Adaptador registry -> `tool()` del AI SDK |
+| `src/browser/chat/tools/tool-executor.ts` | Ejecuta tools vía `execVm` y publica eventos |
+| `src/browser/chat/tools/tool-registry.ts` | Catálogo único de tools por contexto/perfil |
+| `src/browser/chat/runtime/context-budget.ts` | Presupuesto de contexto y tokens |
+| `src/browser/chat/runtime/artifact-store.ts` | Persistencia compacta de resultados de tools |
+| `src/browser/chat/rendering/markdown-renderer.ts` | Markdown streaming sin React |
 
 ## Checks
 
@@ -228,14 +242,22 @@ Archivos clave:
 
 `check-server` arranca `server.mjs` en `127.0.0.1:5199` y valida COOP, COEP, CORP y `Range`.
 
+## Limpieza
+
+`npm run clean` borra solo salidas rápidas del build frontend: `build/`, `public/index.html`, CSS generado y bundles.
+
+`npm run clean:runtime` borra el runtime pesado generado por `setup`: `public/vendor/` y `public/v86/`. Después hay que ejecutar `npm run setup` o `npm run prepare:local` antes de arrancar la VM.
+
+`npm run clean:all` combina ambos alcances.
+
 ## Reglas de mantenimiento
 
-1. Codigo nuevo de aplicación en `src/` con TypeScript.
+1. Codigo nuevo de aplicación en `src/browser/` con TypeScript.
 2. Cambios de orden del bundle principal solo en `browserSourceOrder`.
-3. Nuevo CSS en `public/styles/` y `@import` desde `public/style.css`.
+3. Nuevo CSS en `src/web/styles/` y `@import` desde `src/web/styles/style.css`.
 4. Nuevas librerías browser vía `package.json` + script de copia/bundle, no copiadas a mano en `public/vendor/`.
 5. Nuevo modelo en `data/llm-models.json` y regeneracion con `npm run build`.
-6. Nueva tool en `src/chat/tools/tool-registry.ts`; no duplicar catálogos.
+6. Nueva tool en `src/browser/chat/tools/tool-registry.ts`; no duplicar catálogos.
 7. Cambios en perfiles, overlay o runners requieren `npm run setup`.
 8. Cambios en provider AI SDK o worker requieren `npm run build`.
 9. Mantener limites explicitos para logs, artifacts, historial y salidas de tools.

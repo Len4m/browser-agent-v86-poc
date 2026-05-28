@@ -10,58 +10,92 @@
  */
 import * as esbuild from "esbuild";
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { gzipSync } from "node:zlib";
+import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
+const publicRoot = join(root, "public");
 const outFile = join(root, "public/assets/app.js");
+const cssBundleFile = join(root, "public/assets/app.css");
 const bridgeOutFile = join(root, "public/assets/ai-sdk-bridge.mjs");
 const indexFile = join(root, "public/index.html");
 const styleFile = join(root, "public/style.css");
+const sourceIndexFile = join(root, "src/web/index.html");
+const sourceStyleFile = join(root, "src/web/styles/style.css");
+const sourceStylesDir = join(root, "src/web/styles");
+const publicStylesDir = join(root, "public/styles");
 const tempFile = join(root, "build/browser/app-entry.js");
 const generatedVersionFile = join(root, "build/browser/generated/00-app-version.js");
 const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 
 const browserSourceOrder = [
-  "src/app/state.ts",
+  "src/browser/app/state.ts",
   "build/browser/generated/00-app-version.js",
-  "src/app/text-utils.ts",
-  "src/app/origin-awareness.ts",
-  "src/ui/status-controls.ts",
-  "src/ui/modal.ts",
-  "src/console/xterm-consoles.ts",
-  "src/vm/profile-config.ts",
-  "src/vm/runtime-assets.ts",
-  "src/vm/serial-vm.ts",
-  "src/vm/background-tools-serial1.ts",
-  "src/vm/console-control-serial2.ts",
-  "src/vm/operations.ts",
-  "src/ui/checks-panel.ts",
+  "src/browser/app/text-utils.ts",
+  "src/browser/app/origin-awareness.ts",
+  "src/browser/ui/status-controls.ts",
+  "src/browser/ui/modal.ts",
+  "src/browser/console/xterm-consoles.ts",
+  "src/browser/vm/profile-config.ts",
+  "src/browser/vm/runtime-assets.ts",
+  "src/browser/vm/serial-vm.ts",
+  "src/browser/vm/background-tools-serial1.ts",
+  "src/browser/vm/console-control-serial2.ts",
+  "src/browser/vm/operations.ts",
+  "src/browser/ui/checks-panel.ts",
   "build/browser/generated/10a-llm-models-catalog.js",
-  "src/chat/state/chat-state.ts",
-  "src/chat/state/capabilities.ts",
-  "src/app/bootstrap.ts",
-  "src/chat/rendering/markdown-renderer.ts",
-  "src/chat/tools/tool-registry.ts",
-  "src/chat/tools/ai-tools.ts",
-  "src/chat/tools/tool-executor.ts",
-  "src/chat/tools/native-tools-policy.ts",
-  "src/chat/runtime/artifact-store.ts",
-  "src/chat/runtime/context-budget.ts",
-  "src/chat/runtime/tool-result-policy.ts",
-  "src/chat/runtime/resource-governor.ts",
-  "src/chat/runtime/agent-debug.ts",
-  "src/chat/runtime/agent-routing.ts",
-  "src/chat/runtime/chat-ui.ts",
-  "src/chat/runtime/agent-loop.ts",
-  "src/chat/panel/template.ts",
-  "src/chat/panel/capabilities-view.ts",
-  "src/chat/panel/panel.ts",
-  "src/ui/tooltips.ts",
+  "src/browser/chat/state/chat-state.ts",
+  "src/browser/chat/state/capabilities.ts",
+  "src/browser/app/bootstrap.ts",
+  "src/browser/chat/rendering/markdown-renderer.ts",
+  "src/browser/chat/tools/tool-registry.ts",
+  "src/browser/chat/tools/ai-tools.ts",
+  "src/browser/chat/tools/tool-executor.ts",
+  "src/browser/chat/tools/native-tools-policy.ts",
+  "src/browser/chat/runtime/artifact-store.ts",
+  "src/browser/chat/runtime/context-budget.ts",
+  "src/browser/chat/runtime/tool-result-policy.ts",
+  "src/browser/chat/runtime/resource-governor.ts",
+  "src/browser/chat/runtime/agent-debug.ts",
+  "src/browser/chat/runtime/agent-routing.ts",
+  "src/browser/chat/runtime/chat-ui.ts",
+  "src/browser/chat/runtime/agent-loop.ts",
+  "src/browser/chat/panel/template.ts",
+  "src/browser/chat/panel/capabilities-view.ts",
+  "src/browser/chat/panel/panel.ts",
+  "src/browser/ui/tooltips.ts",
 ];
 
 const minify = process.env.BA_MINIFY === "1" || process.argv.includes("--minify");
+const sourcemap = process.env.BA_SOURCEMAP === "1" || process.argv.includes("--sourcemap");
+
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes)) return "—";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+}
+
+function sizeSummary(file) {
+  const content = readFileSync(file);
+  return `${formatBytes(statSync(file).size)} / gzip ${formatBytes(gzipSync(content).length)}`;
+}
+
+async function legacySourceForBundle(file) {
+  const source = readFileSync(file, "utf8");
+  if (!minify) return source;
+  const result = await esbuild.transform(source, {
+    loader: file.endsWith(".ts") ? "ts" : "js",
+    target: ["es2022"],
+    minifyWhitespace: true,
+    minifySyntax: true,
+    minifyIdentifiers: false,
+    sourcemap: false,
+  });
+  return result.code.trim();
+}
 
 function cacheKeyForContent(content) {
   return createHash("sha256").update(content).digest("hex").slice(0, 12);
@@ -75,9 +109,33 @@ function versionedPublicPath(relativePath) {
   return `/${relativePath.replace(/^\/+/, "")}?v=${cacheKeyForPublicFile(relativePath)}`;
 }
 
+function publicHref(relativePath) {
+  return `./${relativePath.replace(/^\/+/, "")}?v=${cacheKeyForPublicFile(relativePath)}`;
+}
+
+function renderIndexHtml({ cssHref, bridgeHref, appHref }) {
+  return readFileSync(sourceIndexFile, "utf8")
+    .replace(/href="\.\/vendor\/xterm\/xterm\.css(?:\?v=[^"]*)?"/g, `href="./vendor/xterm/xterm.css?v=${cacheKeyForPublicFile("vendor/xterm/xterm.css")}"`)
+    .replace(/href="\.\/(?:style\.css|assets\/app\.css)(?:\?v=[^"]*)?"/g, `href="${cssHref}"`)
+    .replace(/id="cfg-bzimage" type="hidden" value="[^"]*"/g, `id="cfg-bzimage" type="hidden" value="${versionedPublicPath("v86/images/alpine-vmlinuz-lts")}"`)
+    .replace(/id="cfg-initrd" type="hidden" value="[^"]*"/g, `id="cfg-initrd" type="hidden" value="${versionedPublicPath("v86/images/profiles/alpine-base-initramfs.gz")}"`)
+    .replace(/src="\.\/vendor\/xterm\/xterm\.js(?:\?v=[^"]*)?"/g, `src="${publicHref("vendor/xterm/xterm.js")}"`)
+    .replace(/src="\.\/assets\/ai-sdk-bridge\.mjs(?:\?v=[^"]*)?"/g, `src="${bridgeHref}"`)
+    .replace(/src="\.\/assets\/app\.js(?:\?v=[^"]*)?"/g, `src="${appHref}"`);
+}
+
+function copyCssSources() {
+  rmSync(publicStylesDir, { recursive: true, force: true });
+  mkdirSync(publicStylesDir, { recursive: true });
+  for (const file of readdirSync(sourceStylesDir).filter((name) => name.endsWith(".css") && name !== "style.css").sort()) {
+    copyFileSync(join(sourceStylesDir, file), join(publicStylesDir, file));
+  }
+}
+
 mkdirSync(dirname(tempFile), { recursive: true });
 mkdirSync(dirname(outFile), { recursive: true });
 mkdirSync(dirname(generatedVersionFile), { recursive: true });
+copyCssSources();
 
 writeFileSync(generatedVersionFile, [
   "/* AUTO-GENERATED by scripts/build-frontend.mjs. Do not edit directly. */",
@@ -95,30 +153,42 @@ writeFileSync(generatedVersionFile, [
   "})();",
 ].join("\n"), "utf8");
 
-const styleCss = readFileSync(styleFile, "utf8")
+const styleCss = readFileSync(sourceStyleFile, "utf8")
   .replace(/@import url\("(\.\/styles\/[^"?]+\.css)(?:\?v=[^"]*)?"\);/g, (_match, url) => {
     const relativePath = url.replace(/^\.\//, "");
     return `@import url("${url}?v=${cacheKeyForPublicFile(relativePath)}");`;
   });
 writeFileSync(styleFile, styleCss, "utf8");
 
-const indexHtml = readFileSync(indexFile, "utf8")
-  .replace(/href="\.\/vendor\/xterm\/xterm\.css(?:\?v=[^"]*)?"/g, `href="./vendor/xterm/xterm.css?v=${cacheKeyForPublicFile("vendor/xterm/xterm.css")}"`)
-  .replace(/href="\.\/style\.css(?:\?v=[^"]*)?"/g, `href="./style.css?v=${cacheKeyForContent(styleCss)}"`)
-  .replace(/id="cfg-bzimage" type="hidden" value="[^"]*"/g, `id="cfg-bzimage" type="hidden" value="${versionedPublicPath("v86/images/alpine-vmlinuz-lts")}"`)
-  .replace(/id="cfg-initrd" type="hidden" value="[^"]*"/g, `id="cfg-initrd" type="hidden" value="${versionedPublicPath("v86/images/profiles/alpine-base-initramfs.gz")}"`)
-  .replace(/src="\.\/assets\/ai-sdk-bridge\.mjs(?:\?v=[^"]*)?"/g, `src="./assets/ai-sdk-bridge.mjs?v=${packageJson.version}"`)
-  .replace(/src="\.\/assets\/app\.js(?:\?v=[^"]*)?"/g, `src="./assets/app.js?v=${packageJson.version}"`);
-writeFileSync(indexFile, indexHtml, "utf8");
+let cssHref = `./style.css?v=${cacheKeyForContent(styleCss)}`;
+if (minify) {
+  await esbuild.build({
+    stdin: {
+      contents: styleCss.replace(/\?v=[^")]+/g, ""),
+      resolveDir: publicRoot,
+      sourcefile: "style.css",
+      loader: "css",
+    },
+    outfile: cssBundleFile,
+    bundle: true,
+    platform: "browser",
+    target: ["es2022"],
+    external: ["/assets/*"],
+    sourcemap,
+    minify: true,
+    logLevel: "silent",
+  });
+  cssHref = `./assets/app.css?v=${cacheKeyForPublicFile("assets/app.css")}`;
+}
 
 await esbuild.build({
-  entryPoints: [join(root, "src/main.ts")],
+  entryPoints: [join(root, "src/browser/main.ts")],
   outfile: tempFile,
   bundle: true,
   platform: "browser",
   format: "iife",
   target: ["es2022"],
-  sourcemap: false,
+  sourcemap,
   minify,
   define: {
     __BA_BROWSER_SOURCE_ORDER__: JSON.stringify(browserSourceOrder),
@@ -127,13 +197,13 @@ await esbuild.build({
 });
 
 await esbuild.build({
-  entryPoints: [join(root, "src/chat/provider/ai-sdk-bridge.ts")],
+  entryPoints: [join(root, "src/browser/chat/provider/ai-sdk-bridge.ts")],
   outfile: bridgeOutFile,
   bundle: true,
   platform: "browser",
   format: "esm",
   target: ["es2022"],
-  sourcemap: false,
+  sourcemap,
   minify,
   external: ["./chat/ai-sdk-browser.mjs*"],
   logLevel: "silent",
@@ -147,10 +217,16 @@ const chunks = [
 for (const script of browserSourceOrder) {
   const abs = join(root, script);
   chunks.push(`\n/* ---- ${script} ---- */\n`);
-  chunks.push(readFileSync(abs, "utf8"));
+  chunks.push(await legacySourceForBundle(abs));
   chunks.push("\n");
 }
 
 writeFileSync(outFile, chunks.join("\n"), "utf8");
-console.log(`OK frontend bundle: public/assets/app.js (${browserSourceOrder.length} ordered sources)`);
-console.log("OK AI SDK bridge: public/assets/ai-sdk-bridge.mjs");
+writeFileSync(indexFile, renderIndexHtml({
+  cssHref,
+  bridgeHref: publicHref("assets/ai-sdk-bridge.mjs"),
+  appHref: publicHref("assets/app.js"),
+}), "utf8");
+console.log(`OK frontend bundle: public/assets/app.js (${browserSourceOrder.length} ordered sources, ${sizeSummary(outFile)})`);
+console.log(`OK AI SDK bridge: public/assets/ai-sdk-bridge.mjs (${sizeSummary(bridgeOutFile)})`);
+if (minify) console.log(`OK CSS bundle: public/assets/app.css (${sizeSummary(cssBundleFile)})`);

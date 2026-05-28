@@ -19,7 +19,7 @@ declare global {
 export function installWindowApi(scriptOrder: string[]): BrowserAgentPublicApi {
   const api: BrowserAgentPublicApi = {
     version: "0.3.0-typescript-bundle",
-    source: "src/main.ts",
+    source: "src/browser/main.ts",
     events: appEvents,
     build: {
       sourceOrder: [...scriptOrder],
