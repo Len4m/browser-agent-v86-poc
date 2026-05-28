@@ -22,50 +22,50 @@ const cssBundleFile = join(root, "public/assets/app.css");
 const bridgeOutFile = join(root, "public/assets/ai-sdk-bridge.mjs");
 const indexFile = join(root, "public/index.html");
 const styleFile = join(root, "public/style.css");
-const sourceIndexFile = join(root, "src/app/index.html");
-const sourceStyleFile = join(root, "src/styles/style.css");
-const sourceStylesDir = join(root, "src/styles");
+const sourceIndexFile = join(root, "src/web/index.html");
+const sourceStyleFile = join(root, "src/web/styles/style.css");
+const sourceStylesDir = join(root, "src/web/styles");
 const publicStylesDir = join(root, "public/styles");
 const tempFile = join(root, "build/browser/app-entry.js");
 const generatedVersionFile = join(root, "build/browser/generated/00-app-version.js");
 const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 
 const browserSourceOrder = [
-  "src/app/state.ts",
+  "src/browser/app/state.ts",
   "build/browser/generated/00-app-version.js",
-  "src/app/text-utils.ts",
-  "src/app/origin-awareness.ts",
-  "src/ui/status-controls.ts",
-  "src/ui/modal.ts",
-  "src/console/xterm-consoles.ts",
-  "src/vm/profile-config.ts",
-  "src/vm/runtime-assets.ts",
-  "src/vm/serial-vm.ts",
-  "src/vm/background-tools-serial1.ts",
-  "src/vm/console-control-serial2.ts",
-  "src/vm/operations.ts",
-  "src/ui/checks-panel.ts",
+  "src/browser/app/text-utils.ts",
+  "src/browser/app/origin-awareness.ts",
+  "src/browser/ui/status-controls.ts",
+  "src/browser/ui/modal.ts",
+  "src/browser/console/xterm-consoles.ts",
+  "src/browser/vm/profile-config.ts",
+  "src/browser/vm/runtime-assets.ts",
+  "src/browser/vm/serial-vm.ts",
+  "src/browser/vm/background-tools-serial1.ts",
+  "src/browser/vm/console-control-serial2.ts",
+  "src/browser/vm/operations.ts",
+  "src/browser/ui/checks-panel.ts",
   "build/browser/generated/10a-llm-models-catalog.js",
-  "src/chat/state/chat-state.ts",
-  "src/chat/state/capabilities.ts",
-  "src/app/bootstrap.ts",
-  "src/chat/rendering/markdown-renderer.ts",
-  "src/chat/tools/tool-registry.ts",
-  "src/chat/tools/ai-tools.ts",
-  "src/chat/tools/tool-executor.ts",
-  "src/chat/tools/native-tools-policy.ts",
-  "src/chat/runtime/artifact-store.ts",
-  "src/chat/runtime/context-budget.ts",
-  "src/chat/runtime/tool-result-policy.ts",
-  "src/chat/runtime/resource-governor.ts",
-  "src/chat/runtime/agent-debug.ts",
-  "src/chat/runtime/agent-routing.ts",
-  "src/chat/runtime/chat-ui.ts",
-  "src/chat/runtime/agent-loop.ts",
-  "src/chat/panel/template.ts",
-  "src/chat/panel/capabilities-view.ts",
-  "src/chat/panel/panel.ts",
-  "src/ui/tooltips.ts",
+  "src/browser/chat/state/chat-state.ts",
+  "src/browser/chat/state/capabilities.ts",
+  "src/browser/app/bootstrap.ts",
+  "src/browser/chat/rendering/markdown-renderer.ts",
+  "src/browser/chat/tools/tool-registry.ts",
+  "src/browser/chat/tools/ai-tools.ts",
+  "src/browser/chat/tools/tool-executor.ts",
+  "src/browser/chat/tools/native-tools-policy.ts",
+  "src/browser/chat/runtime/artifact-store.ts",
+  "src/browser/chat/runtime/context-budget.ts",
+  "src/browser/chat/runtime/tool-result-policy.ts",
+  "src/browser/chat/runtime/resource-governor.ts",
+  "src/browser/chat/runtime/agent-debug.ts",
+  "src/browser/chat/runtime/agent-routing.ts",
+  "src/browser/chat/runtime/chat-ui.ts",
+  "src/browser/chat/runtime/agent-loop.ts",
+  "src/browser/chat/panel/template.ts",
+  "src/browser/chat/panel/capabilities-view.ts",
+  "src/browser/chat/panel/panel.ts",
+  "src/browser/ui/tooltips.ts",
 ];
 
 const minify = process.env.BA_MINIFY === "1" || process.argv.includes("--minify");
@@ -182,7 +182,7 @@ if (minify) {
 }
 
 await esbuild.build({
-  entryPoints: [join(root, "src/main.ts")],
+  entryPoints: [join(root, "src/browser/main.ts")],
   outfile: tempFile,
   bundle: true,
   platform: "browser",
@@ -197,7 +197,7 @@ await esbuild.build({
 });
 
 await esbuild.build({
-  entryPoints: [join(root, "src/chat/provider/ai-sdk-bridge.ts")],
+  entryPoints: [join(root, "src/browser/chat/provider/ai-sdk-bridge.ts")],
   outfile: bridgeOutFile,
   bundle: true,
   platform: "browser",

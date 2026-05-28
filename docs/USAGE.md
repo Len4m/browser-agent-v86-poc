@@ -161,9 +161,9 @@ Regenera con `npm run setup` despues de tocar:
 
 Regenera con `npm run build` despues de tocar:
 
-- `src/`
-- `src/app/index.html`
-- `src/styles/`
+- `src/browser/`
+- `src/web/index.html`
+- `src/web/styles/`
 - `data/llm-models.json`
 - provider AI SDK o worker LLM
 
@@ -171,9 +171,9 @@ Regenera con `npm run build` despues de tocar:
 
 | Fuente | Salida | Regenerar |
 | --- | --- | --- |
-| `src/`, `src/app/index.html`, `src/styles/` | `public/index.html`, `public/style.css`, `public/styles/`, `public/assets/app.js`, `public/assets/ai-sdk-bridge.mjs` | `npm run build` |
-| `src/styles/` | `public/assets/app.css` | `npm run build:release` |
-| `src/chat/provider/ai-sdk/`, `data/llm-models.json` | `public/assets/chat/`, `build/browser/generated/` | `npm run build` |
+| `src/browser/`, `src/web/index.html`, `src/web/styles/` | `public/index.html`, `public/style.css`, `public/styles/`, `public/assets/app.js`, `public/assets/ai-sdk-bridge.mjs` | `npm run build` |
+| `src/web/styles/` | `public/assets/app.css` | `npm run build:prod` |
+| `src/browser/chat/provider/ai-sdk/`, `data/llm-models.json` | `public/assets/chat/`, `build/browser/generated/` | `npm run build` |
 | `vm/profiles/*.json`, `vm/overlay/common/` | `build/profiles/`, `public/v86/images/profiles/` | `npm run setup` |
 | v86, xterm, DOMPurify, streaming-markdown, BIOS y Alpine base | `public/vendor/`, `public/v86/build/`, `public/v86/bios/`, `public/v86/images/` | `npm run build` o `npm run setup` |
 | Discos HDA locales | `public/v86/disks/` | `npm run setup` |
