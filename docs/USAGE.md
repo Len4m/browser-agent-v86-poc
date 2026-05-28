@@ -113,11 +113,13 @@ Backends soportados:
 - **Ollama HTTP**: el navegador llama directamente al endpoint local, por defecto `http://127.0.0.1:11434`.
 
 Los modelos disponibles se declaran en `data/llm-models.json` y se regeneran con `npm run build`.
+El catálogo prioriza modelos con evidencia de tool calling en `Transformers.js + AI SDK`; las entradas experimentales sirven para validación local antes de tratarlas como recomendadas.
 
 Notas de uso:
 
 - El chat está deshabilitado hasta que cargues un backend/modelo.
 - La primera carga de modelos Transformers.js puede descargar ficheros grandes y quedar cacheada por el navegador.
+- WebGPU es la ruta recomendada para tools con Transformers.js. El fallback WASM existe para chat básico en navegadores sin WebGPU, pero no debe considerarse una ruta fiable para tool calling; usa un navegador con WebGPU compatible u Ollama si necesitas herramientas.
 - Si usas Ollama desde otro origen distinto al permitido, arranca Ollama con `OLLAMA_ORIGINS` incluyendo el origen de la página. Ejemplo: `OLLAMA_ORIGINS=http://127.0.0.1:5173`.
 - En una publicación web, Ollama sigue siendo local para cada usuario: el navegador llama a su propio `127.0.0.1`.
 
