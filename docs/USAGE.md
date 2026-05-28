@@ -17,7 +17,7 @@ Para usar un runtime ya generado basta con:
 - Navegador moderno.
 - WebGPU recomendado para modelos Transformers.js locales; existe alternativa WASM cuando el modelo/configuración lo permite.
 - Servidor HTTP con COOP/COEP/CORP, MIME `application/wasm` y soporte `Range`.
-- Conexion a Internet para la primera descarga de modelos, salvo que ya esten en cache del navegador.
+- Conexión a Internet para la primera descarga de modelos, salvo que ya estén en caché del navegador.
 
 Para preparar el proyecto desde el repo necesitas además:
 
@@ -33,7 +33,7 @@ En Debian/Ubuntu:
 sudo apt install -y cpio gzip tar curl zstd xz-utils e2fsprogs findutils gawk grep sed
 ```
 
-## Preparacion local
+## Preparación local
 
 ```bash
 git clone https://github.com/Len4m/browser-agent-v86-poc.git
@@ -45,13 +45,13 @@ npm start
 
 Abre `http://127.0.0.1:5173/`.
 
-`npm run prepare:local` ejecuta `setup` y despues `build`. La VM no arrancara correctamente hasta que existan los assets generados en `public/v86/`, `public/vendor/` y `public/assets/`.
+`npm run prepare:local` ejecuta `setup` y después `build`. La VM no arrancará correctamente hasta que existan los assets generados en `public/v86/`, `public/vendor/` y `public/assets/`.
 
 ## Primer uso
 
 1. Pulsa **Comprobar** para validar cabeceras, assets, serial1 y runners de la VM cuando corresponda.
 2. Antes de arrancar, elige perfil, RAM, VRAM y disco.
-3. Pulsa **Arrancar VM** y espera a que la shell este lista.
+3. Pulsa **Arrancar VM** y espera a que la shell esté lista.
 4. Para usar chat, abre el panel **LLM**, selecciona backend/modelo y pulsa cargar.
 5. Usa las consolas xterm, el formulario manual o el chat con tools habilitadas.
 
@@ -118,7 +118,7 @@ Notas de uso:
 
 - El chat está deshabilitado hasta que cargues un backend/modelo.
 - La primera carga de modelos Transformers.js puede descargar ficheros grandes y quedar cacheada por el navegador.
-- Si usas Ollama desde otro origen distinto al permitido, arranca Ollama con `OLLAMA_ORIGINS` incluyendo el origen de la pagina. Ejemplo: `OLLAMA_ORIGINS=http://127.0.0.1:5173`.
+- Si usas Ollama desde otro origen distinto al permitido, arranca Ollama con `OLLAMA_ORIGINS` incluyendo el origen de la página. Ejemplo: `OLLAMA_ORIGINS=http://127.0.0.1:5173`.
 - En una publicación web, Ollama sigue siendo local para cada usuario: el navegador llama a su propio `127.0.0.1`.
 
 ## Red WS
@@ -146,20 +146,21 @@ Flujo recomendado:
 | `npm run prepare:local` | Ejecuta `setup` y `build` para dejar un entorno local usable |
 | `npm run setup` | Descarga/copia assets base, genera initramfs, perfiles y discos |
 | `npm run build` | Genera catálogo LLM, vendors, worker/bridge LLM y bundle frontend |
-| `npm run check` | Valida TypeScript, manifest frontend, sintaxis JS y servidor |
-| `npm run clean` | Borra salidas rápidas de build: `build/`, HTML/CSS generado y bundles |
+| `npm run build:prod` | Genera el runtime minificado para producción: JS/CSS minificados y hashes de caché |
+| `npm run check` | Valida TypeScript, modelos LLM, perfiles VM, manifest frontend, sintaxis JS y servidor |
+| `npm run clean` | Borra `build/` y las salidas generadas por el build en `public/` |
 | `npm run clean:runtime` | Borra runtime pesado generado por `setup`: `public/vendor/` y `public/v86/` |
 | `npm run clean:all` | Ejecuta la limpieza de build y runtime |
 | `npm start` | Sirve `public/` con `server.mjs` en `127.0.0.1:5173` |
 
-Regenera con `npm run setup` despues de tocar:
+Regenera con `npm run setup` después de tocar:
 
 - `vm/profiles/*.json`
 - `vm/overlay/common/`
 - `scripts/build-alpine-initramfs.sh`
 - runners seriales
 
-Regenera con `npm run build` despues de tocar:
+Regenera con `npm run build` después de tocar:
 
 - `src/browser/`
 - `src/web/index.html`
@@ -180,9 +181,9 @@ Regenera con `npm run build` despues de tocar:
 
 ## Limpieza
 
-Usa `npm run clean` durante el desarrollo normal. Solo borra salidas rápidas que se regeneran con `npm run build`.
+Usa `npm run clean` durante el desarrollo normal. Borra `build/` y las salidas generadas por el build en `public/`: HTML/CSS generado y bundles. No borra `public/vendor/` ni `public/v86/`.
 
-Usa `npm run clean:runtime` cuando quieras forzar una regeneración completa de vendors, v86, BIOS, initramfs, perfiles y discos. Después ejecuta `npm run setup` o `npm run prepare:local` antes de arrancar la VM.
+Usa `npm run clean:runtime` cuando quieras forzar una regeneración del runtime pesado: vendors, v86, BIOS, initramfs, perfiles y discos. Después ejecuta `npm run setup` o `npm run prepare:local` antes de arrancar la VM.
 
 Usa `npm run clean:all` para limpiar ambos grupos.
 
@@ -229,12 +230,12 @@ npm start
 
 ## Problemas habituales
 
-- **VM no arranca**: ejecuta `npm run prepare:local` y despues `npm run check`.
+- **VM no arranca**: ejecuta `npm run prepare:local` y después `npm run check`.
 - **No aparecen perfiles**: falta `/v86/images/profiles/index.json`; ejecuta `npm run setup`.
 - **Cambiaste initramfs, runners o perfiles**: ejecuta `npm run setup` y arranca una VM nueva.
 - **Disco HDA no monta**: verifica que existe `public/v86/disks/alpine-hda-*.img`; `npm run setup` los crea.
 - **Tools o checks afectan a la consola visible**: valida `/dev/ttyS1`, `/dev/ttyS2` y los procesos `ba-serial1-runner` / `ba-serial2-console-runner`.
-- **Una consola xterm queda desincronizada**: usa refrescar; limpia el xterm local y envia `Ctrl+L` al shell activo.
+- **Una consola xterm queda desincronizada**: usa refrescar; limpia el xterm local y envía `Ctrl+L` al shell activo.
 - **LLM local falla por WebGPU**: prueba un modelo WASM o reduce el modelo; algunas rutas intentan fallback WASM.
 - **Ollama falla por CORS**: configura `OLLAMA_ORIGINS` con el origen exacto desde el que sirves la página.
 - **Ollama no responde con el modelo elegido**: comprueba que el modelo está instalado en tu Ollama local con `ollama list` o instálalo con `ollama pull <modelo>`.

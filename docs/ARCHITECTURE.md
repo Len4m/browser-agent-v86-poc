@@ -47,14 +47,14 @@ flowchart LR
   V86 <-->|"red WS opcional"| Wsnic
 ```
 
-## Raiz servida
+## Raíz servida
 
 `public/` es la única raíz HTTP. El HTML/CSS editable vive fuera y se regenera con `npm run build`:
 
 - `src/web/index.html`: plantilla fuente del shell de UI.
 - `src/web/styles/style.css`: entry CSS fuente; importa `src/web/styles/*.css`.
-- `public/index.html`: shell generado con hashes de cache.
-- `public/style.css` y `public/styles/`: CSS generado/copied para desarrollo.
+- `public/index.html`: shell generado con hashes de caché.
+- `public/style.css` y `public/styles/`: CSS generado/copiado para desarrollo.
 - `public/assets/app.css`: CSS bundle minificado generado por `npm run build:prod`.
 - `public/assets/app.js`: bundle principal generado.
 - `public/assets/ai-sdk-bridge.mjs`: bridge ESM generado.
@@ -63,7 +63,7 @@ flowchart LR
 - `public/v86/`: runtime v86, BIOS, kernel, initramfs, perfiles y discos.
 - `public/_headers`: cabeceras para despliegues estáticos compatibles.
 
-`server.mjs` solo sirve `public/` y añade COOP/COEP/CORP, MIME para `.wasm`, cache por tipo y `Range`.
+`server.mjs` solo sirve `public/` y añade COOP/COEP/CORP, MIME para `.wasm`, caché por tipo y `Range`.
 
 ## Build frontend
 
@@ -78,7 +78,7 @@ flowchart LR
 
 El entry `src/browser/main.ts` instala `window.BA` desde `src/browser/compat/window-api.ts`. Después el script concatena fuentes TypeScript en el orden `browserSourceOrder`. Este orden mantiene contratos globales históricos mientras los módulos se migran por dominio.
 
-Regla: si cambia el orden de inicializacion del browser, se modifica solo `browserSourceOrder` en `scripts/build-frontend.mjs`.
+Regla: si cambia el orden de inicialización del browser, se modifica solo `browserSourceOrder` en `scripts/build-frontend.mjs`.
 
 ## Build LLM
 
@@ -109,7 +109,7 @@ Las librerías de runtime deben estar declaradas en `package.json` y copiarse de
 | `dompurify` | `public/vendor/llm/dompurify/purify.es.mjs` |
 | `streaming-markdown` | `public/vendor/llm/streaming-markdown/smd.js` |
 
-Solo se descargan remotamente los assets que no son librerías npm del runtime: BIOS de v86 y minirootfs Alpine. No anadir librerías nuevas directamente en `public/vendor/`; declararlas en npm y copiarlas o bundlearlas desde scripts.
+Solo se descargan remotamente los assets que no son librerías npm del runtime: BIOS de v86 y minirootfs Alpine. No añadir librerías nuevas directamente en `public/vendor/`; declararlas en npm y copiarlas o bundlearlas desde scripts.
 
 ## Dominios de código
 
@@ -131,12 +131,12 @@ Dentro de `src/browser/`, el TypeScript se organiza por dominio:
 | `src/browser/chat/runtime/` | Agent loop, UI de chat, routing, artifacts, contexto y recursos |
 | `src/browser/chat/tools/` | Registry de tools, políticas y ejecutor |
 | `src/browser/chat/provider/` | Bridge AI SDK, provider Ollama, Transformers.js worker y parser/middleware de tool calls |
-| `src/browser/compat/` | API publica `window.BA` |
+| `src/browser/compat/` | API pública `window.BA` |
 | `src/browser/core/` | Eventos compartidos |
 
-## Globals y API publica
+## Globals y API pública
 
-La aplicación aun expone varios `window.BA_*` porque el bundle principal conserva dependencias globales ordenadas. El punto de compatibilidad público es `window.BA`, instalado por `src/browser/compat/window-api.ts`.
+La aplicación aún expone varios `window.BA_*` porque el bundle principal conserva dependencias globales ordenadas. El punto de compatibilidad público es `window.BA`, instalado por `src/browser/compat/window-api.ts`.
 
 Globals principales:
 
@@ -236,6 +236,8 @@ Archivos clave:
 `npm run check` ejecuta:
 
 - `tsc --noEmit`
+- `scripts/check-llm-models.mjs`
+- `scripts/check-vm-profiles.mjs`
 - `scripts/check-frontend-manifest.mjs`
 - `scripts/check-js-syntax.mjs`
 - `scripts/check-server.mjs`
@@ -244,7 +246,7 @@ Archivos clave:
 
 ## Limpieza
 
-`npm run clean` borra solo salidas rápidas del build frontend: `build/`, `public/index.html`, CSS generado y bundles.
+`npm run clean` borra `build/` y las salidas generadas por el build en `public/`: `public/index.html`, CSS generado y bundles. No borra `public/vendor/` ni `public/v86/`.
 
 `npm run clean:runtime` borra el runtime pesado generado por `setup`: `public/vendor/` y `public/v86/`. Después hay que ejecutar `npm run setup` o `npm run prepare:local` antes de arrancar la VM.
 
@@ -252,13 +254,13 @@ Archivos clave:
 
 ## Reglas de mantenimiento
 
-1. Codigo nuevo de aplicación en `src/browser/` con TypeScript.
+1. Código nuevo de aplicación en `src/browser/` con TypeScript.
 2. Cambios de orden del bundle principal solo en `browserSourceOrder`.
 3. Nuevo CSS en `src/web/styles/` y `@import` desde `src/web/styles/style.css`.
 4. Nuevas librerías browser vía `package.json` + script de copia/bundle, no copiadas a mano en `public/vendor/`.
-5. Nuevo modelo en `data/llm-models.json` y regeneracion con `npm run build`.
+5. Nuevo modelo en `data/llm-models.json` y regeneración con `npm run build`.
 6. Nueva tool en `src/browser/chat/tools/tool-registry.ts`; no duplicar catálogos.
 7. Cambios en perfiles, overlay o runners requieren `npm run setup`.
 8. Cambios en provider AI SDK o worker requieren `npm run build`.
-9. Mantener limites explicitos para logs, artifacts, historial y salidas de tools.
+9. Mantener límites explícitos para logs, artifacts, historial y salidas de tools.
 10. Probar consolas xterm, cierre, refresco, programas de pantalla completa y tools tras tocar seriales o geometría de consola.
