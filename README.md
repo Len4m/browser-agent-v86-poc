@@ -10,7 +10,7 @@ Estado actual: **beta `0.9.2-beta.0`**. La versión `1.0.0` queda reservada para
 - Repositorio: [https://github.com/Len4m/browser-agent-v86-poc](https://github.com/Len4m/browser-agent-v86-poc)
 - Autor: Lenam [lenamgenx@protonmail.com](mailto:lenamgenx@protonmail.com) ([https://Len4m.github.io](https://Len4m.github.io))
 
-## Que incluye
+## Qué incluye
 
 - **VM Alpine x86 en el navegador**: arranque por initramfs, perfiles generados y discos HDA opcionales como discos de datos.
 - **Consolas xterm directas**: hasta 4 pestañas de usuario; la pestaña 1 usa `serial0` real y las pestañas 2-4 usan PTY propia dentro de la VM.
@@ -53,7 +53,7 @@ El detalle de requisitos, scripts, empaquetado y solución de problemas está en
 
 ## Ejecutar un runtime ya generado
 
-Si ya tienes un zip de `public/` con los assets generados, no necesitas Node.js ni Docker para usar la aplicación. Sirve esa carpeta con un servidor HTTP que envie:
+Si ya tienes un zip de `public/` con los assets generados, no necesitas Node.js ni Docker para usar la aplicación. Sirve esa carpeta con un servidor HTTP que envíe:
 
 - COOP/COEP/CORP para `SharedArrayBuffer`.
 - MIME correcto para `.wasm`.
@@ -67,7 +67,7 @@ No abras `index.html` como `file://`. `npm start` ya sirve `public/` con las cab
 public/             # raíz servida al navegador; contiene salidas generadas y assets estáticos
 src/browser/        # código TypeScript del frontend
 src/web/            # plantilla HTML y CSS fuente
-scripts/            # setup, build, checks, limpieza y generacion de assets
+scripts/            # setup, build, checks, limpieza y generación de assets
 vm/profiles/        # perfiles Alpine de VM
 vm/overlay/common/  # runners y ficheros incluidos en el initramfs
 docs/USAGE.md       # uso, desarrollo, distribución y troubleshooting
