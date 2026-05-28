@@ -42,14 +42,14 @@ const shared = {
 async function main() {
   await esbuild.build({
     ...shared,
-    entryPoints: [join(root, "src/chat/provider/ai-sdk/entry.ts")],
+    entryPoints: [join(root, "src/browser/chat/provider/ai-sdk/entry.ts")],
     outfile: browserOutFile,
     external: [],
   });
 
   await esbuild.build({
     ...shared,
-    entryPoints: [join(root, "src/chat/provider/ai-sdk/llm-browser-ai.worker.ts")],
+    entryPoints: [join(root, "src/browser/chat/provider/ai-sdk/llm-browser-ai.worker.ts")],
     outfile: workerOutFile,
   });
 
