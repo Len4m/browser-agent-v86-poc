@@ -9,7 +9,7 @@ Lista de temas detectados para revisar antes de una publicación estable.
 - [X] Revisar la detección de JSON en respuestas de modelos: validar si el parser actual es adecuado para tool calling y si el mensaje «El modelo local no generó texto. Recarga (Ctrl+Shift+R) o prueba otro modelo.» cubre bien los casos reales (respuesta vacía, solo JSON, razonamiento sin texto visible).
 - [X] Revisar integración con Ollama cuando el proyecto esté publicado en internet: CORS, origen permitido, endpoints locales, seguridad y experiencia de configuración.
 - [ ] Mejorar y revisar la gestión de artifacts: ciclo de vida,~~persistencia~~,~~limpieza~~, referencias desde el contexto, visualización en UI y límites de memoria.
-- [ ] Seleccionar mejor los modelos que aceptan y funcionan correctamente con tools por defecto.
+- [X] Seleccionar mejor los modelos que aceptan y funcionan correctamente con tools por defecto.
 
 ## Producto y publicación
 
