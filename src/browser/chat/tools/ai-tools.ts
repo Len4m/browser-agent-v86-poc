@@ -156,7 +156,7 @@
             type: "tool_call",
             tool: meta.name,
             arguments: args,
-            reason: `El modelo solicita ${meta.name}.`,
+            reason: t("tools.exec.reasonModelRequest", "El modelo solicita {name}.", { name: meta.name }),
             riskLevel: toolDef.riskLevel,
           };
 
