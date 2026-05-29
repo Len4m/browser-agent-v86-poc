@@ -254,7 +254,7 @@
     }
     const withUser = baseMessages.length
       ? baseMessages
-      : [{ role: "user", content: "Responde en español." }];
+      : [{ role: "user", content: t("prompt.respondLang", "Responde en español.") }];
     return {
       ...prompt,
       system: undefined,
@@ -286,7 +286,7 @@
     return Math.ceil(value.length / 3);
   }
 
-  function truncateChars(text, maxChars, suffix = "\n...[contexto recortado]...") {
+  function truncateChars(text, maxChars, suffix = t("prompt.contextTrimmed", "\n...[contexto recortado]...")) {
     const value = String(text || "");
     if (value.length <= maxChars) return { text: value, truncated: false };
     return { text: `${value.slice(0, Math.max(0, maxChars - suffix.length))}${suffix}`, truncated: true };
@@ -312,28 +312,33 @@
   }
 
   function buildRuntimeContext({ nativeTools = false, activeToolNames = null } = {}) {
+    const notReady = t("prompt.toolsNotReady", "Herramientas: no listas.");
     const registryCtx = nativeTools
-      ? (window.BA_LLM_TOOL_REGISTRY?.buildPromptRuntimeContextCompact?.({ toolNames: activeToolNames }) || "Herramientas: no listas.")
-      : (window.BA_LLM_TOOL_REGISTRY?.buildPromptRuntimeContext?.() || "Herramientas: no listas.");
+      ? (window.BA_LLM_TOOL_REGISTRY?.buildPromptRuntimeContextCompact?.({ toolNames: activeToolNames }) || notReady)
+      : (window.BA_LLM_TOOL_REGISTRY?.buildPromptRuntimeContext?.() || notReady);
     if (nativeTools) return registryCtx;
     const budget = window.BA_LLM_RESOURCE_GOVERNOR?.getSnapshot?.();
     if (!budget) return registryCtx;
     return [
       registryCtx,
-      `Recursos: LLM ${budget.llmBusy ? "ocupado" : "libre"} · herramienta ${budget.toolBusy ? "ocupada" : "libre"} · último artefacto ${window.BA_LLM?.lastArtifactId || "—"}`,
+      t("prompt.resources", "Recursos: LLM {llm} · herramienta {tool} · último artefacto {artifact}", {
+        llm: budget.llmBusy ? t("prompt.busy", "ocupado") : t("prompt.free", "libre"),
+        tool: budget.toolBusy ? t("prompt.busyF", "ocupada") : t("prompt.free", "libre"),
+        artifact: window.BA_LLM?.lastArtifactId || "—",
+      }),
     ].join("\n");
   }
 
   function buildAppToolFormatRule(activeToolNames = []) {
-    const list = (activeToolNames || []).filter(Boolean).join(", ") || "ninguna";
+    const list = (activeToolNames || []).filter(Boolean).join(", ") || t("prompt.none", "ninguna");
     return [
-      "Preguntas generales (sin datos de la VM): responde en español normal, sin bloque tool_call.",
-      "Solo si necesitas datos reales de la VM/red: responde ÚNICAMENTE con este bloque (sin texto antes ni después):",
+      t("prompt.appTool.general", "Preguntas generales (sin datos de la VM): responde en español normal, sin bloque tool_call."),
+      t("prompt.appTool.onlyIf", "Solo si necesitas datos reales de la VM/red: responde ÚNICAMENTE con este bloque (sin texto antes ni después):"),
       "```tool_call",
       "{\"name\":\"vm.fs.list\",\"arguments\":{\"path\":\"/\",\"maxEntries\":120}}",
       "```",
-      `Sustituye el name por uno de: ${list}. Claves JSON: "name" y "arguments" (no uses "tool").`,
-      "No uses nombres de tools fuera de esa lista; pueden no existir en el perfil VM actual.",
+      t("prompt.appTool.replaceName", "Sustituye el name por uno de: {list}. Claves JSON: \"name\" y \"arguments\" (no uses \"tool\").", { list }),
+      t("prompt.appTool.noOutside", "No uses nombres de tools fuera de esa lista; pueden no existir en el perfil VM actual."),
     ].join("\n");
   }
 
@@ -358,19 +363,19 @@
     const toolRules = [];
     if (nativeTools) {
       toolRules.push(
-        "Si necesitas datos reales de la VM o red, invoca exactamente una herramienta activa del runtime.",
-        "No llames herramientas que no aparezcan en 'Herramientas activas'; los perfiles de VM no tienen el mismo catálogo.",
-        "Prefiere herramientas específicas (vm.fs.*, vm.sys.info, net.*, web.*) antes de vm.sh.exec. Usa vm.sh.exec solo si no existe alternativa activa.",
-        "Si la VM/serial1 no está lista o la herramienta falla, explica el fallo; no inventes stdout ni archivos.",
-        "Formato si el runtime no acepta tool-call nativo:",
+        t("prompt.native.invokeOne", "Si necesitas datos reales de la VM o red, invoca exactamente una herramienta activa del runtime."),
+        t("prompt.native.onlyActive", "No llames herramientas que no aparezcan en 'Herramientas activas'; los perfiles de VM no tienen el mismo catálogo."),
+        t("prompt.native.preferSpecific", "Prefiere herramientas específicas (vm.fs.*, vm.sys.info, net.*, web.*) antes de vm.sh.exec. Usa vm.sh.exec solo si no existe alternativa activa."),
+        t("prompt.native.explainFail", "Si la VM/serial1 no está lista o la herramienta falla, explica el fallo; no inventes stdout ni archivos."),
+        t("prompt.native.fallbackFormat", "Formato si el runtime no acepta tool-call nativo:"),
         "```tool_call",
         "{\"name\":\"vm.fs.list\",\"arguments\":{\"path\":\"/\",\"maxEntries\":120}}",
         "```",
-        "Usa claves \"name\" y \"arguments\". No inventes salidas.",
+        t("prompt.native.keys", "Usa claves \"name\" y \"arguments\". No inventes salidas."),
       );
     }
     if (mode === "synthesis") {
-      toolRules.push("Resume solo el artefacto; si está truncado, dilo. Máx. 6 frases.");
+      toolRules.push(t("prompt.synthesis.rule", "Resume solo el artefacto; si está truncado, dilo. Máx. 6 frases."));
     }
 
     const maxBase = Math.floor(policy.maxSystemChars * 0.5);
@@ -412,12 +417,12 @@
       messages.push({
         role: "user",
         content: [
-          "El usuario se refiere a un resultado real de herramienta guardado como artefacto.",
-          "No uses conocimiento inventado; usa solamente el artefacto y la petición actual.",
+          t("prompt.artifact.refers", "El usuario se refiere a un resultado real de herramienta guardado como artefacto."),
+          t("prompt.artifact.onlyArtifact", "No uses conocimiento inventado; usa solamente el artefacto y la petición actual."),
           "",
           artifactText,
           "",
-          `Petición actual del usuario: ${userText}`,
+          t("prompt.artifact.currentRequest", "Petición actual del usuario: {user}", { user: userText }),
         ].join("\n"),
       });
     } else if (appToolTurn) {
@@ -426,7 +431,7 @@
         content: [
           userText,
           "",
-          "Si necesitas datos de la VM, responde solo con ```tool_call. Si no, responde en texto normal (sin JSON de tool).",
+          t("prompt.appTool.turnHint", "Si necesitas datos de la VM, responde solo con ```tool_call. Si no, responde en texto normal (sin JSON de tool)."),
         ].join("\n"),
       });
     } else {
@@ -437,7 +442,7 @@
   }
 
   function buildMinimalChatSystem() {
-    return "Asistente local en español. Responde en prosa breve. No uses JSON ni bloques de código salvo que pidan datos reales de la VM.";
+    return t("prompt.minimalChat", "Asistente local en español. Responde en prosa breve. No uses JSON ni bloques de código salvo que pidan datos reales de la VM.");
   }
 
   /** Prompt for streamText({ system, messages }). nativeTools = catálogo compacto (schemas en runtime). */
@@ -516,7 +521,7 @@
     const last = out[out.length - 1];
     const availableChars = Math.max(1000, (maxTokens - estimateTokens(out.slice(0, -1).map((msg) => msg.content).join("\n"))) * 3);
     const compact = window.BA_LLM_ARTIFACTS?.truncateMiddle?.(last.content, availableChars) || truncateChars(last.content, availableChars);
-    last.content = `${compact.text}\n\nNota del sistema: el contexto fue recortado para respetar la memoria del modelo local.`;
+    last.content = `${compact.text}\n\n${t("prompt.contextTrimmedNote", "Nota del sistema: el contexto fue recortado para respetar la memoria del modelo local.")}`;
     return out;
   }
 

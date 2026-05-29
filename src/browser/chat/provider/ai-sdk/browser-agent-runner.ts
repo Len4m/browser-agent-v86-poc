@@ -9,6 +9,13 @@ import { looksLikeTextToolPlan } from "./text-tool-parser";
 
 const STREAM_SMOOTHING = smoothStream();
 
+// This module ships in a separate bundle, so the global t() from the app bundle
+// is not in scope; bridge through window.BA_I18N when available.
+function t(key, esDefault, vars) {
+  const fn = typeof window !== "undefined" && window.BA_I18N?.t;
+  return fn ? fn(key, esDefault, vars) : esDefault;
+}
+
 export function textChunkFromStreamPart(part) {
   if (!part) return "";
   if (part.type === "text-delta") return part.text ?? part.textDelta ?? part.delta ?? "";
@@ -65,13 +72,15 @@ function buildExplicitToolSynthesisMessages({ messages = [], toolResultText = ""
     {
       role: "user",
       content: [
-        originalUser ? `Petición original del usuario:\n${originalUser}` : "Petición original del usuario: responder con el resultado real de la tool.",
+        originalUser
+          ? t("prompt.synth.originalUser", "Petición original del usuario:\n{user}", { user: originalUser })
+          : t("prompt.synth.originalUserFallback", "Petición original del usuario: responder con el resultado real de la tool."),
         "",
-        "Contexto real devuelto por la tool ya ejecutada:",
+        t("prompt.synth.toolContext", "Contexto real devuelto por la tool ya ejecutada:"),
         "",
-        toolResultText || "(sin salida útil)",
+        toolResultText || t("prompt.synth.noOutput", "(sin salida útil)"),
         "",
-        "Responde en español breve usando solo ese contexto real. No generes JSON ni llames tools.",
+        t("prompt.synth.respond", "Responde en español breve usando solo ese contexto real. No generes JSON ni llames tools."),
       ].join("\n"),
     },
   ];
@@ -228,10 +237,10 @@ export async function runAgentStreamTurn({
         const synth = streamText({
           model,
           system: [
-            "Eres Browser Agent.",
-            "Ya se ejecutó una tool y el resultado real está en el contexto.",
-            "Responde en español breve solo con prosa o una lista corta.",
-            "No generes JSON, no generes tool_call y no pidas otra tool.",
+            t("prompt.synth.youAre", "Eres Browser Agent."),
+            t("prompt.synth.toolExecuted", "Ya se ejecutó una tool y el resultado real está en el contexto."),
+            t("prompt.synth.proseOnly", "Responde en español breve solo con prosa o una lista corta."),
+            t("prompt.synth.noJson", "No generes JSON, no generes tool_call y no pidas otra tool."),
           ].join(" "),
           messages: continuationMessages,
           maxOutputTokens: synthMaxOutputTokens,
