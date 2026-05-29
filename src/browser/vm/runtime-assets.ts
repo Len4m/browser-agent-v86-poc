@@ -12,6 +12,7 @@ function addMessage(role, text) {
   msg.appendChild(bubble);
   log.appendChild(msg);
   log.scrollTop = log.scrollHeight;
+  return msg;
 }
 
 function loadScript(src) {
@@ -197,7 +198,7 @@ function v86RestoreState(buffer) {
   });
 }
 
-function setLoading(show, { title = "Cargando", detail = "", percent = null, indeterminate = false } = {}) {
+function setLoading(show, { title = t("common.loading", "Cargando"), detail = "", percent = null, indeterminate = false } = {}) {
   const overlay = $("loading-overlay");
   const titleEl = $("loading-title");
   const detailEl = $("loading-detail");
@@ -275,7 +276,7 @@ async function preloadVmAssets(cfg) {
     initrd: cfg.initrd || "",
   });
   if (state.assetBuffers && state.assetCacheKey === cacheKey) {
-    setLoading(true, { title: "Preparando VM", detail: "Assets ya cargados en memoria", percent: 100 });
+    setLoading(true, { title: t("vm.loading.preparing", "Preparando VM"), detail: t("vm.loading.assetsCached", "Assets ya cargados en memoria"), percent: 100 });
     await nextPaint();
     return state.assetBuffers;
   }
@@ -290,7 +291,7 @@ async function preloadVmAssets(cfg) {
   ];
 
   const buffers = {};
-  setLoading(true, { title: "Preparando VM", detail: "Calculando tamaño de assets…", percent: null, indeterminate: true });
+  setLoading(true, { title: t("vm.loading.preparing", "Preparando VM"), detail: t("vm.loading.calculatingSize", "Calculando tamaño de assets…"), percent: null, indeterminate: true });
   await nextPaint();
 
   const sizes = await Promise.all(assets.map((asset) => getAssetSize(asset.url)));
@@ -302,7 +303,7 @@ async function preloadVmAssets(cfg) {
     const knownSize = sizes[i] || 0;
 
     setLoading(true, {
-      title: "Descargando VM",
+      title: t("vm.loading.downloading", "Descargando VM"),
       detail: `${asset.name} · 0 B${knownSize ? ` / ${formatBytes(knownSize)}` : ""}`,
       percent: totalBytes ? (completedBytes / totalBytes) * 100 : null,
       indeterminate: !totalBytes,
@@ -313,8 +314,8 @@ async function preloadVmAssets(cfg) {
       await loadScript(asset.url);
       completedBytes += knownSize;
       setLoading(true, {
-        title: "Descargando VM",
-        detail: `${asset.name} · listo`,
+        title: t("vm.loading.downloading", "Descargando VM"),
+        detail: t("vm.loading.assetReady", "{name} · listo", { name: asset.name }),
         percent: totalBytes ? (completedBytes / totalBytes) * 100 : null,
         indeterminate: !totalBytes,
       });
@@ -333,7 +334,7 @@ async function preloadVmAssets(cfg) {
         : formatBytes(loaded);
 
       setLoading(true, {
-        title: "Descargando VM",
+        title: t("vm.loading.downloading", "Descargando VM"),
         detail: `${asset.name} · ${sizeLabel}`,
         percent,
         indeterminate: !totalBytes && !responseTotal,
@@ -346,7 +347,7 @@ async function preloadVmAssets(cfg) {
 
   state.assetBuffers = buffers;
   state.assetCacheKey = cacheKey;
-  setLoading(true, { title: "Arrancando VM", detail: "Inicializando v86…", percent: 100 });
+  setLoading(true, { title: t("vm.loading.starting", "Arrancando VM"), detail: t("vm.loading.initializing", "Inicializando v86…"), percent: 100 });
   await nextPaint();
   return buffers;
 }

@@ -55,7 +55,7 @@
     const value = appendBounded("liveText", text, MAX_LIVE_CHARS);
     const pre = getLivePre();
     if (pre) {
-      pre.textContent = value || "Sin ejecución activa.";
+      pre.textContent = value || t("bgtools.noActiveRun", "Sin ejecución activa.");
       pre.scrollTop = pre.scrollHeight;
     }
   }
@@ -111,12 +111,12 @@
     if (commandButton) commandButton.disabled = busy || Boolean(state.agentBusy);
 
     const heading = getHeadingEl();
-    if (heading) heading.textContent = busy ? `Herramienta en segundo plano · ${bg.pending?.label || "ejecutando"}` : "Herramientas en segundo plano";
+    if (heading) heading.textContent = busy ? t("bgtools.heading.busy", "Herramienta en segundo plano · {label}", { label: bg.pending?.label || t("bgtools.runningFallback", "ejecutando") }) : t("bgtools.heading.idle", "Herramientas en segundo plano");
 
-    if (busy) setStatus("herramienta ejecutando", "warn");
-    else if (bg.runnerReady) setStatus(bg.lastResult ? "última herramienta lista" : "serial1 listo", "good");
-    else if (serial1Available()) setStatus("esperando runner", "warn");
-    else setStatus("serial1 no disponible", "bad");
+    if (busy) setStatus(t("bgtools.status.running", "herramienta ejecutando"), "warn");
+    else if (bg.runnerReady) setStatus(bg.lastResult ? t("bgtools.status.lastReady", "última herramienta lista") : t("bgtools.status.serial1Ready", "serial1 listo"), "good");
+    else if (serial1Available()) setStatus(t("bgtools.status.waitingRunner", "esperando runner"), "warn");
+    else setStatus(t("bgtools.status.serial1Unavailable", "serial1 no disponible"), "bad");
 
     const details = document.getElementById("bg-tool-details");
     if (details && busy) details.open = true;
@@ -137,13 +137,13 @@
     details.open = false;
     details.innerHTML = `
       <summary class="bg-tool-summary">
-        <strong id="bg-tool-heading">Herramientas en segundo plano</strong>
-        <span id="bg-tool-status" class="badge">pendiente serial1</span>
+        <strong id="bg-tool-heading">${t("bgtools.heading.idle", "Herramientas en segundo plano")}</strong>
+        <span id="bg-tool-status" class="badge">${t("bgtools.status.pendingSerial1", "pendiente serial1")}</span>
       </summary>
       <div class="bg-tool-note">
-        Salida de herramientas por UART1/ttyS1. Es solo lectura: puedes mirar, seleccionar y copiar, pero no escribir aquí.
+        ${t("bgtools.note", "Salida de herramientas por UART1/ttyS1. Es solo lectura: puedes mirar, seleccionar y copiar, pero no escribir aquí.")}
       </div>
-      <pre id="bg-tool-live" class="terminal bg-tool-live" aria-live="polite">Sin ejecución activa.</pre>
+      <pre id="bg-tool-live" class="terminal bg-tool-live" aria-live="polite">${t("bgtools.noActiveRun", "Sin ejecución activa.")}</pre>
     `;
 
     if (terminal?.parentNode) terminal.parentNode.insertBefore(details, terminal.nextSibling);
@@ -155,7 +155,7 @@
   }
 
   function sendSerial1Text(text) {
-    if (!state.vm) throw new Error("v86 no está arrancada");
+    if (!state.vm) throw new Error(t("bgtools.error.notStarted", "v86 no está arrancada"));
     const value = safeText(text);
     if (typeof state.vm.serial_send_bytes === "function") {
       state.vm.serial_send_bytes(1, new TextEncoder().encode(value));
@@ -165,7 +165,7 @@
       state.vm.serial1_send(value);
       return true;
     }
-    throw new Error("Esta build de v86 no expone serial_send_bytes/serial1_send");
+    throw new Error(t("bgtools.error.noSerialApi", "Esta build de v86 no expone serial_send_bytes/serial1_send"));
   }
 
   function buildPayload({ id, marker, command, timeoutMs, maxOutputBytes }) {
@@ -211,7 +211,7 @@
     window.clearTimeout(pending.timer);
     bg.pending = null;
     bg.lastResult = result;
-    appendLive(`\n[serial1] fin rc=${result.code}\n`);
+    appendLive(`\n[serial1] ${t("bgtools.live.end", "fin rc={code}", { code: result.code })}\n`);
     syncUi();
     pending.resolve(result);
   }
@@ -268,7 +268,7 @@
 
   async function execVmSerial1(command, options = {}) {
     const {
-      label = "Herramienta en segundo plano usando serial1…",
+      label = t("bgtools.exec.defaultLabel", "Herramienta en segundo plano usando serial1…"),
       timeoutMs = DEFAULT_TIMEOUT_MS,
       maxOutputBytes = DEFAULT_MAX_OUTPUT_BYTES,
       timeoutGraceMs = 5000,
@@ -276,30 +276,30 @@
       skipReadyCheck = false,
     } = options || {};
 
-    if (!state.vm) return { code: 1, stdout: "", stderr: "v86 no está arrancada" };
-    if (!state.vmReady) return { code: 1, stdout: "", stderr: "la VM está arrancando" };
-    if (!serial1Available()) return { code: 1, stdout: "", stderr: "serial1 no disponible en esta build de v86" };
+    if (!state.vm) return { code: 1, stdout: "", stderr: t("bgtools.error.notStarted", "v86 no está arrancada") };
+    if (!state.vmReady) return { code: 1, stdout: "", stderr: t("bgtools.error.booting", "la VM está arrancando") };
+    if (!serial1Available()) return { code: 1, stdout: "", stderr: t("bgtools.error.serial1Unavailable", "serial1 no disponible en esta build de v86") };
 
     mountUi();
     if (!skipReadyCheck && !isRunnerReady()) {
       const ready = await waitForRunnerReady(1800);
-      if (!ready) return { code: 1, stdout: "", stderr: "runner serial1/ttyS1 no preparado. Revisa /dev/ttyS1 y ba-serial1-runner dentro de la VM." };
+      if (!ready) return { code: 1, stdout: "", stderr: t("bgtools.error.runnerNotReady", "runner serial1/ttyS1 no preparado. Revisa /dev/ttyS1 y ba-serial1-runner dentro de la VM.") };
     }
 
     const bg = ensureState();
-    if (bg.pending) return { code: 75, stdout: "", stderr: "ya hay una tool background en ejecución" };
+    if (bg.pending) return { code: 75, stdout: "", stderr: t("bgtools.error.alreadyRunning", "ya hay una tool background en ejecución") };
 
     bg.liveText = "";
     const id = randomId();
     const marker = `__BA_S1_${id}__`;
     const payload = buildPayload({ id, marker, command, timeoutMs, maxOutputBytes });
     if (log && typeof logTool === "function") logTool(`\n[bg-tool] ${typeof formatLoggedCommand === "function" ? formatLoggedCommand(command) : command}\n`);
-    appendLive(`[serial1] lanzando ${label}\n`);
+    appendLive(`[serial1] ${t("bgtools.live.launching", "lanzando {label}", { label })}\n`);
     syncUi();
 
     return new Promise((resolve) => {
       const timer = window.setTimeout(() => {
-        finishPending({ code: 124, stdout: "", stderr: "timeout esperando serial1/ttyS1", raw: bg.pending?.raw || "" });
+        finishPending({ code: 124, stdout: "", stderr: t("bgtools.error.timeout", "timeout esperando serial1/ttyS1"), raw: bg.pending?.raw || "" });
       }, timeoutMs + timeoutGraceMs);
 
       bg.pending = {
@@ -328,7 +328,7 @@
     const bg = ensureState();
     if (!state.vm || !state.vmReady || !serial1Available()) return false;
     const result = await execVmSerial1("printf 'BA_S1_PROBE_OK\\n'", {
-      label: "Revalidando serial1…",
+      label: t("bgtools.exec.probeLabel", "Revalidando serial1…"),
       timeoutMs,
       timeoutGraceMs: 700,
       maxOutputBytes: 4096,
@@ -344,7 +344,7 @@
     return ok;
   }
 
-  function cancelPending(reason = "usuario") {
+  function cancelPending(reason = t("bgtools.reason.user", "usuario")) {
     const bg = ensureState();
     const pending = bg.pending;
     if (!pending) return false;
@@ -352,22 +352,22 @@
     const resolve = pending.resolve;
     bg.pending = null;
     syncUi();
-    appendLive(`\n[serial1] cancelado (${reason})\n`);
+    appendLive(`\n[serial1] ${t("bgtools.live.cancelled", "cancelado ({reason})", { reason })}\n`);
     try {
-      resolve({ code: 130, stdout: "", stderr: `tool cancelada por ${reason}` });
+      resolve({ code: 130, stdout: "", stderr: t("bgtools.cancelledBy", "tool cancelada por {reason}", { reason }) });
     } catch {}
     return true;
   }
 
   function cancelCurrent() {
-    cancelPending("usuario");
+    cancelPending(t("bgtools.reason.user", "usuario"));
   }
 
   function reset(reason = "reset") {
     const bg = ensureState();
     if (bg.pending?.timer) window.clearTimeout(bg.pending.timer);
     if (bg.pending?.resolve) {
-      try { bg.pending.resolve({ code: 130, stdout: "", stderr: `tool cancelada por ${reason}` }); } catch {}
+      try { bg.pending.resolve({ code: 130, stdout: "", stderr: t("bgtools.cancelledBy", "tool cancelada por {reason}", { reason }) }); } catch {}
     }
     bg.pending = null;
     bg.lastResult = null;
@@ -377,9 +377,19 @@
     bg.runnerReady = false;
     bg.lastError = "";
     const pre = getLivePre();
-    if (pre) pre.textContent = "Sin ejecución activa.";
+    if (pre) pre.textContent = t("bgtools.noActiveRun", "Sin ejecución activa.");
     syncUi();
   }
+
+  window.addEventListener("ba:langchange", () => {
+    try {
+      const note = document.querySelector("#bg-tool-details .bg-tool-note");
+      if (note) note.textContent = t("bgtools.note", "Salida de herramientas por UART1/ttyS1. Es solo lectura: puedes mirar, seleccionar y copiar, pero no escribir aquí.");
+      const pre = getLivePre();
+      if (pre && !ensureState().liveText) pre.textContent = t("bgtools.noActiveRun", "Sin ejecución activa.");
+      syncUi();
+    } catch {}
+  });
 
   window.BA_BG_TOOLS = {
     enabled,

@@ -147,7 +147,7 @@
     const value = normalizeNewlines(String(text || ""));
     if (value.length <= maxChars) return { text: value, truncated: false };
     return {
-      text: `${value.slice(0, maxChars)}\n...[vista previa truncada a ${maxChars} caracteres]`,
+      text: `${value.slice(0, maxChars)}\n...${t("artifact.previewTruncated", "[vista previa truncada a {max} caracteres]", { max: maxChars })}`,
       truncated: true,
     };
   }
@@ -290,7 +290,7 @@
   function formatArtifactForDisplay(artifact, { maxChars = DISPLAY_PREVIEW_CHARS } = {}) {
     if (!artifact) return "";
     const out = preview(artifact.stdout || artifact.stderr || "", maxChars);
-    return out.text || "(sin salida)";
+    return out.text || t("artifact.displayEmpty", "(sin salida)");
   }
 
   window.BA_LLM_ARTIFACTS = {

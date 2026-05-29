@@ -1,6 +1,8 @@
 // @ts-nocheck
 // Browser Agent v86 - 15a LLM panel HTML template
 // Template builders extracted from 15-llm-ui-panel.js.
+// Static labels use data-i18n so applyDomTranslations() handles initial render
+// and live language switching. Dynamic values are translated by panel.ts via t().
 
 (function initLLMPanelTemplate() {
   function escapeHtml(value) {
@@ -15,11 +17,11 @@
   function modelOptionsHtml() {
     const groups = [
       {
-        label: "Ollama",
+        label: t("panel.llm.optgroup.ollama", "Ollama"),
         matches: (model) => model.engine === "ollama",
       },
       {
-        label: "Transformers.js / navegador",
+        label: t("panel.llm.optgroup.transformers", "Transformers.js / navegador"),
         matches: (model) => (model.engine || "transformersjs") === "transformersjs",
       },
     ];
@@ -27,7 +29,9 @@
     const optionHtml = (model) => {
       const size = model.sizeLabel ? ` · ${model.sizeLabel}` : "";
       const dtype = model.dtype ? ` · ${model.dtype}` : "";
-      const compat = model.requiresShaderF16 ? " · requiere shader-f16" : "";
+      const compat = model.requiresShaderF16
+        ? ` · ${t("panel.llm.model.requiresShaderF16", "requiere shader-f16")}`
+        : "";
       return `<option value="${escapeHtml(model.id)}">${escapeHtml(model.label)}${escapeHtml(size)}${escapeHtml(dtype)}${escapeHtml(compat)}</option>`;
     };
 
@@ -41,7 +45,7 @@
 
     const remaining = window.BA_LLM_MODELS.filter((model) => !used.has(model.id));
     if (remaining.length) {
-      grouped.push(`<optgroup label="Otros">${remaining.map(optionHtml).join("")}</optgroup>`);
+      grouped.push(`<optgroup label="${escapeHtml(t("panel.llm.optgroup.others", "Otros"))}">${remaining.map(optionHtml).join("")}</optgroup>`);
     }
 
     return grouped.join("");
@@ -58,15 +62,15 @@
         <div class="ba-llm-hero">
           <div class="ba-llm-mark" aria-hidden="true">LLM</div>
           <div class="ba-llm-hero-copy">
-            <div class="ba-llm-kicker">Inferencia · AI SDK v6</div>
+            <div class="ba-llm-kicker" data-i18n="panel.llm.kicker">Inferencia · AI SDK v6</div>
             <div class="ba-llm-title-row">
               <strong>Transformers.js/Ollama</strong>
             </div>
-            <p>Modelos ONNX en el navegador u Ollama local por HTTP. WebGPU recomendado para Transformers.js.</p>
+            <p data-i18n="panel.llm.intro">Modelos ONNX en el navegador u Ollama local por HTTP. WebGPU recomendado para Transformers.js.</p>
           </div>
         </div>
 
-        <label class="ba-llm-field">Modelo
+        <label class="ba-llm-field"><span data-i18n="panel.llm.field.model">Modelo</span>
           <select id="ba-llm-model">${modelOptionsHtml()}</select>
         </label>
 
@@ -79,24 +83,24 @@
           <div id="ba-llm-selected-meta" class="ba-llm-model-meta"></div>
         </section>
 
-        <label id="ba-llm-custom-wrap" class="ba-llm-field" hidden>Modelo custom compatible con Transformers.js
+        <label id="ba-llm-custom-wrap" class="ba-llm-field" hidden><span data-i18n="panel.llm.field.customModel">Modelo custom compatible con Transformers.js</span>
           <input id="ba-llm-custom-model" placeholder="onnx-community/Llama-3.2-1B-Instruct-ONNX o qwen3:1.7b" />
         </label>
 
-        <label id="ba-llm-ollama-endpoint-wrap" class="ba-llm-field" hidden>Endpoint Ollama
+        <label id="ba-llm-ollama-endpoint-wrap" class="ba-llm-field" hidden><span data-i18n="panel.llm.field.ollamaEndpoint">Endpoint Ollama</span>
           <input id="ba-llm-ollama-endpoint" placeholder="http://127.0.0.1:11434" />
         </label>
         <div id="ba-llm-ollama-origin-notice" class="local-service-origin-warning ba-llm-origin-warning" hidden></div>
 
         <div class="ba-llm-actions-primary">
-          <button id="ba-llm-load" type="button">Cargar modelo</button>
+          <button id="ba-llm-load" type="button" data-i18n="panel.llm.action.load">Cargar modelo</button>
         </div>
 
-        <small class="ba-llm-note">Activa herramientas con el botón de llave inglesa junto al campo de chat. Ollama requiere CORS permitido en el host.</small>
+        <small class="ba-llm-note" data-i18n="panel.llm.note.tools">Activa herramientas con el botón de llave inglesa junto al campo de chat. Ollama requiere CORS permitido en el host.</small>
 
         <label id="ba-llm-thinking-wrap" class="ba-llm-field ba-llm-thinking-toggle" hidden>
           <input id="ba-llm-show-thinking" type="checkbox" />
-          Mostrar razonamiento del modelo (thinking)
+          <span data-i18n="panel.llm.thinkingToggle">Mostrar razonamiento del modelo (thinking)</span>
         </label>
 
         <div id="ba-llm-progress-wrap" class="ba-llm-progress-wrap" aria-live="polite">
@@ -112,7 +116,7 @@
 
         <details class="ba-llm-resource-card ba-llm-collapsible-card">
           <summary class="ba-llm-tool-policy-head ba-llm-collapsible-summary">
-            <strong>Recursos y contexto</strong>
+            <strong data-i18n="panel.llm.resources.title">Recursos y contexto</strong>
             <span id="ba-llm-artifact-count" class="ba-llm-card-count">0 artefactos</span>
           </summary>
           <div id="ba-llm-resource-lines" class="ba-llm-resource-lines">
@@ -124,11 +128,11 @@
 
         <details class="ba-llm-tool-policy ba-llm-collapsible-card">
           <summary class="ba-llm-tool-policy-head ba-llm-collapsible-summary">
-            <strong>Autonomía de herramientas</strong>
+            <strong data-i18n="panel.llm.autonomy.title">Autonomía de herramientas</strong>
             <span id="ba-llm-tool-count" class="ba-llm-card-count">—</span>
           </summary>
           <div class="ba-llm-collapsible-body">
-            <label class="ba-llm-field">Ejecutar sin pedir permiso hasta
+            <label class="ba-llm-field"><span data-i18n="panel.llm.autonomy.runUntil">Ejecutar sin pedir permiso hasta</span>
               <select id="ba-llm-tool-autonomy">${toolPolicyOptionsHtml()}</select>
             </label>
             <small id="ba-llm-tool-autonomy-detail"></small>
@@ -140,7 +144,7 @@
         </details>
 
         <div class="ba-llm-row ba-llm-actions-secondary">
-          <button id="ba-llm-abort" type="button" class="secondary danger-light">Descargar worker</button>
+          <button id="ba-llm-abort" type="button" class="secondary danger-light" data-i18n="panel.llm.action.unloadWorker">Descargar worker</button>
         </div>
         <div id="ba-llm-capabilities" class="ba-llm-note">Pendiente de comprobar capacidades de inferencia local.</div>
       </div>

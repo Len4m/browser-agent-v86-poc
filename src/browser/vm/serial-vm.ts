@@ -205,7 +205,7 @@ async function startVm(options = {}) {
 
   if (state.vmStarting) return;
   if (state.vm) {
-    setBadge($("vm-detail"), state.vmReady ? "shell lista" : "ya arrancada", state.vmReady ? "good" : "warn");
+    setBadge($("vm-detail"), state.vmReady ? t("vm.badge.shellReady", "shell lista") : t("vm.badge.alreadyBooted", "ya arrancada"), state.vmReady ? "good" : "warn");
     focusSerialConsole();
     return;
   }
@@ -217,7 +217,7 @@ async function startVm(options = {}) {
   if (runtime.hda) {
     const diskCheck = await checkAsset(runtime.hda.url);
     if (!diskCheck.ok) {
-      setBadge($("vm-detail"), "disco no encontrado", "bad");
+      setBadge($("vm-detail"), t("vm.badge.diskNotFound", "disco no encontrado"), "bad");
       logTool(`${NL}[host] no existe la imagen de disco ${runtime.hda.url}. Genera esa imagen raw o usa Disco: RAM/initramfs.${NL}`);
       return;
     }
@@ -226,9 +226,9 @@ async function startVm(options = {}) {
   state.vmStarting = true;
   setVmOptionsLocked(true);
   if (startButton) startButton.disabled = true;
-  setBadge($("badge-vm"), "v86 cargando", "warn");
-  setBadge($("vm-detail"), "descargando", "warn");
-  setLoading(true, { title: "Preparando VM", detail: "Iniciando descarga…", percent: null, indeterminate: true });
+  setBadge($("badge-vm"), t("vm.badge.loading", "v86 cargando"), "warn");
+  setBadge($("vm-detail"), t("vm.badge.downloading", "descargando"), "warn");
+  setLoading(true, { title: t("vm.loading.preparing", "Preparando VM"), detail: t("vm.loading.startingDownload", "Iniciando descarga…"), percent: null, indeterminate: true });
   await nextPaint();
   logTool(`${NL}[host] preparando assets de v86...${NL}`);
 
@@ -296,20 +296,20 @@ async function startVm(options = {}) {
     state.vm.add_listener("eth-receive-end", (bytes) => logTool(`[network] eth receive ${bytes} bytes${NL}`));
     let restoreApplied = false;
     state.vm.add_listener("emulator-ready", async () => {
-      setBadge($("vm-detail"), restoreStateBuffer ? "restaurando snapshot" : "arrancando", "warn");
+      setBadge($("vm-detail"), restoreStateBuffer ? t("vm.badge.restoringSnapshot", "restaurando snapshot") : t("vm.badge.booting", "arrancando"), "warn");
       window.setTimeout(() => scheduleSerialFit({ focus: true }), 150);
 
       if (restoreStateBuffer && !restoreApplied) {
         restoreApplied = true;
         try {
-          setLoading(true, { title: "Restaurando snapshot", detail: "Aplicando estado de v86…", percent: null, indeterminate: true });
+          setLoading(true, { title: t("vm.loading.restoringSnapshot", "Restaurando snapshot"), detail: t("vm.loading.applyingState", "Aplicando estado de v86…"), percent: null, indeterminate: true });
           await nextPaint();
           await v86RestoreState(restoreStateBuffer);
           if (typeof state.vm.run === "function") state.vm.run();
           state.vmReady = true;
           state.snapshotRestoring = false;
-          setBadge($("badge-vm"), "v86 lista", "good");
-          setBadge($("vm-detail"), "snapshot restaurado", "good");
+          setBadge($("badge-vm"), t("vm.badge.ready", "v86 lista"), "good");
+          setBadge($("vm-detail"), t("vm.badge.snapshotRestored", "snapshot restaurado"), "good");
           logTool(`[snapshot] snapshot restaurado. Si la consola queda sin prompt, pulsa Enter.${NL}`);
           window.setTimeout(() => {
             try { state.vm?.serial0_send(NL); } catch {}
@@ -321,8 +321,8 @@ async function startVm(options = {}) {
           }, 300);
         } catch (error) {
           state.snapshotRestoring = false;
-          setBadge($("badge-vm"), "error restore", "bad");
-          setBadge($("vm-detail"), "error snapshot", "bad");
+          setBadge($("badge-vm"), t("vm.badge.errorRestore", "error restore"), "bad");
+          setBadge($("vm-detail"), t("vm.badge.errorSnapshot", "error snapshot"), "bad");
           logTool(`[snapshot] error restaurando: ${error.message}${NL}`);
         } finally {
           setLoading(false);
@@ -334,8 +334,8 @@ async function startVm(options = {}) {
       scheduleSerialFit({ focus: true });
     });
 
-    setBadge($("badge-vm"), "v86 arrancando", "warn");
-    setBadge($("vm-detail"), "esperando shell", "warn");
+    setBadge($("badge-vm"), t("vm.badge.starting", "v86 arrancando"), "warn");
+    setBadge($("vm-detail"), t("vm.badge.waitingShell", "esperando shell"), "warn");
     logTool(`[host] v86 arrancando. La pestaña 1 es serial0; las pestañas extra usan PTYs por serial2.${NL}`);
     if (state.networkAutoRequested) {
       logTool(`[network] wsnic ya verificado. La red se comprobará automáticamente al detectar la shell.${NL}`);
@@ -345,7 +345,7 @@ async function startVm(options = {}) {
     window.setTimeout(() => scheduleSerialFit({ focus: true }), 250);
     setLoading(false);
   } catch (error) {
-    setBadge($("badge-vm"), "v86 error", "bad");
+    setBadge($("badge-vm"), t("vm.badge.error", "v86 error"), "bad");
     setBadge($("vm-detail"), error.message, "bad");
     logTool(`[host] error: ${error.message}${NL}`);
     state.activeRuntime = null;
@@ -375,9 +375,9 @@ async function stopVm({ confirmShutdown = true } = {}) {
 
   if (stopButton) stopButton.disabled = true;
   if (startButton) startButton.disabled = true;
-  setAgentBusy(true, "Apagando la VM…");
-  setBadge($("badge-vm"), "v86 apagando", "warn");
-  setBadge($("vm-detail"), "apagando", "warn");
+  setAgentBusy(true, t("vm.badge.shuttingDown", "Apagando la VM…"));
+  setBadge($("badge-vm"), t("vm.badge.stopping", "v86 apagando"), "warn");
+  setBadge($("vm-detail"), t("vm.badge.poweringOff", "apagando"), "warn");
   logTool(`${NL}[host] apagando VM...${NL}`);
 
   try {
@@ -408,8 +408,8 @@ async function stopVm({ confirmShutdown = true } = {}) {
     resetConsoleTabs();
     setAgentBusy(false);
     setVmOptionsLocked(false);
-    setBadge($("badge-vm"), "v86 inactiva", "");
-    setBadge($("vm-detail"), "apagada", "");
+    setBadge($("badge-vm"), t("vm.badge.inactive", "v86 inactiva"), "");
+    setBadge($("vm-detail"), t("vm.badge.off", "apagada"), "");
     syncPowerButtons();
     syncDiskCheckButton();
     syncSnapshotButtons();
@@ -505,8 +505,8 @@ function onSerialChar(char) {
   const prompts = ["~% ", "~# ", "/ # ", "# ", "$ "];
   if (!state.vmReady && prompts.some((prompt) => state.bootBuffer.endsWith(prompt))) {
     state.vmReady = true;
-    setBadge($("badge-vm"), "v86 lista", "good");
-    setBadge($("vm-detail"), "shell lista", "good");
+    setBadge($("badge-vm"), t("vm.badge.ready", "v86 lista"), "good");
+    setBadge($("vm-detail"), t("vm.badge.shellReady", "shell lista"), "good");
     syncDiskCheckButton();
     scheduleSerialFit({ focus: true });
     window.setTimeout(() => initConsoleTabsAfterBoot(), 500);

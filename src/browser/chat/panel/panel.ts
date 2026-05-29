@@ -62,8 +62,9 @@
       option.disabled = disabled;
       if (disabled && !option.dataset.originalText) option.dataset.originalText = option.textContent;
       if (!disabled && option.dataset.originalText) option.textContent = option.dataset.originalText;
-      if (disabled && !option.textContent.includes("no disponible")) {
-        option.textContent = `${option.dataset.originalText || option.textContent} · no disponible`;
+      const unavailable = t("panel.llm.option.unavailable", "no disponible");
+      if (disabled && !option.textContent.includes(unavailable)) {
+        option.textContent = `${option.dataset.originalText || option.textContent} · ${unavailable}`;
       }
     }
 
@@ -74,7 +75,7 @@
       select.value = fallback.id;
       window.BA_LLM.selectedModelId = fallback.id;
       updateSelectedModelCard();
-      setStatus(noWebGPU ? "cambiado a WASM experimental" : "cambiado a q4", "warn");
+      setStatus(noWebGPU ? t("panel.llm.status.switchedWasm", "cambiado a WASM experimental") : t("panel.llm.status.switchedQ4", "cambiado a q4"), "warn");
     }
   }
 
@@ -96,13 +97,19 @@
     const detail = document.getElementById("ba-llm-capabilities");
     if (!detail) return;
     if (!result) {
-      detail.textContent = "Pendiente de comprobar capacidades de inferencia local.";
+      detail.textContent = t("panel.llm.capabilities.pending", "Pendiente de comprobar capacidades de inferencia local.");
       return;
     }
     const limits = result.limits || {};
     detail.textContent = result.webgpu
-      ? `WebGPU disponible · shader-f16: ${result.shaderF16 ? "sí" : "no"} · dtype recomendado: ${result.recommendedDtype || "q4"} · maxBuffer: ${limits.maxBufferSize || "—"}`
-      : `${result.reason || "WebGPU no disponible."} · WASM experimental disponible solo para modelos compatibles.`;
+      ? t("panel.llm.capabilities.webgpu", "WebGPU disponible · shader-f16: {shaderF16} · dtype recomendado: {dtype} · maxBuffer: {maxBuffer}", {
+          shaderF16: result.shaderF16 ? t("panel.llm.yes", "sí") : t("panel.llm.no", "no"),
+          dtype: result.recommendedDtype || "q4",
+          maxBuffer: limits.maxBufferSize || "—",
+        })
+      : t("panel.llm.capabilities.noWebgpu", "{reason} · WASM experimental disponible solo para modelos compatibles.", {
+          reason: result.reason || t("panel.llm.capabilities.noWebgpuReason", "WebGPU no disponible."),
+        });
   }
 
   function applyCapabilitiesToPanel(result) {
@@ -119,13 +126,13 @@
     // (loaded/loading/unloaded). Capability information is shown in the
     // details header and in the technical note below the actions.
     if (window.BA_LLM.loaded) {
-      setStatus("cargado", "good");
+      setStatus(t("panel.llm.status.loaded", "cargado"), "good");
     } else if (window.BA_LLM.loading) {
-      setStatus("cargando", "warn");
+      setStatus(t("panel.llm.status.loading", "cargando"), "warn");
     } else if (result && !result.webgpu && getSelectedModel()?.device === "wasm") {
-      setStatus("WASM", "warn");
+      setStatus(t("panel.llm.status.wasm", "WASM"), "warn");
     } else {
-      setStatus("sin cargar", "warn");
+      setStatus(t("panel.llm.status.unloaded", "sin cargar"), "warn");
     }
   }
 
@@ -174,38 +181,38 @@
 
     switch (detail.status) {
       case "init":
-        return { mode: "indeterminate", percent: null, title: "Preparando carga del modelo", detail: detail.model || "" };
+        return { mode: "indeterminate", percent: null, title: t("panel.llm.progress.preparingModel", "Preparando carga del modelo"), detail: detail.model || "" };
       case "initiate":
-        return { mode: "indeterminate", percent: null, title: "Preparando archivo", detail: file || "Inicializando descarga" };
+        return { mode: "indeterminate", percent: null, title: t("panel.llm.progress.preparingFile", "Preparando archivo"), detail: file || t("panel.llm.progress.initializing", "Inicializando descarga") };
       case "download":
-        return { mode: "indeterminate", percent: null, title: "Descargando", detail: file || "Esperando progreso" };
+        return { mode: "indeterminate", percent: null, title: t("panel.llm.progress.downloading", "Descargando"), detail: file || t("panel.llm.progress.waiting", "Esperando progreso") };
       case "progress_total":
         return {
           mode: "determinate",
           percent: rawPercent,
-          title: rawPercent == null ? "Descargando modelo" : `Descargando modelo · ${rawPercent}%`,
-          detail: file ? `${file}${size ? ` · ${size}` : ""}` : (size || "Progreso global"),
+          title: rawPercent == null ? t("panel.llm.progress.downloadingModel", "Descargando modelo") : t("panel.llm.progress.downloadingModelPercent", "Descargando modelo · {percent}%", { percent: rawPercent }),
+          detail: file ? `${file}${size ? ` · ${size}` : ""}` : (size || t("panel.llm.progress.globalProgress", "Progreso global")),
         };
       case "progress":
         return {
           mode: rawPercent == null ? "indeterminate" : "determinate-file",
           percent: rawPercent,
-          title: rawPercent == null ? "Descargando archivo" : `Archivo actual · ${rawPercent}%`,
-          detail: file ? `${file}${size ? ` · ${size}` : ""}` : (size || "Progreso de archivo"),
+          title: rawPercent == null ? t("panel.llm.progress.downloadingFile", "Descargando archivo") : t("panel.llm.progress.currentFilePercent", "Archivo actual · {percent}%", { percent: rawPercent }),
+          detail: file ? `${file}${size ? ` · ${size}` : ""}` : (size || t("panel.llm.progress.fileProgress", "Progreso de archivo")),
         };
       case "fallback":
         return {
           mode: "indeterminate",
           percent: null,
-          title: "WebGPU falló; probando alternativa WASM",
-          detail: file || detail.reason || "Reiniciando worker sin WebGPU",
+          title: t("panel.llm.progress.webgpuFailed", "WebGPU falló; probando alternativa WASM"),
+          detail: file || detail.reason || t("panel.llm.progress.restartingWorker", "Reiniciando worker sin WebGPU"),
         };
       case "ready":
-        return { mode: "determinate", percent: 100, title: "Archivos listos", detail: file || "Preparando ejecución" };
+        return { mode: "determinate", percent: 100, title: t("panel.llm.progress.filesReady", "Archivos listos"), detail: file || t("panel.llm.progress.preparingExecution", "Preparando ejecución") };
       case "done":
-        return { mode: "determinate", percent: 100, title: "Modelo descargado", detail: "Carga completada" };
+        return { mode: "determinate", percent: 100, title: t("panel.llm.progress.modelDownloaded", "Modelo descargado"), detail: t("panel.llm.progress.loadComplete", "Carga completada") };
       default:
-        return { mode: rawPercent == null ? "indeterminate" : "determinate", percent: rawPercent, title: detail.status || "Cargando", detail: file || size || "" };
+        return { mode: rawPercent == null ? "indeterminate" : "determinate", percent: rawPercent, title: detail.status || t("common.loading", "Cargando"), detail: file || size || "" };
     }
   }
 
@@ -219,7 +226,7 @@
 
     if (!detail && !force) return;
 
-    const info = detail ? getProgressInfo(detail) : { mode: "idle", percent: 0, title: "Sin descarga activa", detail: "" };
+    const info = detail ? getProgressInfo(detail) : { mode: "idle", percent: 0, title: t("panel.llm.progress.idle", "Sin descarga activa"), detail: "" };
     wrap.classList.toggle("is-active", info.mode !== "idle");
     bar.classList.toggle("is-indeterminate", info.mode === "indeterminate");
 
@@ -227,7 +234,7 @@
     bar.style.width = `${pct}%`;
     bar.setAttribute("aria-valuenow", String(pct));
     percent.textContent = info.percent == null ? "—" : `${pct}%`;
-    title.textContent = info.title || "Cargando";
+    title.textContent = info.title || t("common.loading", "Cargando");
     sub.textContent = info.detail || "";
   }
 
@@ -252,12 +259,12 @@
   function activeBackendLabel(model) {
     const runtime = model?.runtime;
     if (!runtime) return "";
-    if (runtime.provider === "ollama") return `Ollama · ${runtime.endpoint || "endpoint local"}`;
+    if (runtime.provider === "ollama") return t("panel.llm.backend.ollama", "Ollama · {endpoint}", { endpoint: runtime.endpoint || t("panel.llm.backend.localEndpoint", "endpoint local") });
     const device = runtime.device === "webgpu"
       ? "WebGPU"
       : (runtime.device === "wasm" ? "WASM" : runtime.device || "auto");
     const dtype = runtime.dtype ? ` · ${runtime.dtype}` : "";
-    const fallback = runtime.fallback ? " · alternativa" : "";
+    const fallback = runtime.fallback ? t("panel.llm.backend.fallbackSuffix", " · alternativa") : "";
     return `Transformers.js · ${device}${dtype}${fallback}`;
   }
 
@@ -286,19 +293,19 @@
     const repo = document.getElementById("ba-llm-repo-path");
 
     if (title) title.textContent = model.shortLabel || model.label;
-    if (desc) desc.textContent = model.description || "Modelo compatible con AI SDK.";
-    if (repo) repo.textContent = model.custom ? "Introduce un modelo compatible antes de cargar." : model.model;
+    if (desc) desc.textContent = model.description || t("panel.llm.model.descFallback", "Modelo compatible con AI SDK.");
+    if (repo) repo.textContent = model.custom ? t("panel.llm.model.repoCustomHint", "Introduce un modelo compatible antes de cargar.") : model.model;
     if (meta) {
       const items = [
-        window.BA_LLM?.loaded ? ["Backend cargado", activeBackendLabel(model) || "—"] : null,
-        ["Motor", model.engineLabel || "Transformers.js"],
-        ["Descarga", model.sizeLabel || "—"],
-        ["Cuantización", model.dtype || "—"],
-        ["Memoria", model.minMemoryLabel || "—"],
-        ["Compatibilidad", model.compatibilityLabel || "—"],
-        ["Idiomas", model.languageLabel || "—"],
-        ["Herramientas", model.agent?.toolCalling || "—"],
-        ["Razonamiento", model.thinking?.enabled ? "sí" : "no"],
+        window.BA_LLM?.loaded ? [t("panel.llm.meta.backendLoaded", "Backend cargado"), activeBackendLabel(model) || "—"] : null,
+        [t("panel.llm.meta.engine", "Motor"), model.engineLabel || "Transformers.js"],
+        [t("panel.llm.meta.download", "Descarga"), model.sizeLabel || "—"],
+        [t("panel.llm.meta.quantization", "Cuantización"), model.dtype || "—"],
+        [t("panel.llm.meta.memory", "Memoria"), model.minMemoryLabel || "—"],
+        [t("panel.llm.meta.compatibility", "Compatibilidad"), model.compatibilityLabel || "—"],
+        [t("panel.llm.meta.languages", "Idiomas"), model.languageLabel || "—"],
+        [t("panel.llm.meta.tools", "Herramientas"), model.agent?.toolCalling || "—"],
+        [t("panel.llm.meta.reasoning", "Razonamiento"), model.thinking?.enabled ? t("panel.llm.yes", "sí") : t("panel.llm.no", "no")],
       ].filter(Boolean).map(([key, value]) => createMetaItem(key, value));
       meta.replaceChildren(...items);
     }
@@ -307,7 +314,7 @@
 
   async function checkCapabilities(options = {}) {
     const { force = false } = options;
-    setStatus("Comprobando GPU…", "warn");
+    setStatus(t("panel.llm.status.checkingGpu", "Comprobando GPU…"), "warn");
     try {
       const result = await window.BA_ensureLLMCapabilities({ force, source: force ? "manual" : "panel" });
       applyCapabilitiesToPanel(result);
@@ -325,8 +332,8 @@
     if (customWrap) {
       customWrap.hidden = !selected?.custom;
       const text = selected?.engine === "ollama"
-        ? "Modelo de Ollama"
-        : "Modelo custom compatible con Transformers.js";
+        ? t("panel.llm.custom.ollamaLabel", "Modelo de Ollama")
+        : t("panel.llm.field.customModel", "Modelo custom compatible con Transformers.js");
       if (customWrap.firstChild?.nodeType === Node.TEXT_NODE) customWrap.firstChild.nodeValue = text;
     }
     const customInput = document.getElementById("ba-llm-custom-model");
@@ -356,15 +363,15 @@
     const caps = window.BA_LLM.capabilities;
     const needsWebGPU = (selected?.engine || "transformersjs") === "transformersjs" && (selected?.device || "webgpu") === "webgpu";
     if (needsWebGPU && caps && !caps.webgpu) {
-      setStatus("requiere WebGPU", "warn");
+      setStatus(t("panel.llm.status.requiresWebgpu", "requiere WebGPU"), "warn");
     } else if (selected?.requiresShaderF16 && caps?.webgpu && !caps.shaderF16) {
-      setStatus("requiere shader-f16", "warn");
+      setStatus(t("panel.llm.status.requiresShaderF16", "requiere shader-f16"), "warn");
     } else if (selected?.engine === "ollama") {
-      setStatus("requiere Ollama", "warn");
+      setStatus(t("panel.llm.status.requiresOllama", "requiere Ollama"), "warn");
     } else if (selected?.device === "wasm") {
-      setStatus("WASM experimental", "warn");
+      setStatus(t("panel.llm.status.wasmExperimental", "WASM experimental"), "warn");
     } else if (!window.BA_LLM.loaded) {
-      setStatus("sin cargar", "warn");
+      setStatus(t("panel.llm.status.unloaded", "sin cargar"), "warn");
     }
   }
 
@@ -375,7 +382,7 @@
     const value = String(window.BA_LLM_TOOL_EXECUTOR?.getAutonomyMaxLevel?.() ?? window.BA_LLM.settings.toolAutonomyMaxLevel ?? 1);
     if (select.value !== value) select.value = value;
     const level = (window.BA_LLM_TOOL_REGISTRY?.SECURITY_LEVELS || []).find((item) => String(item.level) === value);
-    if (detail) detail.textContent = level?.description || "Configura cuándo el agente debe pedir permiso antes de ejecutar una tool.";
+    if (detail) detail.textContent = level?.description || t("panel.llm.toolPolicy.defaultDetail", "Configura cuándo el agente debe pedir permiso antes de ejecutar una tool.");
   }
 
 
@@ -387,9 +394,9 @@
   }
 
   function getActiveToolProfileLabel(profileId) {
-    if (profileId === "manual") return "manual";
+    if (profileId === "manual") return t("panel.llm.profile.manual", "manual");
     const profile = state.profiles?.find?.((item) => item.id === profileId);
-    return profile?.name || profileId || "perfil actual";
+    return profile?.name || profileId || t("panel.llm.profile.current", "perfil actual");
   }
 
   function formatCountLabel(count, singular, plural) {
@@ -419,12 +426,18 @@
   function nativeToolsHintText(model, activeCount, max) {
     const weak = model?.agent?.toolCalling === "weak";
     if (!activeCount) {
-      return "Ninguna herramienta seleccionada: el chat no ejecutará herramientas (solo texto del modelo).";
+      return t("panel.llm.tools.noneSelected", "Ninguna herramienta seleccionada: el chat no ejecutará herramientas (solo texto del modelo).");
     }
-    const label = model?.shortLabel || model?.label || "modelo";
+    const label = model?.shortLabel || model?.label || t("panel.llm.modelFallback", "modelo");
     return weak
-      ? `${activeCount} herramienta(s) activa(s) · ${label}: el modelo propondrá una acción y la app la ejecutará (máx. ${max} en el listado).`
-      : `${activeCount} herramienta(s) activa(s) · bucle AI (máx. ${max}, ${label}). Menos herramientas = menos VRAM.`;
+      ? tn("panel.llm.tools.hintWeak", activeCount,
+          "{count} herramienta activa · {label}: el modelo propondrá una acción y la app la ejecutará (máx. {max} en el listado).",
+          "{count} herramientas activas · {label}: el modelo propondrá una acción y la app la ejecutará (máx. {max} en el listado).",
+          { label, max })
+      : tn("panel.llm.tools.hintStrong", activeCount,
+          "{count} herramienta activa · bucle AI (máx. {max}, {label}). Menos herramientas = menos VRAM.",
+          "{count} herramientas activas · bucle AI (máx. {max}, {label}). Menos herramientas = menos VRAM.",
+          { label, max });
   }
 
   function updateNativeToolsPickerUi() {
@@ -440,7 +453,7 @@
 
     const { model, profileId, max, active, available, policy } = getNativeToolsPickerState();
     if (!policy) {
-      picker.replaceChildren(createTextElement("small", "", "Política de tools nativas no cargada."));
+      picker.replaceChildren(createTextElement("small", "", t("panel.llm.tools.policyNotLoaded", "Política de tools nativas no cargada.")));
       updateChatToolsButton();
       return;
     }
@@ -450,7 +463,7 @@
     const head = document.createElement("div");
     head.className = "ba-llm-native-tools-head";
     const title = document.createElement("strong");
-    title.textContent = "Herramientas en el bucle";
+    title.textContent = t("panel.llm.tools.inLoop", "Herramientas en el bucle");
     const count = document.createElement("span");
     count.className = "ba-native-tools-count";
     count.dataset.nativeToolsCount = "";
@@ -474,12 +487,12 @@
         input.disabled = atMax;
 
         const name = createTextElement("span", "ba-llm-native-tool-name", tool.name);
-        const meta = createTextElement("span", "ba-llm-native-tool-meta", `niv. ${tool.riskLevel}`);
+        const meta = createTextElement("span", "ba-llm-native-tool-meta", t("panel.llm.tools.levelShort", "niv. {level}", { level: tool.riskLevel }));
         row.append(input, name, meta);
         grid.appendChild(row);
       }
     } else {
-      grid.appendChild(createTextElement("small", "", "Sin tools para este perfil."));
+      grid.appendChild(createTextElement("small", "", t("panel.llm.tools.noneForProfile", "Sin tools para este perfil.")));
     }
 
     if (picker.dataset.nativeToolsPickerBound !== "1") {
@@ -514,7 +527,7 @@
 
     const { model, max, active, policy } = getNativeToolsPickerState();
     const activeCount = active.size;
-    const label = model?.shortLabel || model?.label || "modelo";
+    const label = model?.shortLabel || model?.label || t("panel.llm.modelFallback", "modelo");
 
     if (badge) {
       badge.textContent = activeCount ? String(activeCount) : "";
@@ -523,21 +536,24 @@
     }
 
     if (!policy) {
-      btn.title = "Herramientas del agente (política no cargada)";
+      btn.title = t("panel.llm.toolsBtn.policyNotLoaded", "Herramientas del agente (política no cargada)");
       btn.setAttribute("aria-label", btn.title);
       return;
     }
 
     btn.title = activeCount
-      ? `${activeCount} herramienta(s) activa(s) de ${max} máx. (${label}). Clic para cambiar.`
-      : `Sin herramientas activas (máx. ${max} con ${label}). Clic para elegir.`;
+      ? tn("panel.llm.toolsBtn.active", activeCount,
+          "{count} herramienta activa de {max} máx. ({label}). Clic para cambiar.",
+          "{count} herramientas activas de {max} máx. ({label}). Clic para cambiar.",
+          { max, label })
+      : t("panel.llm.toolsBtn.none", "Sin herramientas activas (máx. {max} con {label}). Clic para elegir.", { max, label });
     btn.setAttribute("aria-label", btn.title);
   }
 
   function openChatToolsModal() {
     if (typeof showBaModalPanel !== "function") return;
     showBaModalPanel({
-      title: "Herramientas del agente",
+      title: t("panel.llm.toolsModal.title", "Herramientas del agente"),
       onMount(bodyEl) {
         const hint = document.createElement("small");
         hint.id = "ba-chat-tools-hint";
@@ -548,7 +564,7 @@
         bodyEl.replaceChildren(hint, picker);
         updateNativeToolsPickerUi();
       },
-      buttons: [{ id: "close", label: "Listo", variant: "primary" }],
+      buttons: [{ id: "close", label: t("common.done", "Listo"), variant: "primary" }],
     });
   }
 
@@ -561,8 +577,8 @@
     if (!registry?.listTools) {
       if (countBadge) countBadge.textContent = "—";
       const title = document.createElement("b");
-      title.textContent = "Herramientas disponibles:";
-      box.replaceChildren(title, createTextElement("span", "", "Registro no disponible"));
+      title.textContent = t("panel.llm.tools.available", "Herramientas disponibles:");
+      box.replaceChildren(title, createTextElement("span", "", t("panel.llm.tools.registryUnavailable", "Registro no disponible")));
       return;
     }
 
@@ -570,23 +586,23 @@
     const profileLabel = getActiveToolProfileLabel(profileId);
     const tools = registry.listTools({ profileId });
     if (countBadge) {
-      countBadge.textContent = formatCountLabel(tools.length, "herramienta", "herramientas");
-      countBadge.title = `Herramientas disponibles para ${profileLabel}`;
+      countBadge.textContent = tn("panel.llm.tools.count", tools.length, "{count} herramienta", "{count} herramientas");
+      countBadge.title = t("panel.llm.tools.availableForTitle", "Herramientas disponibles para {profile}", { profile: profileLabel });
     }
     const title = document.createElement("b");
-    title.textContent = `Herramientas disponibles para ${profileLabel}:`;
+    title.textContent = t("panel.llm.tools.availableFor", "Herramientas disponibles para {profile}:", { profile: profileLabel });
     const children = [title];
     if (tools.length) {
       for (const tool of tools) {
-        const chip = createTextElement("span", "", `${tool.name} · nivel ${tool.riskLevel}`);
-        chip.title = `${tool.label || tool.name} · nivel ${tool.riskLevel}`;
+        const chip = createTextElement("span", "", t("panel.llm.tools.chip", "{name} · nivel {level}", { name: tool.name, level: tool.riskLevel }));
+        chip.title = t("panel.llm.tools.chipTitle", "{label} · nivel {level}", { label: tool.label || tool.name, level: tool.riskLevel });
         children.push(chip);
       }
     } else {
-      children.push(createTextElement("span", "", "Sin herramientas disponibles para este perfil"));
+      children.push(createTextElement("span", "", t("panel.llm.tools.noneAvailableForProfile", "Sin herramientas disponibles para este perfil")));
     }
     if (profileId === "manual") {
-      children.push(createTextElement("small", "", "Perfil manual: se muestran todas las tools registradas. Algunas pueden fallar si el binario no está instalado."));
+      children.push(createTextElement("small", "", t("panel.llm.tools.manualNote", "Perfil manual: se muestran todas las tools registradas. Algunas pueden fallar si el binario no está instalado.")));
     }
     box.replaceChildren(...children);
   }
@@ -604,34 +620,44 @@
     const maxOutput = policy.maxNewTokensDefault;
     const planOutput = policy.maxNewTokensForPlan;
     const budgetLine = contextWindow && safeInput && maxOutput
-      ? `Presupuesto: contexto ${contextWindow} · entrada ${safeInput} · salida ${maxOutput}${planOutput ? ` · plan ${planOutput}` : ""}`
-      : "Presupuesto: pendiente";
+      ? t("panel.llm.resources.budget", "Presupuesto: contexto {context} · entrada {input} · salida {output}", { context: contextWindow, input: safeInput, output: maxOutput })
+        + (planOutput ? t("panel.llm.resources.budgetPlan", " · plan {plan}", { plan: planOutput }) : "")
+      : t("panel.llm.resources.budgetPending", "Presupuesto: pendiente");
     const artifactCount = snap.artifacts ?? window.BA_LLM?.artifacts?.length ?? 0;
     const artifactBadge = document.getElementById("ba-llm-artifact-count");
     if (artifactBadge) {
-      artifactBadge.textContent = formatCountLabel(artifactCount, "artefacto", "artefactos");
-      artifactBadge.title = snap.lastArtifactId ? `Último artefacto: ${snap.lastArtifactId}` : "Artefactos guardados";
+      artifactBadge.textContent = tn("panel.llm.artifactCount", artifactCount, "{count} artefacto", "{count} artefactos");
+      artifactBadge.title = snap.lastArtifactId ? t("panel.llm.resources.lastArtifact", "Último artefacto: {id}", { id: snap.lastArtifactId }) : t("panel.llm.resources.artifactsSaved", "Artefactos guardados");
     }
     const artifacts = window.BA_LLM_ARTIFACTS?.listSummaries?.({ limit: 3 }) || [];
     const artifactLines = artifacts.slice().reverse().map((artifact) => {
       const path = artifact.args?.path ? ` · ${artifact.args.path}` : "";
-      const state = artifact.ok ? "ok" : "error";
+      const state = artifact.ok ? t("panel.llm.resources.stateOk", "ok") : t("panel.llm.resources.stateError", "error");
       const size = artifact.sizeBytes ? ` · ${Math.ceil(artifact.sizeBytes / 1024)} KB` : "";
-      const truncated = artifact.truncated ? " · truncado" : "";
-      return `Artefacto: ${artifact.id} · ${artifact.tool || "tool"} · ${state}${size}${truncated}${path}`;
+      const truncated = artifact.truncated ? t("panel.llm.resources.truncated", " · truncado") : "";
+      return t("panel.llm.resources.artifactLine", "Artefacto: {id} · {tool} · {state}{size}{truncated}{path}", {
+        id: artifact.id,
+        tool: artifact.tool || t("panel.llm.resources.toolFallback", "tool"),
+        state, size, truncated, path,
+      });
     });
+    const operationLine = (snap.lastOperation
+      ? t("panel.llm.resources.operationLine", "Operación: {op}", { op: snap.lastOperation })
+      : t("panel.llm.resources.operation", "Operación: inactiva"))
+      + (snap.llmBusy ? t("panel.llm.resources.llmBusy", " · LLM ocupado") : "")
+      + (snap.toolBusy ? t("panel.llm.resources.toolBusy", " · herramienta activa") : "");
     const lines = [
-      `Artefactos: ${artifactCount}${snap.lastArtifactId ? ` · ${snap.lastArtifactId}` : ""}`,
+      t("panel.llm.resources.artifacts", "Artefactos: {count}", { count: artifactCount }) + (snap.lastArtifactId ? ` · ${snap.lastArtifactId}` : ""),
       ...artifactLines,
       budgetLine,
-      ctx ? `Contexto: ${ctx.estimatedTokens || 0} tokens aprox. · ${ctx.chars || 0} caracteres` : "Contexto: pendiente",
-      `Operación: ${snap.lastOperation || "inactiva"}${snap.llmBusy ? " · LLM ocupado" : ""}${snap.toolBusy ? " · herramienta activa" : ""}`,
+      ctx ? t("panel.llm.resources.contextActive", "Contexto: {tokens} tokens aprox. · {chars} caracteres", { tokens: ctx.estimatedTokens || 0, chars: ctx.chars || 0 }) : t("panel.llm.resources.context", "Contexto: pendiente"),
+      operationLine,
     ].filter(Boolean).map((line) => createTextElement("span", "", line));
     if (artifactCount) {
       const button = document.createElement("button");
       button.id = "ba-llm-clear-artifacts";
       button.type = "button";
-      button.textContent = "Limpiar artefactos";
+      button.textContent = t("panel.llm.resources.clearArtifacts", "Limpiar artefactos");
       button.addEventListener("click", () => {
         window.BA_LLM_ARTIFACTS?.clear?.();
         updateResourceLines();
@@ -653,8 +679,8 @@
       statusBadge.id = "ba-llm-status";
       statusBadge.className = "badge ba-llm-header-status warn";
       statusBadge.textContent = window.BA_LLM.loading
-        ? "cargando"
-        : (window.BA_LLM.loaded ? "cargado" : "sin cargar");
+        ? t("panel.llm.status.loading", "cargando")
+        : (window.BA_LLM.loaded ? t("panel.llm.status.loaded", "cargado") : t("panel.llm.status.unloaded", "sin cargar"));
       summary.appendChild(statusBadge);
     }
     if (summary && !summary.querySelector("#ba-llm-summary-compat")) {
@@ -663,7 +689,7 @@
       capabilityBadge.className = "badge ba-llm-summary-compat warn";
       capabilityBadge.textContent = window.BA_LLM.capabilitiesChecked
         ? (window.BA_syncLLMCapabilityBadges?.(window.BA_LLM.capabilities, "ready")?.text || "GPU")
-        : "GPU pendiente";
+        : t("caps.badge.pending", "GPU pendiente");
       summary.appendChild(capabilityBadge);
     }
 
@@ -673,6 +699,7 @@
     Array.from(body.children).forEach((child) => child.remove());
 
     body.insertAdjacentHTML("beforeend", buildLLMPanelHtml());
+    applyDomTranslations?.(body);
     window.BA_ORIGIN?.syncWarnings?.();
 
     const select = document.getElementById("ba-llm-model");
@@ -749,14 +776,14 @@
         const caps = await checkCapabilities();
         if ((selected.engine || "transformersjs") === "transformersjs" && (selected.device || "webgpu") === "webgpu" && !caps?.webgpu) return;
         setStatus(selected.engine === "ollama"
-          ? "Conectando con Ollama…"
-          : (selected.device === "wasm" ? "Cargando modelo WASM experimental…" : "Cargando modelo…"), "warn");
+          ? t("panel.llm.status.connectingOllama", "Conectando con Ollama…")
+          : (selected.device === "wasm" ? t("panel.llm.status.loadingWasm", "Cargando modelo WASM experimental…") : t("panel.llm.status.loadingModel", "Cargando modelo…")), "warn");
         window.BA_LLM.loading = true;
         await window.BA_LLM_AGENT.loadSelectedModel();
         setProgress({ status: "done" }, true);
       } catch (error) {
         window.BA_LLM.lastError = error.message;
-        setStatus("Error al cargar", "bad");
+        setStatus(t("panel.llm.status.loadError", "Error al cargar"), "bad");
         setProgress({ status: "error", file: error.message }, true);
       } finally {
         window.BA_LLM.loading = false;
@@ -769,17 +796,17 @@
       let confirmed = false;
       if (typeof showBaModal === "function") {
         const result = await showBaModal({
-          title: "Limpiar chat",
-          message: "Se borrará el chat visible, el historial interno del LLM y los artefactos de herramientas.",
-          detail: "Esta acción no afecta a la VM, la red WS, los discos ni los snapshots.",
+          title: t("panel.llm.clearChat.title", "Limpiar chat"),
+          message: t("panel.llm.clearChat.message", "Se borrará el chat visible, el historial interno del LLM y los artefactos de herramientas."),
+          detail: t("panel.llm.clearChat.detail", "Esta acción no afecta a la VM, la red WS, los discos ni los snapshots."),
           buttons: [
-            { id: "cancel", label: "Cancelar", variant: "secondary", cancel: true },
-            { id: "clear", label: "Limpiar chat", variant: "danger" },
+            { id: "cancel", label: t("common.cancel", "Cancelar"), variant: "secondary", cancel: true },
+            { id: "clear", label: t("panel.llm.clearChat.title", "Limpiar chat"), variant: "danger" },
           ],
         });
         confirmed = result === "clear";
       } else {
-        confirmed = window.confirm("¿Limpiar chat visible, historial interno y artefactos?\n\nEsta acción no afecta a la VM.");
+        confirmed = window.confirm(t("panel.llm.clearChat.confirmFallback", "¿Limpiar chat visible, historial interno y artefactos?\n\nEsta acción no afecta a la VM."));
       }
       if (confirmed) window.BA_LLM_AGENT.clearHistory();
     });
@@ -787,7 +814,7 @@
     document.getElementById("ba-llm-abort")?.addEventListener("click", () => {
       window.BA_LLM_AGENT.unloadModel();
       setProgress(null, true);
-      setStatus("worker descargado", "warn");
+      setStatus(t("panel.llm.status.workerUnloaded", "worker descargado"), "warn");
     });
   }
 
@@ -820,6 +847,16 @@
   window.addEventListener("ba-llm:resource", () => {
     updateResourceLines();
     updateAvailableToolsUi();
+  });
+
+  window.addEventListener("ba:langchange", () => {
+    updateSelectedModelCard();
+    updateResourceLines();
+    updateAvailableToolsUi();
+    updateChatToolsButton();
+    updateNativeToolsPickerUi();
+    syncToolPolicyUi();
+    updateCapabilityDetails(window.BA_LLM?.capabilities || null);
   });
 
   window.BA_LLM_UI = {

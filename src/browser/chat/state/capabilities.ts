@@ -23,19 +23,19 @@
   }
 
   function capabilityBadgeFor(result, state = "ready") {
-    if (state === "checking") return { text: "GPU…", tone: "warn", title: "Comprobando capacidades de inferencia local." };
-    if (!result) return { text: "GPU pendiente", tone: "warn", title: "Pendiente de comprobar capacidades de inferencia local." };
+    if (state === "checking") return { text: t("caps.badge.checking", "GPU…"), tone: "warn", title: t("caps.badge.checkingTitle", "Comprobando capacidades de inferencia local.") };
+    if (!result) return { text: t("caps.badge.pending", "GPU pendiente"), tone: "warn", title: t("caps.badge.pendingTitle", "Pendiente de comprobar capacidades de inferencia local.") };
     if (result.webgpu) return {
-      text: result.shaderF16 ? "WebGPU f16" : "WebGPU listo",
+      text: result.shaderF16 ? t("caps.badge.webgpuF16", "WebGPU f16") : t("caps.badge.webgpuReady", "WebGPU listo"),
       tone: "good",
       title: result.shaderF16
-        ? "WebGPU disponible con shader-f16. Los modelos q4f16 pueden ser compatibles."
-        : "WebGPU disponible sin shader-f16. Usar modelos q4, no q4f16.",
+        ? t("caps.badge.webgpuF16Title", "WebGPU disponible con shader-f16. Los modelos q4f16 pueden ser compatibles.")
+        : t("caps.badge.webgpuReadyTitle", "WebGPU disponible sin shader-f16. Usar modelos q4, no q4f16."),
     };
     return {
-      text: "WASM",
+      text: t("caps.badge.wasm", "WASM"),
       tone: "warn",
-      title: result.reason ? `WebGPU no disponible: ${result.reason}` : "WebGPU no disponible. Solo modelos WASM experimentales.",
+      title: result.reason ? t("caps.badge.wasmReasonTitle", "WebGPU no disponible: {reason}", { reason: result.reason }) : t("caps.badge.wasmTitle", "WebGPU no disponible. Solo modelos WASM experimentales."),
     };
   }
 
@@ -66,13 +66,13 @@
     const result = baseResult();
 
     if (!result.secureContext) {
-      result.reason = "WebGPU requiere HTTPS o localhost.";
+      result.reason = t("caps.reason.secureContext", "WebGPU requiere HTTPS o localhost.");
       result.checkedAt = Date.now();
       return result;
     }
 
     if (!navigator.gpu) {
-      result.reason = "navigator.gpu no está disponible en este navegador.";
+      result.reason = t("caps.reason.noGpu", "navigator.gpu no está disponible en este navegador.");
       result.checkedAt = Date.now();
       return result;
     }
@@ -80,7 +80,7 @@
     try {
       const adapter = await navigator.gpu.requestAdapter({ powerPreference: "high-performance" });
       if (!adapter) {
-        result.reason = "No se ha podido obtener un GPUAdapter.";
+        result.reason = t("caps.reason.noAdapter", "No se ha podido obtener un GPUAdapter.");
         result.checkedAt = Date.now();
         return result;
       }
@@ -96,9 +96,9 @@
         maxComputeWorkgroupStorageSize: adapter.limits?.maxComputeWorkgroupStorageSize,
         maxComputeInvocationsPerWorkgroup: adapter.limits?.maxComputeInvocationsPerWorkgroup,
       };
-      result.reason = "WebGPU disponible.";
+      result.reason = t("caps.reason.available", "WebGPU disponible.");
     } catch (error) {
-      result.reason = error?.message ? `error del navegador: ${error.message}` : String(error);
+      result.reason = error?.message ? t("caps.reason.browserError", "error del navegador: {message}", { message: error.message }) : String(error);
     }
 
     result.checkedAt = Date.now();
@@ -144,6 +144,8 @@
       }
     }
   }
+
+  window.addEventListener("ba:langchange", () => syncLLMCapabilityBadges(window.BA_LLM?.capabilities || null, "ready"));
 
   window.BA_detectLLMCapabilities = detectLLMCapabilities;
   window.BA_ensureLLMCapabilities = ensureLLMCapabilities;

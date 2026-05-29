@@ -31,7 +31,7 @@ function rawSerialSend(text) {
     state.vm.serial0_send(text);
     return true;
   } catch (error) {
-    logTool(`${NL}[consola] error enviando entrada: ${error.message}${NL}`);
+    logTool(`${NL}[consola] ${t("console.inputError", "error enviando entrada: {error}", { error: error.message })}${NL}`);
     return false;
   }
 }
@@ -126,16 +126,16 @@ async function renameConsoleTab(id) {
       const inputId = "ba-console-rename-input";
       let modalValue = currentTitle;
       const result = await showBaModalPanel({
-        title: `Renombrar ${currentTitle}`,
+        title: t("console.rename.title", "Renombrar {title}", { title: currentTitle }),
         closeOnBackdrop: false,
         buttons: [
-          { id: "cancel", label: "Cancelar", variant: "secondary", cancel: true },
-          { id: "save", label: "Guardar", variant: "primary" },
+          { id: "cancel", label: t("common.cancel", "Cancelar"), variant: "secondary", cancel: true },
+          { id: "save", label: t("common.save", "Guardar"), variant: "primary" },
         ],
         onMount(bodyEl) {
           const wrap = document.createElement("label");
           wrap.className = "ba-console-rename-field";
-          wrap.textContent = "Nombre";
+          wrap.textContent = t("console.rename.fieldLabel", "Nombre");
 
           const input = document.createElement("input");
           input.id = inputId;
@@ -167,7 +167,7 @@ async function renameConsoleTab(id) {
       if (result !== "save") return;
       next = modalValue;
     } else {
-      next = window.prompt("Nombre", currentTitle);
+      next = window.prompt(t("console.rename.fieldLabel", "Nombre"), currentTitle);
       if (next === null) return;
     }
   } finally {
@@ -204,7 +204,7 @@ async function ensureConsoleSession(tab) {
     tab.status = state.vmReady ? "ready" : "pending";
     return { code: 0, stdout: "", stderr: "" };
   }
-  if (!tab?.sessionId || !window.BA_CONSOLE_CONTROL?.createSession) return { code: 1, stderr: "control de consola no disponible" };
+  if (!tab?.sessionId || !window.BA_CONSOLE_CONTROL?.createSession) return { code: 1, stderr: t("console.controlUnavailable", "control de consola no disponible") };
   tab.status = "connecting";
   renderConsoleTabs();
   const result = await window.BA_CONSOLE_CONTROL.createSession(tab.sessionId, {
@@ -223,11 +223,11 @@ async function restartConsoleTab(tab, { announce = true } = {}) {
     try {
       tab.term?.clear?.();
       tab.term?.write?.("\x1b[3J\x1b[H\x1b[2J");
-      if (announce) tab.term?.write?.("[reiniciando consola]\r\n");
+      if (announce) tab.term?.write?.(`[${t("console.restarting", "reiniciando consola")}]\r\n`);
     } catch {}
     const result = await ensureConsoleSession(tab);
     if (result.code !== 0) {
-      tab.term?.write?.(`\r\n[error reiniciando PTY: ${result.stderr || result.stdout || result.code}]\r\n`);
+      tab.term?.write?.(`\r\n[${t("console.ptyRestartError", "error reiniciando PTY: {error}", { error: result.stderr || result.stdout || result.code })}]\r\n`);
       return false;
     }
     window.setTimeout(() => tab.term?.focus?.(), 100);
@@ -244,7 +244,7 @@ function handleConsoleClosedEvent(sessionId) {
   tab.status = "closed";
   renderConsoleTabs();
 
-  tab.term?.write?.("\r\n[la shell termino; puedes refrescar para reiniciar o cerrar esta consola]\r\n");
+  tab.term?.write?.(`\r\n[${t("console.shellEnded", "la shell termino; puedes refrescar para reiniciar o cerrar esta consola")}]\r\n`);
 }
 
 function ensureConsoleOutputSubscription() {
@@ -371,17 +371,17 @@ async function finalizeConsoleTabsReady({ extraReady = true } = {}) {
       continue;
     }
     const result = await ensureConsoleSession(tab);
-    if (result.code !== 0 && tab.term) tab.term.write(`\r\n[error creando PTY: ${result.stderr || result.stdout || result.code}]\r\n`);
+    if (result.code !== 0 && tab.term) tab.term.write(`\r\n[${t("console.ptyCreateError", "error creando PTY: {error}", { error: result.stderr || result.stdout || result.code })}]\r\n`);
   }
 
   renderConsoleTabs();
   window.setTimeout(() => {
     focusSerialConsole();
   }, 120);
-  logTool(`[consola] pestaña 1 por serial0; pestañas 2-4 por PTY serial2.${NL}`);
+  logTool(`[consola] ${t("console.tabsInfo", "pestaña 1 por serial0; pestañas 2-4 por PTY serial2.")}${NL}`);
 }
 
-function failConsoleTabsInit(message = "consola xterm no disponible") {
+function failConsoleTabsInit(message = t("console.unavailable", "consola xterm no disponible")) {
   if (state.consoleTabs.initTimer) {
     window.clearTimeout(state.consoleTabs.initTimer);
     state.consoleTabs.initTimer = 0;
@@ -390,7 +390,7 @@ function failConsoleTabsInit(message = "consola xterm no disponible") {
   state.consoleTabs.ready = false;
   setConsoleTabsStatus(message, "bad");
   renderConsoleTabs();
-  logTool(`${NL}[consola] ${message}. Reconstruye perfiles con npm run setup y recarga sin cache.${NL}`);
+  logTool(`${NL}[consola] ${t("console.rebuildHint", "{message}. Reconstruye perfiles con npm run setup y recarga sin cache.", { message })}${NL}`);
 }
 
 function setConsoleTabsStatus(text, tone = "") {
@@ -453,10 +453,10 @@ function renderConsoleTabs() {
     labelEl.textContent = shortConsoleLabel(tab);
     button.appendChild(labelEl);
     button.setAttribute("aria-label", displayConsoleTitle(tab));
-    button.title = `${displayConsoleTitle(tab)} · doble clic para renombrar · ${
+    button.title = `${displayConsoleTitle(tab)} · ${t("console.tab.dblClickRename", "doble clic para renombrar")} · ${
       isSerialConsoleTab(tab)
-      ? "Pestaña serial0 real de arranque de la VM."
-      : "Pestaña xterm con PTY propia dentro de la VM."
+      ? t("console.tab.serialTooltip", "Pestaña serial0 real de arranque de la VM.")
+      : t("console.tab.ptyTooltip", "Pestaña xterm con PTY propia dentro de la VM.")
     }`;
     button.addEventListener("click", (event) => handleConsoleTabClick(event, tab));
 
@@ -464,7 +464,7 @@ function renderConsoleTabs() {
       const close = document.createElement("span");
       close.className = "console-tab-close";
       close.textContent = "×";
-      close.title = "Cerrar consola";
+      close.title = t("console.tab.closeTitle", "Cerrar consola");
       close.addEventListener("click", (event) => {
         event.stopPropagation();
         closeHumanConsoleTab(tab.id);
@@ -480,10 +480,10 @@ function renderConsoleTabs() {
   if (redrawButton) redrawButton.disabled = !ready || busy || !active;
   if (closeConsoleButton) closeConsoleButton.disabled = !ready || busy || !active || !active.closable;
 
-  if (state.consoleTabs.controlBusy) setConsoleTabsStatus("actualizando", "warn");
-  else if (state.consoleTabs.ready) setConsoleTabsStatus(extraReady ? `${humanCount}/4 consolas` : "solo serial0", extraReady ? "good" : "warn");
-  else if (state.consoleTabs.initializing) setConsoleTabsStatus("iniciando xterm", "warn");
-  else setConsoleTabsStatus("sin consola", "");
+  if (state.consoleTabs.controlBusy) setConsoleTabsStatus(t("console.status.updating", "actualizando"), "warn");
+  else if (state.consoleTabs.ready) setConsoleTabsStatus(extraReady ? t("console.status.count", "{count}/4 consolas", { count: humanCount }) : t("console.status.serialOnly", "solo serial0"), extraReady ? "good" : "warn");
+  else if (state.consoleTabs.initializing) setConsoleTabsStatus(t("console.status.starting", "iniciando xterm"), "warn");
+  else setConsoleTabsStatus(t("console.status.none", "sin consola"), "");
 
   syncConsoleInputLock();
 }
@@ -528,17 +528,17 @@ async function initConsoleTabsAfterBoot() {
     return;
   }
   if (!window.Terminal) {
-    failConsoleTabsInit("xterm.js no cargado");
+    failConsoleTabsInit(t("console.error.xtermNotLoaded", "xterm.js no cargado"));
     return;
   }
 
   state.consoleTabs.initializing = true;
   renderConsoleTabs();
-  logTool(`${NL}[consola] esperando daemon xterm/PTY por serial2...${NL}`);
+  logTool(`${NL}[consola] ${t("console.waitingDaemon", "esperando daemon xterm/PTY por serial2...")}${NL}`);
 
   const ready = await window.BA_CONSOLE_CONTROL?.probeRunnerReady?.({ timeoutMs: 3500 }).catch(() => false);
   if (!ready) {
-    logTool(`${NL}[consola] aviso: daemon xterm/PTY no disponible; queda activa la pestaña 1 por serial0.${NL}`);
+    logTool(`${NL}[consola] ${t("console.daemonUnavailable", "aviso: daemon xterm/PTY no disponible; queda activa la pestaña 1 por serial0.")}${NL}`);
     await finalizeConsoleTabsReady({ extraReady: false });
     return;
   }
@@ -592,7 +592,7 @@ async function createHumanConsoleTab() {
   try {
     const result = await ensureConsoleSession(tab);
     if (result.code !== 0) {
-      tab.term?.write?.(`\r\n[error creando PTY: ${result.stderr || result.stdout || result.code}]\r\n`);
+      tab.term?.write?.(`\r\n[${t("console.ptyCreateError", "error creando PTY: {error}", { error: result.stderr || result.stdout || result.code })}]\r\n`);
     }
   } finally {
     state.consoleTabs.controlBusy = false;
@@ -641,12 +641,12 @@ async function closeHumanConsoleTab(id) {
 
   if (shouldConfirmConsoleClose(tab)) {
     const decision = await showBaModal({
-      title: `Cerrar ${tab.title}`,
-      message: "Cerrar la consola terminara el shell y cualquier proceso activo dentro de esa PTY.",
-      detail: "Las otras consolas y las tools por serial1 no se veran afectadas.",
+      title: t("console.close.title", "Cerrar {title}", { title: tab.title }),
+      message: t("console.close.message", "Cerrar la consola terminara el shell y cualquier proceso activo dentro de esa PTY."),
+      detail: t("console.close.detail", "Las otras consolas y las tools por serial1 no se veran afectadas."),
       buttons: [
-        { id: "cancel", label: "Mantener abierta", variant: "secondary", cancel: true },
-        { id: "close", label: "Cerrar y detener", variant: "danger" },
+        { id: "cancel", label: t("console.close.keepOpen", "Mantener abierta"), variant: "secondary", cancel: true },
+        { id: "close", label: t("console.close.confirm", "Cerrar y detener"), variant: "danger" },
       ],
     });
     if (decision !== "close") return;
@@ -658,7 +658,7 @@ async function closeHumanConsoleTab(id) {
       ? { code: 0 }
       : await window.BA_CONSOLE_CONTROL.closeSession(tab.sessionId);
     if (result.code !== 0) {
-      logTool(`${NL}[consola] no se pudo cerrar ${tab.title}: ${result.stderr || `exit ${result.code}`}${NL}`);
+      logTool(`${NL}[consola] ${t("console.closeFailed", "no se pudo cerrar {title}: {error}", { title: tab.title, error: result.stderr || `exit ${result.code}` })}${NL}`);
       return;
     }
     state.consoleTabs.tabs = state.consoleTabs.tabs.filter((item) => item.id !== tab.id);
@@ -681,14 +681,14 @@ function cancelCurrentTool() {
   }
   if (!state.pending) return;
   const pending = state.pending;
-  logTool(`${NL}[tool] cancelando con Ctrl+C...${NL}`);
+  logTool(`${NL}[tool] ${t("console.cancelTool.log", "cancelando con Ctrl+C...")}${NL}`);
   rawSerialSend("\x03");
 
   window.setTimeout(() => {
     if (state.pending !== pending) return;
     window.clearTimeout(pending.timer);
     state.pending = null;
-    pending.resolve({ code: 130, stdout: trimLines(pending.raw), stderr: "cancelado por el usuario" });
+    pending.resolve({ code: 130, stdout: trimLines(pending.raw), stderr: t("console.cancelledByUser", "cancelado por el usuario") });
   }, 1800);
 }
 
@@ -708,31 +708,31 @@ function buildConsoleHelpHtml() {
   return `
     <div class="ba-console-help">
       <p class="ba-console-help-lead">
-        La pestaña 1 usa <strong>serial0</strong>; las pestañas extra usan <strong>xterm.js</strong> con PTY real dentro de la VM.
+        ${t("console.help.lead", "La pestaña 1 usa <strong>serial0</strong>; las pestañas extra usan <strong>xterm.js</strong> con PTY real dentro de la VM.")}
       </p>
 
       <section class="ba-console-help-section">
-        <h4>Modelo de consola</h4>
+        <h4>${t("console.help.modelTitle", "Modelo de consola")}</h4>
         <ul class="ba-console-help-list">
-          <li><strong>Pestaña 1</strong> es la consola real de arranque por <code>serial0</code>.</li>
-          <li><strong>Pestañas 2-4</strong> tienen shell y PTY propios por <code>serial2</code>.</li>
-          <li><strong>Programas de pantalla completa</strong> como <code>nano</code>, <code>vim</code>, <code>watch</code>, <code>top</code> o <code>less</code> escriben directamente en el xterm de su pestaña.</li>
-          <li><strong>Herramientas del LLM y comprobaciones</strong> siguen ejecutandose por <code>serial1</code> / <code>ttyS1</code>, separadas de estas consolas.</li>
+          <li>${t("console.help.model.tab1", "<strong>Pestaña 1</strong> es la consola real de arranque por <code>serial0</code>.")}</li>
+          <li>${t("console.help.model.tabs", "<strong>Pestañas 2-4</strong> tienen shell y PTY propios por <code>serial2</code>.")}</li>
+          <li>${t("console.help.model.fullscreen", "<strong>Programas de pantalla completa</strong> como <code>nano</code>, <code>vim</code>, <code>watch</code>, <code>top</code> o <code>less</code> escriben directamente en el xterm de su pestaña.")}</li>
+          <li>${t("console.help.model.tools", "<strong>Herramientas del LLM y comprobaciones</strong> siguen ejecutandose por <code>serial1</code> / <code>ttyS1</code>, separadas de estas consolas.")}</li>
         </ul>
       </section>
 
       <section class="ba-console-help-section">
-        <h4>Navegador</h4>
+        <h4>${t("console.help.browserTitle", "Navegador")}</h4>
         <ul class="ba-console-help-list">
-          <li><strong>Pestañas</strong>: clic para cambiar y doble clic sobre el nombre para renombrar.</li>
-          <li>Haz <strong>clic dentro de la consola</strong> antes de escribir para asegurar el foco.</li>
-          <li><strong>Pegar</strong>: ${consoleHelpKbd(["Ctrl", "Shift", "V"])} o menu contextual del navegador.</li>
-          <li><strong>Cancelar proceso</strong>: ${consoleHelpKbd(["Ctrl", "C"])} dentro de la consola activa.</li>
+          <li>${t("console.help.browser.tabs", "<strong>Pestañas</strong>: clic para cambiar y doble clic sobre el nombre para renombrar.")}</li>
+          <li>${t("console.help.browser.focus", "Haz <strong>clic dentro de la consola</strong> antes de escribir para asegurar el foco.")}</li>
+          <li>${t("console.help.browser.paste", "<strong>Pegar</strong>: {keys} o menu contextual del navegador.", { keys: consoleHelpKbd(["Ctrl", "Shift", "V"]) })}</li>
+          <li>${t("console.help.browser.cancel", "<strong>Cancelar proceso</strong>: {keys} dentro de la consola activa.", { keys: consoleHelpKbd(["Ctrl", "C"]) })}</li>
         </ul>
       </section>
 
       <p class="ba-console-help-foot">
-        El boton de refrescar limpia la pantalla local y envia <code>Ctrl+L</code> al shell activo. <code>Ctrl+C</code> interrumpe el proceso activo si no hay texto seleccionado.
+        ${t("console.help.foot", "El boton de refrescar limpia la pantalla local y envia <code>Ctrl+L</code> al shell activo. <code>Ctrl+C</code> interrumpe el proceso activo si no hay texto seleccionado.")}
       </p>
     </div>
   `;
@@ -740,28 +740,28 @@ function buildConsoleHelpHtml() {
 
 function buildConsoleHelpPlainText() {
   return [
-    "Consolas xterm directas",
+    t("console.helpText.title", "Consolas xterm directas"),
     "",
-    "- Hasta 4 consolas de usuario.",
-    "- Pestaña 1 usa serial0 y muestra el arranque real.",
-    "- Pestañas 2-4 tienen una PTY propia dentro de la VM.",
-    "- Clic para cambiar de pestaña; doble clic en el nombre para renombrar.",
-    "- No hay prefijos especiales para cambiar de consola.",
-    "- nano, vim, watch, top y less se ejecutan directamente sobre la consola activa.",
-    "- Tools y checks siguen separados por serial1/ttyS1.",
+    t("console.helpText.maxConsoles", "- Hasta 4 consolas de usuario."),
+    t("console.helpText.tab1", "- Pestaña 1 usa serial0 y muestra el arranque real."),
+    t("console.helpText.tabs", "- Pestañas 2-4 tienen una PTY propia dentro de la VM."),
+    t("console.helpText.switch", "- Clic para cambiar de pestaña; doble clic en el nombre para renombrar."),
+    t("console.helpText.noPrefix", "- No hay prefijos especiales para cambiar de consola."),
+    t("console.helpText.fullscreen", "- nano, vim, watch, top y less se ejecutan directamente sobre la consola activa."),
+    t("console.helpText.tools", "- Tools y checks siguen separados por serial1/ttyS1."),
     "",
-    "Navegador: clic en la consola para foco; pegar con Ctrl+Shift+V.",
+    t("console.helpText.browser", "Navegador: clic en la consola para foco; pegar con Ctrl+Shift+V."),
   ].join("\n");
 }
 
 function showConsoleHelpModal() {
   if (typeof showBaModalPanel === "function") {
     showBaModalPanel({
-      title: "Consolas xterm",
+      title: t("console.help.modalTitle", "Consolas xterm"),
       onMount(bodyEl) {
         bodyEl.innerHTML = buildConsoleHelpHtml();
       },
-      buttons: [{ id: "close", label: "Entendido", variant: "primary", cancel: true }],
+      buttons: [{ id: "close", label: t("console.help.gotIt", "Entendido"), variant: "primary", cancel: true }],
     });
     return;
   }
@@ -769,13 +769,17 @@ function showConsoleHelpModal() {
   const detail = buildConsoleHelpPlainText();
   if (typeof showBaModal === "function") {
     showBaModal({
-      title: "Consolas xterm",
-      message: "Comportamiento de las consolas en Browser Agent v86.",
+      title: t("console.help.modalTitle", "Consolas xterm"),
+      message: t("console.help.modalMessage", "Comportamiento de las consolas en Browser Agent v86."),
       detail,
-      buttons: [{ id: "ok", label: "Entendido", variant: "primary", cancel: true }],
+      buttons: [{ id: "ok", label: t("console.help.gotIt", "Entendido"), variant: "primary", cancel: true }],
     });
     return;
   }
 
   alert(detail);
 }
+
+window.addEventListener("ba:langchange", () => {
+  try { renderConsoleTabs(); } catch {}
+});
