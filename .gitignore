@@ -22,6 +22,7 @@ public/assets/app.js
 public/assets/app.css
 public/assets/ai-sdk-bridge.mjs
 public/assets/chat/
+public/locales/
 
 # Copiado o descargado por npm run build / npm run setup
 public/vendor/
