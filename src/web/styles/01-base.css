@@ -105,6 +105,7 @@ p { margin: 6px 0; color: var(--ba-color-subtle); font-size: 14px; }
   white-space: nowrap;
 }
 .badge.good { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+.ba-lang-select { cursor: pointer; appearance: auto; padding: 3px 6px; }
 .badge.warn { background: #fffbeb; color: #b45309; border-color: #fde68a; }
 .badge.bad { background: #fff1f2; color: #be123c; border-color: #fecdd3; }
 .badge.blue { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
