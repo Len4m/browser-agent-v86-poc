@@ -3,11 +3,11 @@
 // Split from app.js in v9.35. Load order is defined in index.html.
 
 function formatCheckBadgeText(ok, detail = "") {
-  if (ok) return "OK";
+  if (ok) return t("checks.badge.ok", "OK");
   const clean = String(detail || "").trim();
-  if (!clean) return "FAIL";
-  if (clean.length > 28 || /[;$(){}|<>]/.test(clean)) return "FAIL";
-  if (/%s|\\n|printf|IFACE=\$|PFX=/.test(clean)) return "FAIL";
+  if (!clean) return t("checks.badge.fail", "FAIL");
+  if (clean.length > 28 || /[;$(){}|<>]/.test(clean)) return t("checks.badge.fail", "FAIL");
+  if (/%s|\\n|printf|IFACE=\$|PFX=/.test(clean)) return t("checks.badge.fail", "FAIL");
   return clean;
 }
 
@@ -32,7 +32,7 @@ function addSkippedCheck(container, name, detail = "") {
   label.textContent = name;
   const badge = document.createElement("span");
   badge.className = "badge warn";
-  badge.textContent = "omitido";
+  badge.textContent = t("checks.badge.skipped", "omitido");
   badge.title = detail;
   row.append(label, badge);
   container.appendChild(row);
@@ -73,16 +73,16 @@ function firstMatchingVmCheckLine(text, predicate) {
 }
 
 function getVmCommandCheckSkipReason() {
-  if (!state.vm) return "VM no arrancada";
-  if (!state.vmReady) return "esperando shell";
-  if (state.snapshotRestoring) return "restaurando snapshot";
-  if (state.vmStarting) return "VM arrancando";
-  if (state.pending) return "hay una operación serial0 en ejecución";
-  if (state.bgTools?.pending) return "hay una herramienta en segundo plano en ejecución";
-  if (state.agentBusy) return "VM ocupada";
+  if (!state.vm) return t("checks.skip.vmNotStarted", "VM no arrancada");
+  if (!state.vmReady) return t("checks.skip.waitingShell", "esperando shell");
+  if (state.snapshotRestoring) return t("checks.skip.restoringSnapshot", "restaurando snapshot");
+  if (state.vmStarting) return t("checks.skip.vmStarting", "VM arrancando");
+  if (state.pending) return t("checks.skip.serial0Busy", "hay una operación serial0 en ejecución");
+  if (state.bgTools?.pending) return t("checks.skip.bgToolBusy", "hay una herramienta en segundo plano en ejecución");
+  if (state.agentBusy) return t("checks.skip.vmBusy", "VM ocupada");
   const diag = window.BA_BG_TOOLS?.diagnostics?.();
-  if (diag && !diag.serial1Available) return "serial1 no disponible";
-  if (diag && !diag.runnerReady) return "runner serial1 no preparado";
+  if (diag && !diag.serial1Available) return t("checks.skip.serial1Unavailable", "serial1 no disponible");
+  if (diag && !diag.runnerReady) return t("checks.skip.runnerNotReady", "runner serial1 no preparado");
   return "";
 }
 
@@ -127,7 +127,7 @@ function makeToolCheckCommand(toolChecks) {
   return `P=BA_TOOLS; missing=""; ${tests}; if [ -n "$missing" ]; then echo "\${P}_MISSING:$missing"; exit 1; else echo "\${P}_OK"; fi`;
 }
 
-async function runVmCheck(command, { label = "Check usando la VM…", timeoutMs = 12000 } = {}) {
+async function runVmCheck(command, { label = t("checks.label.vmCheck", "Check usando la VM…"), timeoutMs = 12000 } = {}) {
   return execVm(command, {
     lock: true,
     label,
@@ -141,7 +141,7 @@ async function runChecks({ probeWsRelay = true } = {}) {
   if (state.checksRunning) return;
   state.checksRunning = true;
   syncChecksButton();
-  setBadge($("checks-summary"), "comprobando", "warn");
+  setBadge($("checks-summary"), t("checks.badge.checking", "comprobando"), "warn");
   try {
 
     const container = $("checks");
@@ -153,37 +153,37 @@ async function runChecks({ probeWsRelay = true } = {}) {
       if (addCheck(container, name, ok, detail)) okCount += 1;
     };
 
-    add("WebGPU", Boolean(navigator.gpu), navigator.gpu ? "OK" : "No detectado");
-    add("WebSocket API", Boolean(window.WebSocket), window.WebSocket ? "OK" : "No disponible");
+    add(t("checks.item.webgpu", "WebGPU"), Boolean(navigator.gpu), navigator.gpu ? t("checks.badge.ok", "OK") : t("checks.detail.notDetected", "No detectado"));
+    add(t("checks.item.websocketApi", "WebSocket API"), Boolean(window.WebSocket), window.WebSocket ? t("checks.badge.ok", "OK") : t("checks.detail.notAvailable", "No disponible"));
 
     const wsRelayUrl = getWsRelayUrl();
     if (probeWsRelay) {
       const wsRelayCheck = await checkWsRelayEndpoint(wsRelayUrl);
-      add("wsnic relay disponible", wsRelayCheck.ok, `${wsRelayUrl} · ${wsRelayCheck.detail}`);
+      add(t("checks.item.wsnicRelay", "wsnic relay disponible"), wsRelayCheck.ok, `${wsRelayUrl} · ${wsRelayCheck.detail}`);
     } else {
-      addSkippedCheck(container, "wsnic relay disponible", `${wsRelayUrl} · comprobación omitida hasta que pulses Conectar o Comprobaciones`);
+      addSkippedCheck(container, t("checks.item.wsnicRelay", "wsnic relay disponible"), t("checks.detail.relaySkipped", "{url} · comprobación omitida hasta que pulses Conectar o Comprobaciones", { url: wsRelayUrl }));
     }
 
     const wsConnected = isWsConnected();
     const wsConfigured = Boolean(state.networkConfigured);
     add(
-      "Red WS conectada",
+      t("checks.item.wsNetwork", "Red WS conectada"),
       wsConnected && wsConfigured,
       wsConnected
-        ? (wsConfigured ? "conectada + VM configurada" : "conectada, VM sin configurar")
-        : "no conectado desde la web"
+        ? (wsConfigured ? t("checks.detail.connectedConfigured", "conectada + VM configurada") : t("checks.detail.connectedUnconfigured", "conectada, VM sin configurar"))
+        : t("checks.detail.notConnectedWeb", "no conectado desde la web")
     );
 
-    add("COOP/COEP", Boolean(window.crossOriginIsolated), window.crossOriginIsolated ? "OK" : "No aislado");
+    add(t("checks.item.coopCoep", "COOP/COEP"), Boolean(window.crossOriginIsolated), window.crossOriginIsolated ? t("checks.badge.ok", "OK") : t("checks.detail.notIsolated", "No aislado"));
 
     const runtime = getVmRuntimeConfig();
-    add("RAM seleccionada", runtime.ramMb >= 256, `${runtime.ramMb} MB`);
+    add(t("checks.item.ram", "RAM seleccionada"), runtime.ramMb >= 256, `${runtime.ramMb} MB`);
 
     if (runtime.hda) {
       const diskResult = await checkAsset(runtime.hda.url);
-      add("Disco hda fichero", diskResult.ok, diskResult.ok ? runtime.hda.url : `${runtime.hda.url} · ${diskResult.detail}`);
+      add(t("checks.item.hdaFile", "Disco hda fichero"), diskResult.ok, diskResult.ok ? runtime.hda.url : `${runtime.hda.url} · ${diskResult.detail}`);
     } else {
-      add("Disco VM", true, "initramfs/RAM");
+      add(t("checks.item.vmDisk", "Disco VM"), true, "initramfs/RAM");
     }
 
     const diskUrls = [
@@ -196,12 +196,12 @@ async function runChecks({ probeWsRelay = true } = {}) {
       const result = await checkAsset(url);
       if (result.ok) diskOk += 1;
     }
-    add("Discos hda disponibles", diskOk === diskUrls.length, `${diskOk}/${diskUrls.length}`);
+    add(t("checks.item.hdaDisks", "Discos hda disponibles"), diskOk === diskUrls.length, `${diskOk}/${diskUrls.length}`);
 
     const cfg = getConfig();
     const profile = getSelectedProfile();
-    if (profile) add("Perfil seleccionado", true, `${profile.name || profile.id} · ${profile.output}`);
-    else add("Perfil seleccionado", true, "Libre / manual");
+    if (profile) add(t("checks.item.profileSelected", "Perfil seleccionado"), true, `${profile.name || profile.id} · ${profile.output}`);
+    else add(t("checks.item.profileSelected", "Perfil seleccionado"), true, t("checks.detail.freeManual", "Libre / manual"));
 
     const assets = [
       ["libv86.js", cfg.libv86],
@@ -219,90 +219,90 @@ async function runChecks({ probeWsRelay = true } = {}) {
 
     try {
       if (!window.V86Starter && !window.V86) await loadScript(cfg.libv86);
-      add("V86Starter", Boolean(window.V86Starter || window.V86), "No cargado");
+      add(t("checks.item.v86starter", "V86Starter"), Boolean(window.V86Starter || window.V86), t("checks.detail.notLoaded", "No cargado"));
     } catch (error) {
-      add("V86Starter", false, error.message);
+      add(t("checks.item.v86starter", "V86Starter"), false, error.message);
     }
 
-    add("VM arrancada", Boolean(state.vm), state.vm ? "OK" : "Pendiente");
-    add("Serial0 API", Boolean(state.vm?.serial0_send), state.vm?.serial0_send ? "OK" : "Pendiente");
+    add(t("checks.item.vmStarted", "VM arrancada"), Boolean(state.vm), state.vm ? t("checks.badge.ok", "OK") : t("checks.detail.pending", "Pendiente"));
+    add(t("checks.item.serial0Api", "Serial0 API"), Boolean(state.vm?.serial0_send), state.vm?.serial0_send ? t("checks.badge.ok", "OK") : t("checks.detail.pending", "Pendiente"));
     const bgDiagBeforeWait = window.BA_BG_TOOLS?.diagnostics?.() || null;
-    add("Serial1 API", Boolean(bgDiagBeforeWait?.serial1Available), bgDiagBeforeWait?.serial1Available ? "OK" : "Pendiente");
+    add(t("checks.item.serial1Api", "Serial1 API"), Boolean(bgDiagBeforeWait?.serial1Available), bgDiagBeforeWait?.serial1Available ? t("checks.badge.ok", "OK") : t("checks.detail.pending", "Pendiente"));
     if (state.vm && state.vmReady && bgDiagBeforeWait?.serial1Available && !bgDiagBeforeWait?.runnerReady) {
       await window.BA_BG_TOOLS?.waitForRunnerReady?.(1500);
     }
     const bgDiag = window.BA_BG_TOOLS?.diagnostics?.() || null;
-    add("Runner serial1", Boolean(bgDiag?.runnerReady), bgDiag?.runnerReady ? "ba-serial1-runner listo" : (bgDiag?.lastError || "no preparado"));
-    add("Snapshot API", Boolean(state.vm?.save_state && state.vm?.restore_state), state.vm ? "save_state/restore_state" : "Pendiente");
+    add(t("checks.item.runnerSerial1", "Runner serial1"), Boolean(bgDiag?.runnerReady), bgDiag?.runnerReady ? t("checks.detail.runnerReady", "ba-serial1-runner listo") : (bgDiag?.lastError || t("checks.detail.notReady", "no preparado")));
+    add(t("checks.item.snapshotApi", "Snapshot API"), Boolean(state.vm?.save_state && state.vm?.restore_state), state.vm ? "save_state/restore_state" : t("checks.detail.pending", "Pendiente"));
 
     const vmSkipReason = getVmCommandCheckSkipReason();
 
     if (vmSkipReason) {
-      addSkippedCheck(container, "Checks dentro VM", vmSkipReason);
+      addSkippedCheck(container, t("checks.item.vmChecks", "Checks dentro VM"), vmSkipReason);
     } else {
-      const result = await runVmCheck("echo browser-agent-ok", { label: "Check básico de VM…", timeoutMs: 8000 });
-      add("Comando VM real", result.code === 0 && result.stdout.includes("browser-agent-ok"), result.stderr || "OK");
+      const result = await runVmCheck("echo browser-agent-ok", { label: t("checks.label.vmBasic", "Check básico de VM…"), timeoutMs: 8000 });
+      add(t("checks.item.vmCommand", "Comando VM real"), result.code === 0 && result.stdout.includes("browser-agent-ok"), result.stderr || t("checks.badge.ok", "OK"));
 
       const profileIdResult = await runVmCheck("cat /etc/browser-agent-profile-id 2>/dev/null || echo unknown", {
-        label: "Comprobando perfil dentro de la VM…",
+        label: t("checks.label.checkingProfile", "Comprobando perfil dentro de la VM…"),
         timeoutMs: 8000,
       });
       const vmProfileId = profile
         ? firstMatchingVmCheckLine(profileIdResult.stdout, (line) => line === profile.id) || lastNonEmptyLine(profileIdResult.stdout)
         : firstMatchingVmCheckLine(profileIdResult.stdout, (line) => line && line !== "unknown") || lastNonEmptyLine(profileIdResult.stdout);
       const profileOk = profile ? vmProfileId === profile.id : Boolean(vmProfileId && vmProfileId !== "unknown");
-      add("Perfil dentro VM", profileOk, profile ? `${vmProfileId || "sin dato"} / esperado: ${profile.id}` : vmProfileId || "sin dato");
+      add(t("checks.item.profileInVm", "Perfil dentro VM"), profileOk, profile ? t("checks.detail.profileExpected", "{id} / esperado: {expected}", { id: vmProfileId || t("checks.detail.noData", "sin dato"), expected: profile.id }) : vmProfileId || t("checks.detail.noData", "sin dato"));
 
       if (profile) {
         const pkgResult = await runVmCheck(makePackageCheckCommand(profile.packages || []), {
-          label: "Comprobando paquetes del perfil…",
+          label: t("checks.label.checkingPackages", "Comprobando paquetes del perfil…"),
           timeoutMs: 18000,
         });
         const clean = normalizeTerminalStreamForMarkers(pkgResult.stdout);
         const missingPackages = clean.match(/BA_PKG_MISSING:([^\n\r]*)/)?.[1]?.trim();
-        add("Paquetes perfil VM", pkgResult.code === 0, missingPackages ? `faltan: ${missingPackages}` : pkgResult.stderr || "OK");
+        add(t("checks.item.vmPackages", "Paquetes perfil VM"), pkgResult.code === 0, missingPackages ? t("checks.detail.missing", "faltan: {list}", { list: missingPackages }) : pkgResult.stderr || t("checks.badge.ok", "OK"));
       } else {
-        add("Paquetes perfil VM", true, "modo manual");
+        add(t("checks.item.vmPackages", "Paquetes perfil VM"), true, t("checks.detail.manualMode", "modo manual"));
       }
 
       if (profile) {
         const toolChecks = getExpectedToolChecks(profile);
         const toolResult = await runVmCheck(makeToolCheckCommand(toolChecks), {
-          label: "Comprobando tools del perfil…",
+          label: t("checks.label.checkingTools", "Comprobando tools del perfil…"),
           timeoutMs: 18000,
         });
         const clean = normalizeTerminalStreamForMarkers(toolResult.stdout);
         const missingTools = clean.match(/BA_TOOLS_MISSING:([^\n\r]*)/)?.[1]?.trim();
-        add("Herramientas perfil VM", toolResult.code === 0, missingTools ? `faltan: ${missingTools}` : toolResult.stderr || `${toolChecks.length} comprobaciones`);
+        add(t("checks.item.vmTools", "Herramientas perfil VM"), toolResult.code === 0, missingTools ? t("checks.detail.missing", "faltan: {list}", { list: missingTools }) : toolResult.stderr || tn("checks.detail.checksCount", toolChecks.length, "{count} comprobación", "{count} comprobaciones"));
       } else {
-        add("Herramientas perfil VM", true, "modo manual");
+        add(t("checks.item.vmTools", "Herramientas perfil VM"), true, t("checks.detail.manualMode", "modo manual"));
       }
 
       const netCommand = "PFX=BA_VM_NET; IFACE=$(ls /sys/class/net | grep -v '^lo$' | head -n1); if [ -z \"$IFACE\" ]; then echo ${PFX}_NO_IFACE; exit 1; fi; printf '%s_IFACE:%s\\n' \"$PFX\" \"$IFACE\"; if ! ip -4 addr show \"$IFACE\" | grep -q 'inet '; then echo ${PFX}_NO_IPV4; exit 2; fi; if wget -q -T 5 -O /tmp/ba-net-check http://www.google.com/generate_204; then echo ${PFX}_HTTP_OK; else ping -c 1 -W 2 1.1.1.1 >/dev/null 2>&1 && echo ${PFX}_PING_OK || { echo ${PFX}_FAIL; exit 3; }; fi";
       const netResult = await runVmCheck(netCommand, {
-        label: "Comprobando red dentro de la VM…",
+        label: t("checks.label.checkingNetwork", "Comprobando red dentro de la VM…"),
         timeoutMs: 15000,
       });
       const netClean = normalizeTerminalStreamForMarkers(netResult.stdout);
       const netOk = netResult.code === 0 && (netClean.includes("BA_VM_NET_HTTP_OK") || netClean.includes("BA_VM_NET_PING_OK"));
       const iface = netClean.match(/BA_VM_NET_IFACE:([^\s\r\n]+)/)?.[1] || "";
       let netDetail = iface ? `IFACE=${iface}` : "";
-      if (!netDetail && netClean.includes("BA_VM_NET_NO_IFACE")) netDetail = "sin interfaz";
-      if (!netDetail && netClean.includes("BA_VM_NET_NO_IPV4")) netDetail = "sin IPv4";
-      if (!netDetail && netClean.includes("BA_VM_NET_FAIL")) netDetail = "sin salida";
-      if (!netDetail) netDetail = netResult.stderr || (netOk ? "OK" : "sin conexión");
-      add("Red dentro VM", netOk, netDetail);
+      if (!netDetail && netClean.includes("BA_VM_NET_NO_IFACE")) netDetail = t("checks.detail.noInterface", "sin interfaz");
+      if (!netDetail && netClean.includes("BA_VM_NET_NO_IPV4")) netDetail = t("checks.detail.noIpv4", "sin IPv4");
+      if (!netDetail && netClean.includes("BA_VM_NET_FAIL")) netDetail = t("checks.detail.noOutput", "sin salida");
+      if (!netDetail) netDetail = netResult.stderr || (netOk ? t("checks.badge.ok", "OK") : t("checks.detail.noConnection", "sin conexión"));
+      add(t("checks.item.vmNetwork", "Red dentro VM"), netOk, netDetail);
 
       if (runtime.hda && state.diskMounted) {
         const diskVmCommand = "if mountpoint -q /mnt/hda; then echo DISK_MOUNTED; echo browser-agent-disk-check > /mnt/hda/.ba-check && sync && rm -f /mnt/hda/.ba-check && echo DISK_RW_OK || { echo DISK_RW_FAIL; exit 1; }; else echo DISK_NOT_MOUNTED; exit 2; fi";
         const diskVmResult = await runVmCheck(diskVmCommand, {
-          label: "Comprobando disco montado…",
+          label: t("checks.label.checkingDisk", "Comprobando disco montado…"),
           timeoutMs: 12000,
         });
         const diskClean = normalizeTerminalStreamForMarkers(diskVmResult.stdout);
-        add("Disco hda RW en VM", diskVmResult.code === 0 && diskClean.includes("DISK_RW_OK"), diskClean.match(/DISK_[A-Z_]+/)?.[0] || diskVmResult.stderr || "OK");
+        add(t("checks.item.hdaRwInVm", "Disco hda RW en VM"), diskVmResult.code === 0 && diskClean.includes("DISK_RW_OK"), diskClean.match(/DISK_[A-Z_]+/)?.[0] || diskVmResult.stderr || t("checks.badge.ok", "OK"));
       } else if (runtime.hda) {
-        add("Disco hda RW en VM", false, "no montado");
+        add(t("checks.item.hdaRwInVm", "Disco hda RW en VM"), false, t("checks.detail.notMounted", "no montado"));
       }
     }
 
@@ -312,19 +312,19 @@ async function runChecks({ probeWsRelay = true } = {}) {
     // check lanza una excepción.
   } catch (error) {
     const message = error?.message || String(error);
-    logTool(`${NL}[checks] aviso/error durante la comprobación: ${message}${NL}`);
+    logTool(`${NL}${t("checks.log.warnError", "[checks] aviso/error durante la comprobación: {message}", { message })}${NL}`);
 
     // No dejamos la cabecera en "error" sin una fila visible que lo explique.
     // Si una comprobación lanza una excepción, la convertimos en una fila roja
     // y el resumen se recalcula desde el DOM en el finally.
     const container = $("checks");
-    if (container) addCheck(container, "Error ejecución Checks", false, message);
+    if (container) addCheck(container, t("checks.item.checksError", "Error ejecución Checks"), false, message);
   } finally {
     updateChecksSummaryFromDom();
 
     const summary = $("checks-summary");
-    if (summary?.textContent === "comprobando") {
-      setBadge(summary, "finalizado", "warn");
+    if (summary?.textContent === t("checks.badge.checking", "comprobando")) {
+      setBadge(summary, t("checks.badge.finished", "finalizado"), "warn");
     }
 
     state.checksRunning = false;

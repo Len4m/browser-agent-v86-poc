@@ -8,8 +8,8 @@ function sleepMs(ms) {
 
 function normalizeModalButtons(buttons = []) {
   return buttons.length ? buttons : [
-    { id: "cancel", label: "Cancelar", variant: "secondary" },
-    { id: "ok", label: "Aceptar", variant: "primary" },
+    { id: "cancel", label: t("common.cancel", "Cancelar"), variant: "secondary" },
+    { id: "ok", label: t("common.accept", "Aceptar"), variant: "primary" },
   ];
 }
 
@@ -36,7 +36,7 @@ function bindBaModalActions(actionsEl, normalizedButtons, cleanup) {
 }
 
 function showBaModal({
-  title = "Confirmar acción",
+  title = t("modal.confirmTitle", "Confirmar acción"),
   message = "",
   detail = "",
   buttons = [],
@@ -103,9 +103,9 @@ function showBaModal({
 }
 
 function showBaModalPanel({
-  title = "Panel",
+  title = t("modal.panelTitle", "Panel"),
   onMount,
-  buttons = [{ id: "close", label: "Listo", variant: "primary" }],
+  buttons = [{ id: "close", label: t("common.done", "Listo"), variant: "primary" }],
   closeOnBackdrop = true,
 } = {}) {
   return new Promise((resolve) => {
@@ -177,12 +177,12 @@ function showBaModalPanel({
 
 async function confirmVmShutdown() {
   const result = await showBaModal({
-    title: "Apagar VM",
-    message: "Apagar la VM perderá todos los cambios que no estén guardados en un snapshot.",
-    detail: "Si has instalado paquetes o creado ficheros en RAM, guarda un snapshot antes de apagar.",
+    title: t("modal.shutdown.title", "Apagar VM"),
+    message: t("modal.shutdown.message", "Apagar la VM perderá todos los cambios que no estén guardados en un snapshot."),
+    detail: t("modal.shutdown.detail", "Si has instalado paquetes o creado ficheros en RAM, guarda un snapshot antes de apagar."),
     buttons: [
-      { id: "cancel", label: "Cancelar", variant: "secondary", cancel: true },
-      { id: "shutdown", label: "Apagar VM", variant: "danger" },
+      { id: "cancel", label: t("common.cancel", "Cancelar"), variant: "secondary", cancel: true },
+      { id: "shutdown", label: t("modal.shutdown.title", "Apagar VM"), variant: "danger" },
     ],
   });
   return result === "shutdown";

@@ -41,12 +41,12 @@
   async function confirmToolCall(toolCall, toolDef) {
     if (!shouldConfirm(toolCall)) return true;
     const decision = await showBaModal({
-      title: "Confirmar tool del agente",
-      message: `${toolDef.label || toolDef.name} · nivel ${toolDef.riskLevel}`,
-      detail: `${toolCall.reason || "Sin motivo."}\n\nArgumentos:\n${shortJson(toolCall.arguments)}`,
+      title: t("tools.exec.confirm.title", "Confirmar tool del agente"),
+      message: t("tools.exec.confirm.message", "{label} · nivel {level}", { label: toolDef.label || toolDef.name, level: toolDef.riskLevel }),
+      detail: `${toolCall.reason || t("tools.exec.confirm.noReason", "Sin motivo.")}\n\n${t("tools.exec.confirm.argsLabel", "Argumentos:")}\n${shortJson(toolCall.arguments)}`,
       buttons: [
-        { id: "cancel", label: "Cancelar", variant: "secondary", cancel: true },
-        { id: "run", label: "Ejecutar tool", variant: toolDef.riskLevel >= 3 ? "danger" : "primary" },
+        { id: "cancel", label: t("common.cancel", "Cancelar"), variant: "secondary", cancel: true },
+        { id: "run", label: t("tools.exec.confirm.run", "Ejecutar tool"), variant: toolDef.riskLevel >= 3 ? "danger" : "primary" },
       ],
     });
     return decision === "run";
@@ -54,11 +54,11 @@
 
   async function runTool(toolCall, { source = "agent" } = {}) {
     const registry = window.BA_LLM_TOOL_REGISTRY;
-    if (!registry) throw new Error("Registro de herramientas no inicializado.");
+    if (!registry) throw new Error(t("tools.exec.registryNotInit", "Registro de herramientas no inicializado."));
 
     const normalized = registry.normalizeToolCall(toolCall);
     const toolDef = registry.getTool(normalized.tool);
-    if (!toolDef) throw new Error(`Herramienta no disponible: ${normalized.tool}`);
+    if (!toolDef) throw new Error(t("tools.error.toolNotAvailable", "Herramienta no disponible: {name}", { name: normalized.tool }));
 
     if (toolDef.requiresVm || toolDef.requiresConsole) {
       try {
@@ -70,7 +70,7 @@
           code: 1,
           stdout: "",
           stderr: error?.message || String(error),
-          summary: "No se cumplen las precondiciones para ejecutar la herramienta.",
+          summary: t("tools.exec.preconditionsFailed", "No se cumplen las precondiciones para ejecutar la herramienta."),
           toolCall: normalized,
         };
       }
@@ -84,8 +84,8 @@
         cancelled: true,
         code: 130,
         stdout: "",
-        stderr: "Herramienta cancelada por el usuario.",
-        summary: "Herramienta cancelada por el usuario.",
+        stderr: t("tools.exec.cancelledByUser", "Herramienta cancelada por el usuario."),
+        summary: t("tools.exec.cancelledByUser", "Herramienta cancelada por el usuario."),
         toolCall: normalized,
       };
     }
@@ -98,7 +98,7 @@
     try {
       const raw = await execVm(command, {
         lock: true,
-        label: `Agente ejecutando ${toolDef.label || toolDef.name}…`,
+        label: t("tools.exec.runningLabel", "Agente ejecutando {label}…", { label: toolDef.label || toolDef.name }),
         timeoutMs: toolDef.timeoutMs || 15000,
         maxOutputBytes: toolDef.maxOutputBytes || 32768,
         log: false,
@@ -111,8 +111,8 @@
           cancelled: true,
           code: 130,
           stdout: raw.stdout || "",
-          stderr: raw.stderr || "Tool cancelada.",
-          summary: "Tool cancelada por el usuario.",
+          stderr: raw.stderr || t("tools.exec.toolCancelledShort", "Tool cancelada."),
+          summary: t("tools.exec.toolCancelledByUser", "Tool cancelada por el usuario."),
           toolCall: normalized,
         };
       }
@@ -128,7 +128,7 @@
         code: 1,
         stdout: "",
         stderr: error?.message || String(error),
-        summary: `Error ejecutando ${toolDef.name}`,
+        summary: t("tools.exec.errorRunning", "Error ejecutando {tool}", { tool: toolDef.name }),
         toolCall: normalized,
       };
       window.BA_LLM_EVENTS?.emit("tool-error", { id, result });

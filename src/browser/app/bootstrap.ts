@@ -11,11 +11,13 @@ function setChatExpanded(expanded, { persist = true } = {}) {
   const button = $("chat-layout-toggle");
   if (button) {
     button.setAttribute("aria-pressed", enabled ? "true" : "false");
-    button.setAttribute("aria-label", enabled ? "Vista dividida" : "Ampliar chat");
+    button.setAttribute("aria-label", enabled
+      ? t("app.chatToggle.collapse.aria", "Vista dividida")
+      : t("app.chatToggle.expand.aria", "Ampliar chat"));
     button.textContent = "";
     button.title = enabled
-      ? "Vista dividida: volver a chat y VM en paralelo"
-      : "Ampliar chat: usar todo el ancho y mover la VM debajo";
+      ? t("app.chatToggle.collapse.title", "Vista dividida: volver a chat y VM en paralelo")
+      : t("app.chatToggle.expand.title", "Ampliar chat: usar todo el ancho y mover la VM debajo");
   }
   if (persist) {
     try { window.localStorage?.setItem(CHAT_LAYOUT_STORAGE_KEY, enabled ? "1" : "0"); } catch (_) {}
@@ -51,12 +53,12 @@ function enhanceInterface() {
 
   if (terminal && vmPanel) {
     terminal.className = "terminal tool-log";
-    terminal.textContent = "Log de tools. Las consolas interactivas son las pestañas xterm superiores.\n";
+    terminal.textContent = t("app.toolLog.intro", "Log de tools. Las consolas interactivas son las pestañas xterm superiores.") + "\n";
 
     const details = document.createElement("details");
     details.className = "tool-log-details";
     const summary = document.createElement("summary");
-    summary.textContent = "Log de tools y ejecución manual";
+    summary.textContent = t("app.toolLog.summary", "Log de tools y ejecución manual");
     terminal.parentNode.insertBefore(details, terminal);
     details.appendChild(summary);
     details.appendChild(terminal);
@@ -72,9 +74,9 @@ function enhanceInterface() {
 
   const commandButton = document.querySelector("#command-form button");
   if (commandButton) {
-    commandButton.textContent = "Tool";
+    commandButton.textContent = t("app.manualTool.label", "Tool");
     commandButton.classList.add("manual-tool-btn");
-    commandButton.title = commandButton.title || "Ejecutar comando en la VM por serial1/ttyS1 sin bloquear la consola del usuario";
+    commandButton.title = commandButton.title || t("app.manualTool.title", "Ejecutar comando en la VM por serial1/ttyS1 sin bloquear la consola del usuario");
   }
 
   window.BA_BG_TOOLS?.mountUi?.();
@@ -85,6 +87,9 @@ function enhanceInterface() {
 function init() {
   enhanceInterface();
   initChatLayoutToggle();
+  window.addEventListener("ba:langchange", () => {
+    setChatExpanded(document.body.classList.contains("chat-expanded"), { persist: false });
+  });
   // The global GPU/WASM badge is now driven by the same capability service
   // used by the LLM panel/model selector. This avoids the old mismatch where
   // the page header only checked navigator.gpu while the LLM panel checked the
@@ -93,7 +98,8 @@ function init() {
   window.BA_ensureLLMCapabilities?.({ source: "startup" }).catch((error) => {
     console.warn("[llm-capabilities] startup check failed", error);
   });
-  addMessage("agent", "Pídeme comandos simples para la VM.");
+  const welcomeMessage = addMessage("agent", t("app.chat.welcome", "Pídeme comandos simples para la VM."));
+  welcomeMessage?.querySelector?.(".bubble")?.setAttribute("data-i18n", "app.chat.welcome");
   loadProfiles();
   renderConsoleTabs();
 
