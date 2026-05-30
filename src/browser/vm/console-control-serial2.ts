@@ -31,7 +31,7 @@
   }
 
   function sendSerial2Text(text) {
-    if (!serial2Available()) throw new Error(t("common.serialUnavailableBuild", "serial{port} no disponible en esta build de v86", { port: "2" }));
+    if (!serial2Available()) throw new Error(t("common.serialUnavailableBuild", { port: "2" }));
     state.vm.serial_send_bytes(2, encoder.encode(safeText(text)));
   }
 
@@ -169,12 +169,12 @@
 
   async function exec(action, args = [], options = {}) {
     const timeoutMs = clampInt(options.timeoutMs, 500, 30000, DEFAULT_TIMEOUT_MS);
-    if (!state.vm) return { code: 1, stdout: "", stderr: t("common.v86NotStarted", "v86 no está arrancada") };
-    if (!state.vmReady) return { code: 1, stdout: "", stderr: t("common.vmBooting", "la VM está arrancando") };
-    if (!serial2Available()) return { code: 1, stdout: "", stderr: t("common.serialUnavailable", "serial{port} no disponible", { port: "2" }) };
+    if (!state.vm) return { code: 1, stdout: "", stderr: t("common.v86NotStarted") };
+    if (!state.vmReady) return { code: 1, stdout: "", stderr: t("common.vmBooting") };
+    if (!serial2Available()) return { code: 1, stdout: "", stderr: t("common.serialUnavailable", { port: "2" }) };
     if (!options.skipReadyCheck && !ctl.runnerReady) {
       const ready = await waitForRunnerReady(options.readyTimeoutMs || 1200);
-      if (!ready) return { code: 1, stdout: "", stderr: t("console.ctl.error.daemonNotReady", "daemon xterm/PTY en serial2 no preparado") };
+      if (!ready) return { code: 1, stdout: "", stderr: t("console.ctl.error.daemonNotReady") };
     }
 
     const id = randomId();
@@ -182,7 +182,7 @@
     return new Promise((resolve) => {
       const timer = window.setTimeout(() => {
         ctl.pending.delete(id);
-        resolve({ code: 124, stdout: "", stderr: t("console.ctl.error.timeout", "timeout esperando daemon xterm/PTY por serial2"), raw: "" });
+        resolve({ code: 124, stdout: "", stderr: t("console.ctl.error.timeout"), raw: "" });
       }, timeoutMs + 1000);
 
       ctl.pending.set(id, { resolve, timer });
@@ -270,7 +270,7 @@
   function reset(reason = "reset") {
     for (const [id, pending] of ctl.pending.entries()) {
       if (pending?.timer) window.clearTimeout(pending.timer);
-      try { pending.resolve({ code: 130, stdout: "", stderr: t("console.ctl.cancelledBy", "control cancelado por {reason}", { reason }) }); } catch {}
+      try { pending.resolve({ code: 130, stdout: "", stderr: t("console.ctl.cancelledBy", { reason }) }); } catch {}
       ctl.pending.delete(id);
     }
     ctl.runnerReady = false;

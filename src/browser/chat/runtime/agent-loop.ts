@@ -61,7 +61,7 @@
 
   function throwIfAborted(abortSignal) {
     if (!abortSignal?.aborted) return;
-    const error = new Error("Operación cancelada");
+    const error = new Error(t("common.operationCancelled"));
     error.name = "AbortError";
     throw error;
   }
@@ -92,20 +92,20 @@
     const finishReason = runnerInfo.finishReason;
     if (reasoningText.trim()) {
       return showThinking
-        ? t("chat.empty.reasoningOnly.thinking", "El modelo solo emitió razonamiento, pero no produjo una respuesta final separada. Lo mostrado en «Razonamiento del modelo» no se guarda como respuesta final.")
-        : t("chat.empty.reasoningOnly.noThinking", "El modelo generó razonamiento interno, pero no produjo una respuesta final visible. Activa «Mostrar razonamiento» para inspeccionarlo o prueba otro modelo.");
+        ? t("chat.empty.reasoningOnly.thinking")
+        : t("chat.empty.reasoningOnly.noThinking");
     }
     if (streamIsToolPlan) {
-      return t("chat.empty.toolPlan", "El modelo generó un plan de tool en JSON, pero no produjo una respuesta final en texto. Prueba con un modelo con mejor tool calling o reduce las herramientas activas.");
+      return t("chat.empty.toolPlan");
     }
     if (toolPhaseSeen || runnerInfo.hadToolWork) {
-      return t("chat.empty.toolNoSynthesis", "La tool se ejecutó, pero el modelo no generó una síntesis final. Revisa el artefacto generado o prueba de nuevo con menos salida de tool.");
+      return t("chat.empty.toolNoSynthesis");
     }
     if (/length|max|token/i.test(String(finishReason || ""))) {
-      return t("chat.empty.lengthLimit", "La respuesta se cortó por límite de salida del modelo. Sube el presupuesto de salida o usa un modelo con más contexto.");
+      return t("chat.empty.lengthLimit");
     }
-    const label = modelConfig?.shortLabel || modelConfig?.label || modelConfig?.id || t("chat.empty.defaultModelLabel", "modelo local");
-    return t("chat.empty.noVisibleText", "El {label} no generó texto visible. Puede ser salida vacía, incompatibilidad de streaming o un formato que el parser no puede renderizar.", { label });
+    const label = modelConfig?.shortLabel || modelConfig?.label || modelConfig?.id || t("chat.empty.defaultModelLabel");
+    return t("chat.empty.noVisibleText", { label });
   }
 
   function isChatOperationActive() {
@@ -138,7 +138,7 @@
       el.setAttribute("aria-busy", "false");
     });
     updateChatAvailability();
-    window.BA_LLM_EVENTS?.emit("status", { text: t("chat.status.stopped", "Operación detenida"), tone: "warn" });
+    window.BA_LLM_EVENTS?.emit("status", { text: t("chat.status.stopped"), tone: "warn" });
   }
 
   function bindChatSubmitButton() {
@@ -186,7 +186,7 @@
   async function ensureAiSdk() {
     await window.BA_AISDK_READY;
     if (!window.BA_AISDK) {
-      throw new Error(t("chat.error.aiSdkNotLoaded", "AI SDK bridge no cargado. Ejecuta npm run build y recarga la página."));
+      throw new Error(t("chat.error.aiSdkNotLoaded"));
     }
     return window.BA_AISDK;
   }
@@ -204,29 +204,29 @@
     const needsWebGPU = isTransformersModel(modelConfig) && (modelConfig.device || "webgpu") === "webgpu";
     if (!modelConfig.model) {
       throw new Error(modelConfig.engine === "ollama"
-        ? t("chat.error.ollamaModelMissing", "Indica un modelo de Ollama, por ejemplo qwen3.5:4b o qwen3:8b.")
-        : t("chat.error.transformersModelMissing", "Indica un modelo compatible con Transformers.js."));
+        ? t("chat.error.ollamaModelMissing")
+        : t("chat.error.transformersModelMissing"));
     }
     if (needsWebGPU && !caps?.webgpu) {
-      throw new Error(caps?.reason || t("chat.error.webgpuUnavailable", "WebGPU no está disponible en este navegador. Selecciona un modelo experimental WASM o usa Chrome/Edge con WebGPU activado."));
+      throw new Error(caps?.reason || t("chat.error.webgpuUnavailable"));
     }
     if (needsWebGPU && modelRequiresUnavailableF16(modelConfig, caps)) {
-      throw new Error(t("chat.error.shaderF16", "El modelo seleccionado usa {dtype}, pero esta GPU/navegador no soporta shader-f16. Selecciona una variante q4 o un modelo experimental WASM.", { dtype: modelConfig.dtype }));
+      throw new Error(t("chat.error.shaderF16", { dtype: modelConfig.dtype }));
     }
 
     if (!window.BA_LLM_RESOURCE_GOVERNOR?.canStart?.("model-load")) {
-      throw new Error(t("chat.error.llmBusy", "Hay una operación LLM/herramienta activa. Espera a que termine antes de cargar otro modelo."));
+      throw new Error(t("chat.error.llmBusy"));
     }
 
-    window.BA_LLM_RESOURCE_GOVERNOR?.start?.("model-load", t("chat.governor.modelLoad", "carga de modelo"));
+    window.BA_LLM_RESOURCE_GOVERNOR?.start?.("model-load", t("chat.governor.modelLoad"));
     llm.loading = true;
     llm.loaded = false;
     llm.aiModelReady = false;
     llm.lastError = "";
     window.BA_LLM_EVENTS?.emit("status", {
       text: modelConfig.engine === "ollama" && window.BA_ORIGIN?.isPublishedOrigin?.()
-        ? t("chat.status.ollamaPermission", "Ollama local: permiso de red + OLLAMA_ORIGINS")
-        : (modelConfig.engine === "ollama" ? t("common.connectingOllama", "Conectando con Ollama…") : t("chat.status.loadingModel", "Cargando modelo local…")),
+        ? t("chat.status.ollamaPermission")
+        : (modelConfig.engine === "ollama" ? t("common.connectingOllama") : t("chat.status.loadingModel")),
       tone: "warn",
     });
 
@@ -236,7 +236,7 @@
         onProgress(detail) {
           window.BA_LLM_EVENTS?.emit("progress", detail);
           if (detail?.status === "fallback") {
-            window.BA_LLM_EVENTS?.emit("status", { text: t("chat.status.webgpuFallback", "WebGPU falló; probando alternativa WASM…"), tone: "warn" });
+            window.BA_LLM_EVENTS?.emit("status", { text: t("chat.status.webgpuFallback"), tone: "warn" });
           }
         },
       });
@@ -283,7 +283,7 @@
     appendToolResultToBubble(bubble, toolResult, artifact);
 
     if (toolResult.cancelled) {
-      const answer = t("common.toolCancelledByUser", "Herramienta cancelada por el usuario.");
+      const answer = t("common.toolCancelledByUser");
       window.BA_LLM.messages.push({ role: "user", content: userText });
       window.BA_LLM.messages.push({ role: "assistant", content: answer });
       window.BA_LLM.messages = window.BA_LLM.messages.slice(-8);
@@ -295,7 +295,7 @@
       toolCall,
       result: toolResult,
       artifact,
-    }) || { mode: "direct", reason: "Política no disponible." };
+    }) || { mode: "direct", reason: t("panel.llm.toolPolicy.policyUnavailable") };
 
     let answer = "";
     if (toolResult.ok) {
@@ -314,7 +314,7 @@
   async function runAgentTurn({ userText, source = "agent", abortSignal, turnGeneration } = {}) {
     throwIfAborted(abortSignal);
     if (isStaleTurn(turnGeneration)) {
-      const err = new Error("Operación cancelada");
+      const err = new Error(t("common.operationCancelled"));
       err.name = "AbortError";
       throw err;
     }
@@ -376,8 +376,8 @@
     await createResponseStream();
 
     const spinnerLabel = useToolLoop && needsVm
-      ? t("chat.spinner.agentLoop", "Agente (loop AI + tools)…")
-      : t("common.generatingResponse", "Generando respuesta…");
+      ? t("chat.spinner.agentLoop")
+      : t("common.generatingResponse");
     setChatTailIndicator(spinnerLabel);
     bubble.setAttribute("aria-busy", "true");
 
@@ -408,10 +408,10 @@
           }
           const key = `${toolCall.tool}-${++toolSeq}`;
           const toolBubble = createAssistantMessageShell("ba-llm-tool-step");
-          renderToolCallBubble(toolBubble, toolCall, t("chat.tool.executingState", "ejecutando…"));
+          renderToolCallBubble(toolBubble, toolCall, t("chat.tool.executingState"));
           toolBubbles.set(key, toolBubble);
           toolCall.__uiKey = key;
-          setChatTailIndicator(t("chat.spinner.executingTool", "Ejecutando {tool}…", { tool: toolCall.tool || "tool" }));
+          setChatTailIndicator(t("chat.spinner.executingTool", { tool: toolCall.tool || "tool" }));
         },
         async onToolEnd({ toolCall, toolResult, artifact }) {
           agentDebug("tool", "SDK onToolEnd", {
@@ -434,7 +434,7 @@
             abortSignal,
           });
           await createResponseStream("ba-llm-synthesis-after-tool");
-          setChatTailIndicator(t("chat.spinner.finalResponse", "Generando respuesta final…"));
+          setChatTailIndicator(t("chat.spinner.finalResponse"));
         },
       }) || {})
       : {};
@@ -449,7 +449,7 @@
     });
 
     if (nativeToolsMode && !activeToolNames.length) {
-      throw new Error(t("chat.error.noToolsEnabled", "Activa al menos una tool en el panel LLM (límite según modelo)."));
+      throw new Error(t("chat.error.noToolsEnabled"));
     }
 
     const turnMaxTokens = window.BA_LLM_CONTEXT?.resolveMaxOutputTokens?.(modelConfig, useToolLoop && needsVm ? "plan" : "chat")
@@ -468,8 +468,8 @@
     });
 
     const llmLabel = useToolLoop
-      ? t("chat.governor.aiLoop", "loop AI SDK ({tools} tools, {steps} pasos)", { tools: activeToolNames.length, steps: turnMaxSteps })
-      : t("chat.governor.chat", "chat");
+      ? t("chat.governor.aiLoop", { tools: activeToolNames.length, steps: turnMaxSteps })
+      : t("chat.governor.chat");
     window.BA_LLM_RESOURCE_GOVERNOR?.start?.("llm", llmLabel);
     try {
       const streamPrompt = window.BA_LLM_CONTEXT.adaptPromptForLocalWeak?.(prompt, modelConfig) || prompt;
@@ -516,7 +516,7 @@
               return;
             }
             sdkAssistantText += textChunk;
-            setChatTailIndicator(t("common.generatingResponse", "Generando respuesta…"));
+            setChatTailIndicator(t("common.generatingResponse"));
             showAssistantMessage(bubble);
             mdHost.hidden = false;
             bubble.classList.remove("ba-llm-planning");
@@ -557,7 +557,7 @@
       const finalText = streamFollowUp
         || (toolPhaseSeen && lastToolUi?.answer ? lastToolUi.answer : "")
         || (toolPhaseSeen && lastToolUi?.toolResult && !lastToolUi.toolResult.ok
-          ? t("chat.error.toolFailed", "No se pudo completar la tool: {error}", { error: lastToolUi.toolResult.stderr || lastToolUi.toolResult.summary || "error" })
+          ? t("chat.error.toolFailed", { error: lastToolUi.toolResult.stderr || lastToolUi.toolResult.summary || "error" })
           : "");
 
       if (canKeepStreamedBubble) {
@@ -607,7 +607,7 @@
   async function handleUserMessage(userText) {
     const llm = window.BA_LLM;
     if (!isModelReady()) {
-      addMessage("agent", t("chat.msg.loadModelFirst", "Carga primero un modelo real desde el panel LLM. Puede ser Transformers.js local o un modelo Ollama disponible en el host."));
+      addMessage("agent", t("chat.msg.loadModelFirst"));
       updateChatAvailability?.();
       return;
     }
@@ -618,7 +618,7 @@
     }
 
     if (!window.BA_LLM_RESOURCE_GOVERNOR?.canStart?.("llm")) {
-      addMessage("agent", t("chat.msg.busyTryLater", "Hay una operación LLM/herramienta activa o la VM está ocupada. Espera a que termine antes de enviar otra petición."));
+      addMessage("agent", t("chat.msg.busyTryLater"));
       updateChatAvailability?.();
       return;
     }
@@ -632,10 +632,10 @@
     activeTurnAbortController = turnAbort;
     // No usar setAgentBusy aquí: bloquea assertVmToolPreconditions y las tools serial1 del agente.
     updateChatAvailability?.();
-    window.BA_LLM_EVENTS?.emit("status", { text: t("chat.status.agentWorking", "Agente trabajando…"), tone: "warn" });
+    window.BA_LLM_EVENTS?.emit("status", { text: t("chat.status.agentWorking"), tone: "warn" });
 
     try {
-      window.BA_LLM_EVENTS?.emit("status", { text: t("chat.status.generating", "Generando…"), tone: "warn" });
+      window.BA_LLM_EVENTS?.emit("status", { text: t("chat.status.generating"), tone: "warn" });
 
       const { text, lastToolUi } = await runAgentTurn({
         userText,
@@ -653,12 +653,12 @@
       });
       llm.messages = llm.messages.slice(-8);
 
-      window.BA_LLM_EVENTS?.emit("status", { text: lastToolUi ? t("chat.status.toolExecuted", "Herramienta ejecutada") : t("chat.status.localModelReady", "Modelo local listo"), tone: "good" });
+      window.BA_LLM_EVENTS?.emit("status", { text: lastToolUi ? t("chat.status.toolExecuted") : t("chat.status.localModelReady"), tone: "good" });
     } catch (error) {
       if (isAbortError(error) || isStaleTurn(turnGeneration)) {
         if (!stopRequested) {
-          addMessage("agent", t("common.operationCancelled", "Operación cancelada."));
-          window.BA_LLM_EVENTS?.emit("status", { text: t("common.operationCancelled", "Operación cancelada"), tone: "warn" });
+          addMessage("agent", t("common.operationCancelled"));
+          window.BA_LLM_EVENTS?.emit("status", { text: t("common.operationCancelled"), tone: "warn" });
         }
         return;
       }
@@ -666,9 +666,9 @@
       const bubble = createAssistantMessageShell("ba-llm-error");
       const renderer = await window.BA_createMarkdownStreamRenderer(bubble);
       const recovery = isRecoverableGpuMemoryError(message)
-        ? t("chat.error.gpuRecovery", "\n\nLa GPU se ha quedado sin memoria o en estado inválido. He descargado el modelo y el worker. Recarga la página si el error persiste; prueba «solo chat» (tools desactivadas) o para la VM antes de cargar el LLM.")
+        ? t("chat.error.gpuRecovery")
         : "";
-      renderer.write(t("chat.error.llmTools", "⚠️ Error LLM/tools: {message}{recovery}", { message, recovery }));
+      renderer.write(t("chat.error.llmTools", { message, recovery }));
       renderer.end();
       llm.lastError = message;
       if (isRecoverableGpuMemoryError(message)) {
@@ -676,7 +676,7 @@
         window.BA_AISDK?.abortActive?.();
         unloadModel();
       }
-      window.BA_LLM_EVENTS?.emit("status", { text: t("chat.status.errorLlmTools", "Error LLM/tools"), tone: "bad" });
+      window.BA_LLM_EVENTS?.emit("status", { text: t("chat.status.errorLlmTools"), tone: "bad" });
     } finally {
       if (activeTurnGeneration === turnGeneration) {
         activeTurnAbortController = null;
@@ -696,7 +696,7 @@
 
     window.BA_LLM_EVENTS?.emit("context", {});
     window.BA_LLM_EVENTS?.emit("resource", {});
-    window.BA_LLM_EVENTS?.emit("status", { text: t("chat.status.historyCleared", "Chat visible, historial LLM y artefactos limpiados"), tone: "good" });
+    window.BA_LLM_EVENTS?.emit("status", { text: t("chat.status.historyCleared"), tone: "good" });
     updateChatAvailability?.();
   }
 
@@ -709,7 +709,7 @@
     window.BA_LLM.aiModelReady = false;
     window.BA_LLM.activeModel = null;
     updateChatAvailability?.();
-    window.BA_LLM_EVENTS?.emit("status", { text: t("chat.status.modelUnloaded", "modelo descargado"), tone: "warn" });
+    window.BA_LLM_EVENTS?.emit("status", { text: t("chat.status.modelUnloaded"), tone: "warn" });
   }
 
   function setChatSubmitStopMode(submit, isStop) {
@@ -717,17 +717,17 @@
     if (isStop) {
       submit.type = "button";
       submit.classList.add("is-stop");
-      submit.setAttribute("aria-label", t("chat.submit.stop.aria", "Detener generación o ejecución de tool"));
-      submit.title = t("chat.submit.stop.title", "Detener (cancela inferencia o tool en curso)");
-      submit.textContent = t("chat.submit.stop.label", "Detener");
+      submit.setAttribute("aria-label", t("chat.submit.stop.aria"));
+      submit.title = t("chat.submit.stop.title");
+      submit.textContent = t("chat.submit.stop.label");
       submit.disabled = false;
       return;
     }
     submit.type = "submit";
     submit.classList.remove("is-stop");
-    submit.setAttribute("aria-label", t("chat.submit.send.aria", "Enviar mensaje"));
-    submit.title = t("chat.submit.send.title", "Enviar mensaje (Enter)");
-    submit.textContent = t("chat.submit.send.label", "Enviar");
+    submit.setAttribute("aria-label", t("chat.submit.send.aria"));
+    submit.title = t("chat.submit.send.title");
+    submit.textContent = t("chat.submit.send.label");
   }
 
   function updateChatAvailability() {
@@ -746,10 +746,10 @@
     if (input) {
       input.disabled = !canSend;
       input.placeholder = canSend
-        ? t("chat.placeholder.ask", "Pregunta al modelo…")
+        ? t("chat.placeholder.ask")
         : (busy
-          ? t("chat.placeholder.pressStop", "Pulsa Detener para cancelar la operación en curso…")
-          : (llm?.loaded ? t("chat.placeholder.waitOperation", "Espera a que termine la operación actual…") : t("chat.placeholder.loadModel", "Carga primero un modelo en el panel LLM")));
+          ? t("chat.placeholder.pressStop")
+          : (llm?.loaded ? t("chat.placeholder.waitOperation") : t("chat.placeholder.loadModel")));
       if (!canSend && input.value === "muestra el kernel") input.value = "";
     }
     if (submit) {

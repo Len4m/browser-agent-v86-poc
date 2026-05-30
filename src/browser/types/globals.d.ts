@@ -7,14 +7,8 @@ export {};
 declare global {
   type BaI18nVars = Record<string, string | number>;
 
-  function t(key: string, esDefault?: string, vars?: BaI18nVars): string;
-  function tn(
-    key: string,
-    count: number,
-    esOne: string,
-    esOther: string,
-    vars?: BaI18nVars
-  ): string;
+  function t(key: string, vars?: BaI18nVars): string;
+  function tn(key: string, count: number, vars?: BaI18nVars): string;
   function loadLocale(lang: string): Promise<Record<string, string> | null>;
   function getLang(): string;
   function setLang(
@@ -34,6 +28,10 @@ declare global {
       applyDomTranslations: typeof applyDomTranslations;
       getSupportedLangs: typeof getSupportedLangs;
       ready: () => Promise<unknown>;
+    };
+    __BA_I18N__?: {
+      lang: string;
+      catalog: Record<string, string>;
     };
   }
 }

@@ -8,8 +8,8 @@ function sleepMs(ms) {
 
 function normalizeModalButtons(buttons = []) {
   return buttons.length ? buttons : [
-    { id: "cancel", label: t("common.cancel", "Cancelar"), variant: "secondary" },
-    { id: "ok", label: t("common.accept", "Aceptar"), variant: "primary" },
+    { id: "cancel", label: t("common.cancel"), variant: "secondary" },
+    { id: "ok", label: t("common.accept"), variant: "primary" },
   ];
 }
 
@@ -36,7 +36,7 @@ function bindBaModalActions(actionsEl, normalizedButtons, cleanup) {
 }
 
 function showBaModal({
-  title = t("modal.confirmTitle", "Confirmar acción"),
+  title = t("modal.confirmTitle"),
   message = "",
   detail = "",
   buttons = [],
@@ -103,9 +103,9 @@ function showBaModal({
 }
 
 function showBaModalPanel({
-  title = t("modal.panelTitle", "Panel"),
+  title = t("modal.panelTitle"),
   onMount,
-  buttons = [{ id: "close", label: t("common.done", "Listo"), variant: "primary" }],
+  buttons = [{ id: "close", label: t("common.done"), variant: "primary" }],
   closeOnBackdrop = true,
 } = {}) {
   return new Promise((resolve) => {
@@ -177,12 +177,12 @@ function showBaModalPanel({
 
 async function confirmVmShutdown() {
   const result = await showBaModal({
-    title: t("common.shutdownVm", "Apagar VM"),
-    message: t("modal.shutdown.message", "Apagar la VM perderá todos los cambios que no estén guardados en un snapshot."),
-    detail: t("modal.shutdown.detail", "Si has instalado paquetes o creado ficheros en RAM, guarda un snapshot antes de apagar."),
+    title: t("common.shutdownVm"),
+    message: t("modal.shutdown.message"),
+    detail: t("modal.shutdown.detail"),
     buttons: [
-      { id: "cancel", label: t("common.cancel", "Cancelar"), variant: "secondary", cancel: true },
-      { id: "shutdown", label: t("common.shutdownVm", "Apagar VM"), variant: "danger" },
+      { id: "cancel", label: t("common.cancel"), variant: "secondary", cancel: true },
+      { id: "shutdown", label: t("common.shutdownVm"), variant: "danger" },
     ],
   });
   return result === "shutdown";

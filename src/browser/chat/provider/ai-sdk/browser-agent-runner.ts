@@ -11,9 +11,9 @@ const STREAM_SMOOTHING = smoothStream();
 
 // This module ships in a separate bundle, so the global t() from the app bundle
 // is not in scope; bridge through window.BA_I18N when available.
-function t(key, esDefault, vars) {
+function t(key, vars) {
   const fn = typeof window !== "undefined" && window.BA_I18N?.t;
-  return fn ? fn(key, esDefault, vars) : esDefault;
+  return fn ? fn(key, vars) : key;
 }
 
 export function textChunkFromStreamPart(part) {
@@ -73,14 +73,14 @@ function buildExplicitToolSynthesisMessages({ messages = [], toolResultText = ""
       role: "user",
       content: [
         originalUser
-          ? t("prompt.synth.originalUser", "Petición original del usuario:\n{user}", { user: originalUser })
-          : t("prompt.synth.originalUserFallback", "Petición original del usuario: responder con el resultado real de la tool."),
+          ? t("prompt.synth.originalUser", { user: originalUser })
+          : t("prompt.synth.originalUserFallback"),
         "",
-        t("prompt.synth.toolContext", "Contexto real devuelto por la tool ya ejecutada:"),
+        t("prompt.synth.toolContext"),
         "",
-        toolResultText || t("prompt.synth.noOutput", "(sin salida útil)"),
+        toolResultText || t("prompt.synth.noOutput"),
         "",
-        t("prompt.synth.respond", "Responde en español breve usando solo ese contexto real. No generes JSON ni llames tools."),
+        t("prompt.synth.respond"),
       ].join("\n"),
     },
   ];
@@ -153,7 +153,7 @@ export async function runAgentStreamTurn({
   }
   const signal = controller.signal;
   if (signal.aborted) {
-    const error = new Error("Operación cancelada");
+    const error = new Error(t("common.operationCancelled"));
     error.name = "AbortError";
     throw error;
   }
@@ -237,10 +237,10 @@ export async function runAgentStreamTurn({
         const synth = streamText({
           model,
           system: [
-            t("prompt.synth.youAre", "Eres Browser Agent."),
-            t("prompt.synth.toolExecuted", "Ya se ejecutó una tool y el resultado real está en el contexto."),
-            t("prompt.synth.proseOnly", "Responde en español breve solo con prosa o una lista corta."),
-            t("prompt.synth.noJson", "No generes JSON, no generes tool_call y no pidas otra tool."),
+            t("prompt.synth.youAre"),
+            t("prompt.synth.toolExecuted"),
+            t("prompt.synth.proseOnly"),
+            t("prompt.synth.noJson"),
           ].join(" "),
           messages: continuationMessages,
           maxOutputTokens: synthMaxOutputTokens,

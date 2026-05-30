@@ -41,12 +41,12 @@
   async function confirmToolCall(toolCall, toolDef) {
     if (!shouldConfirm(toolCall)) return true;
     const decision = await showBaModal({
-      title: t("tools.exec.confirm.title", "Confirmar tool del agente"),
-      message: t("common.levelChip", "{name} · nivel {level}", { name: toolDef.label || toolDef.name, level: toolDef.riskLevel }),
-      detail: `${toolCall.reason || t("tools.exec.confirm.noReason", "Sin motivo.")}\n\n${t("tools.exec.confirm.argsLabel", "Argumentos:")}\n${shortJson(toolCall.arguments)}`,
+      title: t("tools.exec.confirm.title"),
+      message: t("common.levelChip", { name: toolDef.label || toolDef.name, level: toolDef.riskLevel }),
+      detail: `${toolCall.reason || t("tools.exec.confirm.noReason")}\n\n${t("tools.exec.confirm.argsLabel")}\n${shortJson(toolCall.arguments)}`,
       buttons: [
-        { id: "cancel", label: t("common.cancel", "Cancelar"), variant: "secondary", cancel: true },
-        { id: "run", label: t("tools.exec.confirm.run", "Ejecutar tool"), variant: toolDef.riskLevel >= 3 ? "danger" : "primary" },
+        { id: "cancel", label: t("common.cancel"), variant: "secondary", cancel: true },
+        { id: "run", label: t("tools.exec.confirm.run"), variant: toolDef.riskLevel >= 3 ? "danger" : "primary" },
       ],
     });
     return decision === "run";
@@ -54,11 +54,11 @@
 
   async function runTool(toolCall, { source = "agent" } = {}) {
     const registry = window.BA_LLM_TOOL_REGISTRY;
-    if (!registry) throw new Error(t("tools.exec.registryNotInit", "Registro de herramientas no inicializado."));
+    if (!registry) throw new Error(t("tools.exec.registryNotInit"));
 
     const normalized = registry.normalizeToolCall(toolCall);
     const toolDef = registry.getTool(normalized.tool);
-    if (!toolDef) throw new Error(t("tools.error.toolNotAvailable", "Herramienta no disponible: {name}", { name: normalized.tool }));
+    if (!toolDef) throw new Error(t("tools.error.toolNotAvailable", { name: normalized.tool }));
 
     if (toolDef.requiresVm || toolDef.requiresConsole) {
       try {
@@ -70,7 +70,7 @@
           code: 1,
           stdout: "",
           stderr: error?.message || String(error),
-          summary: t("tools.exec.preconditionsFailed", "No se cumplen las precondiciones para ejecutar la herramienta."),
+          summary: t("tools.exec.preconditionsFailed"),
           toolCall: normalized,
         };
       }
@@ -84,8 +84,8 @@
         cancelled: true,
         code: 130,
         stdout: "",
-        stderr: t("common.toolCancelledByUser", "Herramienta cancelada por el usuario."),
-        summary: t("common.toolCancelledByUser", "Herramienta cancelada por el usuario."),
+        stderr: t("common.toolCancelledByUser"),
+        summary: t("common.toolCancelledByUser"),
         toolCall: normalized,
       };
     }
@@ -98,7 +98,7 @@
     try {
       const raw = await execVm(command, {
         lock: true,
-        label: t("tools.exec.runningLabel", "Agente ejecutando {label}…", { label: toolDef.label || toolDef.name }),
+        label: t("tools.exec.runningLabel", { label: toolDef.label || toolDef.name }),
         timeoutMs: toolDef.timeoutMs || 15000,
         maxOutputBytes: toolDef.maxOutputBytes || 32768,
         log: false,
@@ -111,8 +111,8 @@
           cancelled: true,
           code: 130,
           stdout: raw.stdout || "",
-          stderr: raw.stderr || t("common.toolCancelled", "Tool cancelada."),
-          summary: t("common.toolCancelledByUser", "Tool cancelada por el usuario."),
+          stderr: raw.stderr || t("common.toolCancelled"),
+          summary: t("common.toolCancelledByUser"),
           toolCall: normalized,
         };
       }
@@ -128,7 +128,7 @@
         code: 1,
         stdout: "",
         stderr: error?.message || String(error),
-        summary: t("tools.exec.errorRunning", "Error ejecutando {tool}", { tool: toolDef.name }),
+        summary: t("tools.exec.errorRunning", { tool: toolDef.name }),
         toolCall: normalized,
       };
       window.BA_LLM_EVENTS?.emit("tool-error", { id, result });

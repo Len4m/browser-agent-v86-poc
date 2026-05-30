@@ -43,7 +43,7 @@
 
   function boundedText(value, max) {
     const text = String(value ?? "");
-    return text.length > max ? `${text.slice(0, max)}${t("debug.charsOmitted", "… [{n} caracteres omitidos]", { n: text.length - max })}` : text;
+    return text.length > max ? `${text.slice(0, max)}${t("debug.charsOmitted", { n: text.length - max })}` : text;
   }
 
   function boundedData(value) {
@@ -87,7 +87,7 @@
   function clear() {
     entries.length = 0;
     render();
-    log("ui", t("debug.log.cleared", "Log limpiado"));
+    log("ui", t("debug.log.cleared"));
   }
 
   function setEnabled(value) {
@@ -95,7 +95,7 @@
     localStorage.setItem(STORAGE_KEY, value ? "1" : "0");
     const toggle = document.getElementById("ba-agent-debug-enabled");
     if (toggle) toggle.checked = Boolean(value);
-    log("ui", value ? t("debug.log.enabled", "Registro activado") : t("debug.log.paused", "Registro pausado (no se añaden líneas nuevas)"));
+    log("ui", value ? t("debug.log.enabled") : t("debug.log.paused"));
   }
 
   function copyLog() {
@@ -196,8 +196,8 @@
       btn.type = "button";
       btn.id = "ba-agent-debug-toggle";
       btn.className = "chat-clear-btn ba-agent-debug-toggle";
-      btn.textContent = t("debug.toggle.label", "Debug");
-      btn.title = t("debug.toggle.title", "Mostrar/ocultar trazas del agente (stream, tools, routing)");
+      btn.textContent = t("debug.toggle.label");
+      btn.title = t("debug.toggle.title");
       btn.setAttribute("aria-pressed", "false");
       actions.insertBefore(btn, actions.firstChild);
       btn.addEventListener("click", () => {
@@ -225,15 +225,15 @@
     panelEl.className = "ba-agent-debug-panel";
     panelEl.hidden = true;
     panelEl.innerHTML = `
-      <summary class="ba-agent-debug-summary">${t("debug.panel.summary", "Debug agente · stream / tools / routing")}</summary>
+      <summary class="ba-agent-debug-summary">${t("debug.panel.summary")}</summary>
       <div class="ba-agent-debug-body">
         <div class="ba-agent-debug-toolbar">
           <label class="ba-agent-debug-enable">
             <input type="checkbox" id="ba-agent-debug-enabled" checked />
-            ${t("debug.toolbar.enable", "Registrar")}
+            ${t("debug.toolbar.enable")}
           </label>
-          <button type="button" id="ba-agent-debug-clear" class="secondary">${t("common.clear", "Limpiar")}</button>
-          <button type="button" id="ba-agent-debug-copy" class="secondary">${t("debug.toolbar.copyLog", "Copiar log")}</button>
+          <button type="button" id="ba-agent-debug-clear" class="secondary">${t("common.clear")}</button>
+          <button type="button" id="ba-agent-debug-copy" class="secondary">${t("debug.toolbar.copyLog")}</button>
         </div>
         <pre id="ba-agent-debug-log" class="ba-agent-debug-log" aria-live="polite"></pre>
       </div>
@@ -262,7 +262,7 @@
       render();
     });
     document.getElementById("ba-agent-debug-copy")?.addEventListener("click", () => {
-      copyLog().then(() => log("ui", t("debug.log.copied", "Log copiado al portapapeles"))).catch(() => log("ui", t("debug.log.copyFailed", "No se pudo copiar el log")));
+      copyLog().then(() => log("ui", t("debug.log.copied"))).catch(() => log("ui", t("debug.log.copyFailed")));
     });
 
     ["tool-start", "tool-done", "tool-error"].forEach((type) => {
@@ -274,7 +274,7 @@
       log("governor", "resource", event.detail || {});
     });
 
-    log("ui", t("debug.log.ready", "Panel debug listo. Activa tools, envía mensajes y observa [stream], [route], [tool]."));
+    log("ui", t("debug.log.ready"));
   }
 
   window.BA_LLM_AGENT_DEBUG = {

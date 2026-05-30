@@ -12,12 +12,12 @@ function setChatExpanded(expanded, { persist = true } = {}) {
   if (button) {
     button.setAttribute("aria-pressed", enabled ? "true" : "false");
     button.setAttribute("aria-label", enabled
-      ? t("app.chatToggle.collapse.aria", "Vista dividida")
-      : t("app.chatToggle.expand.aria", "Ampliar chat"));
+      ? t("app.chatToggle.collapse.aria")
+      : t("app.chatToggle.expand.aria"));
     button.textContent = "";
     button.title = enabled
-      ? t("app.chatToggle.collapse.title", "Vista dividida: volver a chat y VM en paralelo")
-      : t("app.chatToggle.expand.title", "Ampliar chat: usar todo el ancho y mover la VM debajo");
+      ? t("app.chatToggle.collapse.title")
+      : t("app.chatToggle.expand.title");
   }
   if (persist) {
     try { window.localStorage?.setItem(CHAT_LAYOUT_STORAGE_KEY, enabled ? "1" : "0"); } catch (_) {}
@@ -53,12 +53,12 @@ function enhanceInterface() {
 
   if (terminal && vmPanel) {
     terminal.className = "terminal tool-log";
-    terminal.textContent = t("app.toolLog.intro", "Log de tools. Las consolas interactivas son las pestañas xterm superiores.") + "\n";
+    terminal.textContent = t("app.toolLog.intro") + "\n";
 
     const details = document.createElement("details");
     details.className = "tool-log-details";
     const summary = document.createElement("summary");
-    summary.textContent = t("app.toolLog.summary", "Log de tools y ejecución manual");
+    summary.textContent = t("app.toolLog.summary");
     terminal.parentNode.insertBefore(details, terminal);
     details.appendChild(summary);
     details.appendChild(terminal);
@@ -74,9 +74,9 @@ function enhanceInterface() {
 
   const commandButton = document.querySelector("#command-form button");
   if (commandButton) {
-    commandButton.textContent = t("common.tool", "Tool");
+    commandButton.textContent = t("common.tool");
     commandButton.classList.add("manual-tool-btn");
-    commandButton.title = commandButton.title || t("app.manualTool.title", "Ejecutar comando en la VM por serial1/ttyS1 sin bloquear la consola del usuario");
+    commandButton.title = commandButton.title || t("app.manualTool.title");
   }
 
   window.BA_BG_TOOLS?.mountUi?.();
@@ -86,14 +86,14 @@ function enhanceInterface() {
 
 function applyDockerCopyLabels() {
   const pairs = [
-    { id: "copy-docker-command", action: t("common.dockerAction.start", "abrir") },
-    { id: "copy-docker-stop-command", action: t("common.dockerAction.stop", "cerrar") },
+    { id: "copy-docker-command", action: t("common.dockerAction.start") },
+    { id: "copy-docker-stop-command", action: t("common.dockerAction.stop") },
   ];
   for (const { id, action } of pairs) {
     const btn = document.getElementById(id);
     if (!btn) continue;
-    btn.setAttribute("aria-label", t("common.copyDockerAria", "Copiar comando para {action} el proxy Docker", { action }));
-    btn.setAttribute("title", t("common.copyDockerTitle", "Copiar comando para {action}", { action }));
+    btn.setAttribute("aria-label", t("common.copyDockerAria", { action }));
+    btn.setAttribute("title", t("common.copyDockerTitle", { action }));
   }
 }
 
@@ -113,7 +113,7 @@ function init() {
   window.BA_ensureLLMCapabilities?.({ source: "startup" }).catch((error) => {
     console.warn("[llm-capabilities] startup check failed", error);
   });
-  const welcomeMessage = addMessage("agent", t("app.chat.welcome", "Pídeme comandos simples para la VM."));
+  const welcomeMessage = addMessage("agent", t("app.chat.welcome"));
   welcomeMessage?.querySelector?.(".bubble")?.setAttribute("data-i18n", "app.chat.welcome");
   loadProfiles();
   renderConsoleTabs();

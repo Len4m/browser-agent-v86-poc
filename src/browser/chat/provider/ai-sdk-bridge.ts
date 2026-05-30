@@ -150,8 +150,8 @@ async function loadModel(modelConfig, { onProgress } = {}) {
 
     if (availability === "unavailable") {
       throw new Error(config.engine === "ollama"
-        ? "Ollama no está disponible con la configuración seleccionada."
-        : "Este navegador no puede ejecutar Transformers.js con la configuración seleccionada.");
+        ? t("chat.error.ollamaUnavailable")
+        : t("chat.error.transformersUnavailable"));
     }
 
     if (availability === "downloadable" || availability !== "available") {

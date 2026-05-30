@@ -4,7 +4,7 @@
 
 (function initLLMPanelCapabilities() {
   function capabilityRecheckTitle(currentTitle) {
-    const action = t("caps.view.recheckAction", "Pulsa para recomprobar WebGPU/WASM.");
+    const action = t("caps.view.recheckAction");
     const base = String(currentTitle || "").trim();
     if (!base) return action;
     if (base.includes(action)) return base;
@@ -18,7 +18,7 @@
       target.setAttribute("role", "button");
       target.setAttribute("tabindex", "0");
     }
-    target.setAttribute("aria-label", t("caps.view.recheckAria", "Recomprobar capacidades WebGPU/WASM"));
+    target.setAttribute("aria-label", t("caps.view.recheckAria"));
     target.title = capabilityRecheckTitle(target.title);
   }
 
@@ -57,7 +57,7 @@
       await checkCapabilities?.({ force: true });
     } catch (error) {
       window.BA_LLM.lastError = error?.message || String(error);
-      setStatus?.(t("caps.view.recheckError", "error comprobando WebGPU"), "bad");
+      setStatus?.(t("caps.view.recheckError"), "bad");
     } finally {
       decorateCapabilityRecheckBadges();
     }
@@ -75,7 +75,7 @@
       await checkCapabilities?.();
     } catch (error) {
       window.BA_LLM.lastError = error?.message || String(error);
-      setStatus?.(t("caps.view.recheckError", "error comprobando WebGPU"), "bad");
+      setStatus?.(t("caps.view.recheckError"), "bad");
     } finally {
       if (select) select.disabled = false;
       if (load) load.disabled = Boolean(window.BA_LLM.loading);
