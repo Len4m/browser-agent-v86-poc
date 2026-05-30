@@ -19,9 +19,14 @@ Lista de temas detectados para revisar antes de una publicación estable.
 
 - [X] Revisar manualmente la rama`xterm-direct-consoles`: consolas xterm con PTYs independientes dentro de la VM, máximo 4 sesiones, transporte multiplexado por`serial2` y tools separadas por`serial1`.
 
+## VM y carga inicial
+
+- [ ] Permitir cancelar la descarga de assets de la VM: hoy, una vez iniciado el arranque (`preloadVmAssets` en`runtime-assets.ts`), las peticiones de kernel, initrd, disco hda y scripts no se pueden abortar; si el usuario se equivoca de perfil/disco o la descarga tarda demasiado, la única salida es refrescar la página. Añadir cancelación explícita (p. ej. botón en`#loading-overlay`,`AbortController` en los fetch, limpieza de estado en`serial-vm.ts` y desbloqueo de opciones/Start).
+- [ ] Probar la experiencia en conexiones lentas y valorar un loading inicial de la aplicación: antes de arrancar la VM, el bundle JS, los catálogos i18n y otros assets pueden tardar en redes lentas sin feedback claro. Hacer pruebas con throttling (DevTools) y, si hace falta, reutilizar el overlay de carga existente (`#loading-overlay`/`setLoading`) para mostrar progreso o estado indeterminado hasta que la UI esté lista para interactuar.
+
 ## i18n
 
-- [ ] Revisar textos visibles de la UI y documentación para preparar internacionalización: separar cadenas traducibles, decidir idioma base y evitar textos hardcodeados en JavaScript cuando sea posible. Tener especial cuidado con el uso de memoria: no cargar catálogos de idiomas grandes ni mantener duplicadas cadenas que no sean necesarias en runtime.
+- [X] Revisar textos visibles de la UI y documentación para preparar internacionalización: separar cadenas traducibles, decidir idioma base y evitar textos hardcodeados en JavaScript cuando sea posible. Tener especial cuidado con el uso de memoria: no cargar catálogos de idiomas grandes ni mantener duplicadas cadenas que no sean necesarias en runtime.
 
 ## Build, CSS y tamaño
 
