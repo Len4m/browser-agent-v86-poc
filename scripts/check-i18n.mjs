@@ -2,11 +2,11 @@
 /**
  * Verifica la paridad de claves i18n:
  * - Recolecta claves usadas en t("clave", ...) dentro de src/browser/**.
- * - Recolecta claves usadas en data-i18n / data-i18n-attr de src/web/index.html.
- * - Comprueba que cada idioma no-base (src/web/locales/*.json) cubre todas las
+ * - Recolecta claves usadas en data-i18n / data-i18n-attr (incl. placeholder:...) de HTML y plantillas.
+ * - Comprueba que cada catalogo en src/web/locales/*.json cubre todas las
  *   claves usadas y avisa de claves huerfanas (presentes en el catalogo pero sin uso).
  *
- * El idioma base (es) vive inline en el codigo, por eso no existe es.json.
+ * Los textos viven en JSON (es.json, en.json, …); el codigo solo referencia claves.
  */
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join } from "node:path";
@@ -65,12 +65,20 @@ for (const file of walk(browserDir)) {
 
 collectDomKeys(readFileSync(indexHtmlFile, "utf8"), "src/web/index.html");
 
+let errors = 0;
+let warnings = 0;
+
+const htmlBody = readFileSync(indexHtmlFile, "utf8").replace(/<!--[\s\S]*?-->/g, "");
+for (const match of htmlBody.matchAll(/>([^<]+)</g)) {
+  const text = match[1].trim();
+  if (!text || !/[áéíóúñÁÉÍÓÚÑ¿¡]/.test(text)) continue;
+  warnings += 1;
+  console.warn(`WARN index.html: texto visible en espanol (deberia ser clave i18n o vacio): "${text}"`);
+}
+
 const localeFiles = existsSync(localesDir)
   ? readdirSync(localesDir).filter((name) => name.endsWith(".json"))
   : [];
-
-let errors = 0;
-let warnings = 0;
 
 for (const localeFile of localeFiles) {
   const catalog = JSON.parse(readFileSync(join(localesDir, localeFile), "utf8"));
