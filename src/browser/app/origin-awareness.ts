@@ -26,10 +26,10 @@
   }
 
   function localServiceWarningText(kind = "servicios locales") {
-    const origin = window.location?.origin || t("origin.thisOrigin", "este origen");
-    if (kind === "ollama") return t("origin.ollama", "Ollama local puede pedir permiso de red local y requiere OLLAMA_ORIGINS={origin}.", { origin });
-    if (kind === "wsnic") return t("origin.wsnic", "Chrome/Edge puede pedir permiso de red local para conectar wsnic.");
-    return t("origin.default", "Los servicios locales pueden requerir permiso del navegador.");
+    const origin = window.location?.origin || t("origin.thisOrigin");
+    if (kind === "ollama") return t("origin.ollama", { origin });
+    if (kind === "wsnic") return t("origin.wsnic");
+    return t("origin.default");
   }
 
   function applyNotice(id, kind) {

@@ -71,7 +71,7 @@
     details.className = "ba-llm-thinking";
 
     const summary = document.createElement("summary");
-    summary.textContent = t("chat.ui.thinkingTitle", "Razonamiento del modelo");
+    summary.textContent = t("chat.ui.thinkingTitle");
 
     const body = document.createElement("div");
     body.className = "ba-llm-thinking-body";
@@ -87,7 +87,7 @@
     if (body) body.append(document.createTextNode(chunk));
   }
 
-  function createInferenceSpinner(label = t("common.generatingResponse", "Generando respuesta…")) {
+  function createInferenceSpinner(label = t("common.generatingResponse")) {
     const wrap = document.createElement("div");
     wrap.className = "ba-llm-inference-indicator";
     wrap.setAttribute("role", "status");
@@ -102,7 +102,7 @@
     return wrap;
   }
 
-  function setChatTailIndicator(label = t("common.generatingResponse", "Generando respuesta…")) {
+  function setChatTailIndicator(label = t("common.generatingResponse")) {
     const log = document.getElementById("chat-log");
     if (!log) return null;
     let indicator = document.getElementById("ba-chat-tail-indicator");
@@ -175,27 +175,27 @@
   function setToolDisclosureSummary(bubble, toolCall, { stateText = "", toolResult = null } = {}) {
     const toolDef = window.BA_LLM_TOOL_REGISTRY?.getTool?.(toolCall?.tool);
     const { details, titleEl, stateEl } = getToolDisclosure(bubble);
-    titleEl.textContent = toolDef?.label || toolCall?.tool || t("common.tool", "Tool");
+    titleEl.textContent = toolDef?.label || toolCall?.tool || t("common.tool");
 
     if (toolResult) {
       if (toolResult.ok) {
-        stateEl.textContent = toolResult.summary || t("chat.ui.tool.completed", "Completada");
+        stateEl.textContent = toolResult.summary || t("chat.ui.tool.completed");
         stateEl.className = "ba-tool-disclosure-state ok";
         details.open = true;
       } else {
-        stateEl.textContent = toolResult.stderr || toolResult.summary || t("common.error", "Error");
+        stateEl.textContent = toolResult.stderr || toolResult.summary || t("common.error");
         stateEl.className = "ba-tool-disclosure-state bad";
         details.open = true;
       }
       return;
     }
 
-    stateEl.textContent = stateText || t("chat.ui.tool.preparing", "Preparando…");
+    stateEl.textContent = stateText || t("chat.ui.tool.preparing");
     stateEl.className = "ba-tool-disclosure-state pending";
     details.open = false;
   }
 
-  function renderToolCallBubble(bubble, toolCall, stateText = t("chat.ui.tool.preparingTool", "Preparando tool…")) {
+  function renderToolCallBubble(bubble, toolCall, stateText = t("chat.ui.tool.preparingTool")) {
     const toolDef = window.BA_LLM_TOOL_REGISTRY?.getTool?.(toolCall.tool);
     bubble.classList.add("ba-tool-card");
     bubble.innerHTML = "";
@@ -207,17 +207,17 @@
 
     const meta = document.createElement("div");
     meta.className = "ba-tool-meta";
-    meta.textContent = t("chat.ui.tool.level", "Nivel {level} · {tool}", { level: toolCall.riskLevel ?? toolDef?.riskLevel ?? "—", tool: toolCall.tool || "" });
+    meta.textContent = t("chat.ui.tool.level", { level: toolCall.riskLevel ?? toolDef?.riskLevel ?? "—", tool: toolCall.tool || "" });
 
     const reason = document.createElement("p");
     reason.className = "ba-tool-disclosure-reason";
-    reason.textContent = toolCall.reason || t("chat.ui.tool.defaultReason", "El agente solicita ejecutar esta tool.");
+    reason.textContent = toolCall.reason || t("chat.ui.tool.defaultReason");
 
     const argsWrap = document.createElement("details");
     argsWrap.className = "ba-tool-args-wrap";
 
     const argsSummary = document.createElement("summary");
-    argsSummary.textContent = t("chat.ui.tool.argsJson", "Argumentos (JSON)");
+    argsSummary.textContent = t("chat.ui.tool.argsJson");
 
     const code = document.createElement("pre");
     code.className = "ba-tool-args";
@@ -237,15 +237,15 @@
     const status = document.createElement("div");
     status.className = result.ok ? "ba-tool-result ok" : "ba-tool-result bad";
     status.textContent = result.ok
-      ? t("chat.ui.tool.completedDetail", "Herramienta completada: {summary}", { summary: result.summary })
-      : t("chat.ui.tool.failedDetail", "Herramienta fallida: {detail}", { detail: result.stderr || result.summary });
+      ? t("chat.ui.tool.completedDetail", { summary: result.summary })
+      : t("chat.ui.tool.failedDetail", { detail: result.stderr || result.summary });
     body.appendChild(status);
 
     if (artifact) {
       const meta = document.createElement("div");
       meta.className = "ba-tool-meta";
-      const truncated = artifact.truncated ? t("chat.ui.artifact.truncatedSuffix", " · salida truncada") : "";
-      meta.textContent = t("chat.ui.artifact.meta", "Artefacto {id} · {kb} KB{truncated}", { id: artifact.id, kb: Math.ceil((artifact.sizeBytes || 0) / 1024), truncated });
+      const truncated = artifact.truncated ? t("chat.ui.artifact.truncatedSuffix") : "";
+      meta.textContent = t("chat.ui.artifact.meta", { id: artifact.id, kb: Math.ceil((artifact.sizeBytes || 0) / 1024), truncated });
       body.appendChild(meta);
     }
   }
@@ -260,35 +260,35 @@
     const summary = String(toolResult?.summary || "").trim();
     if (summary) return summary;
 
-    if (tool === "vm.fs.read") return path ? t("chat.ui.title.fileReadPath", "Contenido leído de `{path}`", { path }) : t("chat.ui.title.fileRead", "Contenido leído");
-    if (tool === "vm.fs.list") return path ? t("chat.ui.title.fileListPath", "Listado de `{path}`", { path }) : t("chat.ui.title.fileList", "Listado de archivos");
-    return toolDef?.label || tool || t("chat.ui.title.toolResult", "Resultado de herramienta");
+    if (tool === "vm.fs.read") return path ? t("chat.ui.title.fileReadPath", { path }) : t("chat.ui.title.fileRead");
+    if (tool === "vm.fs.list") return path ? t("chat.ui.title.fileListPath", { path }) : t("chat.ui.title.fileList");
+    return toolDef?.label || tool || t("chat.ui.title.toolResult");
   }
 
   function buildDeterministicToolAnswer(toolCall, toolResult, artifact = null) {
     const tool = toolCall.tool;
     const path = toolCall.arguments?.path || "";
     if (!toolResult.ok) {
-      const onPath = path ? t("chat.ui.answer.onPath", " sobre `{path}`", { path }) : "";
+      const onPath = path ? t("chat.ui.answer.onPath", { path }) : "";
       return [
-        t("chat.ui.answer.cannotRun", "No he podido ejecutar **{tool}**{onPath}.", { tool, onPath }),
+        t("chat.ui.answer.cannotRun", { tool, onPath }),
         "",
-        t("chat.ui.answer.errorLabel", "**Error:** {error}", { error: toolResult.stderr || toolResult.summary || t("chat.ui.answer.unknownError", "error desconocido") }),
+        t("chat.ui.answer.errorLabel", { error: toolResult.stderr || toolResult.summary || t("chat.ui.answer.unknownError") }),
       ].join("\n");
     }
 
     const title = buildDeterministicToolTitle(toolCall, toolResult);
     const output = artifact
       ? window.BA_LLM_ARTIFACTS.formatArtifactForDisplay(artifact)
-      : (toolResult.stdout || t("common.noOutputParen", "(sin salida)"));
+      : (toolResult.stdout || t("common.noOutputParen"));
 
     return [
-      t("chat.ui.answer.titleHeading", "**{title}:**", { title }),
+      t("chat.ui.answer.titleHeading", { title }),
       "",
       "```txt",
-      output || t("common.noOutputParen", "(sin salida)"),
+      output || t("common.noOutputParen"),
       "```",
-      (toolResult.truncated || artifact?.displayPreviewTruncated) ? t("chat.ui.answer.truncatedNote", "\n_Salida truncada en pantalla por seguridad. El artefacto conserva la salida disponible._") : "",
+      (toolResult.truncated || artifact?.displayPreviewTruncated) ? t("chat.ui.answer.truncatedNote") : "",
     ].join("\n");
   }
 

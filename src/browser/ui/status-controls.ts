@@ -34,7 +34,7 @@ function logTool(text, { strip = true } = {}) {
 function formatLoggedCommand(command, max = 360) {
   const text = String(command || "").replace(/\s+/g, " ").trim();
   if (text.length <= max) return text;
-  return `${text.slice(0, max)} … ${tn("vm.controls.charsTruncated", text.length, "[{count} carácter]", "[{count} caracteres]")}`;
+  return `${text.slice(0, max)} … ${tn("vm.controls.charsTruncated", text.length)}`;
 }
 
 function syncDiskCheckButton() {
@@ -44,11 +44,11 @@ function syncDiskCheckButton() {
   button.hidden = !hasBootDisk;
   button.disabled = !hasBootDisk || !state.vmReady || state.agentBusy || Boolean(state.pending) || Boolean(state.bgTools?.pending);
   button.textContent = state.diskMounted
-    ? t("vm.controls.disk.unmount", "Desmontar disco")
-    : t("vm.controls.disk.mount", "Montar disco");
+    ? t("vm.controls.disk.unmount")
+    : t("vm.controls.disk.mount");
   button.title = state.diskMounted
-    ? t("vm.controls.disk.unmount.title", "Sincroniza y desmonta /mnt/hda. Fallará si algún proceso está usando el disco.")
-    : t("vm.controls.disk.mount.title", "Monta el disco hda en /mnt/hda y comprueba lectura/escritura.");
+    ? t("vm.controls.disk.unmount.title")
+    : t("vm.controls.disk.mount.title");
 }
 
 function syncSnapshotButtons() {
@@ -68,13 +68,13 @@ function syncPowerButtons() {
   if (powerButton) {
     powerButton.disabled = state.vmStarting || (vmOn && (state.agentBusy || Boolean(state.pending) || Boolean(state.bgTools?.pending)));
     powerButton.textContent = state.vmStarting
-      ? t("vm.controls.power.starting", "Arrancando…")
+      ? t("vm.controls.power.starting")
       : vmOn
-        ? t("common.shutdownVm", "Apagar VM")
-        : t("vm.controls.power.on", "Arrancar VM");
+        ? t("common.shutdownVm")
+        : t("vm.controls.power.on");
     powerButton.title = vmOn
-      ? t("vm.controls.power.off.title", "Apaga la VM. Se pedirá confirmación antes de perder cambios sin snapshot.")
-      : t("vm.controls.power.on.title", "Arranca la VM con la configuración actual.");
+      ? t("vm.controls.power.off.title")
+      : t("vm.controls.power.on.title");
     powerButton.classList.toggle("danger", vmOn);
     powerButton.classList.toggle("secondary", false);
   }
@@ -91,15 +91,15 @@ function syncWsButton() {
   const connected = isWsConnected();
   button.disabled = state.wsConnecting;
   button.textContent = state.wsConnecting
-    ? t("common.connectingEllipsis", "Conectando…")
+    ? t("common.connectingEllipsis")
     : connected
-      ? t("common.disconnect", "Desconectar")
-      : t("common.connect", "Conectar");
+      ? t("common.disconnect")
+      : t("common.connect");
   button.classList.toggle("danger-light", connected);
   button.classList.toggle("secondary", connected);
   button.title = connected
-    ? t("vm.controls.ws.disconnect.title", "Desconecta el proxy WebSocket local. Se pedirá confirmación.")
-    : t("vm.controls.ws.connect.title", "Conecta el proxy WebSocket local wsnic.");
+    ? t("vm.controls.ws.disconnect.title")
+    : t("vm.controls.ws.connect.title");
 }
 
 function syncChecksButton() {
@@ -107,10 +107,10 @@ function syncChecksButton() {
   if (!button) return;
   button.disabled = Boolean(state.checksRunning || state.bgTools?.pending);
   button.textContent = state.checksRunning
-    ? t("common.checkingEllipsis", "Comprobando…")
+    ? t("common.checkingEllipsis")
     : (state.bgTools?.pending
-      ? t("vm.controls.checks.toolActive", "Herramienta activa…")
-      : t("common.runChecks", "Comprobar"));
+      ? t("vm.controls.checks.toolActive")
+      : t("common.runChecks"));
   button.setAttribute("aria-busy", state.checksRunning ? "true" : "false");
 }
 
@@ -126,7 +126,7 @@ function setAgentBusy(value, detail = "") {
   document.body.classList.toggle("agent-busy", value);
 
   const overlay = $("vm-lock-overlay");
-  if (overlay) overlay.textContent = value ? (detail || t("common.agentUsingVm", "El agente está usando la VM…")) : "";
+  if (overlay) overlay.textContent = value ? (detail || t("common.agentUsingVm")) : "";
 
   const chatInput = $("chat-input");
   const chatButton = document.getElementById("chat-submit-btn");

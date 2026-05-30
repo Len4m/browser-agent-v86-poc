@@ -23,7 +23,7 @@ function getConfig() {
 
 function formatProfileBytes(bytes) {
   const value = Number(bytes || 0);
-  return value ? formatBytes(value) : t("vm.profile.sizePending", "tamaño pendiente");
+  return value ? formatBytes(value) : t("vm.profile.sizePending");
 }
 
 function setSelectValueIfExists(id, value) {
@@ -65,18 +65,18 @@ function updateProfileHint({ applyDefaults = false } = {}) {
   if (!hint) return;
 
   if (!profile) {
-    hint.textContent = t("vm.profile.hint.free", "Modo libre: RAM, VRAM y disco configurables.");
-    hint.title = t("vm.profile.hint.free.title", "Usa el kernel e initramfs definidos en Config v86. Los campos RAM y VRAM solo se muestran en modo libre/manual.");
+    hint.textContent = t("vm.profile.hint.free");
+    hint.title = t("vm.profile.hint.free.title");
     syncProfileControls({ applyDefaults: false });
     return;
   }
 
   if (applyDefaults) syncProfileControls({ applyDefaults: true });
   const packageCount = Array.isArray(profile.packages) ? profile.packages.length : 0;
-  const packageText = packageCount ? ` · ${tn("vm.profile.packages", packageCount, "{count} paquete", "{count} paquetes")}` : "";
-  const diskText = profile.defaultDisk ? ` · ${t("vm.profile.disk", "Disco {disk}", { disk: profile.defaultDisk })}` : "";
+  const packageText = packageCount ? ` · ${tn("vm.profile.packages", packageCount)}` : "";
+  const diskText = profile.defaultDisk ? ` · ${t("vm.profile.disk", { disk: profile.defaultDisk })}` : "";
   hint.textContent = `${profile.name || profile.id} · ${formatProfileBytes(profile.initramfsBytes)} · RAM ${profile.recommendedRamMb || "—"} MB · VRAM ${profile.recommendedVramMb || 8} MB${diskText}${packageText}`;
-  hint.title = Array.isArray(profile.packages) && profile.packages.length ? t("vm.profile.packagesList", "Paquetes: {list}", { list: profile.packages.join(", ") }) : "";
+  hint.title = Array.isArray(profile.packages) && profile.packages.length ? t("vm.profile.packagesList", { list: profile.packages.join(", ") }) : "";
   syncProfileControls({ applyDefaults: false });
 }
 
@@ -92,13 +92,13 @@ async function loadProfiles() {
   } catch (error) {
     state.profiles = [];
     const hint = $("vm-profile-hint");
-    if (hint) hint.textContent = t("vm.profile.none", "No hay perfiles generados todavía. Ejecuta npm run setup o npm run prepare:local.");
+    if (hint) hint.textContent = t("vm.profile.none");
   }
 
   select.replaceChildren();
   const manual = document.createElement("option");
   manual.value = "manual";
-  manual.textContent = t("common.freeManual", "Libre / manual");
+  manual.textContent = t("common.freeManual");
   select.appendChild(manual);
 
   for (const profile of state.profiles) {
@@ -158,11 +158,11 @@ function updateDiskHint() {
   const runtime = getVmRuntimeConfig();
   const profile = getSelectedProfile();
   if (runtime.hda) {
-    hint.textContent = t("vm.disk.hint.hda", "Usará {url}. Créalo con npm run setup. En esta etapa es disco de datos ext2; el sistema sigue arrancando desde initramfs.", { url: runtime.hda.url });
+    hint.textContent = t("vm.disk.hint.hda", { url: runtime.hda.url });
   } else if (profile) {
-    hint.textContent = t("vm.disk.hint.profile", "Perfil fijo en initramfs/RAM: los paquetes vienen dentro de la imagen, pero los cambios posteriores se pierden salvo snapshot.");
+    hint.textContent = t("vm.disk.hint.profile");
   } else {
-    hint.textContent = t("vm.disk.hint.free", "Modo libre: Alpine en initramfs/RAM. Los paquetes instalados en sesión se pierden salvo snapshot.");
+    hint.textContent = t("vm.disk.hint.free");
   }
 }
 

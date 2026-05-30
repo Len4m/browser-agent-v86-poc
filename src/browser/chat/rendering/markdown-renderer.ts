@@ -105,8 +105,8 @@
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "ba-code-copy-btn";
-      btn.title = t("md.copyCode", "Copiar código");
-      btn.setAttribute("aria-label", t("md.copyCode", "Copiar código"));
+      btn.title = t("md.copyCode");
+      btn.setAttribute("aria-label", t("md.copyCode"));
       btn.textContent = "⧉";
       btn.addEventListener("click", async (event) => {
         event.preventDefault();
@@ -114,12 +114,12 @@
         const ok = await copyTextToClipboard(codeTextFromPre(pre));
         if (!ok) return;
         btn.classList.add("is-copied");
-        btn.title = t("common.copied", "Copiado");
-        btn.setAttribute("aria-label", t("common.copied", "Copiado"));
+        btn.title = t("common.copied");
+        btn.setAttribute("aria-label", t("common.copied"));
         window.setTimeout(() => {
           btn.classList.remove("is-copied");
-          btn.title = t("md.copyCode", "Copiar código");
-          btn.setAttribute("aria-label", t("md.copyCode", "Copiar código"));
+          btn.title = t("md.copyCode");
+          btn.setAttribute("aria-label", t("md.copyCode"));
         }, 1600);
       });
       wrap.appendChild(btn);

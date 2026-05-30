@@ -294,7 +294,7 @@ export function ollamaBrowser(modelId, options = {}) {
           controller.enqueue({ type: "stream-start", warnings: [] });
           const reader = response.body?.getReader();
           if (!reader) {
-            controller.enqueue({ type: "error", error: new Error("Ollama no devolvió stream de respuesta.") });
+            controller.enqueue({ type: "error", error: new Error(t("chat.error.ollamaNoStream")) });
             controller.close();
             return;
           }

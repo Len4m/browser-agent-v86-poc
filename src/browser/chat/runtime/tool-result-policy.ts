@@ -58,14 +58,14 @@
   }
 
   function decideAfterTool({ userText, toolCall, result, artifact } = {}) {
-    if (!result?.ok) return { mode: "direct", reason: "La tool falló; se muestra el error real." };
-    if (result.cancelled) return { mode: "direct", reason: "La tool fue cancelada." };
+    if (!result?.ok) return { mode: "direct", reason: t("panel.llm.toolPolicy.failedShowError") };
+    if (result.cancelled) return { mode: "direct", reason: t("panel.llm.toolPolicy.toolCancelled") };
     if (wantsDirectOnly(userText)) {
-      return { mode: "direct", reason: "El usuario pidió solo la salida cruda de la tool." };
+      return { mode: "direct", reason: t("panel.llm.toolPolicy.rawOutputRequested") };
     }
     return {
       mode: "direct",
-      reason: "La respuesta final la genera el loop AI (streamText + maxSteps) en el mismo turno.",
+      reason: t("panel.llm.toolPolicy.aiLoopDirect"),
     };
   }
 

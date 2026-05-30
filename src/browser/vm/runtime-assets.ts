@@ -21,7 +21,7 @@ function loadScript(src) {
     if (existing) {
       if (window.V86Starter || window.V86) resolve();
       existing.addEventListener("load", resolve, { once: true });
-      existing.addEventListener("error", () => reject(new Error(`No se pudo cargar ${src}`)), { once: true });
+      existing.addEventListener("error", () => reject(new Error(t("common.loadFailed", { src }))), { once: true });
       return;
     }
 
@@ -30,7 +30,7 @@ function loadScript(src) {
     script.async = true;
     script.dataset.v86Loader = src;
     script.onload = resolve;
-    script.onerror = () => reject(new Error(`No se pudo cargar ${src}`));
+    script.onerror = () => reject(new Error(t("common.loadFailed", { src })));
     document.head.appendChild(script);
   });
 }
@@ -54,17 +54,17 @@ async function checkAsset(url) {
 function checkWsRelayEndpoint(url, timeoutMs = 1600) {
   return new Promise((resolve) => {
     if (!window.WebSocket) {
-      resolve({ ok: false, detail: "WebSocket no disponible" });
+      resolve({ ok: false, detail: t("checks.detail.wsNoWebSocket") });
       return;
     }
 
     if (!/^wss?:\/\//.test(url || "")) {
-      resolve({ ok: false, detail: "URL WS inválida" });
+      resolve({ ok: false, detail: t("checks.detail.wsInvalidUrl") });
       return;
     }
 
     if (state.wsSocket?.readyState === WebSocket.OPEN && state.wsSocket.url === url) {
-      resolve({ ok: true, detail: "ya conectado" });
+      resolve({ ok: true, detail: t("checks.detail.wsAlreadyConnected") });
       return;
     }
 
@@ -79,14 +79,14 @@ function checkWsRelayEndpoint(url, timeoutMs = 1600) {
       resolve({ ok, detail });
     };
 
-    const timer = window.setTimeout(() => finish(false, "no responde"), timeoutMs);
+    const timer = window.setTimeout(() => finish(false, t("common.noResponse")), timeoutMs);
 
     try {
       socket = new WebSocket(url);
-      socket.onopen = () => finish(true, "conecta");
-      socket.onerror = () => finish(false, "error de conexión");
+      socket.onopen = () => finish(true, t("checks.detail.wsConnectOk"));
+      socket.onerror = () => finish(false, t("checks.detail.wsConnectionError"));
       socket.onclose = () => {
-        if (!settled) finish(false, "cerrado");
+        if (!settled) finish(false, t("common.closed"));
       };
     } catch (error) {
       finish(false, error.message);
@@ -124,7 +124,7 @@ function normalizeStateBuffer(value) {
   if (value instanceof ArrayBuffer) return value;
   if (value instanceof Uint8Array) return value.slice().buffer;
   if (ArrayBuffer.isView(value)) return value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength);
-  throw new Error("save_state no ha devuelto un ArrayBuffer válido");
+  throw new Error(t("vm.snapshot.error.invalidBuffer"));
 }
 
 function downloadArrayBuffer(buffer, filename) {
@@ -142,7 +142,7 @@ function downloadArrayBuffer(buffer, filename) {
 function v86SaveState() {
   return new Promise((resolve, reject) => {
     if (!state.vm?.save_state) {
-      reject(new Error("Esta build de v86 no expone save_state"));
+      reject(new Error(t("vm.snapshot.error.noSaveState")));
       return;
     }
 
@@ -158,7 +158,7 @@ function v86SaveState() {
       }
     };
 
-    const timer = window.setTimeout(() => done(new Error("Timeout guardando snapshot")), 120000);
+    const timer = window.setTimeout(() => done(new Error(t("vm.snapshot.error.saveTimeout"))), 120000);
 
     try {
       const ret = state.vm.save_state(done);
@@ -173,7 +173,7 @@ function v86SaveState() {
 function v86RestoreState(buffer) {
   return new Promise((resolve, reject) => {
     if (!state.vm?.restore_state) {
-      reject(new Error("Esta build de v86 no expone restore_state"));
+      reject(new Error(t("vm.snapshot.error.noRestoreState")));
       return;
     }
 
@@ -186,7 +186,7 @@ function v86RestoreState(buffer) {
       else resolve();
     };
 
-    const timer = window.setTimeout(() => done(new Error("Timeout restaurando snapshot")), 120000);
+    const timer = window.setTimeout(() => done(new Error(t("vm.snapshot.error.restoreTimeout"))), 120000);
 
     try {
       const ret = state.vm.restore_state(buffer, done);
@@ -198,7 +198,7 @@ function v86RestoreState(buffer) {
   });
 }
 
-function setLoading(show, { title = t("common.loading", "Cargando"), detail = "", percent = null, indeterminate = false } = {}) {
+function setLoading(show, { title = t("common.loading"), detail = "", percent = null, indeterminate = false } = {}) {
   const overlay = $("loading-overlay");
   const titleEl = $("loading-title");
   const detailEl = $("loading-detail");
@@ -276,7 +276,7 @@ async function preloadVmAssets(cfg) {
     initrd: cfg.initrd || "",
   });
   if (state.assetBuffers && state.assetCacheKey === cacheKey) {
-    setLoading(true, { title: t("vm.loading.preparing", "Preparando VM"), detail: t("vm.loading.assetsCached", "Assets ya cargados en memoria"), percent: 100 });
+    setLoading(true, { title: t("vm.loading.preparing"), detail: t("vm.loading.assetsCached"), percent: 100 });
     await nextPaint();
     return state.assetBuffers;
   }
@@ -291,7 +291,7 @@ async function preloadVmAssets(cfg) {
   ];
 
   const buffers = {};
-  setLoading(true, { title: t("vm.loading.preparing", "Preparando VM"), detail: t("vm.loading.calculatingSize", "Calculando tamaño de assets…"), percent: null, indeterminate: true });
+  setLoading(true, { title: t("vm.loading.preparing"), detail: t("vm.loading.calculatingSize"), percent: null, indeterminate: true });
   await nextPaint();
 
   const sizes = await Promise.all(assets.map((asset) => getAssetSize(asset.url)));
@@ -303,7 +303,7 @@ async function preloadVmAssets(cfg) {
     const knownSize = sizes[i] || 0;
 
     setLoading(true, {
-      title: t("vm.loading.downloading", "Descargando VM"),
+      title: t("vm.loading.downloading"),
       detail: `${asset.name} · 0 B${knownSize ? ` / ${formatBytes(knownSize)}` : ""}`,
       percent: totalBytes ? (completedBytes / totalBytes) * 100 : null,
       indeterminate: !totalBytes,
@@ -314,8 +314,8 @@ async function preloadVmAssets(cfg) {
       await loadScript(asset.url);
       completedBytes += knownSize;
       setLoading(true, {
-        title: t("vm.loading.downloading", "Descargando VM"),
-        detail: t("vm.loading.assetReady", "{name} · listo", { name: asset.name }),
+        title: t("vm.loading.downloading"),
+        detail: t("vm.loading.assetReady", { name: asset.name }),
         percent: totalBytes ? (completedBytes / totalBytes) * 100 : null,
         indeterminate: !totalBytes,
       });
@@ -334,7 +334,7 @@ async function preloadVmAssets(cfg) {
         : formatBytes(loaded);
 
       setLoading(true, {
-        title: t("vm.loading.downloading", "Descargando VM"),
+        title: t("vm.loading.downloading"),
         detail: `${asset.name} · ${sizeLabel}`,
         percent,
         indeterminate: !totalBytes && !responseTotal,
@@ -347,7 +347,7 @@ async function preloadVmAssets(cfg) {
 
   state.assetBuffers = buffers;
   state.assetCacheKey = cacheKey;
-  setLoading(true, { title: t("vm.loading.starting", "Arrancando VM"), detail: t("vm.loading.initializing", "Inicializando v86…"), percent: 100 });
+  setLoading(true, { title: t("vm.loading.starting"), detail: t("vm.loading.initializing"), percent: 100 });
   await nextPaint();
   return buffers;
 }

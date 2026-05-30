@@ -181,11 +181,11 @@
       nativeToolNames: [],
       showThinking: false,
       systemPrompt: [
-        t("prompt.system.role", "Browser Agent: asistente técnico para una VM Alpine i686 (v86) en el navegador."),
-        t("prompt.system.realData", "Los datos reales de VM/red/archivos se obtienen solo con las herramientas activas del perfil actual; nunca inventes salidas."),
-        t("prompt.system.toolFallback", "Si una herramienta no está activa o el perfil no la incluye, dilo y usa una alternativa disponible antes de recurrir a vm.sh.exec."),
-        t("prompt.system.artifacts", "Artefactos de herramientas = única fuente factual; si falta o está truncado, dilo."),
-        t("prompt.system.style", "Español, breve y técnico. Sin acciones destructivas ni fuzz/escaneo activo salvo petición explícita y autorización."),
+        t("prompt.system.role"),
+        t("prompt.system.realData"),
+        t("prompt.system.toolFallback"),
+        t("prompt.system.artifacts"),
+        t("prompt.system.style"),
       ].join(" "),
     },
   };

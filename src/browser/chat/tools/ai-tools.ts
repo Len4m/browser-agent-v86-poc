@@ -4,26 +4,29 @@
 
 (function initLLMAiSdkTools() {
   function buildModelText(toolCall, toolResult, artifact) {
-    if (toolResult?.cancelled) return "Herramienta cancelada por el usuario.";
+    if (toolResult?.cancelled) return t("common.toolCancelledByUser");
     if (artifact) {
       const text = window.BA_LLM_ARTIFACTS?.formatArtifactForModel?.(artifact);
       if (text) return text;
     }
 
     const payload = String(toolResult?.stdout || toolResult?.stderr || "");
+    const truncatedSuffix = t("tools.modelText.payloadTruncated");
     const fallback = window.BA_LLM_ARTIFACTS?.truncateMiddle?.(payload, 5000) || {
-      text: payload.length > 5000 ? `${payload.slice(0, 5000)}\n...[salida truncada]` : payload,
+      text: payload.length > 5000 ? `${payload.slice(0, 5000)}\n${truncatedSuffix}` : payload,
       truncated: payload.length > 5000,
     };
 
     const lines = [
-      toolResult?.ok ? `Herramienta ${toolCall.tool} completada correctamente.` : `Herramienta ${toolCall.tool} falló.`,
-      toolResult?.summary ? `Resumen: ${toolResult.summary}` : "",
-      `Código: ${toolResult?.code ?? "desconocido"}`,
+      toolResult?.ok
+        ? t("tools.modelText.ok", { tool: toolCall.tool })
+        : t("tools.modelText.fail", { tool: toolCall.tool }),
+      toolResult?.summary ? t("tools.modelText.summary", { summary: toolResult.summary }) : "",
+      t("tools.modelText.code", { code: toolResult?.code ?? t("common.unknownCode") }),
       "---BEGIN_TOOL_PAYLOAD---",
-      fallback.text || "(sin salida útil)",
+      fallback.text || t("common.noUsefulOutput"),
       "---END_TOOL_PAYLOAD---",
-      toolResult?.truncated || fallback.truncated ? "Nota: la salida fue recortada; no asumas contenido no visible." : "",
+      toolResult?.truncated || fallback.truncated ? t("tools.modelText.truncatedNote") : "",
     ];
     return lines.filter(Boolean).join("\n");
   }
@@ -37,69 +40,69 @@
   function buildZodSchemas(z) {
     return {
       "vm.fs.list": z.object({
-        path: z.string().describe("Ruta del directorio en la VM"),
-        maxEntries: z.number().optional().describe("Máximo de entradas"),
+        path: z.string().describe(t("tools.schema.vmFsListPath")),
+        maxEntries: z.number().optional().describe(t("tools.schema.maxEntries")),
       }),
       "vm.fs.read": z.object({
-        path: z.string().describe("Ruta del archivo en la VM"),
-        maxBytes: z.number().optional().describe("Bytes máximos a leer"),
+        path: z.string().describe(t("tools.schema.vmFsReadPath")),
+        maxBytes: z.number().optional().describe(t("tools.schema.maxBytes")),
       }),
       "vm.cmd.which": z.object({
-        commands: z.array(z.string()).describe("Comandos a comprobar"),
+        commands: z.array(z.string()).describe(t("tools.schema.whichCommands")),
       }),
       "vm.sys.info": z.object({}),
       "vm.console.status": z.object({}),
       "vm.pkg.info": z.object({
-        filter: z.string().optional().describe("Filtro de nombre de paquete"),
+        filter: z.string().optional().describe(t("tools.schema.pkgFilter")),
       }),
       "web.curl.head": z.object({
-        url: z.string().describe("URL HTTP(S)"),
+        url: z.string().describe(t("tools.schema.urlHttp")),
         followRedirects: z.boolean().optional(),
         insecure: z.boolean().optional(),
         timeoutSec: z.number().optional(),
       }),
       "web.curl.fetch_text": z.object({
-        url: z.string().describe("URL HTTP(S)"),
+        url: z.string().describe(t("tools.schema.urlHttp")),
         maxBytes: z.number().optional(),
         followRedirects: z.boolean().optional(),
         insecure: z.boolean().optional(),
         timeoutSec: z.number().optional(),
       }),
       "net.dns.lookup": z.object({
-        host: z.string().describe("Host o dominio"),
-        type: z.string().optional().describe("Tipo DNS (A, AAAA, ...)"),
+        host: z.string().describe(t("tools.schema.hostOrDomain")),
+        type: z.string().optional().describe(t("tools.schema.dnsType")),
       }),
       "net.ip.status": z.object({}),
       "net.nmap.quick": z.object({
-        target: z.string().describe("IP o host"),
+        target: z.string().describe(t("tools.schema.ipOrHost")),
         topPorts: z.number().optional(),
       }),
       "web.ffuf.dir_light": z.object({
-        url: z.string().describe("URL base con FUZZ si aplica"),
+        url: z.string().describe(t("tools.schema.ffufUrl")),
         wordlist: z.string().optional(),
         threads: z.number().optional(),
         rate: z.number().optional(),
         maxTimeSec: z.number().optional(),
       }),
       "vm.python.exec": z.object({
-        code: z.string().describe("Código Python corto"),
+        code: z.string().describe(t("tools.schema.pythonCode")),
       }),
       "web.httpx.probe": z.object({
-        url: z.string().describe("URL"),
+        url: z.string().describe(t("tools.schema.url")),
         rate: z.number().optional(),
         threads: z.number().optional(),
         timeoutSec: z.number().optional(),
       }),
       "web.nikto.quick": z.object({
-        url: z.string().describe("URL"),
+        url: z.string().describe(t("tools.schema.url")),
         maxTimeSec: z.number().optional(),
       }),
       "tls.openssl.cert": z.object({
-        host: z.string().describe("Host"),
+        host: z.string().describe(t("tools.schema.host")),
         port: z.number().optional(),
       }),
       "vm.sh.exec": z.object({
-        command: z.string().describe("Comando sh"),
+        command: z.string().describe(t("tools.schema.shCommand")),
         timeoutMs: z.number().optional(),
         maxOutputBytes: z.number().optional(),
       }),
@@ -148,7 +151,7 @@
         toModelOutput({ output }) {
           return {
             type: "text",
-            value: output?.modelText || "La tool no devolvió salida útil.",
+            value: output?.modelText || t("tools.error.noModelOutput"),
           };
         },
         execute: async (args) => {
@@ -156,7 +159,7 @@
             type: "tool_call",
             tool: meta.name,
             arguments: args,
-            reason: t("tools.exec.reasonModelRequest", "El modelo solicita {name}.", { name: meta.name }),
+            reason: t("tools.exec.reasonModelRequest", { name: meta.name }),
             riskLevel: toolDef.riskLevel,
           };
 

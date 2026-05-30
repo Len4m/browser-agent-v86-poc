@@ -40,9 +40,9 @@ function buildExecVmWrappedCommand(command, marker, maxOutputBytes) {
   ].join("; ") + NL;
 }
 
-async function execVm(command, { lock = true, label = t("common.agentUsingVm", "El agente está usando la VM…"), timeoutMs = 25000, log = true, targetTools = true, resolveOnTokens = [], rejectOnTokens = [], maxOutputBytes = 65536 } = {}) {
-  if (!state.vm) return { code: 1, stdout: "", stderr: t("common.v86NotStarted", "v86 no está arrancada") };
-  if (!state.vmReady) return { code: 1, stdout: "", stderr: t("common.vmBooting", "la VM está arrancando") };
+async function execVm(command, { lock = true, label = t("common.agentUsingVm"), timeoutMs = 25000, log = true, targetTools = true, resolveOnTokens = [], rejectOnTokens = [], maxOutputBytes = 65536 } = {}) {
+  if (!state.vm) return { code: 1, stdout: "", stderr: t("common.v86NotStarted") };
+  if (!state.vmReady) return { code: 1, stdout: "", stderr: t("common.vmBooting") };
 
   // Las operaciones internas/tools usan UART1/ttyS1 y no cambian la consola visible.
   // No hacemos fallback silencioso a serial0 para evitar interferir con el usuario.
@@ -50,10 +50,10 @@ async function execVm(command, { lock = true, label = t("common.agentUsingVm", "
     if (window.BA_BG_TOOLS?.execVm) {
       return window.BA_BG_TOOLS.execVm(command, { label, timeoutMs, maxOutputBytes, log });
     }
-    return { code: 1, stdout: "", stderr: t("vm.error.serial1NotInit", "canal serial1 de tools no inicializado") };
+    return { code: 1, stdout: "", stderr: t("vm.error.serial1NotInit") };
   }
 
-  if (state.pending || state.agentBusy || state.bgTools?.pending) return { code: 1, stdout: "", stderr: t("vm.error.busy", "la VM está ocupada") };
+  if (state.pending || state.agentBusy || state.bgTools?.pending) return { code: 1, stdout: "", stderr: t("vm.error.busy") };
 
   const marker = `__BAGENT_${Date.now()}_${Math.random().toString(16).slice(2)}__`;
   const wrapped = buildExecVmWrappedCommand(command, marker, maxOutputBytes);
@@ -70,7 +70,7 @@ async function execVm(command, { lock = true, label = t("common.agentUsingVm", "
     const timer = window.setTimeout(() => {
       state.pending = null;
       renderConsoleTabs();
-      finish({ code: 124, stdout: "", stderr: t("vm.error.timeoutSerial", "timeout esperando serial") });
+      finish({ code: 124, stdout: "", stderr: t("vm.error.timeoutSerial") });
     }, timeoutMs);
 
     state.pending = {
@@ -101,7 +101,7 @@ async function runCommandFromInput(event) {
   event.preventDefault();
   const command = $("command-input").value.trim();
   if (!command) return;
-  const result = await execVm(command, { lock: true, label: t("vm.exec.manualLabel", "Herramienta manual usando la VM…") });
+  const result = await execVm(command, { lock: true, label: t("vm.exec.manualLabel") });
   if (result.stdout) logTool(`${NL}${result.stdout}${NL}`);
   if (result.stderr) logTool(`${NL}[stderr] ${result.stderr}${NL}`);
 }
@@ -126,7 +126,7 @@ async function sendChat(event) {
     return;
   }
 
-  addMessage("agent", t("chat.agentTransformersNotReady", "El módulo Transformers.js local no está inicializado. Revisa la carga de los ficheros js/10-* a js/15-*. "));
+  addMessage("agent", t("chat.agentTransformersNotReady"));
 }
 
 
@@ -134,7 +134,7 @@ async function configureNetworkInVm() {
   if (state.networkConfiguring || state.networkConfigured) return;
 
   if (!state.vm || !state.vmReady) {
-    logTool(`${NL}[network] ${t("net.wsnicReadyWillConfig", "wsnic listo. La red se configurará cuando la shell de la VM esté lista.")}${NL}`);
+    logTool(`${NL}[network] ${t("net.wsnicReadyWillConfig")}${NL}`);
     return;
   }
 
@@ -144,10 +144,10 @@ async function configureNetworkInVm() {
   }
 
   state.networkConfiguring = true;
-  logTool(`${NL}[network] ${t("net.configuringAuto", "configurando red automáticamente...")}${NL}`);
+  logTool(`${NL}[network] ${t("net.configuringAuto")}${NL}`);
   const result = await execVm(VM_NETWORK_COMMAND, {
     lock: true,
-    label: t("net.configuringLabel", "Configurando red de la VM…"),
+    label: t("net.configuringLabel"),
     timeoutMs: 60000,
   });
 
@@ -159,11 +159,11 @@ async function configureNetworkInVm() {
   state.networkConfiguring = false;
 
   if (ok) {
-    setBadge($("ws-detail"), t("net.badge.connectedVm", "conectado + VM"), "good");
-    logTool(`[network] ${t("net.connectionVerified", "conexión comprobada.")}${NL}`);
+    setBadge($("ws-detail"), t("net.badge.connectedVm"), "good");
+    logTool(`[network] ${t("net.connectionVerified")}${NL}`);
   } else {
-    setBadge($("ws-detail"), t("net.badge.wsnicOkNoNet", "wsnic ok, VM sin red"), "warn");
-    logTool(`[network] ${t("net.wsnicRespondsNotConfigured", "wsnic responde, pero la configuración dentro de la VM no se ha completado.")}${NL}`);
+    setBadge($("ws-detail"), t("net.badge.wsnicOkNoNet"), "warn");
+    logTool(`[network] ${t("net.wsnicRespondsNotConfigured")}${NL}`);
   }
 
 }
@@ -174,14 +174,14 @@ async function toggleDiskInVm() {
   if (!runtime?.hda) return;
 
   if (!state.vm || !state.vmReady) {
-    logTool(`${NL}[disk] ${t("vm.disk.bootFirst", "arranca la VM y espera la shell antes de montar o desmontar el disco.")}${NL}`);
+    logTool(`${NL}[disk] ${t("vm.disk.bootFirst")}${NL}`);
     return;
   }
 
   const mounting = !state.diskMounted;
   const result = await execVm(mounting ? VM_DISK_MOUNT_COMMAND : VM_DISK_UNMOUNT_COMMAND, {
     lock: true,
-    label: mounting ? t("vm.disk.mounting", "Montando disco hda…") : t("vm.disk.unmounting", "Desmontando disco hda…"),
+    label: mounting ? t("vm.disk.mounting") : t("vm.disk.unmounting"),
     timeoutMs: mounting ? 45000 : 20000,
   });
 
@@ -191,21 +191,21 @@ async function toggleDiskInVm() {
   if (mounting) {
     if (result.stdout.includes("DISK_MOUNT_OK")) {
       state.diskMounted = true;
-      setBadge($("vm-detail"), t("vm.disk.badge.mounted", "disco montado"), "good");
-      logTool(`[disk] ${t("vm.disk.mountedAt", "disco montado en /mnt/hda.")}${NL}`);
+      setBadge($("vm-detail"), t("vm.disk.badge.mounted"), "good");
+      logTool(`[disk] ${t("vm.disk.mountedAt")}${NL}`);
     } else {
-      setBadge($("vm-detail"), t("vm.disk.badge.notMounted", "disco no montado"), "warn");
-      logTool(`[disk] ${t("vm.disk.mountFailed", "no se ha podido montar el disco dentro de la VM.")}${NL}`);
+      setBadge($("vm-detail"), t("vm.disk.badge.notMounted"), "warn");
+      logTool(`[disk] ${t("vm.disk.mountFailed")}${NL}`);
     }
   } else {
     if (result.stdout.includes("DISK_UNMOUNT_OK") || result.stdout.includes("DISK_NOT_MOUNTED")) {
       state.diskMounted = false;
-      setBadge($("vm-detail"), t("vm.disk.badge.unmounted", "disco desmontado"), "good");
-      logTool(`[disk] ${t("vm.disk.unmountedAt", "disco desmontado de /mnt/hda.")}${NL}`);
+      setBadge($("vm-detail"), t("vm.disk.badge.unmounted"), "good");
+      logTool(`[disk] ${t("vm.disk.unmountedAt")}${NL}`);
     } else {
       state.diskMounted = true;
-      setBadge($("vm-detail"), t("vm.disk.badge.inUse", "disco en uso"), "warn");
-      logTool(`[disk] ${t("vm.disk.unmountFailed", "no se ha podido desmontar. Cierra procesos o sal del directorio /mnt/hda y vuelve a probar.")}${NL}`);
+      setBadge($("vm-detail"), t("vm.disk.badge.inUse"), "warn");
+      logTool(`[disk] ${t("vm.disk.unmountFailed")}${NL}`);
     }
   }
 
@@ -219,12 +219,12 @@ function maybeConfigureNetwork() {
 
 async function confirmWsDisconnect() {
   const result = await showBaModal({
-    title: t("ws.disconnect.title", "Desconectar Red WS"),
-    message: t("ws.disconnect.message", "Se cerrará la conexión con el proxy WebSocket local."),
-    detail: t("ws.disconnect.detail", "La VM puede conservar temporalmente su IP, pero dejará de tener salida real por wsnic hasta que vuelvas a conectar y configurar la red."),
+    title: t("ws.disconnect.title"),
+    message: t("ws.disconnect.message"),
+    detail: t("ws.disconnect.detail"),
     buttons: [
-      { id: "cancel", label: t("common.cancel", "Cancelar"), variant: "secondary", cancel: true },
-      { id: "disconnect", label: t("common.disconnect", "Desconectar"), variant: "danger" },
+      { id: "cancel", label: t("common.cancel"), variant: "secondary", cancel: true },
+      { id: "disconnect", label: t("common.disconnect"), variant: "danger" },
     ],
   });
   return result === "disconnect";
@@ -235,8 +235,8 @@ async function disconnectWs({ confirmDisconnect = true } = {}) {
     state.networkAutoRequested = false;
     state.networkConfigured = false;
     state.networkConfiguring = false;
-    setBadge($("badge-ws"), t("ws.badge.disconnected", "wsnic desconectado"), "");
-    setBadge($("ws-detail"), t("common.disconnected", "desconectado"), "");
+    setBadge($("badge-ws"), t("ws.badge.disconnected"), "");
+    setBadge($("ws-detail"), t("common.disconnected"), "");
     syncWsButton();
     return;
   }
@@ -255,9 +255,9 @@ async function disconnectWs({ confirmDisconnect = true } = {}) {
 
   try { socket?.close?.(); } catch {}
 
-  setBadge($("badge-ws"), t("ws.badge.disconnected", "wsnic desconectado"), "");
-  setBadge($("ws-detail"), t("common.disconnected", "desconectado"), "");
-  logTool(`${NL}[host] ${t("ws.host.disconnected", "wsnic desconectado.")}${NL}`);
+  setBadge($("badge-ws"), t("ws.badge.disconnected"), "");
+  setBadge($("ws-detail"), t("common.disconnected"), "");
+  logTool(`${NL}[host] ${t("ws.host.disconnected")}${NL}`);
   syncWsButton();
 }
 
@@ -269,19 +269,19 @@ async function connectWs() {
 
   const url = getWsRelayUrl();
   if (window.BA_ORIGIN?.isPublishedOrigin?.()) {
-    logTool(`${NL}[network] ${t("net.localPermissionNotice", "Chrome/Edge puede pedir permiso de red local para {url}. Se intentará conectar igualmente.", { url })}${NL}`);
+    logTool(`${NL}[network] ${t("net.localPermissionNotice", { url })}${NL}`);
   }
   if (!window.WebSocket) {
-    setBadge($("badge-ws"), t("ws.badge.error", "wsnic error"), "bad");
-    setBadge($("ws-detail"), t("common.unavailable", "no disponible"), "bad");
+    setBadge($("badge-ws"), t("ws.badge.error"), "bad");
+    setBadge($("ws-detail"), t("common.unavailable"), "bad");
     syncWsButton();
     return;
   }
 
   state.wsConnecting = true;
   syncWsButton();
-  setBadge($("badge-ws"), t("ws.badge.connecting", "wsnic conectando"), "warn");
-  setBadge($("ws-detail"), t("common.connectingLower", "conectando"), "warn");
+  setBadge($("badge-ws"), t("ws.badge.connecting"), "warn");
+  setBadge($("ws-detail"), t("common.connectingLower"), "warn");
 
   try {
     const socket = new WebSocket(url);
@@ -289,8 +289,8 @@ async function connectWs() {
       if (state.wsSocket === socket) state.wsSocket = null;
       state.wsConnecting = false;
       try { socket.close(); } catch {}
-      setBadge($("badge-ws"), t("ws.badge.disconnected", "wsnic desconectado"), "");
-      setBadge($("ws-detail"), t("common.noResponse", "no responde"), "warn");
+      setBadge($("badge-ws"), t("ws.badge.disconnected"), "");
+      setBadge($("ws-detail"), t("common.noResponse"), "warn");
       syncWsButton();
     }, 1800);
 
@@ -300,9 +300,9 @@ async function connectWs() {
       state.wsConnecting = false;
       state.networkAutoRequested = true;
       state.networkConfigured = false;
-      setBadge($("badge-ws"), t("ws.badge.connected", "wsnic conectado"), "good");
-      setBadge($("ws-detail"), t("common.connected", "conectado"), "good");
-      logTool(`${NL}[host] ${t("ws.host.connected", "wsnic conectado: {url}", { url })}${NL}`);
+      setBadge($("badge-ws"), t("ws.badge.connected"), "good");
+      setBadge($("ws-detail"), t("common.connected"), "good");
+      logTool(`${NL}[host] ${t("ws.host.connected", { url })}${NL}`);
       syncWsButton();
       maybeConfigureNetwork();
     };
@@ -310,8 +310,8 @@ async function connectWs() {
       window.clearTimeout(timeout);
       if (state.wsSocket === socket) state.wsSocket = null;
       state.wsConnecting = false;
-      setBadge($("badge-ws"), t("ws.badge.error", "wsnic error"), "bad");
-      setBadge($("ws-detail"), t("common.cannotConnect", "no conecta"), "bad");
+      setBadge($("badge-ws"), t("ws.badge.error"), "bad");
+      setBadge($("ws-detail"), t("common.cannotConnect"), "bad");
       syncWsButton();
     };
     socket.onclose = () => {
@@ -321,13 +321,13 @@ async function connectWs() {
       state.networkAutoRequested = false;
       state.networkConfigured = false;
       state.networkConfiguring = false;
-      setBadge($("badge-ws"), t("ws.badge.disconnected", "wsnic desconectado"), "");
-      setBadge($("ws-detail"), t("common.closed", "cerrado"), "");
+      setBadge($("badge-ws"), t("ws.badge.disconnected"), "");
+      setBadge($("ws-detail"), t("common.closed"), "");
       syncWsButton();
     };
   } catch (error) {
     state.wsConnecting = false;
-    setBadge($("badge-ws"), t("ws.badge.error", "wsnic error"), "bad");
+    setBadge($("badge-ws"), t("ws.badge.error"), "bad");
     setBadge($("ws-detail"), error.message, "bad");
     syncWsButton();
   }
@@ -340,21 +340,21 @@ async function saveSnapshot() {
   const diskLabel = runtime.hda ? `hda-${runtime.hda.sizeMb}mb` : "initramfs";
   const filename = `browser-agent-v86-${runtime.ramMb}mb-${diskLabel}-${timestampForFilename()}.v86state`;
 
-  setAgentBusy(true, t("vm.snapshot.saving", "Guardando snapshot…"));
-  setLoading(true, { title: t("vm.snapshot.savingTitle", "Guardando snapshot"), detail: t("vm.snapshot.savingDetail", "Serializando estado de la VM…"), percent: null, indeterminate: true });
+  setAgentBusy(true, t("vm.snapshot.saving"));
+  setLoading(true, { title: t("vm.snapshot.savingTitle"), detail: t("vm.snapshot.savingDetail"), percent: null, indeterminate: true });
   await nextPaint();
-  logTool(`${NL}[snapshot] ${t("vm.snapshot.savingLog", "guardando estado de v86...")}${NL}`);
+  logTool(`${NL}[snapshot] ${t("vm.snapshot.savingLog")}${NL}`);
   if (runtime.hda) {
-    logTool(`[snapshot] ${t("vm.snapshot.noHdaWarning", "aviso: este fichero NO incluye los cambios del disco hda ({url}).", { url: runtime.hda.url })}${NL}`);
+    logTool(`[snapshot] ${t("vm.snapshot.noHdaWarning", { url: runtime.hda.url })}${NL}`);
   }
 
   try {
     const buffer = await v86SaveState();
     downloadArrayBuffer(buffer, filename);
-    logTool(`[snapshot] ${t("vm.snapshot.downloaded", "descargado {filename} ({size}).", { filename, size: formatBytes(buffer.byteLength) })}${NL}`);
+    logTool(`[snapshot] ${t("vm.snapshot.downloaded", { filename, size: formatBytes(buffer.byteLength) })}${NL}`);
   } catch (error) {
-    logTool(`[snapshot] ${t("vm.snapshot.saveError", "error guardando: {error}", { error: error.message })}${NL}`);
-    setBadge($("vm-detail"), t("common.snapshotError", "error snapshot"), "bad");
+    logTool(`[snapshot] ${t("vm.snapshot.saveError", { error: error.message })}${NL}`);
+    setBadge($("vm-detail"), t("common.snapshotError"), "bad");
   } finally {
     setLoading(false);
     setAgentBusy(false);
@@ -373,23 +373,23 @@ async function restoreSnapshotFromFile(event) {
   const file = event.target.files?.[0];
   if (!file) return;
 
-  const shouldContinue = !state.vm || window.confirm(t("vm.snapshot.restoreConfirm", "Esto apagará la VM actual y restaurará el snapshot seleccionado. Asegúrate de usar la misma RAM/disco/configuración que al guardarlo. ¿Continuar?"));
+  const shouldContinue = !state.vm || window.confirm(t("vm.snapshot.restoreConfirm"));
   if (!shouldContinue) return;
 
-  setAgentBusy(true, t("vm.snapshot.reading", "Leyendo snapshot…"));
-  setLoading(true, { title: t("vm.snapshot.readingTitle", "Leyendo snapshot"), detail: `${file.name} · ${formatBytes(file.size)}`, percent: null, indeterminate: true });
+  setAgentBusy(true, t("vm.snapshot.reading"));
+  setLoading(true, { title: t("vm.snapshot.readingTitle"), detail: `${file.name} · ${formatBytes(file.size)}`, percent: null, indeterminate: true });
   await nextPaint();
 
   try {
     const buffer = await file.arrayBuffer();
-    logTool(`${NL}[snapshot] ${t("common.loadedFile", "cargado {filename} ({size}).", { filename: file.name, size: formatBytes(buffer.byteLength) })}${NL}`);
-    logTool(`[snapshot] ${t("vm.snapshot.hdaNotInSnapshot", "aviso: los discos hda no se guardan dentro del snapshot. Usa la misma imagen de disco si seleccionaste hda.")}${NL}`);
+    logTool(`${NL}[snapshot] ${t("common.loadedFile", { filename: file.name, size: formatBytes(buffer.byteLength) })}${NL}`);
+    logTool(`[snapshot] ${t("vm.snapshot.hdaNotInSnapshot")}${NL}`);
     setAgentBusy(false);
 
     if (state.vm) await stopVm({ confirmShutdown: false });
     await startVm({ restoreStateBuffer: buffer });
   } catch (error) {
-    logTool(`[snapshot] ${t("vm.snapshot.restoreError", "error leyendo/restaurando: {error}", { error: error.message })}${NL}`);
+    logTool(`[snapshot] ${t("vm.snapshot.restoreError", { error: error.message })}${NL}`);
     setLoading(false);
     setAgentBusy(false);
     syncSnapshotButtons();
@@ -410,7 +410,7 @@ async function copyDockerCommand(event) {
     textarea.select();
     const ok = document.execCommand("copy");
     textarea.remove();
-    if (!ok) throw new Error(t("common.copyFailed", "No se pudo copiar"));
+    if (!ok) throw new Error(t("common.copyFailed"));
   }
 
   try {
@@ -419,11 +419,11 @@ async function copyDockerCommand(event) {
     } else {
       await fallbackCopy(command);
     }
-    if (status) status.textContent = t("common.copied", "Copiado");
-    logTool(`${NL}[host] ${t("docker.copiedLog", "comando Docker copiado al portapapeles.")}${NL}`);
+    if (status) status.textContent = t("common.copied");
+    logTool(`${NL}[host] ${t("docker.copiedLog")}${NL}`);
   } catch (error) {
-    if (status) status.textContent = t("common.copyFailed", "No se pudo copiar");
-    logTool(`${NL}[host] ${t("docker.copyFailedLog", "no se pudo copiar el comando Docker: {error}", { error: error.message })}${NL}`);
+    if (status) status.textContent = t("common.copyFailed");
+    logTool(`${NL}[host] ${t("docker.copyFailedLog", { error: error.message })}${NL}`);
   }
 
   window.setTimeout(() => {

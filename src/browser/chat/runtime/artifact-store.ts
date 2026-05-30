@@ -147,7 +147,7 @@
     const value = normalizeNewlines(String(text || ""));
     if (value.length <= maxChars) return { text: value, truncated: false };
     return {
-      text: `${value.slice(0, maxChars)}\n...${t("artifact.previewTruncated", "[vista previa truncada a {max} caracteres]", { max: maxChars })}`,
+      text: `${value.slice(0, maxChars)}\n...${t("artifact.previewTruncated", { max: maxChars })}`,
       truncated: true,
     };
   }
@@ -281,7 +281,7 @@
     return [
       `${label}:`,
       "---BEGIN_TOOL_PAYLOAD---",
-      body.text || "(sin salida útil)",
+      body.text || t("common.noUsefulOutput"),
       "---END_TOOL_PAYLOAD---",
       body.truncated ? "Nota: la salida fue recortada; no asumas contenido no visible." : "",
     ].filter(Boolean).join("\n");
@@ -290,7 +290,7 @@
   function formatArtifactForDisplay(artifact, { maxChars = DISPLAY_PREVIEW_CHARS } = {}) {
     if (!artifact) return "";
     const out = preview(artifact.stdout || artifact.stderr || "", maxChars);
-    return out.text || t("common.noOutputParen", "(sin salida)");
+    return out.text || t("common.noOutputParen");
   }
 
   window.BA_LLM_ARTIFACTS = {

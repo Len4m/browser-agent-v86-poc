@@ -1,7 +1,7 @@
 // @ts-nocheck
 // Browser Agent v86 - i18n runtime
-// Base language (es) lives inline in the source as the default for t().
-// Only non-base catalogs are fetched on demand; at most one is kept in heap.
+// All UI copy lives in src/web/locales/*.json; code only references keys.
+// At most one locale catalog is kept in heap at a time.
 
 const BA_I18N_BASE_LANG = "es";
 const BA_I18N_SUPPORTED = ["es", "en"];
@@ -38,27 +38,24 @@ function baInterpolate(text, vars) {
   );
 }
 
-function t(key, esDefault, vars) {
-  if (baActiveLang !== BA_I18N_BASE_LANG && baActiveCatalog) {
-    const value = baActiveCatalog[key];
-    if (typeof value === "string") return baInterpolate(value, vars);
-  }
-  return baInterpolate(esDefault != null ? esDefault : key, vars);
+// Missing, empty, or whitespace-only catalog entries fall back to the key string.
+function baResolveText(key, raw) {
+  if (typeof raw === "string" && raw.trim()) return raw;
+  return String(key);
 }
 
-// Minimal pluralization helper: picks `${key}.one` / `${key}.other` from the
-// active catalog and interpolates {count}. Base (es) stays inline as defaults.
-function tn(key, count, esOne, esOther, vars) {
+function t(key, vars) {
+  const value = baActiveCatalog?.[key];
+  return baInterpolate(baResolveText(key, value), vars);
+}
+
+function tn(key, count, vars) {
   const plural = Number(count) === 1 ? "one" : "other";
-  const esDefault = plural === "one" ? esOne : esOther;
-  return t(`${key}.${plural}`, esDefault, Object.assign({ count }, vars || {}));
+  return t(`${key}.${plural}`, Object.assign({ count }, vars || {}));
 }
 
 async function loadLocale(lang) {
-  if (!lang || lang === BA_I18N_BASE_LANG) {
-    baActiveCatalog = null;
-    return null;
-  }
+  if (!lang || !BA_I18N_SUPPORTED.includes(lang)) lang = BA_I18N_BASE_LANG;
   const response = await fetch(`./locales/${lang}.json`, { cache: "no-store" });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   baActiveCatalog = await response.json();
@@ -67,18 +64,13 @@ async function loadLocale(lang) {
 
 function baApplyNode(el) {
   const key = el.dataset.i18n;
-  if (key) {
-    if (el.dataset.i18nBase == null) el.dataset.i18nBase = el.textContent || "";
-    el.textContent = t(key, el.dataset.i18nBase);
-  }
+  if (key) el.textContent = t(key);
   const attrSpec = el.dataset.i18nAttr;
   if (attrSpec) {
     for (const pair of attrSpec.split(",")) {
       const [attr, attrKey] = pair.split(":").map((part) => part.trim());
       if (!attr || !attrKey) continue;
-      const baseKey = `i18nBase_${attr.replace(/[^a-zA-Z0-9]/g, "_")}`;
-      if (el.dataset[baseKey] == null) el.dataset[baseKey] = el.getAttribute(attr) || "";
-      el.setAttribute(attr, t(attrKey, el.dataset[baseKey]));
+      el.setAttribute(attr, t(attrKey));
     }
   }
 }
@@ -90,9 +82,7 @@ function applyDomTranslations(root) {
 
 async function setLang(lang, { persist = true, apply = true } = {}) {
   const next = BA_I18N_SUPPORTED.includes(lang) ? lang : BA_I18N_BASE_LANG;
-  if (next === baActiveLang && (next === BA_I18N_BASE_LANG || baActiveCatalog)) {
-    return baActiveLang;
-  }
+  if (next === baActiveLang && baActiveCatalog) return baActiveLang;
   try {
     await loadLocale(next);
   } catch (_) {
@@ -117,9 +107,8 @@ function getSupportedLangs() {
 }
 
 (function initI18n() {
-  // Synchronously preloaded catalog (head script): t() works from the first eval.
   const pre = window.__BA_I18N__;
-  if (pre && pre.lang && pre.lang !== BA_I18N_BASE_LANG && pre.catalog) {
+  if (pre?.lang && pre.catalog) {
     baActiveLang = pre.lang;
     baActiveCatalog = pre.catalog;
     const run = () => {
@@ -139,30 +128,34 @@ function getSupportedLangs() {
     return;
   }
   const stored = baReadStoredLang();
-  if (stored !== BA_I18N_BASE_LANG) {
-    baActiveLang = stored;
-    baI18nReady = loadLocale(stored)
-      .then(() => {
+  baActiveLang = stored;
+  baI18nReady = loadLocale(stored)
+    .then(() => {
+      try {
+        document.documentElement.lang = stored;
+      } catch (_) {}
+      const run = () => {
+        applyDomTranslations();
         try {
-          document.documentElement.lang = stored;
+          window.dispatchEvent(new CustomEvent("ba:langchange", { detail: { lang: stored } }));
         } catch (_) {}
-        const run = () => {
-          applyDomTranslations();
-          try {
-            window.dispatchEvent(new CustomEvent("ba:langchange", { detail: { lang: stored } }));
-          } catch (_) {}
-        };
-        if (document.readyState === "loading") {
-          document.addEventListener("DOMContentLoaded", run, { once: true });
-        } else {
-          run();
-        }
-      })
-      .catch(() => {
-        baActiveLang = BA_I18N_BASE_LANG;
-        baActiveCatalog = null;
-      });
-  }
+      };
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", run, { once: true });
+      } else {
+        run();
+      }
+    })
+    .catch(() => {
+      baActiveLang = BA_I18N_BASE_LANG;
+      baActiveCatalog = null;
+      const run = () => applyDomTranslations();
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", run, { once: true });
+      } else {
+        run();
+      }
+    });
 })();
 
 window.BA_I18N = { t, tn, getLang, setLang, loadLocale, applyDomTranslations, getSupportedLangs, ready: () => baI18nReady };
