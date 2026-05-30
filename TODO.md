@@ -27,7 +27,7 @@ Lista de temas detectados para revisar antes de una publicación estable.
 
 ## i18n
 
-- [X] Revisar textos visibles de la UI y documentación para preparar internacionalización: separar cadenas traducibles, decidir idioma base y evitar textos hardcodeados en JavaScript cuando sea posible. Tener especial cuidado con el uso de memoria: no cargar catálogos de idiomas grandes ni mantener duplicadas cadenas que no sean necesarias en runtime.
+- [X] Revisar textos visibles de la UI y documentación para preparar internacionalización: separar cadenas traducibles, decidir idioma base (es) y evitar textos hardcodeados en JavaScript. Catálogos JSON (`es.json`,`en.json`, ~780 claves), runtime `t()`/`tn()`, selector ES/EN y traducción al **inglés** de la UI y prompts LLM; checks de paridad en `npm run check`. Tener especial cuidado con el uso de memoria: no cargar catálogos de idiomas grandes ni mantener duplicadas cadenas que no sean necesarias en runtime.
 
 ## Build, CSS y tamaño
 
@@ -41,4 +41,4 @@ Lista de temas detectados para revisar antes de una publicación estable.
 
 ## Calidad y tests
 
-- [ ] Definir e introducir tests automatizados más allá de`npm run check`: hoy solo hay validaciones estáticas (schemas, i18n, manifest, syntax). Decidir alcance (unitarios de módulos browser p. ej. i18n, tool-registry, context-budget; integración de scripts de build/check; smoke o e2e en navegador/VM), elegir runner (p. ej. Node test runner, Vitest, Playwright) e integrarlos en CI antes de una release estable.
+- [ ] Definir e introducir tests automatizados más allá de `npm run check`: hoy solo hay validaciones estáticas (schemas, i18n, manifest, syntax). Decidir alcance (unitarios de módulos browser p. ej. i18n, tool-registry, context-budget; integración de scripts de build/check; smoke o e2e en navegador/VM), elegir runner (p. ej. Node test runner, Vitest, Playwright) e integrarlos en CI antes de una release estable.
