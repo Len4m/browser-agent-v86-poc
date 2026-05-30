@@ -29,6 +29,8 @@ Lista de temas detectados para revisar antes de una publicación estable.
 
 - [X] Revisar textos visibles de la UI y documentación para preparar internacionalización: separar cadenas traducibles, decidir idioma base y evitar textos hardcodeados en JavaScript cuando sea posible. Tener especial cuidado con el uso de memoria: no cargar catálogos de idiomas grandes ni mantener duplicadas cadenas que no sean necesarias en runtime.
 - [X] Traducir la UI y los prompts LLM al inglés: catálogo `en.json` en paridad con `es.json` (~780 claves), selector ES/EN y comprobación de claves en `npm run check`.
+- [ ] Revisar la calidad de las traducciones al inglés: `npm run check` garantiza paridad de claves, no que el texto EN sea correcto o natural. Repasar manualmente las cadenas más visibles (errores, panel LLM, chat, checks).
+- [ ] Alinear la documentación con i18n: actualizar `README.md` y `docs/USAGE.md` (y lo que aplique) para reflejar el selector de idioma ES/EN y no dejar solo contenido en español donde deba servir también a usuarios en inglés.
 
 ## Build, CSS y tamaño
 
@@ -42,4 +44,5 @@ Lista de temas detectados para revisar antes de una publicación estable.
 
 ## Calidad y tests
 
+- [ ] CI mínimo en GitHub: workflow que ejecute `npm run check` (y, si encaja, `npm run build`) en push y pull requests a `main`.
 - [ ] Definir e introducir tests automatizados más allá de `npm run check`: hoy solo hay validaciones estáticas (schemas, i18n, manifest, syntax). Decidir alcance (unitarios de módulos browser p. ej. i18n, tool-registry, context-budget; integración de scripts de build/check; smoke o e2e en navegador/VM), elegir runner (p. ej. Node test runner, Vitest, Playwright) e integrarlos en CI antes de una release estable.
