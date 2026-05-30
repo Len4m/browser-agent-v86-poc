@@ -177,12 +177,12 @@ function showBaModalPanel({
 
 async function confirmVmShutdown() {
   const result = await showBaModal({
-    title: t("modal.shutdown.title", "Apagar VM"),
+    title: t("common.shutdownVm", "Apagar VM"),
     message: t("modal.shutdown.message", "Apagar la VM perderá todos los cambios que no estén guardados en un snapshot."),
     detail: t("modal.shutdown.detail", "Si has instalado paquetes o creado ficheros en RAM, guarda un snapshot antes de apagar."),
     buttons: [
       { id: "cancel", label: t("common.cancel", "Cancelar"), variant: "secondary", cancel: true },
-      { id: "shutdown", label: t("modal.shutdown.title", "Apagar VM"), variant: "danger" },
+      { id: "shutdown", label: t("common.shutdownVm", "Apagar VM"), variant: "danger" },
     ],
   });
   return result === "shutdown";

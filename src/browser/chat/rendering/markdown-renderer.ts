@@ -114,8 +114,8 @@
         const ok = await copyTextToClipboard(codeTextFromPre(pre));
         if (!ok) return;
         btn.classList.add("is-copied");
-        btn.title = t("md.copied", "Copiado");
-        btn.setAttribute("aria-label", t("md.copied", "Copiado"));
+        btn.title = t("common.copied", "Copiado");
+        btn.setAttribute("aria-label", t("common.copied", "Copiado"));
         window.setTimeout(() => {
           btn.classList.remove("is-copied");
           btn.title = t("md.copyCode", "Copiar código");

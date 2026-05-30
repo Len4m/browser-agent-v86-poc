@@ -173,6 +173,36 @@
     };
   }
 
+  function toolPrompt(action, args, extra = "") {
+    return t("tools.prompt.generic", "{action}. Arguments: {args}.{extra}", {
+      action,
+      args,
+      extra: extra ? ` ${extra}` : "",
+    });
+  }
+
+  function summaryHeadTarget(phraseKey, phraseEs, target) {
+    return t("common.summaryHeadTarget", "{head}{target}", {
+      head: t(phraseKey, phraseEs),
+      target,
+    });
+  }
+
+  function summaryCouldNot(verbKey, verbEs, target) {
+    return t("common.summaryCouldNot", "Could not {action} {target}", {
+      action: t(verbKey, verbEs),
+      target,
+    });
+  }
+
+  function summaryToolOn(tool, target) {
+    return t("common.summaryToolOn", "{tool} on {target}", { tool, target });
+  }
+
+  function summaryToolFailedOn(tool, target) {
+    return t("common.summaryToolFailedOn", "{tool} failed on {target}", { tool, target });
+  }
+
   function baseRuntimeContext() {
     const activeProfile = state.activeRuntime?.profile?.id
       || getSelectedProfile?.()?.id
@@ -220,33 +250,33 @@
       name: "vm.fs.list", get label() { return t("tools.name.vm.fs.list", "Listar archivos en la VM"); }, riskLevel: 1, category: "vm.fs",
       requiresVm: true, requiresConsole: true, timeoutMs: 12000, maxOutputBytes: 32768,
       get description() { return t("tools.desc.vm.fs.list", "Lista un directorio dentro de la VM Alpine usando serial1/ttyS1 en background."); },
-      get promptDescription() { return t("tools.prompt.vm.fs.list", "Listar un directorio de la VM. Argumentos: {\"path\":\"/ruta\",\"maxEntries\":120}."); },
+      get promptDescription() { return toolPrompt(this.label, '{"path":"/ruta","maxEntries":120}'); },
       normalizeArgs: normalizeListArgs,
       buildCommand(args) {
         const safePath = shellQuote(args.path); const limit = clampInt(args.maxEntries, 1, 300, 120);
         return [buildTempFileCommand("ba-fs-list"), `p=${safePath}`, "rc=0", `if [ ! -e "$p" ]; then printf 'ERROR: not found: %s\\n' "$p" > "$tmp"; rc=2; elif [ ! -d "$p" ]; then printf 'ERROR: not a directory: %s\\n' "$p" > "$tmp"; ls -ld "$p" >> "$tmp" 2>&1; rc=2; else ls -la "$p" 2>&1 | sed -n '1,${limit}p' > "$tmp"; rc=$?; fi`, `cat "$tmp"`, `rm -f "$tmp"`, "exit $rc"].join("; ");
       },
-      formatResult(result, args) { return standardFormat(this, result, args, () => t("tools.summary.listOk", "Listado de {path}", { path: args.path }), () => t("tools.summary.listFail", "No se pudo listar {path}", { path: args.path })); },
+      formatResult(result, args) { return standardFormat(this, result, args, () => summaryHeadTarget("common.phrase.listingOf", "Listado de ", args.path), () => summaryCouldNot("common.verb.list", "listar", args.path)); },
     },
 
     "vm.fs.read": {
       name: "vm.fs.read", get label() { return t("tools.name.vm.fs.read", "Leer archivo en la VM"); }, riskLevel: 1, category: "vm.fs",
       requiresVm: true, requiresConsole: true, timeoutMs: 12000, maxOutputBytes: 32768,
       get description() { return t("tools.desc.vm.fs.read", "Lee un archivo de texto dentro de la VM con límite de bytes para no saturar la consola serial."); },
-      get promptDescription() { return t("tools.prompt.vm.fs.read", "Leer un archivo de la VM. Argumentos: {\"path\":\"/ruta/archivo\",\"maxBytes\":8192}."); },
+      get promptDescription() { return toolPrompt(this.label, '{"path":"/ruta/archivo","maxBytes":8192}'); },
       normalizeArgs: normalizeReadArgs,
       buildCommand(args) {
         const safePath = shellQuote(args.path); const bytes = clampInt(args.maxBytes, 256, 32768, 8192);
         return [buildTempFileCommand("ba-fs-read"), `p=${safePath}`, "rc=0", `if [ ! -e "$p" ]; then printf 'ERROR: not found: %s\\n' "$p" > "$tmp"; rc=2; elif [ ! -f "$p" ]; then printf 'ERROR: not a regular file: %s\\n' "$p" > "$tmp"; ls -ld "$p" >> "$tmp" 2>&1; rc=2; else head -c ${bytes} "$p" > "$tmp" 2>&1; rc=$?; printf '\\012' >> "$tmp"; fi`, `cat "$tmp"`, `rm -f "$tmp"`, "exit $rc"].join("; ");
       },
-      formatResult(result, args) { return standardFormat(this, result, args, () => t("tools.summary.readOk", "Lectura de {path}", { path: args.path }), () => t("tools.summary.readFail", "No se pudo leer {path}", { path: args.path })); },
+      formatResult(result, args) { return standardFormat(this, result, args, () => summaryHeadTarget("common.phrase.readOf", "Lectura de ", args.path), () => summaryCouldNot("common.verb.read", "leer", args.path)); },
     },
 
     "vm.cmd.which": {
       name: "vm.cmd.which", get label() { return t("tools.name.vm.cmd.which", "Comprobar comandos instalados"); }, riskLevel: 1, category: "vm.system",
       requiresVm: true, requiresConsole: true, timeoutMs: 8000, maxOutputBytes: 12000,
       get description() { return t("tools.desc.vm.cmd.which", "Comprueba si una o varias utilidades existen en la VM usando command -v."); },
-      get promptDescription() { return t("tools.prompt.vm.cmd.which", "Comprobar comandos instalados. Argumentos: {\"commands\":[\"curl\",\"nmap\"]}."); },
+      get promptDescription() { return toolPrompt(this.label, '{"commands":["curl","nmap"]}'); },
       normalizeArgs(args = {}) {
         const commands = Array.isArray(args.commands) ? args.commands : String(args.command || args.commands || "").split(/[\s,]+/);
         const clean = commands.map((c) => String(c || "").trim()).filter(Boolean).slice(0, 20);
@@ -258,47 +288,47 @@
         const checks = args.commands.map((cmd) => `if command -v ${shellQuote(cmd)} >/dev/null 2>&1; then printf '%s: ' ${shellQuote(cmd)}; command -v ${shellQuote(cmd)}; else printf '%s: missing\\n' ${shellQuote(cmd)}; fi`).join("; ");
         return captureCommand("ba-cmd-which", [], checks);
       },
-      formatResult(result, args) { return standardFormat(this, result, args, () => t("tools.summary.whichOk", "Comprobación de {commands}", { commands: args.commands.join(", ") }), () => t("tools.summary.whichFail", "No se pudo comprobar comandos")); },
+      formatResult(result, args) { return standardFormat(this, result, args, () => summaryHeadTarget("common.phrase.checkOf", "Comprobación de ", args.commands.join(", ")), () => summaryCouldNot("common.verb.check", "comprobar", t("common.noun.commands", "comandos"))); },
     },
 
     "vm.sys.info": {
       name: "vm.sys.info", get label() { return t("tools.name.vm.sys.info", "Estado básico del sistema VM"); }, riskLevel: 1, category: "vm.system",
       requiresVm: true, requiresConsole: true, timeoutMs: 10000, maxOutputBytes: 24000,
       get description() { return t("tools.desc.vm.sys.info", "Muestra kernel, Alpine, memoria, disco y uptime de la VM."); },
-      get promptDescription() { return t("tools.prompt.vm.sys.info", "Estado básico de la VM. Argumentos: {}."); },
+      get promptDescription() { return toolPrompt(this.label, '{}'); },
       normalizeArgs() { return {}; },
       buildCommand() { return captureCommand("ba-sys-info", [], "uname -a; printf '\\n--- os-release ---\\n'; cat /etc/os-release 2>/dev/null || true; printf '\\n--- memory ---\\n'; free -m 2>/dev/null || true; printf '\\n--- disk ---\\n'; df -h 2>/dev/null || true; printf '\\n--- uptime ---\\n'; uptime 2>/dev/null || true"); },
-      formatResult(result) { return standardFormat(this, result, {}, () => t("tools.summary.sysInfoOk", "Estado básico de la VM"), () => t("tools.summary.sysInfoFail", "No se pudo obtener estado básico")); },
+      formatResult(result) { return standardFormat(this, result, {}, () => t("tools.summary.sysInfoOk", "Estado básico de la VM"), () => summaryCouldNot("common.verb.get", "obtener", t("common.noun.basicStatus", "estado básico"))); },
     },
 
     "vm.console.status": {
-      name: "vm.console.status", get label() { return t("tools.name.vm.console.status", "Estado de consolas xterm"); }, riskLevel: 1, category: "vm.system",
+      name: "vm.console.status", get label() { return t("common.xtermConsoleStatus", "Estado de consolas xterm"); }, riskLevel: 1, category: "vm.system",
       requiresVm: true, requiresConsole: true, timeoutMs: 8000, maxOutputBytes: 16000,
       get description() { return t("tools.desc.vm.console.status", "Comprueba el daemon xterm/PTY y los dispositivos seriales dentro de la VM."); },
-      get promptDescription() { return t("tools.prompt.vm.console.status", "Estado de consolas xterm. Argumentos: {}."); },
+      get promptDescription() { return toolPrompt(this.label, '{}'); },
       normalizeArgs() { return {}; },
       buildCommand() { return captureCommand("ba-console-status", [], "printf '%s\\n' '--- serial devices ---'; ls -l /dev/ttyS0 /dev/ttyS1 /dev/ttyS2 2>&1 || true; printf '%s\\n' '--- xterm daemon ---'; ps | grep '[b]a-serial2-console-runner' || true; printf '%s\\n' '--- python ---'; python3 --version 2>&1 || true; printf '%s\\n' '--- runner log ---'; tail -40 /tmp/ba-serial2-console-runner.log 2>/dev/null || true"); },
-      formatResult(result) { return standardFormat(this, result, {}, () => t("tools.summary.consoleStatusOk", "Estado de consolas xterm"), () => t("tools.summary.consoleStatusFail", "No se pudo obtener estado de consolas")); },
+      formatResult(result) { return standardFormat(this, result, {}, () => t("common.xtermConsoleStatus", "Estado de consolas xterm"), () => summaryCouldNot("common.verb.get", "obtener", t("common.noun.consoleStatus", "estado de consolas"))); },
     },
 
     "vm.pkg.info": {
       name: "vm.pkg.info", get label() { return t("tools.name.vm.pkg.info", "Paquetes instalados en Alpine"); }, riskLevel: 1, category: "vm.system",
       requiresVm: true, requiresConsole: true, timeoutMs: 10000, maxOutputBytes: 24000,
       get description() { return t("tools.desc.vm.pkg.info", "Consulta paquetes instalados mediante apk info, con filtro opcional."); },
-      get promptDescription() { return t("tools.prompt.vm.pkg.info", "Consultar paquetes instalados. Argumentos: {\"filter\":\"curl\"}."); },
+      get promptDescription() { return toolPrompt(this.label, '{"filter":"curl"}'); },
       normalizeArgs(args = {}) { return { filter: String(args.filter || "").trim().slice(0, 80) }; },
       buildCommand(args) {
         const f = shellQuote(args.filter || "");
         return captureCommand("ba-pkg-info", ["apk"], `if [ -n ${f} ]; then apk info | grep -i -- ${f} | sed -n '1,120p'; else apk info | sed -n '1,160p'; fi`);
       },
-      formatResult(result) { return standardFormat(this, result, {}, () => t("tools.summary.pkgInfoOk", "Paquetes instalados"), () => t("tools.summary.pkgInfoFail", "No se pudo consultar paquetes")); },
+      formatResult(result) { return standardFormat(this, result, {}, () => t("tools.summary.pkgInfoOk", "Paquetes instalados"), () => summaryCouldNot("common.verb.query", "consultar", t("common.noun.packages", "paquetes"))); },
     },
 
     "web.curl.head": {
       name: "web.curl.head", get label() { return t("tools.name.web.curl.head", "HTTP HEAD con curl"); }, riskLevel: 2, category: "web.http",
       requiresVm: true, requiresConsole: true, timeoutMs: 15000, maxOutputBytes: 24000,
       get description() { return t("tools.desc.web.curl.head", "Obtiene cabeceras HTTP/HTTPS con curl y timeouts bajos."); },
-      get promptDescription() { return t("tools.prompt.web.curl.head", "Probar cabeceras HTTP. Argumentos: {\"url\":\"https://example.com\",\"followRedirects\":true,\"insecure\":true,\"timeoutSec\":8}."); },
+      get promptDescription() { return toolPrompt(this.label, '{"url":"https://example.com","followRedirects":true,"insecure":true,"timeoutSec":8}'); },
       normalizeArgs(args = {}) { return { url: normalizeUrl(args.url || args.target), followRedirects: normalizeBool(args.followRedirects, true), insecure: normalizeBool(args.insecure, true), timeoutSec: clampInt(args.timeoutSec, 3, 20, 8) }; },
       buildCommand(args) {
         const flags = ["-I", "-sS", "--connect-timeout", "4", "--max-time", String(args.timeoutSec)];
@@ -306,14 +336,14 @@
         flags.push(args.url);
         return captureCommand("ba-curl-head", ["curl"], `curl ${flags.map(shellQuote).join(" ")}`);
       },
-      formatResult(result, args) { return standardFormat(this, result, args, () => t("tools.summary.curlHeadOk", "Cabeceras de {url}", { url: args.url }), () => t("tools.summary.curlHeadFail", "No se pudo consultar {url}", { url: args.url })); },
+      formatResult(result, args) { return standardFormat(this, result, args, () => summaryHeadTarget("common.phrase.headersOf", "Cabeceras de ", args.url), () => summaryCouldNot("common.verb.query", "consultar", args.url)); },
     },
 
     "web.curl.fetch_text": {
       name: "web.curl.fetch_text", get label() { return t("tools.name.web.curl.fetch_text", "Descargar texto con curl"); }, riskLevel: 2, category: "web.http",
       requiresVm: true, requiresConsole: true, timeoutMs: 18000, maxOutputBytes: 32768,
       get description() { return t("tools.desc.web.curl.fetch_text", "Descarga una URL con curl con límite estricto de bytes."); },
-      get promptDescription() { return t("tools.prompt.web.curl.fetch_text", "Descargar texto HTTP limitado. Argumentos: {\"url\":\"https://example.com\",\"maxBytes\":8192}."); },
+      get promptDescription() { return toolPrompt(this.label, '{"url":"https://example.com","maxBytes":8192}'); },
       normalizeArgs(args = {}) { return { url: normalizeUrl(args.url || args.target), followRedirects: normalizeBool(args.followRedirects, true), insecure: normalizeBool(args.insecure, true), timeoutSec: clampInt(args.timeoutSec, 3, 25, 10), maxBytes: clampInt(args.maxBytes, 512, 32768, 8192) }; },
       buildCommand(args) {
         const flags = ["-sS", "--connect-timeout", "4", "--max-time", String(args.timeoutSec)];
@@ -321,58 +351,58 @@
         flags.push(args.url);
         return captureCommand("ba-curl-fetch", ["curl", "head"], `curl ${flags.map(shellQuote).join(" ")} | head -c ${args.maxBytes}`);
       },
-      formatResult(result, args) { return standardFormat(this, result, args, () => t("tools.summary.curlFetchOk", "Contenido de {url}", { url: args.url }), () => t("tools.summary.curlFetchFail", "No se pudo descargar {url}", { url: args.url })); },
+      formatResult(result, args) { return standardFormat(this, result, args, () => summaryHeadTarget("common.phrase.contentsOf", "Contenido de ", args.url), () => summaryCouldNot("common.verb.download", "descargar", args.url)); },
     },
 
     "net.dns.lookup": {
       name: "net.dns.lookup", get label() { return t("tools.name.net.dns.lookup", "Consulta DNS"); }, riskLevel: 2, category: "net.dns",
       requiresVm: true, requiresConsole: true, timeoutMs: 10000, maxOutputBytes: 16000,
       get description() { return t("tools.desc.net.dns.lookup", "Consulta DNS con dig usando timeouts bajos."); },
-      get promptDescription() { return t("tools.prompt.net.dns.lookup", "Resolver DNS. Argumentos: {\"host\":\"example.com\",\"type\":\"A\"}."); },
+      get promptDescription() { return toolPrompt(this.label, '{"host":"example.com","type":"A"}'); },
       normalizeArgs(args = {}) { return { host: normalizeHost(args.host || args.domain || args.target), type: normalizeDnsType(args.type) }; },
       buildCommand(args) { return captureCommand("ba-dns", ["dig"], `dig +time=3 +tries=1 ${shellQuote(args.type)} ${shellQuote(args.host)}; printf '\\n--- short ---\\n'; dig +short +time=3 +tries=1 ${shellQuote(args.type)} ${shellQuote(args.host)}`); },
-      formatResult(result, args) { return standardFormat(this, result, args, () => t("tools.summary.dnsOk", "DNS {type} de {host}", { type: args.type, host: args.host }), () => t("tools.summary.dnsFail", "No se pudo resolver {host}", { host: args.host })); },
+      formatResult(result, args) { return standardFormat(this, result, args, () => t("common.summaryDns", "DNS {type} de {host}", { type: args.type, host: args.host }), () => summaryCouldNot("common.verb.resolve", "resolver", args.host)); },
     },
 
     "net.ip.status": {
-      name: "net.ip.status", get label() { return t("tools.name.net.ip.status", "Estado de red VM"); }, riskLevel: 1, category: "net.local",
+      name: "net.ip.status", get label() { return t("common.vmNetworkStatus", "Estado de red VM"); }, riskLevel: 1, category: "net.local",
       requiresVm: true, requiresConsole: true, timeoutMs: 10000, maxOutputBytes: 24000,
       get description() { return t("tools.desc.net.ip.status", "Muestra direcciones, rutas y sockets de la VM con ip/ss."); },
-      get promptDescription() { return t("tools.prompt.net.ip.status", "Estado local de red. Argumentos: {}."); },
+      get promptDescription() { return toolPrompt(this.label, '{}'); },
       normalizeArgs() { return {}; },
       buildCommand() { return captureCommand("ba-ip-status", ["ip"], "ip addr show; printf '\\n--- route ---\\n'; ip route show; printf '\\n--- sockets ---\\n'; ss -tuna 2>/dev/null | sed -n '1,80p' || true"); },
-      formatResult(result) { return standardFormat(this, result, {}, () => t("tools.summary.ipStatusOk", "Estado de red VM"), () => t("tools.summary.ipStatusFail", "No se pudo obtener estado de red")); },
+      formatResult(result) { return standardFormat(this, result, {}, () => t("common.vmNetworkStatus", "Estado de red VM"), () => summaryCouldNot("common.verb.get", "obtener", t("common.noun.networkStatus", "estado de red"))); },
     },
 
     "net.nmap.quick": {
       name: "net.nmap.quick", get label() { return t("tools.name.net.nmap.quick", "Nmap rápido y prudente"); }, riskLevel: 3, category: "net.scan",
       requiresVm: true, requiresConsole: true, timeoutMs: 70000, maxOutputBytes: 32768,
       get description() { return t("tools.desc.net.nmap.quick", "Escaneo nmap acotado para objetivos autorizados. Baja concurrencia y host-timeout."); },
-      get promptDescription() { return t("tools.prompt.net.nmap.quick", "Escaneo nmap ligero. Argumentos: {\"target\":\"192.168.1.10\",\"topPorts\":30}."); },
+      get promptDescription() { return toolPrompt(this.label, '{"target":"192.168.1.10","topPorts":30}'); },
       normalizeArgs(args = {}) { return { target: normalizeHost(args.target || args.host), topPorts: clampInt(args.topPorts || args.ports, 10, 100, 30) }; },
       buildCommand(args) { return captureCommand("ba-nmap-quick", ["nmap"], `nmap -Pn -sT -T2 --max-retries 1 --host-timeout 55s --top-ports ${args.topPorts} ${shellQuote(args.target)}`); },
-      formatResult(result, args) { return standardFormat(this, result, args, () => t("tools.summary.nmapOk", "Nmap rápido sobre {target}", { target: args.target }), () => t("tools.summary.nmapFail", "Nmap falló sobre {target}", { target: args.target })); },
+      formatResult(result, args) { return standardFormat(this, result, args, () => summaryToolOn(t("common.toolShort.nmap", "Nmap rápido"), args.target), () => summaryToolFailedOn("Nmap", args.target)); },
     },
 
     "web.ffuf.dir_light": {
       name: "web.ffuf.dir_light", get label() { return t("tools.name.web.ffuf.dir_light", "FFUF directorios ligero"); }, riskLevel: 3, category: "web.fuzz",
       requiresVm: true, requiresConsole: true, timeoutMs: 70000, maxOutputBytes: 32768,
       get description() { return t("tools.desc.web.ffuf.dir_light", "Fuzzing web ligero con ffuf. Requiere autorización del objetivo."); },
-      get promptDescription() { return t("tools.prompt.web.ffuf.dir_light", "Fuzzing ligero de rutas. Argumentos: {\"url\":\"http://host/FUZZ\",\"wordlist\":\"quickhits\",\"threads\":3,\"rate\":20,\"maxTimeSec\":45}."); },
+      get promptDescription() { return toolPrompt(this.label, '{"url":"http://host/FUZZ","wordlist":"quickhits","threads":3,"rate":20,"maxTimeSec":45}'); },
       normalizeArgs(args = {}) {
         let url = normalizeUrl(args.url || args.target);
         if (!url.includes("FUZZ")) url = url.replace(/\/?$/, "/FUZZ");
         return { url, wordlist: normalizeWordlist(args.wordlist || "quickhits"), threads: clampInt(args.threads, 1, 8, 3), rate: clampInt(args.rate, 1, 50, 20), maxTimeSec: clampInt(args.maxTimeSec, 10, 60, 35) };
       },
       buildCommand(args) { return captureCommand("ba-ffuf-light", ["ffuf"], `ffuf -u ${shellQuote(args.url)} -w ${shellQuote(args.wordlist)} -t ${args.threads} -rate ${args.rate} -maxtime ${args.maxTimeSec} -ac -noninteractive 2>&1 | sed -n '1,160p'`); },
-      formatResult(result, args) { return standardFormat(this, result, args, () => t("tools.summary.ffufOk", "FFUF ligero sobre {url}", { url: args.url }), () => t("tools.summary.ffufFail", "FFUF falló sobre {url}", { url: args.url })); },
+      formatResult(result, args) { return standardFormat(this, result, args, () => summaryToolOn(t("common.toolShort.ffuf", "FFUF ligero"), args.url), () => summaryToolFailedOn("FFUF", args.url)); },
     },
 
     "vm.python.exec": {
       name: "vm.python.exec", get label() { return t("tools.name.vm.python.exec", "Ejecutar Python acotado"); }, riskLevel: 3, category: "vm.exec",
       requiresVm: true, requiresConsole: true, timeoutMs: 25000, maxOutputBytes: 32768,
       get description() { return t("tools.desc.vm.python.exec", "Ejecuta un fragmento Python corto dentro de la VM. Confirmación recomendada."); },
-      get promptDescription() { return t("tools.prompt.vm.python.exec", "Ejecutar Python corto. Argumentos: {\"code\":\"print('hi')\"}."); },
+      get promptDescription() { return toolPrompt(this.label, '{"code":"print(\'hi\')"}'); },
       normalizeArgs(args = {}) {
         const code = String(args.code || "").trim();
         if (!code) throw new Error(t("tools.error.pythonEmpty", "El código Python no puede estar vacío."));
@@ -380,49 +410,49 @@
         return { code };
       },
       buildCommand(args) { return captureCommand("ba-python", ["python3"], `python3 -c ${shellQuote(args.code)}`); },
-      formatResult(result) { return standardFormat(this, result, {}, () => t("tools.summary.pythonOk", "Python ejecutado"), () => t("tools.summary.pythonFail", "Python falló")); },
+      formatResult(result) { return standardFormat(this, result, {}, () => t("common.summaryExecuted", "{label} ejecutado", { label: "Python" }), () => t("common.pythonFailed", "Python falló")); },
     },
 
     "web.httpx.probe": {
       name: "web.httpx.probe", get label() { return t("tools.name.web.httpx.probe", "HTTPX fingerprint prudente"); }, riskLevel: 3, category: "web.http",
       requiresVm: true, requiresConsole: true, timeoutMs: 45000, maxOutputBytes: 24000,
       get description() { return t("tools.desc.web.httpx.probe", "Fingerprint HTTP con ProjectDiscovery httpx usando threads/rate bajos."); },
-      get promptDescription() { return t("tools.prompt.web.httpx.probe", "Probar HTTPX. Argumentos: {\"url\":\"https://example.com\",\"rate\":10,\"threads\":2}."); },
+      get promptDescription() { return toolPrompt(this.label, '{"url":"https://example.com","rate":10,"threads":2}'); },
       normalizeArgs(args = {}) { return { url: normalizeUrl(args.url || args.target), rate: clampInt(args.rate, 1, 30, 10), threads: clampInt(args.threads, 1, 5, 2), timeoutSec: clampInt(args.timeoutSec, 3, 12, 6) }; },
       buildCommand(args) { return captureCommand("ba-httpx", ["httpx"], `printf '%s\\n' ${shellQuote(args.url)} | httpx -silent -status-code -title -tech-detect -follow-redirects -threads ${args.threads} -rate-limit ${args.rate} -timeout ${args.timeoutSec} -retries 0 2>&1 | sed -n '1,120p'`); },
-      formatResult(result, args) { return standardFormat(this, result, args, () => t("tools.summary.httpxOk", "HTTPX sobre {url}", { url: args.url }), () => t("tools.summary.httpxFail", "HTTPX falló sobre {url}", { url: args.url })); },
+      formatResult(result, args) { return standardFormat(this, result, args, () => summaryToolOn("HTTPX", args.url), () => summaryToolFailedOn("HTTPX", args.url)); },
     },
 
     "web.nikto.quick": {
       name: "web.nikto.quick", get label() { return t("tools.name.web.nikto.quick", "Nikto rápido"); }, riskLevel: 3, category: "web.scan",
       requiresVm: true, requiresConsole: true, timeoutMs: 80000, maxOutputBytes: 32768,
       get description() { return t("tools.desc.web.nikto.quick", "Nikto acotado con maxtime para comprobaciones web autorizadas."); },
-      get promptDescription() { return t("tools.prompt.web.nikto.quick", "Nikto rápido. Argumentos: {\"url\":\"https://example.com\",\"maxTimeSec\":45}."); },
+      get promptDescription() { return toolPrompt(this.label, '{"url":"https://example.com","maxTimeSec":45}'); },
       normalizeArgs(args = {}) { return { url: normalizeUrl(args.url || args.target), maxTimeSec: clampInt(args.maxTimeSec, 15, 70, 40) }; },
       buildCommand(args) { return captureCommand("ba-nikto", ["nikto"], `nikto -h ${shellQuote(args.url)} -nointeractive -maxtime ${args.maxTimeSec}s 2>&1 | sed -n '1,180p'`); },
-      formatResult(result, args) { return standardFormat(this, result, args, () => t("tools.summary.niktoOk", "Nikto sobre {url}", { url: args.url }), () => t("tools.summary.niktoFail", "Nikto falló sobre {url}", { url: args.url })); },
+      formatResult(result, args) { return standardFormat(this, result, args, () => summaryToolOn("Nikto", args.url), () => summaryToolFailedOn("Nikto", args.url)); },
     },
 
     "tls.openssl.cert": {
       name: "tls.openssl.cert", get label() { return t("tools.name.tls.openssl.cert", "Certificado TLS con OpenSSL"); }, riskLevel: 2, category: "tls",
       requiresVm: true, requiresConsole: true, timeoutMs: 18000, maxOutputBytes: 16000,
       get description() { return t("tools.desc.tls.openssl.cert", "Obtiene datos básicos del certificado TLS de un host."); },
-      get promptDescription() { return t("tools.prompt.tls.openssl.cert", "Ver certificado TLS. Argumentos: {\"host\":\"example.com\",\"port\":443}."); },
+      get promptDescription() { return toolPrompt(this.label, '{"host":"example.com","port":443}'); },
       normalizeArgs(args = {}) { return { host: normalizeHost(args.host || args.target), port: clampInt(args.port, 1, 65535, 443) }; },
       buildCommand(args) { return captureCommand("ba-openssl-cert", ["openssl"], `echo | openssl s_client -servername ${shellQuote(args.host)} -connect ${shellQuote(`${args.host}:${args.port}`)} 2>/dev/null | openssl x509 -noout -subject -issuer -dates -fingerprint -sha256`); },
-      formatResult(result, args) { return standardFormat(this, result, args, () => t("tools.summary.tlsOk", "Certificado TLS de {host}:{port}", { host: args.host, port: args.port }), () => t("tools.summary.tlsFail", "No se pudo obtener certificado TLS de {host}:{port}", { host: args.host, port: args.port })); },
+      formatResult(result, args) { return standardFormat(this, result, args, () => t("common.summaryTlsOk", "Certificado TLS de {host}:{port}", { host: args.host, port: args.port }), () => t("common.summaryTlsFail", "No se pudo obtener certificado TLS de {host}:{port}", { host: args.host, port: args.port })); },
     },
 
     "vm.sh.exec": {
       name: "vm.sh.exec", get label() { return t("tools.name.vm.sh.exec", "Ejecutar comando sh en la VM"); }, riskLevel: 3, category: "vm.exec",
       requiresVm: true, requiresConsole: true, timeoutMs: 30000, maxOutputBytes: 32768,
       get description() { return t("tools.desc.vm.sh.exec", "Ejecuta un comando /bin/sh -lc dentro de la VM con timeout y salida limitada. Confirmación recomendada siempre."); },
-      get promptDescription() { return t("tools.prompt.vm.sh.exec", "Ejecutar comando sh arbitrario. Argumentos: {\"command\":\"uname -a\",\"timeoutMs\":10000,\"maxOutputBytes\":8192}. Usar solo si no existe una tool específica."); },
+      get promptDescription() { return toolPrompt(this.label, '{"command":"uname -a","timeoutMs":10000,"maxOutputBytes":8192}', t("tools.prompt.onlyIfNoSpecific", "Usar solo si no existe una tool específica.")); },
       normalizeArgs(args = {}) { return { command: normalizeShellCommand(args.command || args.cmd), timeoutMs: clampInt(args.timeoutMs, 1000, 30000, 10000), maxOutputBytes: clampInt(args.maxOutputBytes, 512, 32768, 8192) }; },
       buildCommand(args) { return captureCommand("ba-sh-exec", ["sh"], `sh -lc ${shellQuote(args.command)}`); },
       formatResult(result, args) {
         const oldMax = this.maxOutputBytes; this.maxOutputBytes = args.maxOutputBytes;
-        const formatted = standardFormat(this, result, args, () => t("tools.summary.shExecOk", "Comando sh ejecutado"), () => t("tools.summary.shExecFail", "Comando sh fallido"));
+        const formatted = standardFormat(this, result, args, () => t("common.summaryExecuted", "{label} ejecutado", { label: t("common.noun.shCommand", "Comando sh") }), () => t("common.shCommandFailed", "Comando sh fallido"));
         this.maxOutputBytes = oldMax;
         return formatted;
       },
@@ -474,7 +504,7 @@
       t("prompt.runtime.compact", "Runtime: VM={vm} serial1={serial1} perfil={profile} red={net}", {
         vm, serial1,
         profile: ctx.activeProfile || "manual",
-        net: ctx.networkConfigured ? t("prompt.yes", "sí") : t("prompt.no", "no"),
+        net: ctx.networkConfigured ? t("common.yes", "sí") : t("common.no", "no"),
       }),
       t("prompt.runtime.activeTools", "Herramientas activas ({count}): {tools}", { count: enabled.length, tools: toolsLine }),
     ].join("\n");
@@ -482,8 +512,8 @@
 
   function buildPromptRuntimeContext() {
     const ctx = baseRuntimeContext();
-    const yes = t("prompt.yes", "sí");
-    const no = t("prompt.no", "no");
+    const yes = t("common.yes", "sí");
+    const no = t("common.no", "no");
     return [
       t("prompt.runtime.title", "Contexto runtime actual:"),
       t("prompt.runtime.vmBooted", "- VM arrancada: {v}", { v: ctx.vmPresent ? yes : no }),
@@ -494,8 +524,8 @@
       t("prompt.runtime.network", "- Red VM configurada: {v}", { v: ctx.networkConfigured ? yes : no }),
       t("prompt.runtime.disk", "- Disco montado: {v}", { v: ctx.diskMounted ? yes : no }),
       t("prompt.runtime.serials", "- VM serial0: {s0} · serial1 herramientas: {s1}", {
-        s0: ctx.pendingCommand || ctx.agentBusy ? t("prompt.busyF", "ocupada") : t("prompt.free", "libre"),
-        s1: ctx.backgroundToolBusy ? t("prompt.busy", "ocupado") : t("prompt.free", "libre"),
+        s0: ctx.pendingCommand || ctx.agentBusy ? t("common.busy", "ocupada") : t("prompt.free", "libre"),
+        s1: ctx.backgroundToolBusy ? t("common.busy", "ocupado") : t("prompt.free", "libre"),
       }),
       t("prompt.runtime.availableTools", "Herramientas disponibles para este perfil:"),
       buildPromptToolCatalog(),

@@ -98,7 +98,7 @@ async function loadProfiles() {
   select.replaceChildren();
   const manual = document.createElement("option");
   manual.value = "manual";
-  manual.textContent = t("vm.profile.manual", "Libre / manual");
+  manual.textContent = t("common.freeManual", "Libre / manual");
   select.appendChild(manual);
 
   for (const profile of state.profiles) {

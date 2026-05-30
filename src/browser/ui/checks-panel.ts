@@ -32,7 +32,7 @@ function addSkippedCheck(container, name, detail = "") {
   label.textContent = name;
   const badge = document.createElement("span");
   badge.className = "badge warn";
-  badge.textContent = t("checks.badge.skipped", "omitido");
+  badge.textContent = t("common.skipped", "omitido");
   badge.title = detail;
   row.append(label, badge);
   container.appendChild(row);
@@ -73,15 +73,15 @@ function firstMatchingVmCheckLine(text, predicate) {
 }
 
 function getVmCommandCheckSkipReason() {
-  if (!state.vm) return t("checks.skip.vmNotStarted", "VM no arrancada");
-  if (!state.vmReady) return t("checks.skip.waitingShell", "esperando shell");
-  if (state.snapshotRestoring) return t("checks.skip.restoringSnapshot", "restaurando snapshot");
+  if (!state.vm) return t("common.v86NotStarted", "VM no arrancada");
+  if (!state.vmReady) return t("common.waitingShell", "esperando shell");
+  if (state.snapshotRestoring) return t("common.restoringSnapshot", "restaurando snapshot");
   if (state.vmStarting) return t("checks.skip.vmStarting", "VM arrancando");
   if (state.pending) return t("checks.skip.serial0Busy", "hay una operación serial0 en ejecución");
   if (state.bgTools?.pending) return t("checks.skip.bgToolBusy", "hay una herramienta en segundo plano en ejecución");
   if (state.agentBusy) return t("checks.skip.vmBusy", "VM ocupada");
   const diag = window.BA_BG_TOOLS?.diagnostics?.();
-  if (diag && !diag.serial1Available) return t("checks.skip.serial1Unavailable", "serial1 no disponible");
+  if (diag && !diag.serial1Available) return t("common.serialUnavailable", "serial{port} no disponible", { port: "1" });
   if (diag && !diag.runnerReady) return t("checks.skip.runnerNotReady", "runner serial1 no preparado");
   return "";
 }
@@ -141,7 +141,7 @@ async function runChecks({ probeWsRelay = true } = {}) {
   if (state.checksRunning) return;
   state.checksRunning = true;
   syncChecksButton();
-  setBadge($("checks-summary"), t("checks.badge.checking", "comprobando"), "warn");
+  setBadge($("checks-summary"), t("common.checking", "comprobando"), "warn");
   try {
 
     const container = $("checks");
@@ -153,8 +153,8 @@ async function runChecks({ probeWsRelay = true } = {}) {
       if (addCheck(container, name, ok, detail)) okCount += 1;
     };
 
-    add(t("checks.item.webgpu", "WebGPU"), Boolean(navigator.gpu), navigator.gpu ? t("checks.badge.ok", "OK") : t("checks.detail.notDetected", "No detectado"));
-    add(t("checks.item.websocketApi", "WebSocket API"), Boolean(window.WebSocket), window.WebSocket ? t("checks.badge.ok", "OK") : t("checks.detail.notAvailable", "No disponible"));
+    add(t("checks.item.webgpu", "WebGPU"), Boolean(navigator.gpu), navigator.gpu ? t("checks.badge.ok", "OK") : t("common.notDetected", "No detectado"));
+    add(t("checks.item.websocketApi", "WebSocket API"), Boolean(window.WebSocket), window.WebSocket ? t("checks.badge.ok", "OK") : t("common.notAvailable", "No disponible"));
 
     const wsRelayUrl = getWsRelayUrl();
     if (probeWsRelay) {
@@ -201,7 +201,7 @@ async function runChecks({ probeWsRelay = true } = {}) {
     const cfg = getConfig();
     const profile = getSelectedProfile();
     if (profile) add(t("checks.item.profileSelected", "Perfil seleccionado"), true, `${profile.name || profile.id} · ${profile.output}`);
-    else add(t("checks.item.profileSelected", "Perfil seleccionado"), true, t("checks.detail.freeManual", "Libre / manual"));
+    else add(t("checks.item.profileSelected", "Perfil seleccionado"), true, t("common.freeManual", "Libre / manual"));
 
     const assets = [
       ["libv86.js", cfg.libv86],
@@ -224,16 +224,16 @@ async function runChecks({ probeWsRelay = true } = {}) {
       add(t("checks.item.v86starter", "V86Starter"), false, error.message);
     }
 
-    add(t("checks.item.vmStarted", "VM arrancada"), Boolean(state.vm), state.vm ? t("checks.badge.ok", "OK") : t("checks.detail.pending", "Pendiente"));
-    add(t("checks.item.serial0Api", "Serial0 API"), Boolean(state.vm?.serial0_send), state.vm?.serial0_send ? t("checks.badge.ok", "OK") : t("checks.detail.pending", "Pendiente"));
+    add(t("checks.item.vmStarted", "VM arrancada"), Boolean(state.vm), state.vm ? t("checks.badge.ok", "OK") : t("common.pending", "Pendiente"));
+    add(t("checks.item.serial0Api", "Serial0 API"), Boolean(state.vm?.serial0_send), state.vm?.serial0_send ? t("checks.badge.ok", "OK") : t("common.pending", "Pendiente"));
     const bgDiagBeforeWait = window.BA_BG_TOOLS?.diagnostics?.() || null;
-    add(t("checks.item.serial1Api", "Serial1 API"), Boolean(bgDiagBeforeWait?.serial1Available), bgDiagBeforeWait?.serial1Available ? t("checks.badge.ok", "OK") : t("checks.detail.pending", "Pendiente"));
+    add(t("checks.item.serial1Api", "Serial1 API"), Boolean(bgDiagBeforeWait?.serial1Available), bgDiagBeforeWait?.serial1Available ? t("checks.badge.ok", "OK") : t("common.pending", "Pendiente"));
     if (state.vm && state.vmReady && bgDiagBeforeWait?.serial1Available && !bgDiagBeforeWait?.runnerReady) {
       await window.BA_BG_TOOLS?.waitForRunnerReady?.(1500);
     }
     const bgDiag = window.BA_BG_TOOLS?.diagnostics?.() || null;
-    add(t("checks.item.runnerSerial1", "Runner serial1"), Boolean(bgDiag?.runnerReady), bgDiag?.runnerReady ? t("checks.detail.runnerReady", "ba-serial1-runner listo") : (bgDiag?.lastError || t("checks.detail.notReady", "no preparado")));
-    add(t("checks.item.snapshotApi", "Snapshot API"), Boolean(state.vm?.save_state && state.vm?.restore_state), state.vm ? "save_state/restore_state" : t("checks.detail.pending", "Pendiente"));
+    add(t("checks.item.runnerSerial1", "Runner serial1"), Boolean(bgDiag?.runnerReady), bgDiag?.runnerReady ? t("checks.detail.runnerReady", "ba-serial1-runner listo") : (bgDiag?.lastError || t("common.notReady", "no preparado")));
+    add(t("checks.item.snapshotApi", "Snapshot API"), Boolean(state.vm?.save_state && state.vm?.restore_state), state.vm ? "save_state/restore_state" : t("common.pending", "Pendiente"));
 
     const vmSkipReason = getVmCommandCheckSkipReason();
 
@@ -251,7 +251,7 @@ async function runChecks({ probeWsRelay = true } = {}) {
         ? firstMatchingVmCheckLine(profileIdResult.stdout, (line) => line === profile.id) || lastNonEmptyLine(profileIdResult.stdout)
         : firstMatchingVmCheckLine(profileIdResult.stdout, (line) => line && line !== "unknown") || lastNonEmptyLine(profileIdResult.stdout);
       const profileOk = profile ? vmProfileId === profile.id : Boolean(vmProfileId && vmProfileId !== "unknown");
-      add(t("checks.item.profileInVm", "Perfil dentro VM"), profileOk, profile ? t("checks.detail.profileExpected", "{id} / esperado: {expected}", { id: vmProfileId || t("checks.detail.noData", "sin dato"), expected: profile.id }) : vmProfileId || t("checks.detail.noData", "sin dato"));
+      add(t("checks.item.profileInVm", "Perfil dentro VM"), profileOk, profile ? t("checks.detail.profileExpected", "{id} / esperado: {expected}", { id: vmProfileId || t("common.noData", "sin dato"), expected: profile.id }) : vmProfileId || t("common.noData", "sin dato"));
 
       if (profile) {
         const pkgResult = await runVmCheck(makePackageCheckCommand(profile.packages || []), {
@@ -262,7 +262,7 @@ async function runChecks({ probeWsRelay = true } = {}) {
         const missingPackages = clean.match(/BA_PKG_MISSING:([^\n\r]*)/)?.[1]?.trim();
         add(t("checks.item.vmPackages", "Paquetes perfil VM"), pkgResult.code === 0, missingPackages ? t("checks.detail.missing", "faltan: {list}", { list: missingPackages }) : pkgResult.stderr || t("checks.badge.ok", "OK"));
       } else {
-        add(t("checks.item.vmPackages", "Paquetes perfil VM"), true, t("checks.detail.manualMode", "modo manual"));
+        add(t("checks.item.vmPackages", "Paquetes perfil VM"), true, t("common.manualMode", "modo manual"));
       }
 
       if (profile) {
@@ -275,7 +275,7 @@ async function runChecks({ probeWsRelay = true } = {}) {
         const missingTools = clean.match(/BA_TOOLS_MISSING:([^\n\r]*)/)?.[1]?.trim();
         add(t("checks.item.vmTools", "Herramientas perfil VM"), toolResult.code === 0, missingTools ? t("checks.detail.missing", "faltan: {list}", { list: missingTools }) : toolResult.stderr || tn("checks.detail.checksCount", toolChecks.length, "{count} comprobación", "{count} comprobaciones"));
       } else {
-        add(t("checks.item.vmTools", "Herramientas perfil VM"), true, t("checks.detail.manualMode", "modo manual"));
+        add(t("checks.item.vmTools", "Herramientas perfil VM"), true, t("common.manualMode", "modo manual"));
       }
 
       const netCommand = "PFX=BA_VM_NET; IFACE=$(ls /sys/class/net | grep -v '^lo$' | head -n1); if [ -z \"$IFACE\" ]; then echo ${PFX}_NO_IFACE; exit 1; fi; printf '%s_IFACE:%s\\n' \"$PFX\" \"$IFACE\"; if ! ip -4 addr show \"$IFACE\" | grep -q 'inet '; then echo ${PFX}_NO_IPV4; exit 2; fi; if wget -q -T 5 -O /tmp/ba-net-check http://www.google.com/generate_204; then echo ${PFX}_HTTP_OK; else ping -c 1 -W 2 1.1.1.1 >/dev/null 2>&1 && echo ${PFX}_PING_OK || { echo ${PFX}_FAIL; exit 3; }; fi";
@@ -287,10 +287,10 @@ async function runChecks({ probeWsRelay = true } = {}) {
       const netOk = netResult.code === 0 && (netClean.includes("BA_VM_NET_HTTP_OK") || netClean.includes("BA_VM_NET_PING_OK"));
       const iface = netClean.match(/BA_VM_NET_IFACE:([^\s\r\n]+)/)?.[1] || "";
       let netDetail = iface ? `IFACE=${iface}` : "";
-      if (!netDetail && netClean.includes("BA_VM_NET_NO_IFACE")) netDetail = t("checks.detail.noInterface", "sin interfaz");
-      if (!netDetail && netClean.includes("BA_VM_NET_NO_IPV4")) netDetail = t("checks.detail.noIpv4", "sin IPv4");
-      if (!netDetail && netClean.includes("BA_VM_NET_FAIL")) netDetail = t("checks.detail.noOutput", "sin salida");
-      if (!netDetail) netDetail = netResult.stderr || (netOk ? t("checks.badge.ok", "OK") : t("checks.detail.noConnection", "sin conexión"));
+      if (!netDetail && netClean.includes("BA_VM_NET_NO_IFACE")) netDetail = t("common.noInterface", "sin interfaz");
+      if (!netDetail && netClean.includes("BA_VM_NET_NO_IPV4")) netDetail = t("common.noIpv4", "sin IPv4");
+      if (!netDetail && netClean.includes("BA_VM_NET_FAIL")) netDetail = t("common.noOutput", "sin salida");
+      if (!netDetail) netDetail = netResult.stderr || (netOk ? t("checks.badge.ok", "OK") : t("common.noConnection", "sin conexión"));
       add(t("checks.item.vmNetwork", "Red dentro VM"), netOk, netDetail);
 
       if (runtime.hda && state.diskMounted) {
@@ -302,7 +302,7 @@ async function runChecks({ probeWsRelay = true } = {}) {
         const diskClean = normalizeTerminalStreamForMarkers(diskVmResult.stdout);
         add(t("checks.item.hdaRwInVm", "Disco hda RW en VM"), diskVmResult.code === 0 && diskClean.includes("DISK_RW_OK"), diskClean.match(/DISK_[A-Z_]+/)?.[0] || diskVmResult.stderr || t("checks.badge.ok", "OK"));
       } else if (runtime.hda) {
-        add(t("checks.item.hdaRwInVm", "Disco hda RW en VM"), false, t("checks.detail.notMounted", "no montado"));
+        add(t("checks.item.hdaRwInVm", "Disco hda RW en VM"), false, t("common.notMounted", "no montado"));
       }
     }
 
@@ -323,7 +323,7 @@ async function runChecks({ probeWsRelay = true } = {}) {
     updateChecksSummaryFromDom();
 
     const summary = $("checks-summary");
-    if (summary?.textContent === t("checks.badge.checking", "comprobando")) {
+    if (summary?.textContent === t("common.checking", "comprobando")) {
       setBadge(summary, t("checks.badge.finished", "finalizado"), "warn");
     }
 

@@ -322,8 +322,8 @@
     return [
       registryCtx,
       t("prompt.resources", "Recursos: LLM {llm} · herramienta {tool} · último artefacto {artifact}", {
-        llm: budget.llmBusy ? t("prompt.busy", "ocupado") : t("prompt.free", "libre"),
-        tool: budget.toolBusy ? t("prompt.busyF", "ocupada") : t("prompt.free", "libre"),
+        llm: budget.llmBusy ? t("common.busy", "ocupado") : t("prompt.free", "libre"),
+        tool: budget.toolBusy ? t("common.busy", "ocupada") : t("prompt.free", "libre"),
         artifact: window.BA_LLM?.lastArtifactId || "—",
       }),
     ].join("\n");

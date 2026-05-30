@@ -61,7 +61,7 @@
           <h2 data-i18n="chat.title">Chat</h2>
           <div class="chat-title-actions">
             <button id="chat-layout-toggle" type="button" class="chat-layout-toggle ba-icon-only" aria-pressed="false" aria-label="Ampliar chat" title="Ampliar chat a todo el ancho; la VM quedará debajo"></button>
-            <button id="chat-clear-memory" type="button" class="chat-clear-btn ba-icon-only" aria-label="Limpiar chat" title="Limpiar chat visible, historial interno y artefactos" data-i18n-attr="aria-label:chat.clear.aria,title:chat.clear.title"></button>
+            <button id="chat-clear-memory" type="button" class="chat-clear-btn ba-icon-only" aria-label="Limpiar chat" title="Limpiar chat visible, historial interno y artefactos" data-i18n-attr="aria-label:common.clearChat,title:chat.clear.title"></button>
           </div>
         </div>
         <div id="chat-log" class="chat-log"></div>
@@ -134,7 +134,7 @@
           <div class="console-tabs-actions">
             <button id="new-console" type="button" class="secondary console-action-btn new-console-btn" aria-label="Nueva consola" title="Crear una consola xterm nueva (máximo 4)" data-i18n-attr="aria-label:console.action.new.aria,title:console.action.new.title"></button>
             <button id="redraw-console" type="button" class="secondary console-action-btn redraw-console-btn" aria-label="Refrescar consola" title="Limpiar la consola activa y enviar Ctrl+L" data-i18n-attr="aria-label:console.action.redraw.aria,title:console.action.redraw.title"></button>
-            <button id="close-console" type="button" class="secondary danger-light console-action-btn close-console-btn" aria-label="Cerrar consola" title="Cerrar la consola activa" data-i18n-attr="aria-label:console.action.close.aria,title:console.action.close.title"></button>
+            <button id="close-console" type="button" class="secondary danger-light console-action-btn close-console-btn" aria-label="Cerrar consola" title="Cerrar la consola activa" data-i18n-attr="aria-label:common.closeConsole,title:console.action.close.title"></button>
             <button id="console-help" type="button" class="secondary console-action-btn console-help-btn" aria-label="Ayuda consola" title="Consolas xterm, PTYs y tools en background" data-i18n-attr="aria-label:console.action.help.aria,title:console.action.help.title"></button>
             <button id="cancel-tool" type="button" class="secondary danger-light" disabled data-i18n="console.cancelTool">Cancelar tool</button>
             <span id="console-tabs-status" class="badge">sin consola</span>
@@ -175,12 +175,12 @@
             <div class="ws-help-title" data-i18n="ws.help.title">Proxy local wsnic por Docker</div>
             <p class="ws-help-note" data-i18n="ws.help.openBg">Abrir en segundo plano:</p>
             <div class="docker-help-box">
-              <button id="copy-docker-command" type="button" class="secondary copy-command" data-copy-target="docker-command" aria-label="Copiar comando para abrir el proxy Docker" title="Copiar comando para abrir" data-i18n-attr="aria-label:ws.help.copyOpen.aria,title:ws.help.copyOpen.title">⧉</button>
+              <button id="copy-docker-command" type="button" class="secondary copy-command" data-copy-target="docker-command" aria-label="Copiar comando para abrir el proxy Docker" title="Copiar comando para abrir">⧉</button>
               <pre><code id="docker-command">docker rm -f browser-agent-wsnic 2&gt;/dev/null || true; docker run -d --name browser-agent-wsnic --restart unless-stopped --cap-add=NET_ADMIN --device /dev/net/tun:/dev/net/tun --sysctl net.ipv4.ip_forward=1 --sysctl net.ipv4.conf.all.forwarding=1 --sysctl net.ipv4.conf.default.forwarding=1 -p 127.0.0.1:8086:8086 chschnell86/wsnic -i</code></pre>
             </div>
             <p class="ws-help-note" data-i18n="ws.help.close">Cerrar y eliminar el proxy:</p>
             <div class="docker-help-box">
-              <button id="copy-docker-stop-command" type="button" class="secondary copy-command" data-copy-target="docker-stop-command" aria-label="Copiar comando para cerrar el proxy Docker" title="Copiar comando para cerrar" data-i18n-attr="aria-label:ws.help.copyClose.aria,title:ws.help.copyClose.title">⧉</button>
+              <button id="copy-docker-stop-command" type="button" class="secondary copy-command" data-copy-target="docker-stop-command" aria-label="Copiar comando para cerrar el proxy Docker" title="Copiar comando para cerrar">⧉</button>
               <pre><code id="docker-stop-command">docker rm -f browser-agent-wsnic</code></pre>
             </div>
             <div id="copy-docker-status" class="copy-status" aria-live="polite"></div>
@@ -201,7 +201,7 @@
         <summary class="panel-title"><h2 data-i18n="checks.title">Comprobaciones</h2><span id="checks-summary" class="badge">—</span></summary>
         <div class="collapsible-panel-body">
           <div class="checks-toolbar">
-            <button id="run-checks" type="button" class="secondary" data-i18n="checks.run">Comprobar</button>
+            <button id="run-checks" type="button" class="secondary" data-i18n="common.runChecks">Comprobar</button>
           </div>
           <div id="checks" class="checks"></div>
         </div>

@@ -464,7 +464,7 @@ function renderConsoleTabs() {
       const close = document.createElement("span");
       close.className = "console-tab-close";
       close.textContent = "×";
-      close.title = t("console.tab.closeTitle", "Cerrar consola");
+      close.title = t("common.closeConsole", "Cerrar consola");
       close.addEventListener("click", (event) => {
         event.stopPropagation();
         closeHumanConsoleTab(tab.id);
@@ -688,7 +688,7 @@ function cancelCurrentTool() {
     if (state.pending !== pending) return;
     window.clearTimeout(pending.timer);
     state.pending = null;
-    pending.resolve({ code: 130, stdout: trimLines(pending.raw), stderr: t("console.cancelledByUser", "cancelado por el usuario") });
+    pending.resolve({ code: 130, stdout: trimLines(pending.raw), stderr: t("common.cancelledByUser", "cancelado por el usuario") });
   }, 1800);
 }
 

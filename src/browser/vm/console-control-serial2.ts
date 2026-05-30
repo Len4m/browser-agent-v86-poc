@@ -31,7 +31,7 @@
   }
 
   function sendSerial2Text(text) {
-    if (!serial2Available()) throw new Error(t("console.ctl.error.serial2Unavailable", "serial2 no disponible en esta build de v86"));
+    if (!serial2Available()) throw new Error(t("common.serialUnavailableBuild", "serial{port} no disponible en esta build de v86", { port: "2" }));
     state.vm.serial_send_bytes(2, encoder.encode(safeText(text)));
   }
 
@@ -169,9 +169,9 @@
 
   async function exec(action, args = [], options = {}) {
     const timeoutMs = clampInt(options.timeoutMs, 500, 30000, DEFAULT_TIMEOUT_MS);
-    if (!state.vm) return { code: 1, stdout: "", stderr: t("console.ctl.error.notStarted", "v86 no está arrancada") };
-    if (!state.vmReady) return { code: 1, stdout: "", stderr: t("console.ctl.error.booting", "la VM está arrancando") };
-    if (!serial2Available()) return { code: 1, stdout: "", stderr: t("console.ctl.error.serial2NotAvailable", "serial2 no disponible") };
+    if (!state.vm) return { code: 1, stdout: "", stderr: t("common.v86NotStarted", "v86 no está arrancada") };
+    if (!state.vmReady) return { code: 1, stdout: "", stderr: t("common.vmBooting", "la VM está arrancando") };
+    if (!serial2Available()) return { code: 1, stdout: "", stderr: t("common.serialUnavailable", "serial{port} no disponible", { port: "2" }) };
     if (!options.skipReadyCheck && !ctl.runnerReady) {
       const ready = await waitForRunnerReady(options.readyTimeoutMs || 1200);
       if (!ready) return { code: 1, stdout: "", stderr: t("console.ctl.error.daemonNotReady", "daemon xterm/PTY en serial2 no preparado") };

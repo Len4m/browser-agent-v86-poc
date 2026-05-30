@@ -87,7 +87,7 @@
     if (body) body.append(document.createTextNode(chunk));
   }
 
-  function createInferenceSpinner(label = t("chat.ui.spinner.default", "Generando respuesta…")) {
+  function createInferenceSpinner(label = t("common.generatingResponse", "Generando respuesta…")) {
     const wrap = document.createElement("div");
     wrap.className = "ba-llm-inference-indicator";
     wrap.setAttribute("role", "status");
@@ -102,7 +102,7 @@
     return wrap;
   }
 
-  function setChatTailIndicator(label = t("chat.ui.spinner.default", "Generando respuesta…")) {
+  function setChatTailIndicator(label = t("common.generatingResponse", "Generando respuesta…")) {
     const log = document.getElementById("chat-log");
     if (!log) return null;
     let indicator = document.getElementById("ba-chat-tail-indicator");
@@ -175,7 +175,7 @@
   function setToolDisclosureSummary(bubble, toolCall, { stateText = "", toolResult = null } = {}) {
     const toolDef = window.BA_LLM_TOOL_REGISTRY?.getTool?.(toolCall?.tool);
     const { details, titleEl, stateEl } = getToolDisclosure(bubble);
-    titleEl.textContent = toolDef?.label || toolCall?.tool || t("chat.ui.tool.fallbackTitle", "Tool");
+    titleEl.textContent = toolDef?.label || toolCall?.tool || t("common.tool", "Tool");
 
     if (toolResult) {
       if (toolResult.ok) {
@@ -280,13 +280,13 @@
     const title = buildDeterministicToolTitle(toolCall, toolResult);
     const output = artifact
       ? window.BA_LLM_ARTIFACTS.formatArtifactForDisplay(artifact)
-      : (toolResult.stdout || t("chat.ui.answer.noOutput", "(sin salida)"));
+      : (toolResult.stdout || t("common.noOutputParen", "(sin salida)"));
 
     return [
       t("chat.ui.answer.titleHeading", "**{title}:**", { title }),
       "",
       "```txt",
-      output || t("chat.ui.answer.noOutput", "(sin salida)"),
+      output || t("common.noOutputParen", "(sin salida)"),
       "```",
       (toolResult.truncated || artifact?.displayPreviewTruncated) ? t("chat.ui.answer.truncatedNote", "\n_Salida truncada en pantalla por seguridad. El artefacto conserva la salida disponible._") : "",
     ].join("\n");
