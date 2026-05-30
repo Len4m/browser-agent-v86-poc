@@ -17,7 +17,6 @@
         });
         var lang = stored || (isSpanish ? "es" : "en");
         document.documentElement.lang = lang;
-        if (lang === "es") return;
         var xhr = new XMLHttpRequest();
         xhr.open("GET", "./locales/" + lang + ".json", false);
         xhr.send();
@@ -35,21 +34,19 @@
     <header class="header">
       <div>
         <h1>Browser Agent POC</h1>
-        <p data-i18n="header.tagline">IA, agente y VM Linux: todo corre 100% en tu navegador.</p>
+        <p data-i18n="header.tagline">header.tagline</p>
       </div>
       <div class="badges">
-        <span id="badge-version" class="badge app-version-badge" title="Versión de la aplicación">v—</span>
-        <span id="badge-vm" class="badge">v86 inactiva</span>
+        <span id="badge-version" class="badge app-version-badge" data-i18n-attr="title:header.version.title">v—</span>
+        <span id="badge-vm" class="badge" data-i18n="common.v86Inactive">common.v86Inactive</span>
         <span id="badge-gpu" class="badge">WebGPU</span>
-        <span id="badge-ws" class="badge">wsnic desconectado</span>
-        <select id="ba-lang-select" class="badge ba-lang-select" aria-label="Idioma" data-i18n-attr="aria-label:header.lang.aria"></select>
+        <span id="badge-ws" class="badge" data-i18n="ws.badge.disconnected">ws.badge.disconnected</span>
+        <select id="ba-lang-select" class="badge ba-lang-select" data-i18n-attr="aria-label:header.lang.aria"></select>
         <a
           class="github-repo-link"
           href="https://github.com/Len4m/browser-agent-v86-poc"
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="Abrir repositorio en GitHub"
-          title="Abrir repositorio en GitHub"
           data-i18n-attr="aria-label:header.githubRepo,title:header.githubRepo"
         ></a>
       </div>
@@ -58,10 +55,10 @@
     <section id="main-workspace" class="grid two workspace-grid">
       <div class="panel">
         <div class="panel-title chat-panel-title">
-          <h2 data-i18n="chat.title">Chat</h2>
+          <h2 data-i18n="chat.title">chat.title</h2>
           <div class="chat-title-actions">
-            <button id="chat-layout-toggle" type="button" class="chat-layout-toggle ba-icon-only" aria-pressed="false" aria-label="Ampliar chat" title="Ampliar chat a todo el ancho; la VM quedará debajo"></button>
-            <button id="chat-clear-memory" type="button" class="chat-clear-btn ba-icon-only" aria-label="Limpiar chat" title="Limpiar chat visible, historial interno y artefactos" data-i18n-attr="aria-label:common.clearChat,title:chat.clear.title"></button>
+            <button id="chat-layout-toggle" type="button" class="chat-layout-toggle ba-icon-only" aria-pressed="false" data-i18n-attr="aria-label:app.chatToggle.expand.aria,title:app.chatToggle.expand.title"></button>
+            <button id="chat-clear-memory" type="button" class="chat-clear-btn ba-icon-only" data-i18n-attr="aria-label:common.clearChat,title:chat.clear.title"></button>
           </div>
         </div>
         <div id="chat-log" class="chat-log"></div>
@@ -70,8 +67,7 @@
             type="button"
             id="chat-tools-btn"
             class="chat-tools-btn ba-icon-only"
-            aria-label="Herramientas del agente"
-            title="Elegir herramientas que el agente puede usar en este chat"
+            data-i18n-attr="aria-label:chat.tools.aria,title:chat.tools.title"
           >
             <span id="chat-tools-badge" class="chat-tools-badge" hidden aria-hidden="true"></span>
           </button>
@@ -79,25 +75,25 @@
             id="chat-input"
             class="chat-input"
             rows="2"
-            placeholder="Carga primero un modelo local en el panel Transformers.js"
+            data-i18n-attr="placeholder:chat.placeholder.loadModel"
             disabled
           ></textarea>
-          <button type="submit" id="chat-submit-btn" class="chat-submit-btn" title="Enviar mensaje (Enter)" aria-label="Enviar mensaje">Enviar</button>
+          <button type="submit" id="chat-submit-btn" class="chat-submit-btn" data-i18n="chat.submit.send.label" data-i18n-attr="title:chat.submit.send.title,aria-label:chat.submit.send.aria">chat.submit.send.label</button>
         </form>
       </div>
 
       <div class="panel">
         <div class="panel-title">
-          <h2 data-i18n="vm.title">VM v86</h2>
-          <span id="vm-detail" class="badge">sin arrancar</span>
+          <h2 data-i18n="vm.title">vm.title</h2>
+          <span id="vm-detail" class="badge" data-i18n="common.offLower">common.offLower</span>
         </div>
-        <div class="vm-options compact-vm-options" aria-label="Configuración de la VM antes de arrancar" data-i18n-attr="aria-label:vm.options.aria">
-          <label class="vm-field-profile"><span data-i18n="vm.field.profile">Perfil</span>
+        <div class="vm-options compact-vm-options" data-i18n-attr="aria-label:vm.options.aria">
+          <label class="vm-field-profile"><span data-i18n="vm.field.profile">vm.field.profile</span>
             <select id="vm-profile">
-              <option value="manual" selected>Libre / manual</option>
+              <option value="manual" selected data-i18n="common.freeManual">common.freeManual</option>
             </select>
           </label>
-          <label class="vm-field-ram vm-field-manual-only"><span data-i18n="vm.field.ram">RAM</span>
+          <label class="vm-field-ram vm-field-manual-only"><span data-i18n="vm.field.ram">vm.field.ram</span>
             <select id="vm-ram-mb">
               <option value="256">256 MB</option>
               <option value="512" selected>512 MB</option>
@@ -107,14 +103,14 @@
               <option value="2048">2048 MB</option>
             </select>
           </label>
-          <label class="vm-field-vram vm-field-manual-only"><span data-i18n="vm.field.vram">VRAM</span>
+          <label class="vm-field-vram vm-field-manual-only"><span data-i18n="vm.field.vram">vm.field.vram</span>
             <select id="vm-vram-mb">
               <option value="8" selected>8 MB</option>
               <option value="16">16 MB</option>
               <option value="32">32 MB</option>
             </select>
           </label>
-          <label class="vm-field-disk"><span data-i18n="vm.field.disk">Disco</span>
+          <label class="vm-field-disk"><span data-i18n="vm.field.disk">vm.field.disk</span>
             <select id="vm-disk">
               <option value="initramfs" selected>RAM / initramfs</option>
               <option value="hda-250">hda 250 MB</option>
@@ -126,61 +122,61 @@
           <div id="vm-disk-hint"></div>
         </div>
         <div class="toolbar">
-          <button id="start-vm" type="button" class="vm-power-btn" title="Arranca o apaga la VM. Al apagar se pedirá confirmación antes de perder cambios sin snapshot.">Arrancar VM</button>
-          <button id="check-disk" type="button" class="secondary" hidden title="Monta o desmonta el disco seleccionado en /mnt/hda">Montar disco</button>
+          <button id="start-vm" type="button" class="vm-power-btn" data-i18n="vm.controls.power.on" data-i18n-attr="title:vm.controls.power.on.title">vm.controls.power.on</button>
+          <button id="check-disk" type="button" class="secondary" hidden data-i18n="vm.controls.disk.mount" data-i18n-attr="title:vm.controls.disk.mount.title">vm.controls.disk.mount</button>
         </div>
         <div id="console-tabs" class="console-tabs">
           <div id="console-tabs-list" class="console-tabs-list"></div>
           <div class="console-tabs-actions">
-            <button id="new-console" type="button" class="secondary console-action-btn new-console-btn" aria-label="Nueva consola" title="Crear una consola xterm nueva (máximo 4)" data-i18n-attr="aria-label:console.action.new.aria,title:console.action.new.title"></button>
-            <button id="redraw-console" type="button" class="secondary console-action-btn redraw-console-btn" aria-label="Refrescar consola" title="Limpiar la consola activa y enviar Ctrl+L" data-i18n-attr="aria-label:console.action.redraw.aria,title:console.action.redraw.title"></button>
-            <button id="close-console" type="button" class="secondary danger-light console-action-btn close-console-btn" aria-label="Cerrar consola" title="Cerrar la consola activa" data-i18n-attr="aria-label:common.closeConsole,title:console.action.close.title"></button>
-            <button id="console-help" type="button" class="secondary console-action-btn console-help-btn" aria-label="Ayuda consola" title="Consolas xterm, PTYs y tools en background" data-i18n-attr="aria-label:console.action.help.aria,title:console.action.help.title"></button>
-            <button id="cancel-tool" type="button" class="secondary danger-light" disabled data-i18n="console.cancelTool">Cancelar tool</button>
-            <span id="console-tabs-status" class="badge">sin consola</span>
+            <button id="new-console" type="button" class="secondary console-action-btn new-console-btn" data-i18n-attr="aria-label:console.action.new.aria,title:console.action.new.title"></button>
+            <button id="redraw-console" type="button" class="secondary console-action-btn redraw-console-btn" data-i18n-attr="aria-label:console.action.redraw.aria,title:console.action.redraw.title"></button>
+            <button id="close-console" type="button" class="secondary danger-light console-action-btn close-console-btn" data-i18n-attr="aria-label:common.closeConsole,title:console.action.close.title"></button>
+            <button id="console-help" type="button" class="secondary console-action-btn console-help-btn" data-i18n-attr="aria-label:console.action.help.aria,title:console.action.help.title"></button>
+            <button id="cancel-tool" type="button" class="secondary danger-light" disabled data-i18n="console.cancelTool">console.cancelTool</button>
+            <span id="console-tabs-status" class="badge" data-i18n="console.status.none">console.status.none</span>
           </div>
         </div>
         <div class="vm-screen-wrap">
           <div class="vm-console-frame">
             <div id="vm-console-shell" class="vm-console-shell">
-              <div id="serial-console" class="serial-console" tabindex="0" aria-label="Consola serial de v86" data-i18n-attr="aria-label:vm.serialConsole.aria"></div>
+              <div id="serial-console" class="serial-console" tabindex="0" data-i18n-attr="aria-label:vm.serialConsole.aria"></div>
               <div id="vm-lock-overlay"></div>
             </div>
           </div>
         </div>
-        <div class="snapshot-toolbar" aria-label="Snapshots de la VM" data-i18n-attr="aria-label:vm.snapshots.aria">
-          <button id="save-state" type="button" class="secondary snapshot-save-btn" disabled data-i18n="vm.snapshot.save">Guardar snapshot</button>
-          <button id="restore-state" type="button" class="secondary snapshot-restore-btn" data-i18n="vm.snapshot.restore">Restaurar snapshot</button>
+        <div class="snapshot-toolbar" data-i18n-attr="aria-label:vm.snapshots.aria">
+          <button id="save-state" type="button" class="secondary snapshot-save-btn" disabled data-i18n="vm.snapshot.save">vm.snapshot.save</button>
+          <button id="restore-state" type="button" class="secondary snapshot-restore-btn" data-i18n="vm.snapshot.restore">vm.snapshot.restore</button>
           <input id="restore-state-file" type="file" accept=".v86state,.bin,application/octet-stream" hidden />
-          <div class="snapshot-note" data-i18n="vm.snapshot.note">Guarda RAM/CPU/estado de la VM. No incluye cambios de discos hda.</div>
+          <div class="snapshot-note" data-i18n="vm.snapshot.note">vm.snapshot.note</div>
         </div>
-        <pre id="terminal" class="terminal">Pulsa Arrancar VM.</pre>
+        <pre id="terminal" class="terminal" data-i18n="app.toolLog.intro">app.toolLog.intro</pre>
         <form id="command-form" class="row">
           <input id="command-input" value="uname -a" />
-          <button data-i18n="vm.command.run">Ejecutar</button>
+          <button data-i18n="vm.command.run">vm.command.run</button>
         </form>
       </div>
     </section>
 
     <section class="grid three">
       <details class="panel small collapsible-panel">
-        <summary class="panel-title"><h2 data-i18n="ws.title">Red WS</h2><span id="ws-detail" class="badge" data-i18n="ws.detail.pending">pendiente</span></summary>
+        <summary class="panel-title"><h2 data-i18n="ws.title">ws.title</h2><span id="ws-detail" class="badge" data-i18n="ws.detail.pending">ws.detail.pending</span></summary>
         <div class="collapsible-panel-body">
           <div class="row">
             <input id="ws-url" value="ws://127.0.0.1:8086/wsnic" />
-            <button id="connect-ws">Conectar</button>
+            <button id="connect-ws" data-i18n="common.connect" data-i18n-attr="title:vm.controls.ws.connect.title">common.connect</button>
           </div>
           <div id="ws-origin-notice" class="local-service-origin-warning" hidden></div>
           <div class="ws-help ws-help-inline">
-            <div class="ws-help-title" data-i18n="ws.help.title">Proxy local wsnic por Docker</div>
-            <p class="ws-help-note" data-i18n="ws.help.openBg">Abrir en segundo plano:</p>
+            <div class="ws-help-title" data-i18n="ws.help.title">ws.help.title</div>
+            <p class="ws-help-note" data-i18n="ws.help.openBg">ws.help.openBg</p>
             <div class="docker-help-box">
-              <button id="copy-docker-command" type="button" class="secondary copy-command" data-copy-target="docker-command" aria-label="Copiar comando para abrir el proxy Docker" title="Copiar comando para abrir">⧉</button>
+              <button id="copy-docker-command" type="button" class="secondary copy-command" data-copy-target="docker-command">⧉</button>
               <pre><code id="docker-command">docker rm -f browser-agent-wsnic 2&gt;/dev/null || true; docker run -d --name browser-agent-wsnic --restart unless-stopped --cap-add=NET_ADMIN --device /dev/net/tun:/dev/net/tun --sysctl net.ipv4.ip_forward=1 --sysctl net.ipv4.conf.all.forwarding=1 --sysctl net.ipv4.conf.default.forwarding=1 -p 127.0.0.1:8086:8086 chschnell86/wsnic -i</code></pre>
             </div>
-            <p class="ws-help-note" data-i18n="ws.help.close">Cerrar y eliminar el proxy:</p>
+            <p class="ws-help-note" data-i18n="ws.help.close">ws.help.close</p>
             <div class="docker-help-box">
-              <button id="copy-docker-stop-command" type="button" class="secondary copy-command" data-copy-target="docker-stop-command" aria-label="Copiar comando para cerrar el proxy Docker" title="Copiar comando para cerrar">⧉</button>
+              <button id="copy-docker-stop-command" type="button" class="secondary copy-command" data-copy-target="docker-stop-command">⧉</button>
               <pre><code id="docker-stop-command">docker rm -f browser-agent-wsnic</code></pre>
             </div>
             <div id="copy-docker-status" class="copy-status" aria-live="polite"></div>
@@ -191,17 +187,17 @@
       <details class="panel small collapsible-panel">
         <summary class="panel-title"><h2>LLM</h2></summary>
         <div class="collapsible-panel-body">
-          <p><b data-i18n="llm.info.engineLabel">Motor:</b> <span data-i18n="llm.info.engineValue">Transformers.js local u Ollama HTTP</span></p>
-          <p><b data-i18n="llm.info.modelLabel">Modelo:</b> <span data-i18n="llm.info.modelValue">seleccionable en el panel</span></p>
-          <p><b data-i18n="llm.info.vmLabel">VM:</b> <span data-i18n="llm.info.vmValue">Alpine x86 + apk; RAM/disco configurable antes del arranque</span></p>
+          <p><b data-i18n="llm.info.engineLabel">llm.info.engineLabel</b> <span data-i18n="llm.info.engineValue">llm.info.engineValue</span></p>
+          <p><b data-i18n="llm.info.modelLabel">llm.info.modelLabel</b> <span data-i18n="llm.info.modelValue">llm.info.modelValue</span></p>
+          <p><b data-i18n="llm.info.vmLabel">llm.info.vmLabel</b> <span data-i18n="llm.info.vmValue">llm.info.vmValue</span></p>
         </div>
       </details>
 
       <details class="panel small checks-panel collapsible-panel">
-        <summary class="panel-title"><h2 data-i18n="checks.title">Comprobaciones</h2><span id="checks-summary" class="badge">—</span></summary>
+        <summary class="panel-title"><h2 data-i18n="checks.title">checks.title</h2><span id="checks-summary" class="badge">—</span></summary>
         <div class="collapsible-panel-body">
           <div class="checks-toolbar">
-            <button id="run-checks" type="button" class="secondary" data-i18n="common.runChecks">Comprobar</button>
+            <button id="run-checks" type="button" class="secondary" data-i18n="common.runChecks">common.runChecks</button>
           </div>
           <div id="checks" class="checks"></div>
         </div>
@@ -226,7 +222,7 @@
     <div class="loading-card" role="status" aria-live="polite">
       <div class="loading-head">
         <div class="loading-spinner"></div>
-        <div id="loading-title">Cargando</div>
+        <div id="loading-title" data-i18n="common.loading">common.loading</div>
       </div>
       <div id="loading-detail"></div>
       <div class="loading-progress"><div id="loading-bar"></div></div>
@@ -238,7 +234,7 @@
     <div class="ba-modal-card" role="dialog" aria-modal="true" aria-labelledby="ba-modal-title">
       <div class="ba-modal-icon">!</div>
       <div class="ba-modal-content">
-        <h3 id="ba-modal-title" data-i18n="modal.confirmTitle">Confirmar acción</h3>
+        <h3 id="ba-modal-title" data-i18n="modal.confirmTitle">modal.confirmTitle</h3>
         <p id="ba-modal-message"></p>
         <p id="ba-modal-detail" class="ba-modal-detail" hidden></p>
         <div id="ba-modal-body" class="ba-modal-body" hidden></div>
