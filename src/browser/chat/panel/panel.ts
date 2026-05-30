@@ -62,7 +62,7 @@
       option.disabled = disabled;
       if (disabled && !option.dataset.originalText) option.dataset.originalText = option.textContent;
       if (!disabled && option.dataset.originalText) option.textContent = option.dataset.originalText;
-      const unavailable = t("panel.llm.option.unavailable", "no disponible");
+      const unavailable = t("common.unavailable", "no disponible");
       if (disabled && !option.textContent.includes(unavailable)) {
         option.textContent = `${option.dataset.originalText || option.textContent} · ${unavailable}`;
       }
@@ -97,13 +97,13 @@
     const detail = document.getElementById("ba-llm-capabilities");
     if (!detail) return;
     if (!result) {
-      detail.textContent = t("panel.llm.capabilities.pending", "Pendiente de comprobar capacidades de inferencia local.");
+      detail.textContent = t("common.inferencePending", "Pendiente de comprobar capacidades de inferencia local.");
       return;
     }
     const limits = result.limits || {};
     detail.textContent = result.webgpu
       ? t("panel.llm.capabilities.webgpu", "WebGPU disponible · shader-f16: {shaderF16} · dtype recomendado: {dtype} · maxBuffer: {maxBuffer}", {
-          shaderF16: result.shaderF16 ? t("panel.llm.yes", "sí") : t("panel.llm.no", "no"),
+          shaderF16: result.shaderF16 ? t("common.yes", "sí") : t("common.no", "no"),
           dtype: result.recommendedDtype || "q4",
           maxBuffer: limits.maxBufferSize || "—",
         })
@@ -126,13 +126,13 @@
     // (loaded/loading/unloaded). Capability information is shown in the
     // details header and in the technical note below the actions.
     if (window.BA_LLM.loaded) {
-      setStatus(t("panel.llm.status.loaded", "cargado"), "good");
+      setStatus(t("common.loadedLower", "cargado"), "good");
     } else if (window.BA_LLM.loading) {
-      setStatus(t("panel.llm.status.loading", "cargando"), "warn");
+      setStatus(t("common.loadingLower", "cargando"), "warn");
     } else if (result && !result.webgpu && getSelectedModel()?.device === "wasm") {
-      setStatus(t("panel.llm.status.wasm", "WASM"), "warn");
+      setStatus(t("common.wasm", "WASM"), "warn");
     } else {
-      setStatus(t("panel.llm.status.unloaded", "sin cargar"), "warn");
+      setStatus(t("common.unloadedLower", "sin cargar"), "warn");
     }
   }
 
@@ -185,7 +185,7 @@
       case "initiate":
         return { mode: "indeterminate", percent: null, title: t("panel.llm.progress.preparingFile", "Preparando archivo"), detail: file || t("panel.llm.progress.initializing", "Inicializando descarga") };
       case "download":
-        return { mode: "indeterminate", percent: null, title: t("panel.llm.progress.downloading", "Descargando"), detail: file || t("panel.llm.progress.waiting", "Esperando progreso") };
+        return { mode: "indeterminate", percent: null, title: t("common.downloading", "Descargando"), detail: file || t("panel.llm.progress.waiting", "Esperando progreso") };
       case "progress_total":
         return {
           mode: "determinate",
@@ -305,7 +305,7 @@
         [t("panel.llm.meta.compatibility", "Compatibilidad"), model.compatibilityLabel || "—"],
         [t("panel.llm.meta.languages", "Idiomas"), model.languageLabel || "—"],
         [t("panel.llm.meta.tools", "Herramientas"), model.agent?.toolCalling || "—"],
-        [t("panel.llm.meta.reasoning", "Razonamiento"), model.thinking?.enabled ? t("panel.llm.yes", "sí") : t("panel.llm.no", "no")],
+        [t("panel.llm.meta.reasoning", "Razonamiento"), model.thinking?.enabled ? t("common.yes", "sí") : t("common.no", "no")],
       ].filter(Boolean).map(([key, value]) => createMetaItem(key, value));
       meta.replaceChildren(...items);
     }
@@ -365,13 +365,13 @@
     if (needsWebGPU && caps && !caps.webgpu) {
       setStatus(t("panel.llm.status.requiresWebgpu", "requiere WebGPU"), "warn");
     } else if (selected?.requiresShaderF16 && caps?.webgpu && !caps.shaderF16) {
-      setStatus(t("panel.llm.status.requiresShaderF16", "requiere shader-f16"), "warn");
+      setStatus(t("common.requiresShaderF16", "requiere shader-f16"), "warn");
     } else if (selected?.engine === "ollama") {
       setStatus(t("panel.llm.status.requiresOllama", "requiere Ollama"), "warn");
     } else if (selected?.device === "wasm") {
       setStatus(t("panel.llm.status.wasmExperimental", "WASM experimental"), "warn");
     } else if (!window.BA_LLM.loaded) {
-      setStatus(t("panel.llm.status.unloaded", "sin cargar"), "warn");
+      setStatus(t("common.unloadedLower", "sin cargar"), "warn");
     }
   }
 
@@ -594,8 +594,8 @@
     const children = [title];
     if (tools.length) {
       for (const tool of tools) {
-        const chip = createTextElement("span", "", t("panel.llm.tools.chip", "{name} · nivel {level}", { name: tool.name, level: tool.riskLevel }));
-        chip.title = t("panel.llm.tools.chipTitle", "{label} · nivel {level}", { label: tool.label || tool.name, level: tool.riskLevel });
+        const chip = createTextElement("span", "", t("common.levelChip", "{name} · nivel {level}", { name: tool.name, level: tool.riskLevel }));
+        chip.title = t("common.levelChip", "{name} · nivel {level}", { name: tool.label || tool.name, level: tool.riskLevel });
         children.push(chip);
       }
     } else {
@@ -632,7 +632,7 @@
     const artifacts = window.BA_LLM_ARTIFACTS?.listSummaries?.({ limit: 3 }) || [];
     const artifactLines = artifacts.slice().reverse().map((artifact) => {
       const path = artifact.args?.path ? ` · ${artifact.args.path}` : "";
-      const state = artifact.ok ? t("panel.llm.resources.stateOk", "ok") : t("panel.llm.resources.stateError", "error");
+      const state = artifact.ok ? t("common.okLower", "ok") : t("panel.llm.resources.stateError", "error");
       const size = artifact.sizeBytes ? ` · ${Math.ceil(artifact.sizeBytes / 1024)} KB` : "";
       const truncated = artifact.truncated ? t("panel.llm.resources.truncated", " · truncado") : "";
       return t("panel.llm.resources.artifactLine", "Artefacto: {id} · {tool} · {state}{size}{truncated}{path}", {
@@ -679,8 +679,8 @@
       statusBadge.id = "ba-llm-status";
       statusBadge.className = "badge ba-llm-header-status warn";
       statusBadge.textContent = window.BA_LLM.loading
-        ? t("panel.llm.status.loading", "cargando")
-        : (window.BA_LLM.loaded ? t("panel.llm.status.loaded", "cargado") : t("panel.llm.status.unloaded", "sin cargar"));
+        ? t("common.loadingLower", "cargando")
+        : (window.BA_LLM.loaded ? t("common.loadedLower", "cargado") : t("common.unloadedLower", "sin cargar"));
       summary.appendChild(statusBadge);
     }
     if (summary && !summary.querySelector("#ba-llm-summary-compat")) {
@@ -776,7 +776,7 @@
         const caps = await checkCapabilities();
         if ((selected.engine || "transformersjs") === "transformersjs" && (selected.device || "webgpu") === "webgpu" && !caps?.webgpu) return;
         setStatus(selected.engine === "ollama"
-          ? t("panel.llm.status.connectingOllama", "Conectando con Ollama…")
+          ? t("common.connectingOllama", "Conectando con Ollama…")
           : (selected.device === "wasm" ? t("panel.llm.status.loadingWasm", "Cargando modelo WASM experimental…") : t("panel.llm.status.loadingModel", "Cargando modelo…")), "warn");
         window.BA_LLM.loading = true;
         await window.BA_LLM_AGENT.loadSelectedModel();
@@ -796,12 +796,12 @@
       let confirmed = false;
       if (typeof showBaModal === "function") {
         const result = await showBaModal({
-          title: t("panel.llm.clearChat.title", "Limpiar chat"),
+          title: t("common.clearChat", "Limpiar chat"),
           message: t("panel.llm.clearChat.message", "Se borrará el chat visible, el historial interno del LLM y los artefactos de herramientas."),
           detail: t("panel.llm.clearChat.detail", "Esta acción no afecta a la VM, la red WS, los discos ni los snapshots."),
           buttons: [
             { id: "cancel", label: t("common.cancel", "Cancelar"), variant: "secondary", cancel: true },
-            { id: "clear", label: t("panel.llm.clearChat.title", "Limpiar chat"), variant: "danger" },
+            { id: "clear", label: t("common.clearChat", "Limpiar chat"), variant: "danger" },
           ],
         });
         confirmed = result === "clear";

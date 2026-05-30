@@ -55,6 +55,10 @@ for (const file of walk(browserDir)) {
     addKey(`${match[1]}.one`, rel);
     addKey(`${match[1]}.other`, rel);
   }
+  // Keys passed indirectly to t() (e.g. summaryHeadTarget("common.phrase.listingOf", ...)).
+  for (const match of text.matchAll(/["'](common\.(?:phrase|verb|noun|dockerAction)\.[a-zA-Z0-9]+)["']/g)) {
+    addKey(match[1], rel);
+  }
   // Some source files (e.g. panel templates) emit data-i18n markup as strings.
   collectDomKeys(text, rel);
 }

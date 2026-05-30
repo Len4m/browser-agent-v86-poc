@@ -74,7 +74,7 @@ function enhanceInterface() {
 
   const commandButton = document.querySelector("#command-form button");
   if (commandButton) {
-    commandButton.textContent = t("app.manualTool.label", "Tool");
+    commandButton.textContent = t("common.tool", "Tool");
     commandButton.classList.add("manual-tool-btn");
     commandButton.title = commandButton.title || t("app.manualTool.title", "Ejecutar comando en la VM por serial1/ttyS1 sin bloquear la consola del usuario");
   }
@@ -84,11 +84,26 @@ function enhanceInterface() {
   window.addEventListener("resize", () => scheduleSerialFit());
 }
 
+function applyDockerCopyLabels() {
+  const pairs = [
+    { id: "copy-docker-command", action: t("common.dockerAction.start", "abrir") },
+    { id: "copy-docker-stop-command", action: t("common.dockerAction.stop", "cerrar") },
+  ];
+  for (const { id, action } of pairs) {
+    const btn = document.getElementById(id);
+    if (!btn) continue;
+    btn.setAttribute("aria-label", t("common.copyDockerAria", "Copiar comando para {action} el proxy Docker", { action }));
+    btn.setAttribute("title", t("common.copyDockerTitle", "Copiar comando para {action}", { action }));
+  }
+}
+
 function init() {
   enhanceInterface();
+  applyDockerCopyLabels();
   initChatLayoutToggle();
   window.addEventListener("ba:langchange", () => {
     setChatExpanded(document.body.classList.contains("chat-expanded"), { persist: false });
+    applyDockerCopyLabels();
   });
   // The global GPU/WASM badge is now driven by the same capability service
   // used by the LLM panel/model selector. This avoids the old mismatch where

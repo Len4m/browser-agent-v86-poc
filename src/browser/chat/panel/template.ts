@@ -30,7 +30,7 @@
       const size = model.sizeLabel ? ` · ${model.sizeLabel}` : "";
       const dtype = model.dtype ? ` · ${model.dtype}` : "";
       const compat = model.requiresShaderF16
-        ? ` · ${t("panel.llm.model.requiresShaderF16", "requiere shader-f16")}`
+        ? ` · ${t("common.requiresShaderF16", "requiere shader-f16")}`
         : "";
       return `<option value="${escapeHtml(model.id)}">${escapeHtml(model.label)}${escapeHtml(size)}${escapeHtml(dtype)}${escapeHtml(compat)}</option>`;
     };

@@ -290,7 +290,7 @@
   function formatArtifactForDisplay(artifact, { maxChars = DISPLAY_PREVIEW_CHARS } = {}) {
     if (!artifact) return "";
     const out = preview(artifact.stdout || artifact.stderr || "", maxChars);
-    return out.text || t("artifact.displayEmpty", "(sin salida)");
+    return out.text || t("common.noOutputParen", "(sin salida)");
   }
 
   window.BA_LLM_ARTIFACTS = {

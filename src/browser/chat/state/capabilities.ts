@@ -24,7 +24,7 @@
 
   function capabilityBadgeFor(result, state = "ready") {
     if (state === "checking") return { text: t("caps.badge.checking", "GPU…"), tone: "warn", title: t("caps.badge.checkingTitle", "Comprobando capacidades de inferencia local.") };
-    if (!result) return { text: t("caps.badge.pending", "GPU pendiente"), tone: "warn", title: t("caps.badge.pendingTitle", "Pendiente de comprobar capacidades de inferencia local.") };
+    if (!result) return { text: t("caps.badge.pending", "GPU pendiente"), tone: "warn", title: t("common.inferencePending", "Pendiente de comprobar capacidades de inferencia local.") };
     if (result.webgpu) return {
       text: result.shaderF16 ? t("caps.badge.webgpuF16", "WebGPU f16") : t("caps.badge.webgpuReady", "WebGPU listo"),
       tone: "good",
@@ -33,7 +33,7 @@
         : t("caps.badge.webgpuReadyTitle", "WebGPU disponible sin shader-f16. Usar modelos q4, no q4f16."),
     };
     return {
-      text: t("caps.badge.wasm", "WASM"),
+      text: t("common.wasm", "WASM"),
       tone: "warn",
       title: result.reason ? t("caps.badge.wasmReasonTitle", "WebGPU no disponible: {reason}", { reason: result.reason }) : t("caps.badge.wasmTitle", "WebGPU no disponible. Solo modelos WASM experimentales."),
     };

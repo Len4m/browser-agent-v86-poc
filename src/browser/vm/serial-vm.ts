@@ -227,7 +227,7 @@ async function startVm(options = {}) {
   setVmOptionsLocked(true);
   if (startButton) startButton.disabled = true;
   setBadge($("badge-vm"), t("vm.badge.loading", "v86 cargando"), "warn");
-  setBadge($("vm-detail"), t("vm.badge.downloading", "descargando"), "warn");
+  setBadge($("vm-detail"), t("common.downloadingLower", "descargando"), "warn");
   setLoading(true, { title: t("vm.loading.preparing", "Preparando VM"), detail: t("vm.loading.startingDownload", "Iniciando descarga…"), percent: null, indeterminate: true });
   await nextPaint();
   logTool(`${NL}[host] preparando assets de v86...${NL}`);
@@ -296,7 +296,7 @@ async function startVm(options = {}) {
     state.vm.add_listener("eth-receive-end", (bytes) => logTool(`[network] eth receive ${bytes} bytes${NL}`));
     let restoreApplied = false;
     state.vm.add_listener("emulator-ready", async () => {
-      setBadge($("vm-detail"), restoreStateBuffer ? t("vm.badge.restoringSnapshot", "restaurando snapshot") : t("vm.badge.booting", "arrancando"), "warn");
+      setBadge($("vm-detail"), restoreStateBuffer ? t("common.restoringSnapshot", "restaurando snapshot") : t("vm.badge.booting", "arrancando"), "warn");
       window.setTimeout(() => scheduleSerialFit({ focus: true }), 150);
 
       if (restoreStateBuffer && !restoreApplied) {
@@ -322,7 +322,7 @@ async function startVm(options = {}) {
         } catch (error) {
           state.snapshotRestoring = false;
           setBadge($("badge-vm"), t("vm.badge.errorRestore", "error restore"), "bad");
-          setBadge($("vm-detail"), t("vm.badge.errorSnapshot", "error snapshot"), "bad");
+          setBadge($("vm-detail"), t("common.snapshotError", "error snapshot"), "bad");
           logTool(`[snapshot] error restaurando: ${error.message}${NL}`);
         } finally {
           setLoading(false);
@@ -335,7 +335,7 @@ async function startVm(options = {}) {
     });
 
     setBadge($("badge-vm"), t("vm.badge.starting", "v86 arrancando"), "warn");
-    setBadge($("vm-detail"), t("vm.badge.waitingShell", "esperando shell"), "warn");
+    setBadge($("vm-detail"), t("common.waitingShell", "esperando shell"), "warn");
     logTool(`[host] v86 arrancando. La pestaña 1 es serial0; las pestañas extra usan PTYs por serial2.${NL}`);
     if (state.networkAutoRequested) {
       logTool(`[network] wsnic ya verificado. La red se comprobará automáticamente al detectar la shell.${NL}`);
@@ -408,8 +408,8 @@ async function stopVm({ confirmShutdown = true } = {}) {
     resetConsoleTabs();
     setAgentBusy(false);
     setVmOptionsLocked(false);
-    setBadge($("badge-vm"), t("vm.badge.inactive", "v86 inactiva"), "");
-    setBadge($("vm-detail"), t("vm.badge.off", "apagada"), "");
+    setBadge($("badge-vm"), t("common.v86Inactive", "v86 inactiva"), "");
+    setBadge($("vm-detail"), t("common.offLower", "apagada"), "");
     syncPowerButtons();
     syncDiskCheckButton();
     syncSnapshotButtons();

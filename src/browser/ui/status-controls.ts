@@ -70,7 +70,7 @@ function syncPowerButtons() {
     powerButton.textContent = state.vmStarting
       ? t("vm.controls.power.starting", "Arrancando…")
       : vmOn
-        ? t("vm.controls.power.off", "Apagar VM")
+        ? t("common.shutdownVm", "Apagar VM")
         : t("vm.controls.power.on", "Arrancar VM");
     powerButton.title = vmOn
       ? t("vm.controls.power.off.title", "Apaga la VM. Se pedirá confirmación antes de perder cambios sin snapshot.")
@@ -91,7 +91,7 @@ function syncWsButton() {
   const connected = isWsConnected();
   button.disabled = state.wsConnecting;
   button.textContent = state.wsConnecting
-    ? t("vm.controls.ws.connecting", "Conectando…")
+    ? t("common.connectingEllipsis", "Conectando…")
     : connected
       ? t("common.disconnect", "Desconectar")
       : t("common.connect", "Conectar");
@@ -107,10 +107,10 @@ function syncChecksButton() {
   if (!button) return;
   button.disabled = Boolean(state.checksRunning || state.bgTools?.pending);
   button.textContent = state.checksRunning
-    ? t("vm.controls.checks.running", "Comprobando…")
+    ? t("common.checkingEllipsis", "Comprobando…")
     : (state.bgTools?.pending
       ? t("vm.controls.checks.toolActive", "Herramienta activa…")
-      : t("vm.controls.checks.run", "Comprobar"));
+      : t("common.runChecks", "Comprobar"));
   button.setAttribute("aria-busy", state.checksRunning ? "true" : "false");
 }
 
@@ -126,7 +126,7 @@ function setAgentBusy(value, detail = "") {
   document.body.classList.toggle("agent-busy", value);
 
   const overlay = $("vm-lock-overlay");
-  if (overlay) overlay.textContent = value ? (detail || t("vm.controls.agentBusy", "El agente está usando la VM…")) : "";
+  if (overlay) overlay.textContent = value ? (detail || t("common.agentUsingVm", "El agente está usando la VM…")) : "";
 
   const chatInput = $("chat-input");
   const chatButton = document.getElementById("chat-submit-btn");

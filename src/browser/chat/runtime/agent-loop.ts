@@ -226,7 +226,7 @@
     window.BA_LLM_EVENTS?.emit("status", {
       text: modelConfig.engine === "ollama" && window.BA_ORIGIN?.isPublishedOrigin?.()
         ? t("chat.status.ollamaPermission", "Ollama local: permiso de red + OLLAMA_ORIGINS")
-        : (modelConfig.engine === "ollama" ? t("chat.status.connectingOllama", "Conectando con Ollama…") : t("chat.status.loadingModel", "Cargando modelo local…")),
+        : (modelConfig.engine === "ollama" ? t("common.connectingOllama", "Conectando con Ollama…") : t("chat.status.loadingModel", "Cargando modelo local…")),
       tone: "warn",
     });
 
@@ -283,7 +283,7 @@
     appendToolResultToBubble(bubble, toolResult, artifact);
 
     if (toolResult.cancelled) {
-      const answer = t("chat.tool.cancelledByUser", "Herramienta cancelada por el usuario.");
+      const answer = t("common.toolCancelledByUser", "Herramienta cancelada por el usuario.");
       window.BA_LLM.messages.push({ role: "user", content: userText });
       window.BA_LLM.messages.push({ role: "assistant", content: answer });
       window.BA_LLM.messages = window.BA_LLM.messages.slice(-8);
@@ -377,7 +377,7 @@
 
     const spinnerLabel = useToolLoop && needsVm
       ? t("chat.spinner.agentLoop", "Agente (loop AI + tools)…")
-      : t("chat.spinner.generating", "Generando respuesta…");
+      : t("common.generatingResponse", "Generando respuesta…");
     setChatTailIndicator(spinnerLabel);
     bubble.setAttribute("aria-busy", "true");
 
@@ -516,7 +516,7 @@
               return;
             }
             sdkAssistantText += textChunk;
-            setChatTailIndicator(t("chat.spinner.generating", "Generando respuesta…"));
+            setChatTailIndicator(t("common.generatingResponse", "Generando respuesta…"));
             showAssistantMessage(bubble);
             mdHost.hidden = false;
             bubble.classList.remove("ba-llm-planning");
@@ -657,8 +657,8 @@
     } catch (error) {
       if (isAbortError(error) || isStaleTurn(turnGeneration)) {
         if (!stopRequested) {
-          addMessage("agent", t("chat.msg.cancelled", "Operación cancelada."));
-          window.BA_LLM_EVENTS?.emit("status", { text: t("chat.status.cancelled", "Operación cancelada"), tone: "warn" });
+          addMessage("agent", t("common.operationCancelled", "Operación cancelada."));
+          window.BA_LLM_EVENTS?.emit("status", { text: t("common.operationCancelled", "Operación cancelada"), tone: "warn" });
         }
         return;
       }

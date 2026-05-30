@@ -42,7 +42,7 @@
     if (!shouldConfirm(toolCall)) return true;
     const decision = await showBaModal({
       title: t("tools.exec.confirm.title", "Confirmar tool del agente"),
-      message: t("tools.exec.confirm.message", "{label} · nivel {level}", { label: toolDef.label || toolDef.name, level: toolDef.riskLevel }),
+      message: t("common.levelChip", "{name} · nivel {level}", { name: toolDef.label || toolDef.name, level: toolDef.riskLevel }),
       detail: `${toolCall.reason || t("tools.exec.confirm.noReason", "Sin motivo.")}\n\n${t("tools.exec.confirm.argsLabel", "Argumentos:")}\n${shortJson(toolCall.arguments)}`,
       buttons: [
         { id: "cancel", label: t("common.cancel", "Cancelar"), variant: "secondary", cancel: true },
@@ -84,8 +84,8 @@
         cancelled: true,
         code: 130,
         stdout: "",
-        stderr: t("tools.exec.cancelledByUser", "Herramienta cancelada por el usuario."),
-        summary: t("tools.exec.cancelledByUser", "Herramienta cancelada por el usuario."),
+        stderr: t("common.toolCancelledByUser", "Herramienta cancelada por el usuario."),
+        summary: t("common.toolCancelledByUser", "Herramienta cancelada por el usuario."),
         toolCall: normalized,
       };
     }
@@ -111,8 +111,8 @@
           cancelled: true,
           code: 130,
           stdout: raw.stdout || "",
-          stderr: raw.stderr || t("tools.exec.toolCancelledShort", "Tool cancelada."),
-          summary: t("tools.exec.toolCancelledByUser", "Tool cancelada por el usuario."),
+          stderr: raw.stderr || t("common.toolCancelled", "Tool cancelada."),
+          summary: t("common.toolCancelledByUser", "Tool cancelada por el usuario."),
           toolCall: normalized,
         };
       }

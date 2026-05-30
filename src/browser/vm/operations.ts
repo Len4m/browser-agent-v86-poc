@@ -40,9 +40,9 @@ function buildExecVmWrappedCommand(command, marker, maxOutputBytes) {
   ].join("; ") + NL;
 }
 
-async function execVm(command, { lock = true, label = t("vm.exec.busyDefault", "El agente está usando la VM…"), timeoutMs = 25000, log = true, targetTools = true, resolveOnTokens = [], rejectOnTokens = [], maxOutputBytes = 65536 } = {}) {
-  if (!state.vm) return { code: 1, stdout: "", stderr: t("vm.error.notStarted", "v86 no está arrancada") };
-  if (!state.vmReady) return { code: 1, stdout: "", stderr: t("vm.error.booting", "la VM está arrancando") };
+async function execVm(command, { lock = true, label = t("common.agentUsingVm", "El agente está usando la VM…"), timeoutMs = 25000, log = true, targetTools = true, resolveOnTokens = [], rejectOnTokens = [], maxOutputBytes = 65536 } = {}) {
+  if (!state.vm) return { code: 1, stdout: "", stderr: t("common.v86NotStarted", "v86 no está arrancada") };
+  if (!state.vmReady) return { code: 1, stdout: "", stderr: t("common.vmBooting", "la VM está arrancando") };
 
   // Las operaciones internas/tools usan UART1/ttyS1 y no cambian la consola visible.
   // No hacemos fallback silencioso a serial0 para evitar interferir con el usuario.
@@ -236,7 +236,7 @@ async function disconnectWs({ confirmDisconnect = true } = {}) {
     state.networkConfigured = false;
     state.networkConfiguring = false;
     setBadge($("badge-ws"), t("ws.badge.disconnected", "wsnic desconectado"), "");
-    setBadge($("ws-detail"), t("ws.detail.disconnected", "desconectado"), "");
+    setBadge($("ws-detail"), t("common.disconnected", "desconectado"), "");
     syncWsButton();
     return;
   }
@@ -256,7 +256,7 @@ async function disconnectWs({ confirmDisconnect = true } = {}) {
   try { socket?.close?.(); } catch {}
 
   setBadge($("badge-ws"), t("ws.badge.disconnected", "wsnic desconectado"), "");
-  setBadge($("ws-detail"), t("ws.detail.disconnected", "desconectado"), "");
+  setBadge($("ws-detail"), t("common.disconnected", "desconectado"), "");
   logTool(`${NL}[host] ${t("ws.host.disconnected", "wsnic desconectado.")}${NL}`);
   syncWsButton();
 }
@@ -273,7 +273,7 @@ async function connectWs() {
   }
   if (!window.WebSocket) {
     setBadge($("badge-ws"), t("ws.badge.error", "wsnic error"), "bad");
-    setBadge($("ws-detail"), t("ws.detail.unavailable", "no disponible"), "bad");
+    setBadge($("ws-detail"), t("common.unavailable", "no disponible"), "bad");
     syncWsButton();
     return;
   }
@@ -281,7 +281,7 @@ async function connectWs() {
   state.wsConnecting = true;
   syncWsButton();
   setBadge($("badge-ws"), t("ws.badge.connecting", "wsnic conectando"), "warn");
-  setBadge($("ws-detail"), t("ws.detail.connecting", "conectando"), "warn");
+  setBadge($("ws-detail"), t("common.connectingLower", "conectando"), "warn");
 
   try {
     const socket = new WebSocket(url);
@@ -290,7 +290,7 @@ async function connectWs() {
       state.wsConnecting = false;
       try { socket.close(); } catch {}
       setBadge($("badge-ws"), t("ws.badge.disconnected", "wsnic desconectado"), "");
-      setBadge($("ws-detail"), t("ws.detail.noResponse", "no responde"), "warn");
+      setBadge($("ws-detail"), t("common.noResponse", "no responde"), "warn");
       syncWsButton();
     }, 1800);
 
@@ -301,7 +301,7 @@ async function connectWs() {
       state.networkAutoRequested = true;
       state.networkConfigured = false;
       setBadge($("badge-ws"), t("ws.badge.connected", "wsnic conectado"), "good");
-      setBadge($("ws-detail"), t("ws.detail.connected", "conectado"), "good");
+      setBadge($("ws-detail"), t("common.connected", "conectado"), "good");
       logTool(`${NL}[host] ${t("ws.host.connected", "wsnic conectado: {url}", { url })}${NL}`);
       syncWsButton();
       maybeConfigureNetwork();
@@ -311,7 +311,7 @@ async function connectWs() {
       if (state.wsSocket === socket) state.wsSocket = null;
       state.wsConnecting = false;
       setBadge($("badge-ws"), t("ws.badge.error", "wsnic error"), "bad");
-      setBadge($("ws-detail"), t("ws.detail.cannotConnect", "no conecta"), "bad");
+      setBadge($("ws-detail"), t("common.cannotConnect", "no conecta"), "bad");
       syncWsButton();
     };
     socket.onclose = () => {
@@ -322,7 +322,7 @@ async function connectWs() {
       state.networkConfigured = false;
       state.networkConfiguring = false;
       setBadge($("badge-ws"), t("ws.badge.disconnected", "wsnic desconectado"), "");
-      setBadge($("ws-detail"), t("ws.detail.closed", "cerrado"), "");
+      setBadge($("ws-detail"), t("common.closed", "cerrado"), "");
       syncWsButton();
     };
   } catch (error) {
@@ -354,7 +354,7 @@ async function saveSnapshot() {
     logTool(`[snapshot] ${t("vm.snapshot.downloaded", "descargado {filename} ({size}).", { filename, size: formatBytes(buffer.byteLength) })}${NL}`);
   } catch (error) {
     logTool(`[snapshot] ${t("vm.snapshot.saveError", "error guardando: {error}", { error: error.message })}${NL}`);
-    setBadge($("vm-detail"), t("vm.snapshot.badge.saveError", "error snapshot"), "bad");
+    setBadge($("vm-detail"), t("common.snapshotError", "error snapshot"), "bad");
   } finally {
     setLoading(false);
     setAgentBusy(false);
@@ -382,7 +382,7 @@ async function restoreSnapshotFromFile(event) {
 
   try {
     const buffer = await file.arrayBuffer();
-    logTool(`${NL}[snapshot] ${t("vm.snapshot.loaded", "cargado {filename} ({size}).", { filename: file.name, size: formatBytes(buffer.byteLength) })}${NL}`);
+    logTool(`${NL}[snapshot] ${t("common.loadedFile", "cargado {filename} ({size}).", { filename: file.name, size: formatBytes(buffer.byteLength) })}${NL}`);
     logTool(`[snapshot] ${t("vm.snapshot.hdaNotInSnapshot", "aviso: los discos hda no se guardan dentro del snapshot. Usa la misma imagen de disco si seleccionaste hda.")}${NL}`);
     setAgentBusy(false);
 
@@ -410,7 +410,7 @@ async function copyDockerCommand(event) {
     textarea.select();
     const ok = document.execCommand("copy");
     textarea.remove();
-    if (!ok) throw new Error(t("docker.copyError", "No se pudo copiar"));
+    if (!ok) throw new Error(t("common.copyFailed", "No se pudo copiar"));
   }
 
   try {
@@ -422,7 +422,7 @@ async function copyDockerCommand(event) {
     if (status) status.textContent = t("common.copied", "Copiado");
     logTool(`${NL}[host] ${t("docker.copiedLog", "comando Docker copiado al portapapeles.")}${NL}`);
   } catch (error) {
-    if (status) status.textContent = t("docker.copyFailed", "No se pudo copiar");
+    if (status) status.textContent = t("common.copyFailed", "No se pudo copiar");
     logTool(`${NL}[host] ${t("docker.copyFailedLog", "no se pudo copiar el comando Docker: {error}", { error: error.message })}${NL}`);
   }
 

@@ -116,7 +116,7 @@
     if (busy) setStatus(t("bgtools.status.running", "herramienta ejecutando"), "warn");
     else if (bg.runnerReady) setStatus(bg.lastResult ? t("bgtools.status.lastReady", "última herramienta lista") : t("bgtools.status.serial1Ready", "serial1 listo"), "good");
     else if (serial1Available()) setStatus(t("bgtools.status.waitingRunner", "esperando runner"), "warn");
-    else setStatus(t("bgtools.status.serial1Unavailable", "serial1 no disponible"), "bad");
+    else setStatus(t("common.serialUnavailable", "serial{port} no disponible", { port: "1" }), "bad");
 
     const details = document.getElementById("bg-tool-details");
     if (details && busy) details.open = true;
@@ -155,7 +155,7 @@
   }
 
   function sendSerial1Text(text) {
-    if (!state.vm) throw new Error(t("bgtools.error.notStarted", "v86 no está arrancada"));
+    if (!state.vm) throw new Error(t("common.v86NotStarted", "v86 no está arrancada"));
     const value = safeText(text);
     if (typeof state.vm.serial_send_bytes === "function") {
       state.vm.serial_send_bytes(1, new TextEncoder().encode(value));
@@ -276,9 +276,9 @@
       skipReadyCheck = false,
     } = options || {};
 
-    if (!state.vm) return { code: 1, stdout: "", stderr: t("bgtools.error.notStarted", "v86 no está arrancada") };
-    if (!state.vmReady) return { code: 1, stdout: "", stderr: t("bgtools.error.booting", "la VM está arrancando") };
-    if (!serial1Available()) return { code: 1, stdout: "", stderr: t("bgtools.error.serial1Unavailable", "serial1 no disponible en esta build de v86") };
+    if (!state.vm) return { code: 1, stdout: "", stderr: t("common.v86NotStarted", "v86 no está arrancada") };
+    if (!state.vmReady) return { code: 1, stdout: "", stderr: t("common.vmBooting", "la VM está arrancando") };
+    if (!serial1Available()) return { code: 1, stdout: "", stderr: t("common.serialUnavailableBuild", "serial{port} no disponible en esta build de v86", { port: "1" }) };
 
     mountUi();
     if (!skipReadyCheck && !isRunnerReady()) {
