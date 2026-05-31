@@ -11,7 +11,7 @@ import { readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-const root = fileURLToPath(new URL("..", import.meta.url));
+const root = fileURLToPath(new URL("../..", import.meta.url));
 const minify = process.env.BA_MINIFY === "1" || process.argv.includes("--minify");
 const sourcemap = process.env.BA_SOURCEMAP === "1" || process.argv.includes("--sourcemap");
 const browserOutFile = join(root, "public/assets/chat/ai-sdk-browser.mjs");

@@ -5,7 +5,7 @@ set -euo pipefail
 # que a veces no está en el PATH de usuarios normales.
 export PATH="$PATH:/usr/sbin:/sbin"
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DISK_DIR="$ROOT_DIR/public/v86/disks"
 mkdir -p "$DISK_DIR"
 

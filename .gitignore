@@ -12,7 +12,7 @@ node_modules/
 .codex/
 
 # Artefactos generados por scripts
-build/
+/build/
 
 # Bundles generados por npm run build
 public/index.html

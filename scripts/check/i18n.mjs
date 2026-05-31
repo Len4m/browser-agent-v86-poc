@@ -12,7 +12,7 @@ import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = fileURLToPath(new URL("..", import.meta.url));
+const root = fileURLToPath(new URL("../..", import.meta.url));
 const browserDir = join(root, "src/browser");
 const indexHtmlFile = join(root, "src/web/index.html");
 const localesDir = join(root, "src/web/locales");

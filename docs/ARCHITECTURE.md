@@ -67,7 +67,7 @@ flowchart LR
 
 ## Build frontend
 
-`scripts/build-frontend.mjs` genera:
+`scripts/build/frontend.mjs` genera:
 
 - `public/index.html`
 - `public/style.css`
@@ -78,16 +78,16 @@ flowchart LR
 
 El entry `src/browser/main.ts` instala `window.BA` desde `src/browser/compat/window-api.ts`. Después el script concatena fuentes TypeScript en el orden `browserSourceOrder`. Este orden mantiene contratos globales históricos mientras los módulos se migran por dominio.
 
-Regla: si cambia el orden de inicialización del browser, se modifica solo `browserSourceOrder` en `scripts/build-frontend.mjs`.
+Regla: si cambia el orden de inicialización del browser, se modifica solo `browserSourceOrder` en `scripts/build/frontend.mjs`.
 
 ## Build LLM
 
-`scripts/build.mjs` ejecuta, en orden:
+`scripts/build/index.mjs` ejecuta, en orden:
 
-1. `scripts/build-llm-models.mjs`
-2. `scripts/download-v86-assets.mjs`
-3. `scripts/build-llm-ai-bundle.mjs`
-4. `scripts/build-frontend.mjs`
+1. `scripts/llm/build-models.mjs`
+2. `scripts/vm/download-assets.mjs`
+3. `scripts/llm/build-ai-bundle.mjs`
+4. `scripts/build/frontend.mjs`
 
 Salidas LLM:
 
@@ -100,7 +100,7 @@ El bridge importa el bundle generado con query versionada y expone `window.BA_AI
 
 ## Assets de runtime
 
-Las librerías de runtime deben estar declaradas en `package.json` y copiarse desde `node_modules` con `scripts/download-v86-assets.mjs`:
+Las librerías de runtime deben estar declaradas en `package.json` y copiarse desde `node_modules` con `scripts/vm/download-assets.mjs`:
 
 | Dependencia | Salida |
 | --- | --- |
@@ -174,20 +174,20 @@ Fuentes de runners:
 - `vm/overlay/common/usr/local/bin/ba-serial1-runner`
 - `vm/overlay/common/usr/local/bin/ba-serial2-console-runner`
 
-Ambos runners guest están escritos en Python 3 y son procesos persistentes supervisados por el initramfs. Por tanto, `python3` es dependencia obligatoria de todos los perfiles VM; `npm run check` y `scripts/build-vm-profile.mjs` lo validan.
+Ambos runners guest están escritos en Python 3 y son procesos persistentes supervisados por el initramfs. Por tanto, `python3` es dependencia obligatoria de todos los perfiles VM; `npm run check` y `scripts/vm/build-profile.mjs` lo validan.
 
 ## VM e imágenes
 
-`scripts/setup.mjs` ejecuta:
+`scripts/vm/setup.mjs` ejecuta:
 
-1. `scripts/download-v86-assets.mjs`
-2. `scripts/build-alpine-initramfs.sh`
-3. `scripts/build-vm-profile.mjs vm/profiles/alpine-base.json`
-4. `scripts/build-vm-profile.mjs vm/profiles/alpine-pentest-lite.json`
-5. `scripts/build-vm-profile.mjs vm/profiles/alpine-pentest-web.json`
-6. `scripts/create-v86-disks.sh`
+1. `scripts/vm/download-assets.mjs`
+2. `scripts/vm/build-alpine-initramfs.sh`
+3. `scripts/vm/build-profile.mjs vm/profiles/alpine-base.json`
+4. `scripts/vm/build-profile.mjs vm/profiles/alpine-pentest-lite.json`
+5. `scripts/vm/build-profile.mjs vm/profiles/alpine-pentest-web.json`
+6. `scripts/vm/create-disks.sh`
 
-`scripts/build-vm-profile.mjs` genera manifests en `public/v86/images/profiles/` y mantiene `index.json`. Los perfiles usan initramfs; los discos HDA creados por `scripts/create-v86-disks.sh` son imágenes ext2 raw para datos.
+`scripts/vm/build-profile.mjs` genera manifests en `public/v86/images/profiles/` y mantiene `index.json`. Los perfiles usan initramfs; los discos HDA creados por `scripts/vm/create-disks.sh` son imágenes ext2 raw para datos.
 
 Los runners seriales se instalan desde `vm/overlay/common/usr/local/bin/`. Tras cambiar overlay, perfiles, runners o build de Alpine, ejecutar `npm run setup`.
 
@@ -238,11 +238,16 @@ Archivos clave:
 `npm run check` ejecuta:
 
 - `tsc --noEmit`
-- `scripts/check-llm-models.mjs`
-- `scripts/check-vm-profiles.mjs`
-- `scripts/check-frontend-manifest.mjs`
-- `scripts/check-js-syntax.mjs`
-- `scripts/check-server.mjs`
+- `scripts/check/index.mjs`
+
+`scripts/check/index.mjs` ejecuta:
+
+- `scripts/check/llm-models.mjs`
+- `scripts/check/vm-profiles.mjs`
+- `scripts/check/frontend-manifest.mjs`
+- `scripts/check/js-syntax.mjs`
+- `scripts/check/i18n.mjs`
+- `scripts/check/server.mjs`
 
 `check-server` arranca `server.mjs` en `127.0.0.1:5199` y valida COOP, COEP, CORP y `Range`.
 

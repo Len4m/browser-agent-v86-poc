@@ -3,13 +3,13 @@
  * Validates vm/profiles/*.json against vm/profiles/profile.schema.json.
  *
  * This keeps profile checks dependency-free, matching the lightweight approach
- * used by scripts/check-llm-models.mjs.
+ * used by scripts/check/llm-models.mjs.
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = fileURLToPath(new URL("..", import.meta.url));
+const root = fileURLToPath(new URL("../..", import.meta.url));
 const profilesDir = join(root, "vm", "profiles");
 const schema = JSON.parse(readFileSync(join(profilesDir, "profile.schema.json"), "utf8"));
 const profileFiles = readdirSync(profilesDir)

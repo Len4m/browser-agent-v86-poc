@@ -1,7 +1,7 @@
 {
   "name": "browser-agent-v86-poc",
   "description": "Browser Agent v86 POC",
-  "version": "0.9.3-beta.1",
+  "version": "0.9.3-beta.2",
   "author": "Lenam <lenamgenx@protonmail.com> (https://Len4m.github.io)",
   "license": "MIT",
   "private": true,
@@ -16,13 +16,13 @@
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
-    "prepare:local": "node scripts/setup.mjs && node scripts/build.mjs",
-    "setup": "node scripts/setup.mjs",
-    "build": "node scripts/build.mjs",
-    "build:prod": "BA_MINIFY=1 node scripts/build.mjs",
-    "check": "tsc --noEmit && node scripts/check-llm-models.mjs && node scripts/check-vm-profiles.mjs && node scripts/check-frontend-manifest.mjs && node scripts/check-js-syntax.mjs && node scripts/check-i18n.mjs && node scripts/check-server.mjs",
-    "clean": "node scripts/clean.mjs",
-    "clean:runtime": "node scripts/clean-runtime.mjs",
+    "prepare:local": "node scripts/vm/setup.mjs && node scripts/build/index.mjs",
+    "setup": "node scripts/vm/setup.mjs",
+    "build": "node scripts/build/index.mjs",
+    "build:prod": "BA_MINIFY=1 node scripts/build/index.mjs",
+    "check": "tsc --noEmit && node scripts/check/index.mjs",
+    "clean": "node scripts/clean/index.mjs",
+    "clean:runtime": "node scripts/clean/runtime.mjs",
     "clean:all": "npm run clean && npm run clean:runtime"
   },
   "engines": {

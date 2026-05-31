@@ -3,17 +3,21 @@
  * Syntax-checks project JavaScript. Browser source files are checked directly
  * while public/index.html now loads the generated app bundle.
  */
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-const root = fileURLToPath(new URL("..", import.meta.url));
+const root = fileURLToPath(new URL("../..", import.meta.url));
 
-function jsFilesIn(dir) {
-  return readdirSync(join(root, dir))
-    .filter((file) => /\.(?:mjs|js)$/.test(file))
-    .map((file) => `${dir}/${file}`);
+function jsFilesIn(dir, out = []) {
+  for (const file of readdirSync(join(root, dir))) {
+    const rel = `${dir}/${file}`;
+    const abs = join(root, rel);
+    if (statSync(abs).isDirectory()) jsFilesIn(rel, out);
+    else if (/\.(?:mjs|js)$/.test(file)) out.push(rel);
+  }
+  return out;
 }
 
 function existing(files) {

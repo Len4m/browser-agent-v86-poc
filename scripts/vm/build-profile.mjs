@@ -4,7 +4,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
-const root = fileURLToPath(new URL("..", import.meta.url));
+const root = fileURLToPath(new URL("../..", import.meta.url));
 const publicRoot = join(root, "public");
 const profilePath = resolve(root, process.argv[2] || "vm/profiles/alpine-pentest-lite.json");
 
@@ -105,7 +105,7 @@ if (extraRepositories.length) console.log(`Repos extra: ${extraRepositories.join
 console.log(`Salida: ${output}`);
 
 console.log("\n== Descargando assets base ==");
-run(process.execPath, ["scripts/download-v86-assets.mjs"]);
+run(process.execPath, ["scripts/vm/download-assets.mjs"]);
 
 const profileBuildDir = join(root, "build", "profiles", id);
 mkdirSync(profileBuildDir, { recursive: true });
@@ -128,7 +128,7 @@ writeFileSync(buildCommandsFile, [
 ].join("\n"));
 
 console.log("\n== Generando imagen del perfil ==");
-run("bash", ["scripts/build-alpine-initramfs.sh"], {
+run("bash", ["scripts/vm/build-alpine-initramfs.sh"], {
   env: {
     PROFILE_ID: id,
     PROFILE_NAME: name,

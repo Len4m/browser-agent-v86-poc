@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PUBLIC_DIR="$ROOT_DIR/public"
 ALPINE_VERSION="${ALPINE_VERSION:-3.23.4}"
 ALPINE_BRANCH="${ALPINE_BRANCH:-v${ALPINE_VERSION%.*}}"
@@ -57,7 +57,7 @@ fi
 
 if [ ! -f "$MINIROOTFS" ]; then
   echo "No existe $MINIROOTFS" >&2
-  echo "Ejecuta primero: node scripts/download-v86-assets.mjs" >&2
+  echo "Ejecuta primero: node scripts/vm/download-assets.mjs" >&2
   exit 1
 fi
 

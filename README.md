@@ -1,10 +1,10 @@
 # Browser Agent v86 POC
 
-[![Versión beta](https://img.shields.io/badge/version-0.9.3--beta.1-orange)](https://github.com/Len4m/browser-agent-v86-poc)
+[![Versión beta](https://img.shields.io/badge/version-0.9.3--beta.2-orange)](https://github.com/Len4m/browser-agent-v86-poc)
 
 Browser Agent v86 POC ejecuta una **VM Linux x86 con v86**, un **chat con LLM desde el navegador** y herramientas de agente que pueden lanzar comandos dentro de la VM. El objetivo es experimentar con IA local, Linux, automatización y red desde una aplicación web servida como archivos estáticos.
 
-Estado actual: **beta `0.9.3-beta.1`**. La versión `1.0.0` queda reservada para la primera publicación estable.
+Estado actual: **beta `0.9.3-beta.2`**. La versión `1.0.0` queda reservada para la primera publicación estable.
 
 - Demo: [https://browseragent.icu/](https://browseragent.icu/)
 - Repositorio: [https://github.com/Len4m/browser-agent-v86-poc](https://github.com/Len4m/browser-agent-v86-poc)
@@ -68,7 +68,7 @@ No abras `index.html` como `file://`. `npm start` ya sirve `public/` con las cab
 public/             # raíz servida al navegador; contiene salidas generadas y assets estáticos
 src/browser/        # código TypeScript del frontend
 src/web/            # plantilla HTML y CSS fuente
-scripts/            # setup, build, checks, limpieza y generación de assets
+scripts/            # tooling por dominio: build, check, clean, vm y llm
 vm/profiles/        # perfiles Alpine de VM
 vm/overlay/common/  # runners y ficheros incluidos en el initramfs
 docs/USAGE.md       # uso, desarrollo, distribución y troubleshooting

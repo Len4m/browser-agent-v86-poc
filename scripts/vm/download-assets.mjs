@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import https from "node:https";
 
-const root = fileURLToPath(new URL("..", import.meta.url));
+const root = fileURLToPath(new URL("../..", import.meta.url));
 
 // Runtime libraries come from package.json/node_modules. Only OS/firmware files
 // that are not published as npm runtime assets remain remote downloads.

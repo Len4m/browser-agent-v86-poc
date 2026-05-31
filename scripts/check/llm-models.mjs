@@ -11,7 +11,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = fileURLToPath(new URL("..", import.meta.url));
+const root = fileURLToPath(new URL("../..", import.meta.url));
 const catalog = JSON.parse(readFileSync(join(root, "data", "llm-models.json"), "utf8"));
 const schema = JSON.parse(readFileSync(join(root, "data", "llm-models.schema.json"), "utf8"));
 const errors = [];

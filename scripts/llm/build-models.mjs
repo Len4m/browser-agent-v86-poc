@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * Genera el catálogo de modelos consumido por scripts/build-frontend.mjs.
+ * Genera el catálogo de modelos consumido por scripts/build/frontend.mjs.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = fileURLToPath(new URL("..", import.meta.url));
+const root = fileURLToPath(new URL("../..", import.meta.url));
 const jsonPath = join(root, "data/llm-models.json");
 const outPath = join(root, "build/browser/generated/10a-llm-models-catalog.js");
 

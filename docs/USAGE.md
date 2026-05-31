@@ -162,7 +162,7 @@ Regenera con `npm run setup` después de tocar:
 
 - `vm/profiles/*.json`
 - `vm/overlay/common/`
-- `scripts/build-alpine-initramfs.sh`
+- `scripts/vm/build-alpine-initramfs.sh`
 - runners seriales
 
 Los perfiles VM deben mantener `python3` en `packages`, porque los runners seriales del guest dependen de Python 3.
