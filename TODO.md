@@ -10,6 +10,7 @@ Lista de temas detectados para revisar antes de una publicación estable.
 - [X] Revisar integración con Ollama cuando el proyecto esté publicado en internet: CORS, origen permitido, endpoints locales, seguridad y experiencia de configuración.
 - [ ] Mejorar y revisar la gestión de artifacts: ciclo de vida,~~persistencia~~,~~limpieza~~, referencias desde el contexto, visualización en UI y límites de memoria.
 - [X] Seleccionar mejor los modelos que aceptan y funcionan correctamente con tools por defecto.
+- [ ] Revisar la visualización del razonamiento (thinking) en el chat: con el toggle activo, comprobar en qué casos se muestra, si permanece en el historial y si es coherente con tools, respuestas vacías o turnos sin texto final (p. ej. cuando hubo razonamiento pero no respuesta visible, o el modelo ejecutó una tool y el bloque desaparece al cerrar el turno).
 
 ## Producto y publicación
 
