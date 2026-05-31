@@ -15,6 +15,7 @@ const schema = JSON.parse(readFileSync(join(profilesDir, "profile.schema.json"),
 const profileFiles = readdirSync(profilesDir)
   .filter((file) => file.endsWith(".json") && !file.endsWith(".schema.json"))
   .sort();
+const requiredProfilePackages = ["python3"];
 const errors = [];
 
 function typeOf(value) {
@@ -119,6 +120,13 @@ for (const file of profileFiles) {
   const recommendedRamMb = Number(profile.recommendedRamMb || 512);
   if (Number.isFinite(minRamMb) && Number.isFinite(recommendedRamMb) && recommendedRamMb < minRamMb) {
     errors.push(`${path}.recommendedRamMb: expected >= minRamMb (${minRamMb}), got ${recommendedRamMb}`);
+  }
+
+  const packages = Array.isArray(profile.packages) ? profile.packages : [];
+  for (const packageName of requiredProfilePackages) {
+    if (!packages.includes(packageName)) {
+      errors.push(`${path}.packages: missing required package ${packageName} (guest runners depend on it)`);
+    }
   }
 }
 

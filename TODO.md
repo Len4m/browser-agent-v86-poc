@@ -22,7 +22,7 @@ Lista de temas detectados para revisar antes de una publicación estable.
 ## Consola y xterm.js
 
 - [X] Revisar manualmente la rama`xterm-direct-consoles`: consolas xterm con PTYs independientes dentro de la VM, máximo 4 sesiones, transporte multiplexado por`serial2` y tools separadas por`serial1`.
-- [ ] Decidir el lenguaje de los runners guest en`vm/overlay/common/usr/local/bin/`: hoy `ba-serial1-runner` está en **bash** (jobs base64 por`ttyS1`) y `ba-serial2-console-runner` en **Python 3** (daemon PTY/xterm por`ttyS2`). Valorar unificar en **bash** para poder reducir la VM base (p. ej. quitar `python3` del perfil `alpine-base` y del initramfs si ya no hace falta) o, al revés, reescribir serial1 en **Python** por consistencia y mantenibilidad, dado que todos los perfiles actuales ya incluyen `python3`. Criterios: tamaño de imagen, dependencias del overlay, complejidad del protocolo (PTY/select vs shell puro) y coste de mantener dos estilos distintos.
+- [X] Decidir el lenguaje de los runners guest en`vm/overlay/common/usr/local/bin/`: se mantiene `python3` como dependencia obligatoria de todos los perfiles y se migra `ba-serial1-runner` a **Python 3**, igual que `ba-serial2-console-runner`. Criterio: la red/v86 dominan la latencia, el runner serial1 es persistente y no paga arranque de Python por job, y unificar en Python simplifica el protocolo, timeouts y drenaje de stdout/stderr.
 
 ## VM y carga inicial
 

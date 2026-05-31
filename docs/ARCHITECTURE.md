@@ -174,6 +174,8 @@ Fuentes de runners:
 - `vm/overlay/common/usr/local/bin/ba-serial1-runner`
 - `vm/overlay/common/usr/local/bin/ba-serial2-console-runner`
 
+Ambos runners guest están escritos en Python 3 y son procesos persistentes supervisados por el initramfs. Por tanto, `python3` es dependencia obligatoria de todos los perfiles VM; `npm run check` y `scripts/build-vm-profile.mjs` lo validan.
+
 ## VM e imágenes
 
 `scripts/setup.mjs` ejecuta:
@@ -187,7 +189,7 @@ Fuentes de runners:
 
 `scripts/build-vm-profile.mjs` genera manifests en `public/v86/images/profiles/` y mantiene `index.json`. Los perfiles usan initramfs; los discos HDA creados por `scripts/create-v86-disks.sh` son imágenes ext2 raw para datos.
 
-El daemon de consola se instala desde `vm/overlay/common/usr/local/bin/ba-serial2-console-runner`. Tras cambiar overlay, perfiles, runners o build de Alpine, ejecutar `npm run setup`.
+Los runners seriales se instalan desde `vm/overlay/common/usr/local/bin/`. Tras cambiar overlay, perfiles, runners o build de Alpine, ejecutar `npm run setup`.
 
 ## Capa LLM
 

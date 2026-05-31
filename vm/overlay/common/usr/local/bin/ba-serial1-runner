@@ -1,158 +1,344 @@
-#!/bin/sh
-# Browser Agent serial1 runner.
-# Reads base64 encoded jobs from /dev/ttyS1 and writes live output back to ttyS1.
-# Protocol:
-#   __BA_S1_BEGIN:<id>:<timeout_s>:<max_bytes>:<marker>
-#   <base64 lines>
-#   __BA_S1_END:<id>
-set +e
+#!/usr/bin/env python3
+"""Browser Agent serial1 runner.
 
-TTY="${1:-/dev/ttyS1}"
-RUN_DIR="/tmp/ba-s1-runs"
-mkdir -p "$RUN_DIR" 2>/dev/null
-chmod 700 "$RUN_DIR" 2>/dev/null || true
+Reads base64 encoded shell jobs from /dev/ttyS1 and writes live output back to
+ttyS1. The browser side depends on the marker protocol documented below:
 
-if [ ! -e "$TTY" ]; then
-  exit 0
-fi
+  __BA_S1_BEGIN:<id>:<timeout_s>:<max_bytes>:<marker>
+  <base64 lines>
+  __BA_S1_END:<id>
+"""
 
-stty -F "$TTY" 115200 cs8 -cstopb -parenb -ixon -ixoff -echo 2>/dev/null || true
+import base64
+import binascii
+import fcntl
+import os
+import select
+import signal
+import subprocess
+import sys
+import termios
+import time
 
-say() {
-  printf '%s\n' "$*" > "$TTY" 2>/dev/null || true
-}
+TTY = sys.argv[1] if len(sys.argv) > 1 else "/dev/ttyS1"
+RUN_DIR = "/tmp/ba-s1-runs"
+DEFAULT_TIMEOUT_S = 25
+DEFAULT_MAX_BYTES = 64 * 1024
+MAX_TIMEOUT_S = 600
+MAX_OUTPUT_BYTES = 1024 * 1024
+KILL_GRACE_S = 0.5
 
-safe_id() {
-  printf '%s' "$1" | tr -c 'A-Za-z0-9_.-' '_'
-}
 
-cleanup_job_files() {
-  id="$(safe_id "$1")"
-  rm -f \
-    "$RUN_DIR/$id.cmd.b64" \
-    "$RUN_DIR/$id.sh" \
-    "$RUN_DIR/$id.raw" \
-    "$RUN_DIR/$id.fifo" \
-    "$RUN_DIR/$id.decode.err" \
-    2>/dev/null || true
-}
+def safe_id(value):
+    text = str(value or "")
+    return "".join(ch if ch.isalnum() or ch in "_.-" else "_" for ch in text)
 
-run_job() {
-  id="$(safe_id "$1")"
-  timeout_s="${2:-25}"
-  max_bytes="${3:-65536}"
-  marker="$4"
-  b64="$RUN_DIR/$id.cmd.b64"
-  script="$RUN_DIR/$id.sh"
-  raw="$RUN_DIR/$id.raw"
-  fifo="$RUN_DIR/$id.fifo"
-  decode_err="$RUN_DIR/$id.decode.err"
 
-  case "$timeout_s" in ''|*[!0-9]*) timeout_s=25 ;; esac
-  case "$max_bytes" in ''|*[!0-9]*) max_bytes=65536 ;; esac
+def clamp_int(value, default, minimum=1, maximum=None):
+    try:
+        number = int(str(value).strip())
+    except (TypeError, ValueError):
+        return default
+    if number < minimum:
+        return minimum
+    if maximum is not None and number > maximum:
+        return maximum
+    return number
 
-  rm -f "$script" "$raw" "$fifo" "$decode_err" 2>/dev/null
-  if ! base64 -d "$b64" > "$script" 2>"$decode_err"; then
-    say "${marker}_START"
-    say "${marker}_LIVE_START"
-    say "BA_SERIAL1_ERROR:decode-failed"
-    cat "$decode_err" > "$TTY" 2>/dev/null || true
-    say "${marker}_LIVE_END"
-    say "${marker}_END:65"
-    cleanup_job_files "$id"
-    return
-  fi
-  chmod 700 "$script" 2>/dev/null || true
 
-  say "${marker}_START"
-  say "${marker}_LIVE_START"
-  say "[ba-s1] start id=$id timeout=${timeout_s}s max=${max_bytes}"
+class Serial1Runner:
+    def __init__(self, tty_path):
+        self.tty_path = tty_path
+        self.tty_fd = os.open(tty_path, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
+        self.configure_tty()
+        os.makedirs(RUN_DIR, mode=0o700, exist_ok=True)
+        try:
+            os.chmod(RUN_DIR, 0o700)
+        except OSError:
+            pass
+        self.current = None
+        self.input_buffer = b""
 
-  mkfifo "$fifo" 2>/dev/null
-  if [ ! -p "$fifo" ]; then
-    say "BA_SERIAL1_ERROR:mkfifo-failed"
-    say "${marker}_LIVE_END"
-    say "${marker}_END:66"
-    cleanup_job_files "$id"
-    return
-  fi
+    def configure_tty(self):
+        attrs = termios.tcgetattr(self.tty_fd)
+        attrs[0] &= ~(termios.IGNBRK | termios.BRKINT | termios.PARMRK | termios.ISTRIP | termios.INLCR | termios.IGNCR | termios.ICRNL | termios.IXON | termios.IXOFF)
+        attrs[1] &= ~termios.OPOST
+        csize = getattr(termios, "CSIZE", None)
+        if csize is not None:
+            attrs[2] &= ~csize
+        attrs[2] &= ~(termios.CSTOPB | termios.PARENB)
+        attrs[2] |= termios.CS8 | termios.CREAD | termios.CLOCAL
+        attrs[3] &= ~(termios.ECHO | termios.ECHONL | termios.ICANON | termios.ISIG | termios.IEXTEN)
+        attrs[4] = getattr(termios, "B115200", attrs[4])
+        attrs[5] = getattr(termios, "B115200", attrs[5])
+        attrs[6][termios.VMIN] = 0
+        attrs[6][termios.VTIME] = 0
+        termios.tcsetattr(self.tty_fd, termios.TCSANOW, attrs)
 
-  # Drain the whole command output so the process does not block, but only mirror
-  # a bounded amount to ttyS1 and the local raw log.
-  ( awk -v max="$max_bytes" '
-      BEGIN { n=0; cut=0 }
-      {
-        line=$0 ORS
-        add=length(line)
-        if (n + add <= max) {
-          printf "%s", line
-        } else if (!cut) {
-          printf "\n[ba-s1] output truncated at %s bytes\n", max
-          cut=1
+    def job_path(self, job_id, suffix):
+        return os.path.join(RUN_DIR, f"{safe_id(job_id)}.{suffix}")
+
+    def cleanup_job_files(self, job_id):
+        for suffix in ("cmd.b64", "sh", "raw", "decode.err"):
+            try:
+                os.unlink(self.job_path(job_id, suffix))
+            except FileNotFoundError:
+                pass
+            except OSError:
+                pass
+
+    def write_bytes(self, data):
+        view = memoryview(data)
+        while view:
+            try:
+                sent = os.write(self.tty_fd, view)
+                view = view[sent:]
+            except BlockingIOError:
+                time.sleep(0.01)
+            except OSError:
+                return
+
+    def say(self, text=""):
+        self.write_bytes((str(text) + "\n").encode("utf-8", "replace"))
+
+    def decode_job(self, job_id):
+        b64_path = self.job_path(job_id, "cmd.b64")
+        script_path = self.job_path(job_id, "sh")
+        decode_err_path = self.job_path(job_id, "decode.err")
+        try:
+            with open(b64_path, "rb") as source:
+                encoded = b"".join(source.read().split())
+            decoded = base64.b64decode(encoded, validate=True)
+            with open(script_path, "wb") as script:
+                script.write(decoded)
+            os.chmod(script_path, 0o700)
+            return script_path
+        except (OSError, binascii.Error) as exc:
+            try:
+                with open(decode_err_path, "w", encoding="utf-8", errors="replace") as err:
+                    err.write(str(exc))
+                    err.write("\n")
+            except OSError:
+                pass
+            raise
+
+    def emit_truncated_output(self, data, raw_file, state):
+        remaining = state["max_bytes"] - state["written"]
+        if remaining > 0:
+            chunk = data[:remaining]
+            raw_file.write(chunk)
+            raw_file.flush()
+            self.write_bytes(chunk)
+            state["written"] += len(chunk)
+        if len(data) > remaining and not state["cut"]:
+            message = f"\n[ba-s1] output truncated at {state['max_bytes']} bytes\n".encode("utf-8")
+            raw_file.write(message)
+            raw_file.flush()
+            self.write_bytes(message)
+            state["cut"] = True
+
+    def terminate_process_group(self, process):
+        try:
+            os.killpg(process.pid, signal.SIGTERM)
+        except OSError:
+            try:
+                process.terminate()
+            except OSError:
+                pass
+        deadline = time.monotonic() + KILL_GRACE_S
+        while time.monotonic() < deadline:
+            if process.poll() is not None:
+                return
+            time.sleep(0.05)
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except OSError:
+            try:
+                process.kill()
+            except OSError:
+                pass
+
+    def run_script(self, job_id, script_path, timeout_s, max_bytes):
+        raw_path = self.job_path(job_id, "raw")
+        process = subprocess.Popen(
+            ["/bin/sh", script_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            stdin=subprocess.DEVNULL,
+            preexec_fn=os.setsid,
+            close_fds=True,
+        )
+        stdout_fd = process.stdout.fileno()
+        flags = fcntl.fcntl(stdout_fd, fcntl.F_GETFL)
+        fcntl.fcntl(stdout_fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
+        deadline = time.monotonic() + timeout_s
+        timed_out = False
+        pipe_open = True
+        state = {"max_bytes": max_bytes, "written": 0, "cut": False}
+
+        with open(raw_path, "wb") as raw_file:
+            while pipe_open:
+                now = time.monotonic()
+                if not timed_out and now >= deadline:
+                    timed_out = True
+                    self.terminate_process_group(process)
+
+                wait_s = 0.05
+                if not timed_out:
+                    wait_s = max(0.0, min(wait_s, deadline - now))
+                readable, _, _ = select.select([stdout_fd], [], [], wait_s)
+                if stdout_fd in readable:
+                    while True:
+                        try:
+                            data = os.read(stdout_fd, 4096)
+                        except BlockingIOError:
+                            break
+                        except OSError:
+                            pipe_open = False
+                            break
+                        if not data:
+                            pipe_open = False
+                            break
+                        self.emit_truncated_output(data, raw_file, state)
+
+                if process.poll() is not None and not readable:
+                    try:
+                        data = os.read(stdout_fd, 4096)
+                    except (BlockingIOError, OSError):
+                        data = b""
+                    if data:
+                        self.emit_truncated_output(data, raw_file, state)
+                    else:
+                        pipe_open = False
+
+        try:
+            process.wait(timeout=0)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            self.terminate_process_group(process)
+            process.wait()
+        return 124 if timed_out else int(process.returncode or 0)
+
+    def run_job(self, job_id, timeout_s, max_bytes, marker):
+        job_id = safe_id(job_id)
+        timeout_s = clamp_int(timeout_s, DEFAULT_TIMEOUT_S, 1, MAX_TIMEOUT_S)
+        max_bytes = clamp_int(max_bytes, DEFAULT_MAX_BYTES, 1024, MAX_OUTPUT_BYTES)
+
+        try:
+            script_path = self.decode_job(job_id)
+        except Exception:
+            self.say(f"{marker}_START")
+            self.say(f"{marker}_LIVE_START")
+            self.say("BA_SERIAL1_ERROR:decode-failed")
+            try:
+                with open(self.job_path(job_id, "decode.err"), "rb") as err:
+                    self.write_bytes(err.read())
+            except OSError:
+                pass
+            self.say(f"{marker}_LIVE_END")
+            self.say(f"{marker}_END:65")
+            self.cleanup_job_files(job_id)
+            return
+
+        self.say(f"{marker}_START")
+        self.say(f"{marker}_LIVE_START")
+        self.say(f"[ba-s1] start id={job_id} timeout={timeout_s}s max={max_bytes}")
+
+        try:
+            rc = self.run_script(job_id, script_path, timeout_s, max_bytes)
+        except Exception as exc:
+            self.say(f"BA_SERIAL1_ERROR:run-failed:{exc}")
+            rc = 66
+
+        self.say("")
+        self.say(f"[ba-s1] end id={job_id} rc={rc}")
+        self.say(f"{marker}_LIVE_END")
+        self.say(f"{marker}_END:{rc}")
+        self.cleanup_job_files(job_id)
+
+    def start_job(self, line):
+        payload = line[len("__BA_S1_BEGIN:") :]
+        parts = payload.split(":", 3)
+        while len(parts) < 4:
+            parts.append("")
+        job_id, timeout_s, max_bytes, marker = parts
+        job_id = safe_id(job_id)
+        b64_path = self.job_path(job_id, "cmd.b64")
+        self.cleanup_job_files(job_id)
+        open(b64_path, "wb").close()
+        self.current = {
+            "id": job_id,
+            "timeout_s": timeout_s,
+            "max_bytes": max_bytes,
+            "marker": marker,
+            "b64_path": b64_path,
         }
-        n += add
-        fflush()
-      }
-    ' < "$fifo" | tee "$raw" > "$TTY" 2>/dev/null ) &
-  tee_pid="$!"
 
-  rc=0
-  if command -v timeout >/dev/null 2>&1; then
-    timeout "$timeout_s" /bin/sh "$script" > "$fifo" 2>&1
-    rc="$?"
-  else
-    /bin/sh "$script" > "$fifo" 2>&1
-    rc="$?"
-  fi
+    def finish_job(self, line):
+        end_id = safe_id(line[len("__BA_S1_END:") :])
+        if self.current and end_id == self.current["id"]:
+            current = self.current
+            self.current = None
+            self.run_job(current["id"], current["timeout_s"], current["max_bytes"], current["marker"])
+        else:
+            self.say("BA_SERIAL1_ERROR:id-mismatch")
+            if self.current:
+                self.cleanup_job_files(self.current["id"])
+            self.current = None
 
-  wait "$tee_pid" 2>/dev/null || true
-  rm -f "$fifo" 2>/dev/null
+    def append_base64_line(self, line):
+        if not self.current:
+            return
+        with open(self.current["b64_path"], "ab") as b64_file:
+            b64_file.write(line.encode("ascii", "ignore"))
+            b64_file.write(b"\n")
 
-  say ""
-  say "[ba-s1] end id=$id rc=$rc"
-  say "${marker}_LIVE_END"
-  say "${marker}_END:$rc"
-  cleanup_job_files "$id"
-}
+    def handle_line(self, line_bytes):
+        line = line_bytes.replace(b"\r", b"").decode("ascii", "ignore")
+        if line.startswith("__BA_S1_BEGIN:"):
+            self.start_job(line)
+        elif line.startswith("__BA_S1_END:"):
+            self.finish_job(line)
+        else:
+            self.append_base64_line(line)
 
-current_id=""
-current_timeout="25"
-current_max="65536"
-current_marker=""
-current_b64=""
+    def run(self):
+        self.say(f"BA_SERIAL1_RUNNER_READY tty={self.tty_path}")
+        while True:
+            readable, _, _ = select.select([self.tty_fd], [], [], 1.0)
+            if self.tty_fd not in readable:
+                continue
+            try:
+                data = os.read(self.tty_fd, 4096)
+            except BlockingIOError:
+                continue
+            except OSError:
+                return
+            if not data:
+                time.sleep(0.05)
+                continue
+            self.input_buffer += data
+            while b"\n" in self.input_buffer:
+                line, self.input_buffer = self.input_buffer.split(b"\n", 1)
+                self.handle_line(line)
 
-say "BA_SERIAL1_RUNNER_READY tty=$TTY"
 
-exec 3<>"$TTY"
-while IFS= read -r line <&3; do
-  line="$(printf '%s' "$line" | tr -d '\r')"
-  case "$line" in
-    __BA_S1_BEGIN:*)
-      payload="${line#__BA_S1_BEGIN:}"
-      current_id="$(printf '%s' "$payload" | cut -d: -f1)"
-      current_timeout="$(printf '%s' "$payload" | cut -d: -f2)"
-      current_max="$(printf '%s' "$payload" | cut -d: -f3)"
-      current_marker="$(printf '%s' "$payload" | cut -d: -f4-)"
-      current_id="$(safe_id "$current_id")"
-      current_b64="$RUN_DIR/$current_id.cmd.b64"
-      : > "$current_b64"
-      ;;
-    __BA_S1_END:*)
-      end_id="$(safe_id "${line#__BA_S1_END:}")"
-      if [ -n "$current_id" ] && [ "$end_id" = "$current_id" ]; then
-        run_job "$current_id" "$current_timeout" "$current_max" "$current_marker"
-      else
-        say "BA_SERIAL1_ERROR:id-mismatch"
-        [ -n "$current_id" ] && cleanup_job_files "$current_id"
-      fi
-      current_id=""
-      current_b64=""
-      current_marker=""
-      ;;
-    *)
-      if [ -n "$current_b64" ]; then
-        printf '%s\n' "$line" >> "$current_b64"
-      fi
-      ;;
-  esac
-done
+def main():
+    if not os.path.exists(TTY):
+        return 0
+    try:
+        Serial1Runner(TTY).run()
+    except KeyboardInterrupt:
+        return 130
+    except Exception as exc:
+        try:
+            sys.stderr.write(f"ba-serial1-runner failed: {exc}\n")
+        except Exception:
+            pass
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

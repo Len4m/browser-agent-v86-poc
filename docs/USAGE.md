@@ -91,6 +91,8 @@ Los runners instalados en el initramfs vienen de:
 - `vm/overlay/common/usr/local/bin/ba-serial1-runner`
 - `vm/overlay/common/usr/local/bin/ba-serial2-console-runner`
 
+Ambos runners guest usan Python 3. Todos los perfiles en `vm/profiles/*.json` deben incluir el paquete `python3`; `npm run check` y la construcción de perfiles fallan si falta.
+
 Después de cambiar perfiles, overlay, runners o scripts de initramfs, ejecuta:
 
 ```bash
@@ -103,6 +105,7 @@ Validación rápida dentro de la VM:
 ls -l /dev/ttyS*
 ps | grep '[b]a-serial1-runner'
 ps | grep '[b]a-serial2-console-runner'
+python3 --version
 ```
 
 ## LLM
@@ -161,6 +164,8 @@ Regenera con `npm run setup` después de tocar:
 - `vm/overlay/common/`
 - `scripts/build-alpine-initramfs.sh`
 - runners seriales
+
+Los perfiles VM deben mantener `python3` en `packages`, porque los runners seriales del guest dependen de Python 3.
 
 Regenera con `npm run build` después de tocar:
 

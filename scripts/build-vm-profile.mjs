@@ -91,6 +91,13 @@ const minRamMb = Number(profile.minRamMb || 256);
 const recommendedRamMb = Number(profile.recommendedRamMb || 512);
 const recommendedVramMb = Number(profile.recommendedVramMb || 8);
 const defaultDisk = typeof profile.defaultDisk === "string" ? profile.defaultDisk : "initramfs";
+const requiredProfilePackages = ["python3"];
+
+for (const packageName of requiredProfilePackages) {
+  if (!packages.includes(packageName)) {
+    fail(`el perfil ${id} debe incluir ${packageName}; los runners guest dependen de Python 3`);
+  }
+}
 
 console.log(`Perfil: ${name} (${id})`);
 console.log(`Paquetes: ${packages.length ? packages.join(", ") : "ninguno extra"}`);
