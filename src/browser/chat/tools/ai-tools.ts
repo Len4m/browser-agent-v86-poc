@@ -81,6 +81,7 @@
       "net.ip.status": z.object({}),
       "net.nmap.quick": z.object({
         target: z.string().describe(t("tools.schema.ipOrHost")),
+        ports: z.string().optional().describe(t("tools.schema.ports")),
         topPorts: z.number().optional(),
       }),
       "web.ffuf.dir_light": z.object({
@@ -89,6 +90,9 @@
         threads: z.number().optional(),
         rate: z.number().optional(),
         maxTimeSec: z.number().optional(),
+        filterLength: z.string().optional().describe(t("tools.schema.ffufFilterLength")),
+        filterWords: z.string().optional().describe(t("tools.schema.ffufFilterWords")),
+        filterLines: z.string().optional().describe(t("tools.schema.ffufFilterLines")),
       }),
       "vm.python.exec": z.object({
         code: z.string().describe(t("tools.schema.pythonCode")),

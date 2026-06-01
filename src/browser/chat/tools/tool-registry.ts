@@ -16,23 +16,31 @@
     { level: 99, id: "free", get label() { return t("tools.level.free.label"); }, get description() { return t("tools.level.free.desc"); } },
   ];
 
+  // Define base and additive tool sets for profile composition to avoid duplication.
   const BASE_PROFILE_TOOL_NAMES = [
     "vm.fs.list", "vm.fs.read", "vm.fs.write", "vm.cmd.which", "vm.sys.info", "vm.console.status", "vm.pkg.info",
     "web.curl.head", "web.curl.fetch_text", "vm.python.exec", "vm.sh.exec",
+  ];
+
+  const PENTEST_LITE_ADDITIONAL = [
+    "net.dns.lookup", "net.ip.status", "net.nmap.quick", "web.ffuf.dir_light"
+  ];
+
+  const PENTEST_WEB_ADDITIONAL = [
+    ...PENTEST_LITE_ADDITIONAL,
+    "web.httpx.probe", "web.nikto.quick", "tls.openssl.cert"
   ];
 
   const PROFILE_TOOL_NAMES = {
     manual: BASE_PROFILE_TOOL_NAMES,
     "alpine-base": BASE_PROFILE_TOOL_NAMES,
     "alpine-pentest-lite": [
-      "vm.fs.list", "vm.fs.read", "vm.fs.write", "vm.cmd.which", "vm.sys.info", "vm.console.status", "vm.pkg.info",
-      "web.curl.head", "web.curl.fetch_text", "net.dns.lookup", "net.ip.status", "net.nmap.quick",
-      "web.ffuf.dir_light", "vm.python.exec", "vm.sh.exec",
+      ...BASE_PROFILE_TOOL_NAMES,
+      ...PENTEST_LITE_ADDITIONAL,
     ],
     "alpine-pentest-web": [
-      "vm.fs.list", "vm.fs.read", "vm.fs.write", "vm.cmd.which", "vm.sys.info", "vm.console.status", "vm.pkg.info",
-      "web.curl.head", "web.curl.fetch_text", "net.dns.lookup", "net.ip.status", "net.nmap.quick",
-      "web.ffuf.dir_light", "vm.python.exec", "web.httpx.probe", "web.nikto.quick", "tls.openssl.cert", "vm.sh.exec",
+      ...BASE_PROFILE_TOOL_NAMES,
+      ...PENTEST_WEB_ADDITIONAL,
     ],
   };
 
@@ -121,6 +129,23 @@
     return host;
   }
 
+  function normalizePortList(value) {
+    const raw = Array.isArray(value) ? value.join(",") : String(value || "").trim();
+    if (!raw) return "";
+    if (!/^\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*$/.test(raw)) throw new Error(t("tools.error.portsInvalid"));
+    const parts = raw.split(",");
+    if (parts.length > 20) throw new Error(t("tools.error.portsTooMany"));
+    for (const part of parts) {
+      const [startRaw, endRaw = startRaw] = part.split("-");
+      const start = Number(startRaw);
+      const end = Number(endRaw);
+      if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end > 65535 || start > end) {
+        throw new Error(t("tools.error.portsInvalid"));
+      }
+    }
+    return raw;
+  }
+
   function normalizeDnsType(value) {
     const t = String(value || "A").trim().toUpperCase();
     const allowed = new Set(["A", "AAAA", "CNAME", "MX", "NS", "TXT", "SOA", "ANY"]);
@@ -135,6 +160,24 @@
       throw new Error(t("tools.error.wordlistNotAllowed"));
     }
     return path;
+  }
+
+  function normalizeFfufMetricFilter(value) {
+    const rawValue = Array.isArray(value) ? value.join(",") : String(value ?? "").trim();
+    if (!rawValue) return "";
+    const raw = rawValue.replace(/\s+/g, "");
+    if (!/^\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*$/.test(raw)) throw new Error(t("tools.error.ffufFilterInvalid"));
+    const parts = raw.split(",");
+    if (parts.length > 20) throw new Error(t("tools.error.ffufFilterTooMany"));
+    for (const part of parts) {
+      const [startRaw, endRaw = startRaw] = part.split("-");
+      const start = Number(startRaw);
+      const end = Number(endRaw);
+      if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end > 100000000 || start > end) {
+        throw new Error(t("tools.error.ffufFilterInvalid"));
+      }
+    }
+    return raw;
   }
 
   function buildTempFileCommand(prefix) {
@@ -256,6 +299,117 @@
     ].join("\n");
     const curlCommand = `body="$tmp.body"; curl ${flags.map(shellQuote).join(" ")} -o "$body" ${shellQuote(args.url)}; rc=$?; if [ "$rc" -eq 0 ]; then python3 -c ${shellQuote(code)} "$body" ${args.maxBytes}; pyrc=$?; if [ "$pyrc" -ne 0 ]; then rc=$pyrc; fi; elif [ -s "$body" ]; then head -c ${args.maxBytes} "$body"; fi; rm -f "$body"; exit $rc`;
     return captureCommand("ba-curl-fetch", ["curl", "python3", "head"], curlCommand);
+  }
+
+  function normalizeFfufArgs(args = {}) {
+    let url = normalizeUrl(args.url || args.target);
+    if (!url.includes("FUZZ")) url = url.replace(/\/?$/, "/FUZZ");
+    const rawMaxTime = Number(args.maxTimeSec);
+    return {
+      url,
+      wordlist: normalizeWordlist(args.wordlist || "common"),
+      threads: clampInt(args.threads, 1, 8, 3),
+      rate: clampInt(args.rate, 1, 50, 20),
+      maxTimeSec: Number.isFinite(rawMaxTime) ? clampInt(rawMaxTime, 15, 1200, 120) : null,
+      filterLength: normalizeFfufMetricFilter(args.filterLength ?? args.filterSize ?? args.fs),
+      filterWords: normalizeFfufMetricFilter(args.filterWords ?? args.fw),
+      filterLines: normalizeFfufMetricFilter(args.filterLines ?? args.fl),
+    };
+  }
+
+  function buildFfufLightCommand(args) {
+    const explicitMaxTime = Number.isFinite(Number(args.maxTimeSec)) ? Number(args.maxTimeSec) : 0;
+    const filterFlags = [
+      args.filterLength ? `-fs ${shellQuote(args.filterLength)}` : "",
+      args.filterWords ? `-fw ${shellQuote(args.filterWords)}` : "",
+      args.filterLines ? `-fl ${shellQuote(args.filterLines)}` : "",
+    ].filter(Boolean).join(" ");
+    const ignoreBodyFlag = args.filterWords || args.filterLines ? "" : "-ignore-body";
+    const code = [
+      "import json, os, sys",
+      "json_path, log_path, url, wordlist, word_count, rate, threads, estimated_time, max_time, rc, filter_length, filter_words, filter_lines = sys.argv[1:14]",
+      "results = []",
+      "try:",
+      "    if os.path.exists(json_path) and os.path.getsize(json_path):",
+      "        with open(json_path, 'r', encoding='utf-8', errors='replace') as handle:",
+      "            data = json.load(handle)",
+      "        if isinstance(data, dict):",
+      "            results = data.get('results') or []",
+      "        elif isinstance(data, list):",
+      "            results = data",
+      "except Exception as exc:",
+      "    print('parse_error: %s' % exc)",
+      "def val(value):",
+      "    if value is None: return '-'",
+      "    if isinstance(value, (int, float)): return str(value)",
+      "    return str(value)",
+      "def input_text(item):",
+      "    raw = item.get('input') if isinstance(item, dict) else None",
+      "    if isinstance(raw, dict):",
+      "        return ','.join('%s=%s' % (key, val(raw[key])) for key in sorted(raw) if key != 'FFUFHASH')",
+      "    return val(raw)",
+      "def result_url(item):",
+      "    if not isinstance(item, dict): return '-'",
+      "    direct = item.get('url')",
+      "    if direct: return str(direct)",
+      "    text = input_text(item)",
+      "    token = text.split('=', 1)[-1] if '=' in text else text",
+      "    return url.replace('FUZZ', token) if token and token != '-' else url",
+      "print('FFUF summary')",
+      "print('target: %s' % url)",
+      "print('wordlist: %s' % wordlist)",
+      "print('word_count: %s' % word_count)",
+      "print('rate: %s/s' % rate)",
+      "print('threads: %s' % threads)",
+      "print('estimated_min_sec: %s' % estimated_time)",
+      "print('max_time_sec: %s' % max_time)",
+      "if filter_length != '-': print('filter_length: %s' % filter_length)",
+      "if filter_words != '-': print('filter_words: %s' % filter_words)",
+      "if filter_lines != '-': print('filter_lines: %s' % filter_lines)",
+      "try:",
+      "    print('scan_limited: %s' % ('yes' if int(max_time) < int(estimated_time) else 'no'))",
+      "except Exception:",
+      "    pass",
+      "print('matches: %d' % len(results))",
+      "for item in results[:40]:",
+      "    if not isinstance(item, dict):",
+      "        print('- %s' % item)",
+      "        continue",
+      "    print('- status=%s length=%s words=%s lines=%s url=%s' % (val(item.get('status')), val(item.get('length')), val(item.get('words')), val(item.get('lines')), result_url(item)))",
+      "if len(results) > 40:",
+      "    print('... %d more matches omitted' % (len(results) - 40))",
+      "if rc != '0':",
+      "    print('ffuf_exit_code: %s' % rc)",
+      "    try:",
+      "        with open(log_path, 'r', encoding='utf-8', errors='replace') as handle:",
+      "            log = handle.read().strip()",
+      "        if log:",
+      "            print('ffuf_log:')",
+      "            print('\\n'.join(log.splitlines()[:40]))",
+      "    except Exception:",
+      "        pass",
+    ].join("\n");
+    const wordlist = shellQuote(args.wordlist);
+    const url = shellQuote(args.url);
+    return [
+      `json="$tmp.json"`,
+      `log="$tmp.log"`,
+      `word_count=$(grep -vE '^[[:space:]]*(#|$)' ${wordlist} 2>/dev/null | wc -l)`,
+      `word_count=\${word_count:-0}`,
+      `rate=${args.rate}`,
+      `estimated_time=$(( (word_count + rate - 1) / rate ))`,
+      `max_time=${explicitMaxTime}`,
+      `if [ "$max_time" -le 0 ]; then max_time=$(( estimated_time + 30 )); fi`,
+      `if [ "$max_time" -lt 15 ]; then max_time=15; fi`,
+      `if [ "$max_time" -gt 1200 ]; then max_time=1200; fi`,
+      `ffuf -u ${url} -w ${wordlist} -t ${args.threads} -rate ${args.rate} -maxtime "$max_time" -timeout 5 -ac -noninteractive -s ${ignoreBodyFlag} ${filterFlags} -of json -o "$json" > "$log" 2>&1`,
+      `rc=$?`,
+      `python3 -c ${shellQuote(code)} "$json" "$log" ${url} ${wordlist} "$word_count" "$rate" ${args.threads} "$estimated_time" "$max_time" "$rc" ${shellQuote(args.filterLength || "-")} ${shellQuote(args.filterWords || "-")} ${shellQuote(args.filterLines || "-")}`,
+      `pyrc=$?`,
+      `rm -f "$json" "$log"`,
+      `if [ "$pyrc" -ne 0 ]; then exit "$pyrc"; fi`,
+      `exit "$rc"`,
+    ].join("; ");
   }
 
   function truncateText(text, maxBytes = 32768) {
@@ -530,24 +684,29 @@
       requiresVm: true, requiresConsole: true, timeoutMs: 70000, maxOutputBytes: 32768,
       requiredPackages: ["nmap"],
       get description() { return t("tools.desc.net.nmap.quick"); },
-      get promptDescription() { return toolPrompt(this.label, '{"target":"192.168.1.10","topPorts":30}'); },
-      normalizeArgs(args = {}) { return { target: normalizeHost(args.target || args.host), topPorts: clampInt(args.topPorts || args.ports, 10, 100, 30) }; },
-      buildCommand(args) { return captureCommand("ba-nmap-quick", ["nmap"], `nmap -Pn -sT -T2 --max-retries 1 --host-timeout 55s --top-ports ${args.topPorts} ${shellQuote(args.target)}`); },
+      get promptDescription() { return toolPrompt(this.label, '{"target":"192.168.1.10","ports":"80,443,8000"}'); },
+      normalizeArgs(args = {}) {
+        const ports = normalizePortList(args.ports || args.portList || args.port);
+        return { target: normalizeHost(args.target || args.host), ports, topPorts: ports ? null : clampInt(args.topPorts, 10, 100, 30) };
+      },
+      buildCommand(args) {
+        const target = shellQuote(args.target);
+        const scanTarget = args.ports
+          ? `-p ${shellQuote(args.ports)} ${target}`
+          : `--top-ports ${args.topPorts} ${target}`;
+        return captureCommand("ba-nmap-quick", ["nmap"], `nmap -Pn -sT -T2 --max-retries 1 --host-timeout 55s ${scanTarget}`);
+      },
       formatResult(result, args) { return standardFormat(this, result, args, () => summaryToolOn(t("common.toolShort.nmap"), args.target), () => summaryToolFailedOn("Nmap", args.target)); },
     },
 
     "web.ffuf.dir_light": {
       name: "web.ffuf.dir_light", get label() { return t("tools.name.web.ffuf.dir_light"); }, riskLevel: 3, category: "web.fuzz",
-      requiresVm: true, requiresConsole: true, timeoutMs: 70000, maxOutputBytes: 32768,
-      requiredPackages: ["ffuf"],
+      requiresVm: true, requiresConsole: true, timeoutMs: 1230000, maxOutputBytes: 24000,
+      requiredPackages: ["ffuf", "python3"],
       get description() { return t("tools.desc.web.ffuf.dir_light"); },
-      get promptDescription() { return toolPrompt(this.label, '{"url":"http://host/FUZZ","wordlist":"quickhits","threads":3,"rate":20,"maxTimeSec":45}'); },
-      normalizeArgs(args = {}) {
-        let url = normalizeUrl(args.url || args.target);
-        if (!url.includes("FUZZ")) url = url.replace(/\/?$/, "/FUZZ");
-        return { url, wordlist: normalizeWordlist(args.wordlist || "quickhits"), threads: clampInt(args.threads, 1, 8, 3), rate: clampInt(args.rate, 1, 50, 20), maxTimeSec: clampInt(args.maxTimeSec, 10, 60, 35) };
-      },
-      buildCommand(args) { return captureCommand("ba-ffuf-light", ["ffuf"], sedLinesBodyCommand("ba-ffuf-light", `ffuf -u ${shellQuote(args.url)} -w ${shellQuote(args.wordlist)} -t ${args.threads} -rate ${args.rate} -maxtime ${args.maxTimeSec} -ac -noninteractive`, 160)); },
+      get promptDescription() { return toolPrompt(this.label, '{"url":"http://host/FUZZ","wordlist":"common","threads":2,"rate":10,"filterLength":"0","filterWords":"5","filterLines":"1-3"}'); },
+      normalizeArgs: normalizeFfufArgs,
+      buildCommand(args) { return captureCommand("ba-ffuf-light", ["ffuf", "python3"], buildFfufLightCommand(args)); },
       formatResult(result, args) { return standardFormat(this, result, args, () => summaryToolOn(t("common.toolShort.ffuf"), args.url), () => summaryToolFailedOn("FFUF", args.url)); },
     },
 

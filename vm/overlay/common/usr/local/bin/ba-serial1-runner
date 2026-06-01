@@ -229,7 +229,14 @@ class Serial1Runner:
             timed_out = True
             self.terminate_process_group(process)
             process.wait()
-        return 124 if timed_out else int(process.returncode or 0)
+
+        rc = int(process.returncode or 0)
+        # Preserve a real shell exit code if the timeout flag raced with process
+        # completion. Actual timeout kills normally surface as negative signal
+        # return codes after terminate_process_group().
+        if timed_out and rc < 0:
+            return 124
+        return rc
 
     def run_job(self, job_id, timeout_s, max_bytes, marker):
         job_id = safe_id(job_id)
