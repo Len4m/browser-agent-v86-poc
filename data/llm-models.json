@@ -21,11 +21,7 @@
     "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192,
-    "description": "Qwen3 1.7B en Ollama (Q4_K_M, ~1.4 GB). Contexto nativo 32K; el presupuesto del agente usa 8192 tokens conservadores como el resto de modelos Ollama. Se carga con thinking desactivado para evitar respuestas vacías en el chat.",
-    "thinking": {
-      "enabled": true,
-      "tagName": "redacted_thinking"
-    }
+    "description": "Qwen3 1.7B en Ollama (Q4_K_M, ~1.4 GB). Contexto nativo 32K; el presupuesto del agente usa 8192 tokens conservadores como el resto de modelos Ollama. Se carga con thinking desactivado para evitar respuestas vacías en el chat."
   },
   {
     "id": "ollama-llama3.2-latest",
@@ -94,11 +90,7 @@
     "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192,
-    "description": "Qwen3.5 4B, modelo reciente con etiqueta tools en Ollama. Si no está instalado, ejecuta: ollama pull qwen3.5:4b.",
-    "thinking": {
-      "enabled": true,
-      "tagName": "redacted_thinking"
-    }
+    "description": "Qwen3.5 4B, modelo reciente con etiqueta tools en Ollama. Si no está instalado, ejecuta: ollama pull qwen3.5:4b."
   },
   {
     "id": "ollama-granite3.3-8b",
@@ -168,11 +160,7 @@
     "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192,
-    "description": "Qwen3 8B para agente local con tools. Si no está instalado, ejecuta: ollama pull qwen3:8b.",
-    "thinking": {
-      "enabled": true,
-      "tagName": "redacted_thinking"
-    }
+    "description": "Qwen3 8B para agente local con tools. Si no está instalado, ejecuta: ollama pull qwen3:8b."
   },
   {
     "id": "ollama-granite4.1-8b",
@@ -219,11 +207,7 @@
     "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192,
-    "description": "Qwen3.5 9B, opción reciente para tools en sobremesas actuales. Si no está instalado, ejecuta: ollama pull qwen3.5:9b.",
-    "thinking": {
-      "enabled": true,
-      "tagName": "redacted_thinking"
-    }
+    "description": "Qwen3.5 9B, opción reciente para tools en sobremesas actuales. Si no está instalado, ejecuta: ollama pull qwen3.5:9b."
   },
   {
     "id": "ollama-qwen3-14b",
@@ -247,11 +231,7 @@
     "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192,
-    "description": "Qwen3 14B para equipos de sobremesa con memoria de sistema suficiente; no requiere necesariamente 9.3 GB de VRAM dedicada. Si no está instalado, ejecuta: ollama pull qwen3:14b.",
-    "thinking": {
-      "enabled": true,
-      "tagName": "redacted_thinking"
-    }
+    "description": "Qwen3 14B para equipos de sobremesa con memoria de sistema suficiente; no requiere necesariamente 9.3 GB de VRAM dedicada. Si no está instalado, ejecuta: ollama pull qwen3:14b."
   },
   {
     "id": "ollama-gpt-oss-20b",
@@ -331,11 +311,7 @@
     "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192,
-    "description": "Qwen3 30B-A3B MoE para agente local cuando el host tiene memoria suficiente. Si no está instalado, ejecuta: ollama pull qwen3:30b.",
-    "thinking": {
-      "enabled": true,
-      "tagName": "redacted_thinking"
-    }
+    "description": "Qwen3 30B-A3B MoE para agente local cuando el host tiene memoria suficiente. Si no está instalado, ejecuta: ollama pull qwen3:30b."
   },
   {
     "id": "ollama-glm-4.7-flash",
@@ -350,7 +326,7 @@
     "sizeLabel": "≈19 GB",
     "repoSizeLabel": "glm-4.7-flash:latest",
     "minMemoryLabel": "modelo 19 GB; VRAM parcial",
-    "languageLabel": "tools · thinking",
+    "languageLabel": "tools",
     "requiresShaderF16": false,
     "requiresWebGPU": false,
     "compatibilityLabel": "requiere Ollama + CORS",
@@ -359,11 +335,7 @@
     "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192,
-    "description": "GLM 4.7 Flash instalado en tu host; modelo pesado de clase 30B con etiqueta tools en Ollama. ollamaThink desactivado en el agente para tool-calling estable.",
-    "thinking": {
-      "enabled": true,
-      "tagName": "redacted_thinking"
-    }
+    "description": "GLM 4.7 Flash instalado en tu host; modelo pesado de clase 30B con etiqueta tools en Ollama. ollamaThink desactivado en el agente para tool-calling estable."
   },
   {
     "id": "custom-ollama",

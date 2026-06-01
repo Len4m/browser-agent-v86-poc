@@ -248,9 +248,21 @@
       llm.loaded = true;
       llm.aiModelReady = true;
       llm.activeModel = activeConfig;
+      agentDebug("load", "model loaded", {
+        id: activeConfig.id,
+        model: activeConfig.model,
+        device: activeConfig.runtime?.device,
+        dtype: activeConfig.runtime?.dtype,
+        fallback: Boolean(activeConfig.fallbackReason),
+        fallbackFrom: activeConfig.fallbackFrom || null,
+      });
       updateChatAvailability?.();
+      const statusLabel = activeConfig.shortLabel || activeConfig.label;
+      const backendHint = activeConfig.runtime?.provider === "transformersjs"
+        ? ` · ${activeConfig.runtime.device === "wasm" ? "WASM" : "WebGPU"}${activeConfig.runtime.dtype ? `/${activeConfig.runtime.dtype}` : ""}`
+        : "";
       window.BA_LLM_EVENTS?.emit("status", {
-        text: `${activeConfig.shortLabel || activeConfig.label}`,
+        text: `${statusLabel}${backendHint}`,
         tone: activeConfig.fallbackReason ? "warn" : "good",
       });
     } finally {
@@ -488,6 +500,7 @@
         temperature: modelConfig.temperature ?? 0.2,
         topP: modelConfig.topP ?? 0.85,
         needsVm: useToolLoop,
+        enableThinking: showThinking,
         toolCalling: toolCallingMode,
         activeToolNames: sentActiveToolNames,
         abortSignal,

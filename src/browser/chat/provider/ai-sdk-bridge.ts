@@ -54,8 +54,9 @@ function createWorker() {
 function shouldUseReasoningMiddleware(modelConfig) {
   const thinking = modelConfig?.thinking;
   if (!thinking?.enabled || !thinking?.tagName) return false;
-  // Ollama con think nativo: el provider ya separa message.thinking → reasoning-delta
-  if (modelConfig.engine === "ollama" && modelConfig.ollamaThink) return false;
+  // Ollama expone message.thinking como reasoning-delta cuando el modelo lo devuelve.
+  // El middleware por tags solo aplica a texto generado por Transformers.js.
+  if (modelConfig.engine === "ollama") return false;
   return true;
 }
 
@@ -145,7 +146,7 @@ function buildWasmFallbackConfig(modelConfig) {
     dtype: modelConfig.wasmDtype || "auto",
     fallbackFrom: modelConfig.id || modelConfig.model,
     fallbackReason: "webgpu-runtime-failure",
-    shortLabel: `${modelConfig.shortLabel || modelConfig.label || modelConfig.model} · WASM`,
+    shortLabel: modelConfig.shortLabel || modelConfig.label || modelConfig.model,
     compatibilityLabel: "alternativa WASM tras fallo WebGPU",
   };
 }
@@ -193,12 +194,24 @@ async function loadModel(modelConfig, { onProgress } = {}) {
       file: fallbackConfig.model,
       model: fallbackConfig.model,
       reason: msg,
+      fallbackDevice: fallbackConfig.device,
+      fallbackDtype: fallbackConfig.dtype,
     });
 
     terminateActiveWorker();
     activeModelHandle = null;
     try {
-      return await loadWithConfig(fallbackConfig);
+      const model = await loadWithConfig(fallbackConfig);
+      if (typeof console !== "undefined" && console.info) {
+        console.info("[BA_LLM] WebGPU load failed; active session uses WASM fallback.", {
+          model: fallbackConfig.model,
+          device: fallbackConfig.device,
+          dtype: fallbackConfig.dtype,
+          fallbackFrom: fallbackConfig.fallbackFrom,
+          webgpuError: msg,
+        });
+      }
+      return model;
     } catch (fallbackError) {
       unloadModel();
       throw new Error([
@@ -261,8 +274,15 @@ function splitPromptForStream(messages, explicitSystem) {
   };
 }
 
+function isNonFallbackLoadFailure(message) {
+  return /fetch|network|timeout|abort(ed)?|404|403|failed to fetch|download|indexeddb|quota|enotfound|connection refused|unexpected token|json\.parse|modelo no configurado|unavailable/i.test(String(message || ""));
+}
+
 function isGpuInferenceFailure(message) {
-  return /out of device memory|VK_ERROR_OUT_OF_DEVICE_MEMORY|WebGPU validation failed|Invalid Buffer|Device lost|failed to call OrtRun|CreateBuffer|null function|function signature mismatch|unaligned accesses|Instance reference no longer exists|memoria GPU agotada|WebGPU inválido|RuntimeError:/i.test(String(message || ""));
+  const msg = String(message || "");
+  if (isNonFallbackLoadFailure(msg)) return false;
+  // No usar RuntimeError: genérico — provoca fallback WASM en fallos de descarga/init transitorios.
+  return /out of device memory|VK_ERROR_OUT_OF_DEVICE_MEMORY|WebGPU validation failed|Invalid Buffer|Device lost|failed to call OrtRun|CreateBuffer|null function|function signature mismatch|unaligned accesses|Instance reference no longer exists|memoria GPU agotada|WebGPU inválido|shader[- ]?f16|f16 not supported/i.test(msg);
 }
 
 function abortActive() {

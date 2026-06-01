@@ -205,7 +205,10 @@
           mode: "indeterminate",
           percent: null,
           title: t("panel.llm.progress.webgpuFailed"),
-          detail: file || detail.reason || t("panel.llm.progress.restartingWorker"),
+          detail: [
+            detail.fallbackDevice ? `${detail.fallbackDevice}${detail.fallbackDtype ? ` · ${detail.fallbackDtype}` : ""}` : "",
+            file || detail.reason || t("panel.llm.progress.restartingWorker"),
+          ].filter(Boolean).join(" · "),
         };
       case "ready":
         return { mode: "determinate", percent: 100, title: t("panel.llm.progress.filesReady"), detail: file || t("panel.llm.progress.preparingExecution") };

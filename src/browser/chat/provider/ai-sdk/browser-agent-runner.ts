@@ -102,9 +102,9 @@ async function consumeTextStream(result, { onStreamPart, phase = "main" } = {}) 
   return text;
 }
 
-function resolveProviderOptions(modelConfig) {
+function resolveProviderOptions(modelConfig, { enableThinking = false } = {}) {
   if ((modelConfig?.engine || "transformersjs") !== "transformersjs") return undefined;
-  if (!modelConfig?.thinking?.enabled) return undefined;
+  if (!modelConfig?.thinking?.enabled || !enableThinking) return undefined;
   return {
     "transformers-js": {
       enableThinking: true,
@@ -125,6 +125,7 @@ function resolveProviderOptions(modelConfig) {
  * @param {number} [options.temperature]
  * @param {number} [options.topP]
  * @param {boolean} [options.needsVm] - si false, prepareStep fuerza toolChoice 'none' (solo chat)
+ * @param {boolean} [options.enableThinking] - activa reasoning del provider solo cuando la UI lo pide.
  * @param {"weak"|"fair"|"good"} [options.toolCalling] - controla cuántos pasos pueden exponer tools.
  * @param {string[]} [options.activeToolNames] - subconjunto de tools para activeTools
  * @param {AbortSignal} [options.abortSignal]
@@ -143,6 +144,7 @@ export async function runAgentStreamTurn({
   temperature,
   topP,
   needsVm = true,
+  enableThinking = false,
   toolCalling = "fair",
   activeToolNames = null,
   abortSignal,
@@ -151,7 +153,7 @@ export async function runAgentStreamTurn({
 }) {
   if (!model) throw new Error("No hay modelo AI SDK cargado.");
 
-  const providerOptions = resolveProviderOptions(modelConfig);
+  const providerOptions = resolveProviderOptions(modelConfig, { enableThinking });
 
   const controller = new AbortController();
   let onParentAbort = null;
