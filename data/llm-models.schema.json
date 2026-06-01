@@ -125,6 +125,26 @@
         "type": "boolean",
         "description": "Ollama-only thinking toggle when supported by the model and server."
       },
+      "thinking": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Reasoning extraction via AI SDK extractReasoningMiddleware (Transformers.js) or UI toggle. tagName must match the XML tags emitted by the model.",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Show the thinking toggle and apply reasoning middleware when tag-based extraction applies."
+          },
+          "tagName": {
+            "type": "string",
+            "minLength": 1,
+            "description": "XML tag name for extractReasoningMiddleware, e.g. think or redacted_thinking."
+          },
+          "startWithReasoning": {
+            "type": "boolean",
+            "description": "AI SDK extractReasoningMiddleware option for models that omit the opening tag."
+          }
+        }
+      },
       "contextWindowTokens": {
         "type": "integer",
         "minimum": 256,

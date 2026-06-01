@@ -87,6 +87,29 @@
     if (body) body.append(document.createTextNode(chunk));
   }
 
+  /** Extrae el bloque de razonamiento del DOM para moverlo entre burbujas (sin copia en memoria). */
+  function detachThinkingBlock(bubble) {
+    const details = bubble?.querySelector("details.ba-llm-thinking");
+    if (!details) return null;
+    const body = details.querySelector(".ba-llm-thinking-body");
+    if (!body?.textContent?.trim()) {
+      details.remove();
+      return null;
+    }
+    details.remove();
+    return details;
+  }
+
+  function attachThinkingBlock(bubble, details) {
+    if (!bubble || !details) return null;
+    bubble.insertBefore(details, bubble.firstChild);
+    return details;
+  }
+
+  function bubbleHasThinkingContent(bubble) {
+    return Boolean(bubble?.querySelector(".ba-llm-thinking-body")?.textContent?.trim());
+  }
+
   function createInferenceSpinner(label = t("common.generatingResponse")) {
     const wrap = document.createElement("div");
     wrap.className = "ba-llm-inference-indicator";
@@ -321,6 +344,9 @@
     flushAssistantBubbleText,
     ensureThinkingBlock,
     appendThinkingChunk,
+    detachThinkingBlock,
+    attachThinkingBlock,
+    bubbleHasThinkingContent,
     createInferenceSpinner,
     setChatTailIndicator,
     clearChatTailIndicator,

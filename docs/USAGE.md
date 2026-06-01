@@ -121,6 +121,8 @@ El catálogo prioriza modelos con evidencia de tool calling en `Transformers.js 
 Notas de uso:
 
 - El chat está deshabilitado hasta que cargues un backend/modelo.
+- El conmutador **Mostrar razonamiento del modelo (thinking)** del panel LLM muestra el razonamiento cuando el modelo lo declara en el catálogo. El texto de razonamiento se transmite en streaming y no se guarda como respuesta final ni se conserva en memoria.
+- Los resultados de las tools se guardan como artifacts en el panel LLM: puedes previsualizarlos, adjuntarlos al siguiente mensaje o eliminarlos. El adjuntado respeta el presupuesto de contexto del modelo y se omite si no hay margen.
 - La primera carga de modelos Transformers.js puede descargar ficheros grandes y quedar cacheada por el navegador.
 - WebGPU es la ruta recomendada para tools con Transformers.js. El fallback WASM existe para chat básico en navegadores sin WebGPU, pero no debe considerarse una ruta fiable para tool calling; usa un navegador con WebGPU compatible u Ollama si necesitas herramientas.
 - Si usas Ollama desde otro origen distinto al permitido, arranca Ollama con `OLLAMA_ORIGINS` incluyendo el origen de la página. Ejemplo: `OLLAMA_ORIGINS=http://127.0.0.1:5173`.

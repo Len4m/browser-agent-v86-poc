@@ -3,10 +3,9 @@
 // v9.37.7: decides if a tool result should be shown directly, synthesized by
 // the local model, or kept as an artifact only.
 //
-// This is intentionally simple and conservative. It does not try to solve all
-// languages. It combines tool metadata, explicit routes, recent artifact state
-// and a small set of common intent words. The safety net is always: show/store
-// the real result, do not hallucinate.
+// This is intentionally conservative: artifact contents enter context only
+// through a structured UI attachment or an explicit artifact id in the user text.
+// The safety net is always: show/store the real result, do not hallucinate.
 
 (function initLLMToolResultPolicy() {
   function normalizeText(text) {
@@ -20,26 +19,6 @@
     return patterns.some((pattern) => pattern.test(text));
   }
 
-  const SYNTHESIS_PATTERNS = [
-    /\bresume\b/, /\bresumir\b/, /\bresumen\b/, /\bsummar(?:y|ize|ise)\b/,
-    /\bexplica\b/, /\bexplicar\b/, /\bexplain\b/, /\banaliza\b/, /\banalizar\b/, /\banaly[sz]e\b/,
-    /\binterpreta\b/, /\binterpret\b/, /\bconclusion\b/, /\bconclusiones\b/,
-    /\bque significa\b/, /\bwhat does.*mean\b/, /\bimportant\b/, /\bimportante\b/,
-    /\bdame\s+un\s+resumen\b/, /\bhaz\s+un\s+resumen\b/,
-  ];
-
-  const REFERENCE_PREVIOUS_PATTERNS = [
-    /\besto\b/, /\beso\b/, /\beste\b/, /\banterior\b/, /\blo\b/,
-    /\bthat\b/, /\bit\b/, /\bthis\b/, /\bprevious\b/,
-    /\baixo\b/, /\baixo\b/, /\banterior\b/,
-    /\bceci\b/, /\bcela\b/, /\bquesto\b/, /\bquello\b/,
-  ];
-
-  function wantsSynthesis(userText) {
-    const text = normalizeText(userText);
-    return hasAny(text, SYNTHESIS_PATTERNS);
-  }
-
   /** Solo salida cruda de la tool, sin segunda pasada del modelo. */
   function wantsDirectOnly(userText) {
     const text = normalizeText(userText);
@@ -49,12 +28,16 @@
     ]);
   }
 
-  function referencesPreviousArtifact(userText) {
-    const text = normalizeText(userText).trim();
-    if (!window.BA_LLM_ARTIFACTS?.last?.()) return false;
-    if (text.length <= 90 && hasAny(text, REFERENCE_PREVIOUS_PATTERNS)) return true;
-    if (wantsSynthesis(text) && !/(\/|vm\.fs\.|archivo|fichero|file|path|ruta)/.test(text)) return true;
-    return false;
+  function findExplicitArtifact(userText) {
+    const text = normalizeText(userText);
+    const artifacts = window.BA_LLM_ARTIFACTS?.listSummaries?.({ limit: 100 }) || [];
+    for (const summary of artifacts.slice().reverse()) {
+      const id = normalizeText(summary?.id || "");
+      if (id && text.includes(id)) {
+        return window.BA_LLM_ARTIFACTS?.findById?.(summary.id) || null;
+      }
+    }
+    return null;
   }
 
   function decideAfterTool({ userText, toolCall, result, artifact } = {}) {
@@ -70,8 +53,7 @@
   }
 
   function selectArtifactForUserText(userText) {
-    if (!referencesPreviousArtifact(userText)) return null;
-    return window.BA_LLM_ARTIFACTS?.last?.() || null;
+    return findExplicitArtifact(userText);
   }
 
   window.BA_LLM_TOOL_RESULT_POLICY = {

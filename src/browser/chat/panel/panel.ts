@@ -145,6 +145,22 @@
     if (check) check.disabled = isBusy;
     if (select) select.disabled = isBusy;
     if (custom) custom.disabled = isBusy;
+    syncWorkerUnloadButton();
+  }
+
+  function canUnloadActiveWorker() {
+    const llm = window.BA_LLM;
+    return Boolean(
+      llm?.loaded
+      && !llm.loading
+      && llm.activeModel?.runtime?.worker,
+    );
+  }
+
+  function syncWorkerUnloadButton() {
+    const abort = document.getElementById("ba-llm-abort");
+    if (!abort) return;
+    abort.disabled = !canUnloadActiveWorker();
   }
 
   function bytesLabel(value) {
@@ -205,7 +221,10 @@
           mode: "indeterminate",
           percent: null,
           title: t("panel.llm.progress.webgpuFailed"),
-          detail: file || detail.reason || t("panel.llm.progress.restartingWorker"),
+          detail: [
+            detail.fallbackDevice ? `${detail.fallbackDevice}${detail.fallbackDtype ? ` · ${detail.fallbackDtype}` : ""}` : "",
+            file || detail.reason || t("panel.llm.progress.restartingWorker"),
+          ].filter(Boolean).join(" · "),
         };
       case "ready":
         return { mode: "determinate", percent: 100, title: t("panel.llm.progress.filesReady"), detail: file || t("panel.llm.progress.preparingExecution") };
@@ -275,6 +294,101 @@
     return el;
   }
 
+  function artifactLineText(artifact) {
+    const path = artifact.args?.path ? ` · ${artifact.args.path}` : "";
+    const state = artifact.ok ? t("common.okLower") : t("panel.llm.resources.stateError");
+    const size = artifact.sizeBytes ? ` · ${Math.ceil(artifact.sizeBytes / 1024)} KB` : "";
+    const truncated = artifact.truncated ? t("panel.llm.resources.truncated") : "";
+    return t("panel.llm.resources.artifactLine", {
+      id: artifact.id,
+      tool: artifact.tool || t("panel.llm.resources.toolFallback"),
+      state, size, truncated, path,
+    });
+  }
+
+  function artifactContextLimit() {
+    const selected = getSelectedModel();
+    const policy = window.BA_LLM_CONTEXT?.getPolicy?.(selected) || {};
+    const limit = Number(policy.maxToolResultCharsForSynthesis ?? policy.maxToolResultChars);
+    return Number.isFinite(limit) ? Math.max(0, limit) : 0;
+  }
+
+  function createArtifactResourceRow(summary) {
+    const artifact = window.BA_LLM_ARTIFACTS?.findById?.(summary.id) || null;
+    const attached = Boolean(summary.contextAttached);
+    const canAttach = artifactContextLimit() > 0;
+    const row = document.createElement("div");
+    row.className = `ba-llm-artifact-row${attached ? " is-attached" : ""}`;
+    row.dataset.artifactId = summary.id;
+
+    const label = document.createElement("button");
+    label.type = "button";
+    label.className = "ba-llm-artifact-summary";
+    label.textContent = artifactLineText(summary) + (attached ? t("panel.llm.resources.artifactAttachedSuffix") : "");
+    label.setAttribute("aria-label", t("panel.llm.resources.artifactPreviewTitle", { id: summary.id }));
+    label.setAttribute("aria-expanded", "false");
+
+    const actions = document.createElement("div");
+    actions.className = "ba-llm-artifact-actions";
+
+    const attach = document.createElement("button");
+    attach.type = "button";
+    attach.className = `ba-llm-artifact-action${attached ? " is-attached-action" : ""}`;
+    attach.textContent = attached
+      ? t("panel.llm.resources.artifactDetach")
+      : (canAttach ? t("panel.llm.resources.artifactAttach") : t("panel.llm.resources.artifactAttachUnavailable"));
+    attach.title = attached
+      ? t("panel.llm.resources.artifactDetachTitle", { id: summary.id })
+      : (canAttach
+        ? t("panel.llm.resources.artifactAttachTitle", { id: summary.id })
+        : t("panel.llm.resources.artifactAttachUnavailableTitle", { id: summary.id }));
+    attach.disabled = !attached && !canAttach;
+    attach.addEventListener("click", () => {
+      if (attached) {
+        window.BA_LLM_ARTIFACTS?.clearContextArtifact?.();
+      } else {
+        window.BA_LLM_ARTIFACTS?.attachToContext?.(summary.id);
+      }
+      updateResourceLines();
+    });
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "ba-llm-artifact-action ba-llm-artifact-delete ba-icon-only";
+    remove.setAttribute("aria-label", t("panel.llm.resources.artifactDeleteTitle", { id: summary.id }));
+    remove.title = t("panel.llm.resources.artifactDeleteTitle", { id: summary.id });
+    remove.addEventListener("click", () => {
+      window.BA_LLM_ARTIFACTS?.remove?.(summary.id);
+      updateResourceLines();
+    });
+
+    actions.append(attach, remove);
+
+    const preview = document.createElement("pre");
+    preview.className = "ba-llm-artifact-preview";
+    preview.hidden = true;
+
+    function renderPreview() {
+      preview.textContent = artifact
+        ? window.BA_LLM_ARTIFACTS.formatArtifactForDisplay(artifact, { maxChars: 5000 })
+        : t("common.noOutputParen");
+    }
+
+    label.addEventListener("click", () => {
+      const willOpen = preview.hidden;
+      if (willOpen) {
+        renderPreview();
+      } else {
+        preview.textContent = "";
+      }
+      preview.hidden = !willOpen;
+      label.setAttribute("aria-expanded", String(willOpen));
+    });
+
+    row.append(label, actions, preview);
+    return row;
+  }
+
   function createMetaItem(key, value) {
     const item = document.createElement("span");
     const label = document.createElement("b");
@@ -310,6 +424,7 @@
       meta.replaceChildren(...items);
     }
     syncThinkingToggleUi();
+    syncWorkerUnloadButton();
   }
 
   async function checkCapabilities(options = {}) {
@@ -620,30 +735,42 @@
       artifactBadge.textContent = tn("panel.llm.artifactCount", artifactCount);
       artifactBadge.title = snap.lastArtifactId ? t("panel.llm.resources.lastArtifact", { id: snap.lastArtifactId }) : t("panel.llm.resources.artifactsSaved");
     }
-    const artifacts = window.BA_LLM_ARTIFACTS?.listSummaries?.({ limit: 3 }) || [];
-    const artifactLines = artifacts.slice().reverse().map((artifact) => {
-      const path = artifact.args?.path ? ` · ${artifact.args.path}` : "";
-      const state = artifact.ok ? t("common.okLower") : t("panel.llm.resources.stateError");
-      const size = artifact.sizeBytes ? ` · ${Math.ceil(artifact.sizeBytes / 1024)} KB` : "";
-      const truncated = artifact.truncated ? t("panel.llm.resources.truncated") : "";
-      return t("panel.llm.resources.artifactLine", {
-        id: artifact.id,
-        tool: artifact.tool || t("panel.llm.resources.toolFallback"),
-        state, size, truncated, path,
-      });
-    });
+    const recentArtifacts = window.BA_LLM_ARTIFACTS?.listSummaries?.({ limit: 3 }) || [];
+    const attachedArtifact = window.BA_LLM_ARTIFACTS?.getContextArtifact?.() || null;
+    const attachedSummary = attachedArtifact
+      ? window.BA_LLM_ARTIFACTS?.summarizeArtifact?.(attachedArtifact)
+      : null;
+    const artifactsById = new Map();
+    for (const artifact of recentArtifacts.slice().reverse()) {
+      artifactsById.set(artifact.id, artifact);
+    }
+    if (attachedSummary && !artifactsById.has(attachedSummary.id)) {
+      artifactsById.set(attachedSummary.id, attachedSummary);
+    }
+    const artifactRows = Array.from(artifactsById.values()).map(createArtifactResourceRow);
+    const attachedLine = attachedSummary
+      ? (artifactContextLimit() > 0
+        ? t("panel.llm.resources.artifactAttachedLine", { id: attachedSummary.id })
+        : t("panel.llm.resources.artifactAttachedBlockedLine", { id: attachedSummary.id }))
+      : "";
     const operationLine = (snap.lastOperation
       ? t("panel.llm.resources.operationLine", { op: snap.lastOperation })
       : t("panel.llm.resources.operation"))
       + (snap.llmBusy ? t("panel.llm.resources.llmBusy") : "")
       + (snap.toolBusy ? t("panel.llm.resources.toolBusy") : "");
     const lines = [
-      t("panel.llm.resources.artifacts", { count: artifactCount }) + (snap.lastArtifactId ? ` · ${snap.lastArtifactId}` : ""),
-      ...artifactLines,
-      budgetLine,
-      ctx ? t("panel.llm.resources.contextActive", { tokens: ctx.estimatedTokens || 0, chars: ctx.chars || 0 }) : t("panel.llm.resources.context"),
-      operationLine,
-    ].filter(Boolean).map((line) => createTextElement("span", "", line));
+      createTextElement(
+        "span",
+        "",
+        t("panel.llm.resources.artifacts", { count: artifactCount })
+          + (snap.lastArtifactId ? ` · ${snap.lastArtifactId}` : "")
+          + (attachedLine ? ` · ${attachedLine}` : ""),
+      ),
+      ...artifactRows,
+      createTextElement("span", "", budgetLine),
+      createTextElement("span", "", ctx ? t("panel.llm.resources.contextActive", { tokens: ctx.estimatedTokens || 0, chars: ctx.chars || 0 }) : t("panel.llm.resources.context")),
+      createTextElement("span", "", operationLine),
+    ].filter(Boolean);
     if (artifactCount) {
       const button = document.createElement("button");
       button.id = "ba-llm-clear-artifacts";
@@ -779,6 +906,7 @@
       } finally {
         window.BA_LLM.loading = false;
         setButtonBusy(false);
+        syncWorkerUnloadButton();
         window.BA_LLM_AGENT?.updateChatAvailability?.();
       }
     });
@@ -802,10 +930,13 @@
       if (confirmed) window.BA_LLM_AGENT.clearHistory();
     });
     window.BA_LLM_AGENT.updateChatAvailability?.();
+    syncWorkerUnloadButton();
     document.getElementById("ba-llm-abort")?.addEventListener("click", () => {
+      if (!canUnloadActiveWorker()) return;
       window.BA_LLM_AGENT.unloadModel();
       setProgress(null, true);
       setStatus(t("panel.llm.status.workerUnloaded"), "warn");
+      syncWorkerUnloadButton();
     });
   }
 
@@ -832,6 +963,18 @@
   });
 
   window.addEventListener("ba-llm:artifact", () => {
+    updateResourceLines();
+  });
+
+  window.addEventListener("ba-llm:artifact-context", () => {
+    updateResourceLines();
+  });
+
+  window.addEventListener("ba-llm:artifact-remove", () => {
+    updateResourceLines();
+  });
+
+  window.addEventListener("ba-llm:artifact-clear", () => {
     updateResourceLines();
   });
 

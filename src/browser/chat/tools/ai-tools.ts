@@ -47,6 +47,12 @@
         path: z.string().describe(t("tools.schema.vmFsReadPath")),
         maxBytes: z.number().optional().describe(t("tools.schema.maxBytes")),
       }),
+      "vm.fs.write": z.object({
+        path: z.string().describe(t("tools.schema.vmFsWritePath")),
+        content: z.string().describe(t("tools.schema.vmFsWriteContent")),
+        createDirs: z.boolean().optional().describe(t("tools.schema.createDirs")),
+        overwrite: z.boolean().optional().describe(t("tools.schema.overwrite")),
+      }),
       "vm.cmd.which": z.object({
         commands: z.array(z.string()).describe(t("tools.schema.whichCommands")),
       }),
@@ -75,6 +81,7 @@
       "net.ip.status": z.object({}),
       "net.nmap.quick": z.object({
         target: z.string().describe(t("tools.schema.ipOrHost")),
+        ports: z.string().optional().describe(t("tools.schema.ports")),
         topPorts: z.number().optional(),
       }),
       "web.ffuf.dir_light": z.object({
@@ -82,7 +89,10 @@
         wordlist: z.string().optional(),
         threads: z.number().optional(),
         rate: z.number().optional(),
-        maxTimeSec: z.number().optional(),
+        maxTimeSec: z.number().optional().describe(t("tools.schema.ffufMaxTimeSec")),
+        filterLength: z.string().optional().describe(t("tools.schema.ffufFilterLength")),
+        filterWords: z.string().optional().describe(t("tools.schema.ffufFilterWords")),
+        filterLines: z.string().optional().describe(t("tools.schema.ffufFilterLines")),
       }),
       "vm.python.exec": z.object({
         code: z.string().describe(t("tools.schema.pythonCode")),
@@ -92,10 +102,13 @@
         rate: z.number().optional(),
         threads: z.number().optional(),
         timeoutSec: z.number().optional(),
+        techDetect: z.boolean().optional().describe(t("tools.schema.techDetect")),
       }),
       "web.nikto.quick": z.object({
         url: z.string().describe(t("tools.schema.url")),
         maxTimeSec: z.number().optional(),
+        timeoutSec: z.number().optional().describe(t("tools.schema.timeoutSec")),
+        tuning: z.string().optional().describe(t("tools.schema.niktoTuning")),
       }),
       "tls.openssl.cert": z.object({
         host: z.string().describe(t("tools.schema.host")),

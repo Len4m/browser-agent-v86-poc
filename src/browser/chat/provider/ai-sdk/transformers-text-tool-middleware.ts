@@ -159,6 +159,15 @@ export function transformersTextToolMiddleware({ stripToolChoice = false, parseT
       const transformed = baseStream.pipeThrough(
         new TransformStream({
           transform(chunk, controller) {
+            if (
+              chunk.type === "reasoning-start"
+              || chunk.type === "reasoning-delta"
+              || chunk.type === "reasoning-end"
+            ) {
+              controller.enqueue(chunk);
+              return;
+            }
+
             if (toolCallEmitted) {
               // El modelo base puede emitir otro finish (stop) tras el nuestro (tool-calls).
               if (chunk.type === "text-delta" || chunk.type === "finish") return;

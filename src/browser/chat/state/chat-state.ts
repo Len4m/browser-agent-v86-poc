@@ -86,22 +86,12 @@
     };
   }
 
-  function defaultThinkingMeta(model) {
-    const id = model.id || "";
-    if (model.engine === "ollama") {
-      const enabled = Boolean(model.ollamaThink)
-        || /qwen|deepseek|reason/i.test(`${id} ${model.model || ""}`);
-      return {
-        enabled,
-        tagName: "think",
-        startWithReasoning: enabled,
-      };
-    }
-    const enabled = model.toolProfile === "reasoning-light" || id.includes("qwen3");
+  function mergeThinkingMeta(model) {
     return {
-      enabled,
+      enabled: false,
       tagName: "think",
-      startWithReasoning: enabled,
+      startWithReasoning: false,
+      ...(model.thinking || {}),
     };
   }
 
@@ -146,7 +136,7 @@
       maxNewTokens: model.maxNewTokens ?? ctx.maxNewTokens,
       contextPolicy: { ...ctx.contextPolicy, ...(model.contextPolicy || {}) },
       agent: model.agent || defaultAgentMeta(model),
-      thinking: model.thinking || defaultThinkingMeta(model),
+      thinking: mergeThinkingMeta(model),
     };
   }
 
@@ -171,6 +161,7 @@
     messages: [],
     artifacts: [],
     lastArtifactId: null,
+    contextArtifactId: null,
     lastError: "",
     settings: {
       // Nivel máximo de seguridad que el agente puede ejecutar sin pedir

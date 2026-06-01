@@ -8,7 +8,8 @@
 // artifacts and exposes compact, sanitized payloads for the ContextBudgetManager.
 
 (function initLLMArtifactStore() {
-  const MAX_ARTIFACTS = 24;
+  const MAX_ARTIFACTS = 10;
+  const MAX_TOTAL_ARTIFACT_BYTES = 1024 * 1024;
   const MAX_STORED_RAW_CHARS = 64 * 1024;
   const DISPLAY_PREVIEW_CHARS = 12000;
   const COMPACT_PREVIEW_CHARS = 5000;
@@ -125,17 +126,38 @@
 
   function truncateMiddle(text, maxChars = COMPACT_PREVIEW_CHARS) {
     const value = normalizeNewlines(String(text || ""));
-    if (value.length <= maxChars) {
+    const limit = Math.max(0, Math.trunc(Number(maxChars) || 0));
+    if (value.length <= limit) {
       return { text: value, truncated: false, omittedChars: 0 };
     }
+    if (limit <= 0) {
+      return { text: "", truncated: value.length > 0, omittedChars: value.length };
+    }
+    if (limit < 80) {
+      return { text: value.slice(0, limit), truncated: true, omittedChars: value.length - limit };
+    }
 
-    const head = Math.max(1, Math.floor(maxChars * 0.68));
-    const tail = Math.max(1, maxChars - head - 120);
-    const omitted = value.length - head - tail;
+    const markerFor = (omitted) => `\n\n...[contenido omitido: ${omitted} caracteres]...\n\n`;
+    let marker = markerFor(value.length);
+    let remaining = limit - marker.length;
+    if (remaining <= 0) {
+      return { text: value.slice(0, limit), truncated: true, omittedChars: value.length - limit };
+    }
+    let head = Math.max(1, Math.floor(remaining * 0.68));
+    let tail = Math.max(0, remaining - head);
+    let omitted = value.length - head - tail;
+    marker = markerFor(omitted);
+    remaining = limit - marker.length;
+    if (remaining <= 0) {
+      return { text: value.slice(0, limit), truncated: true, omittedChars: value.length - limit };
+    }
+    head = Math.max(1, Math.floor(remaining * 0.68));
+    tail = Math.max(0, remaining - head);
+    omitted = value.length - head - tail;
     return {
       text: [
         value.slice(0, head),
-        `\n\n...[contenido omitido: ${omitted} caracteres]...\n\n`,
+        markerFor(omitted),
         value.slice(-tail),
       ].join(""),
       truncated: true,
@@ -171,6 +193,50 @@
     const llm = window.BA_LLM;
     if (!llm.artifacts) llm.artifacts = [];
     return llm.artifacts;
+  }
+
+  function artifactStoredBytes(artifact) {
+    if (!artifact) return 0;
+    const textValues = [
+      artifact.stdout,
+      artifact.stderr,
+      artifact.displayPreview,
+      artifact.modelText,
+      artifact.compactText,
+      artifact.summary,
+      artifact.userText,
+    ].map((value) => String(value || "")).filter(Boolean);
+    const uniqueTextValues = Array.from(new Set(textValues));
+    return uniqueTextValues.reduce((sum, value) => sum + textBytesApprox(value), 0);
+  }
+
+  function totalArtifactsStoredBytes(store = ensureStore()) {
+    return store.reduce((sum, artifact) => sum + artifactStoredBytes(artifact), 0);
+  }
+
+  function clearContextIfRemoved(artifact) {
+    if (!artifact || artifact.id !== window.BA_LLM?.contextArtifactId) return;
+    window.BA_LLM.contextArtifactId = null;
+    window.BA_LLM_EVENTS?.emit("artifact-context", { artifact: null, id: null });
+  }
+
+  function pruneStore(store) {
+    while (store.length > MAX_ARTIFACTS) {
+      clearContextIfRemoved(store.shift());
+    }
+    while (store.length > 1 && totalArtifactsStoredBytes(store) > MAX_TOTAL_ARTIFACT_BYTES) {
+      clearContextIfRemoved(store.shift());
+    }
+  }
+
+  function getUsage() {
+    const store = ensureStore();
+    return {
+      artifacts: store.length,
+      maxArtifacts: MAX_ARTIFACTS,
+      storedBytes: totalArtifactsStoredBytes(store),
+      maxStoredBytes: MAX_TOTAL_ARTIFACT_BYTES,
+    };
   }
 
   function storeToolResult(toolCall, result, meta = {}) {
@@ -221,7 +287,7 @@
     };
 
     store.push(artifact);
-    while (store.length > MAX_ARTIFACTS) store.shift();
+    pruneStore(store);
     window.BA_LLM.lastArtifactId = artifact.id;
     window.BA_LLM_EVENTS?.emit("artifact", { artifact: summarizeArtifact(artifact) });
     return artifact;
@@ -238,9 +304,11 @@
       code: artifact.code,
       summary: artifact.summary,
       sizeBytes: artifact.sizeBytes,
+      storedSizeBytes: artifactStoredBytes(artifact),
       truncated: artifact.truncated,
       tags: artifact.tags,
       createdAt: artifact.createdAt,
+      contextAttached: artifact.id === window.BA_LLM?.contextArtifactId,
     };
   }
 
@@ -261,9 +329,58 @@
     return ensureStore().find((artifact) => artifact.id === target) || null;
   }
 
+  function getContextArtifact() {
+    const target = String(window.BA_LLM?.contextArtifactId || "");
+    if (!target) return null;
+    const artifact = findById(target);
+    if (!artifact) {
+      window.BA_LLM.contextArtifactId = null;
+      window.BA_LLM_EVENTS?.emit("artifact-context", { artifact: null, id: null });
+      return null;
+    }
+    return artifact;
+  }
+
+  function attachToContext(id) {
+    const artifact = findById(id);
+    if (!artifact) return null;
+    window.BA_LLM.contextArtifactId = artifact.id;
+    window.BA_LLM_EVENTS?.emit("artifact-context", { artifact: summarizeArtifact(artifact), id: artifact.id });
+    return artifact;
+  }
+
+  function clearContextArtifact() {
+    if (!window.BA_LLM?.contextArtifactId) return;
+    window.BA_LLM.contextArtifactId = null;
+    window.BA_LLM_EVENTS?.emit("artifact-context", { artifact: null, id: null });
+  }
+
+  function consumeContextArtifact() {
+    const artifact = getContextArtifact();
+    if (artifact) clearContextArtifact();
+    return artifact;
+  }
+
+  function remove(id) {
+    const target = String(id || "");
+    if (!target) return null;
+    const store = ensureStore();
+    const index = store.findIndex((artifact) => artifact.id === target);
+    if (index < 0) return null;
+    const [removed] = store.splice(index, 1);
+    if (window.BA_LLM.lastArtifactId === target) {
+      window.BA_LLM.lastArtifactId = last()?.id || null;
+    }
+    clearContextIfRemoved(removed);
+    window.BA_LLM_EVENTS?.emit("artifact-remove", { artifact: summarizeArtifact(removed), id: target });
+    window.BA_LLM_EVENTS?.emit("resource", {});
+    return removed;
+  }
+
   function clear() {
     window.BA_LLM.artifacts = [];
     window.BA_LLM.lastArtifactId = null;
+    window.BA_LLM.contextArtifactId = null;
     window.BA_LLM_EVENTS?.emit("artifact-clear", {});
   }
 
@@ -298,7 +415,13 @@
     summarizeArtifact,
     listSummaries,
     findById,
+    getContextArtifact,
+    attachToContext,
+    clearContextArtifact,
+    consumeContextArtifact,
+    getUsage,
     last,
+    remove,
     clear,
     formatArtifactForModel,
     formatArtifactForDisplay,

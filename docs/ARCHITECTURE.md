@@ -168,6 +168,7 @@ Contratos actuales:
 - `serial1` / `/dev/ttyS1`: tools del LLM, checks, formulario manual y operaciones internas que no deben ensuciar la consola visible.
 - `serial2` / `/dev/ttyS2`: daemon xterm/PTY. Multiplexa las pestañas 2-4 como PTYs reales hacia xterm.js con frames base64.
 - No hay fallback silencioso de `serial1` a `serial0` en `execVm(targetTools=true)`.
+- Cancelación: el browser envía `__BA_S1_CANCEL:<id>` por `serial1` para abortar el job en curso en `ba-serial1-runner` (timeout, reset o cancelación de usuario).
 
 Fuentes de runners:
 
@@ -216,6 +217,7 @@ Detalles importantes:
 - En el primer paso con tools, `prepareStep` puede restringir `activeTools` al subconjunto permitido.
 - El runner usa el loop de AI SDK (`streamText` + `stopWhen(stepCountIs)`), pero contiene una síntesis de respaldo si hubo tool work y la respuesta textual falta, parece un plan de tool o falla el paso de síntesis del SDK.
 - El middleware de Transformers.js elimina `toolChoice` para compatibilidad con ese backend.
+- El razonamiento (thinking) se configura por modelo en `data/llm-models.json` (campo `thinking`: `enabled`, `tagName`, `startWithReasoning`). En Transformers.js se extrae con `extractReasoningMiddleware` según el `tagName`; en chat se muestra con el conmutador del panel LLM. Se transmite en streaming y no se conserva en memoria ni como respuesta final.
 - Ollama se llama desde el navegador, no desde la VM. El endpoint por defecto es `http://127.0.0.1:11434`.
 
 Archivos clave:
