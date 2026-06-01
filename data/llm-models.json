@@ -21,7 +21,11 @@
     "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192,
-    "description": "Qwen3 1.7B en Ollama (Q4_K_M, ~1.4 GB). Contexto nativo 32K; el presupuesto del agente usa 8192 tokens conservadores como el resto de modelos Ollama. Se carga con thinking desactivado para evitar respuestas vacías en el chat."
+    "description": "Qwen3 1.7B en Ollama (Q4_K_M, ~1.4 GB). Contexto nativo 32K; el presupuesto del agente usa 8192 tokens conservadores como el resto de modelos Ollama. Se carga con thinking desactivado para evitar respuestas vacías en el chat.",
+    "thinking": {
+      "enabled": true,
+      "tagName": "redacted_thinking"
+    }
   },
   {
     "id": "ollama-llama3.2-latest",
@@ -90,7 +94,11 @@
     "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192,
-    "description": "Qwen3.5 4B, modelo reciente con etiqueta tools en Ollama. Si no está instalado, ejecuta: ollama pull qwen3.5:4b."
+    "description": "Qwen3.5 4B, modelo reciente con etiqueta tools en Ollama. Si no está instalado, ejecuta: ollama pull qwen3.5:4b.",
+    "thinking": {
+      "enabled": true,
+      "tagName": "redacted_thinking"
+    }
   },
   {
     "id": "ollama-granite3.3-8b",
@@ -160,7 +168,11 @@
     "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192,
-    "description": "Qwen3 8B para agente local con tools. Si no está instalado, ejecuta: ollama pull qwen3:8b."
+    "description": "Qwen3 8B para agente local con tools. Si no está instalado, ejecuta: ollama pull qwen3:8b.",
+    "thinking": {
+      "enabled": true,
+      "tagName": "redacted_thinking"
+    }
   },
   {
     "id": "ollama-granite4.1-8b",
@@ -207,7 +219,11 @@
     "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192,
-    "description": "Qwen3.5 9B, opción reciente para tools en sobremesas actuales. Si no está instalado, ejecuta: ollama pull qwen3.5:9b."
+    "description": "Qwen3.5 9B, opción reciente para tools en sobremesas actuales. Si no está instalado, ejecuta: ollama pull qwen3.5:9b.",
+    "thinking": {
+      "enabled": true,
+      "tagName": "redacted_thinking"
+    }
   },
   {
     "id": "ollama-qwen3-14b",
@@ -231,7 +247,11 @@
     "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192,
-    "description": "Qwen3 14B para equipos de sobremesa con memoria de sistema suficiente; no requiere necesariamente 9.3 GB de VRAM dedicada. Si no está instalado, ejecuta: ollama pull qwen3:14b."
+    "description": "Qwen3 14B para equipos de sobremesa con memoria de sistema suficiente; no requiere necesariamente 9.3 GB de VRAM dedicada. Si no está instalado, ejecuta: ollama pull qwen3:14b.",
+    "thinking": {
+      "enabled": true,
+      "tagName": "redacted_thinking"
+    }
   },
   {
     "id": "ollama-gpt-oss-20b",
@@ -253,8 +273,13 @@
     "toolProfile": "reasoning-light",
     "temperature": 0.15,
     "topP": 0.85,
+    "ollamaThink": false,
     "contextWindowTokens": 8192,
-    "description": "gpt-oss 20B para tareas agentic/dev. Si no está instalado con este tag, ejecuta: ollama pull gpt-oss:20b."
+    "description": "gpt-oss 20B para tareas agentic/dev. ollamaThink desactivado en el agente: think+tools puede vaciar content en Ollama. Si no está instalado, ejecuta: ollama pull gpt-oss:20b.",
+    "thinking": {
+      "enabled": true,
+      "tagName": "redacted_thinking"
+    }
   },
   {
     "id": "ollama-gpt-oss-latest",
@@ -276,8 +301,13 @@
     "toolProfile": "reasoning-light",
     "temperature": 0.15,
     "topP": 0.85,
+    "ollamaThink": false,
     "contextWindowTokens": 8192,
-    "description": "gpt-oss instalado en tu host y validado con tool_calls en Ollama."
+    "description": "gpt-oss instalado en tu host y validado con tool_calls en Ollama. ollamaThink desactivado en el agente para evitar respuestas vacías con tools.",
+    "thinking": {
+      "enabled": true,
+      "tagName": "redacted_thinking"
+    }
   },
   {
     "id": "ollama-qwen3-30b",
@@ -301,7 +331,11 @@
     "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192,
-    "description": "Qwen3 30B-A3B MoE para agente local cuando el host tiene memoria suficiente. Si no está instalado, ejecuta: ollama pull qwen3:30b."
+    "description": "Qwen3 30B-A3B MoE para agente local cuando el host tiene memoria suficiente. Si no está instalado, ejecuta: ollama pull qwen3:30b.",
+    "thinking": {
+      "enabled": true,
+      "tagName": "redacted_thinking"
+    }
   },
   {
     "id": "ollama-glm-4.7-flash",
@@ -323,8 +357,13 @@
     "toolProfile": "reasoning-light",
     "temperature": 0.15,
     "topP": 0.85,
+    "ollamaThink": false,
     "contextWindowTokens": 8192,
-    "description": "GLM 4.7 Flash instalado en tu host; modelo pesado de clase 30B con etiqueta tools en Ollama."
+    "description": "GLM 4.7 Flash instalado en tu host; modelo pesado de clase 30B con etiqueta tools en Ollama. ollamaThink desactivado en el agente para tool-calling estable.",
+    "thinking": {
+      "enabled": true,
+      "tagName": "redacted_thinking"
+    }
   },
   {
     "id": "custom-ollama",
@@ -381,7 +420,11 @@
       "maxToolResultChars": 1800,
       "maxToolResultCharsForSynthesis": 1000
     },
-    "description": "Candidato principal para tools en navegador. Es el modelo con evidencia pública más directa para Transformers.js + @browser-ai/transformers-js + AI SDK, usando q4f16 y WebGPU."
+    "description": "Candidato principal para tools en navegador. Es el modelo con evidencia pública más directa para Transformers.js + @browser-ai/transformers-js + AI SDK, usando q4f16 y WebGPU.",
+    "thinking": {
+      "enabled": true,
+      "tagName": "redacted_thinking"
+    }
   },
   {
     "id": "qwen3-tools-onnx-q4",
@@ -416,7 +459,11 @@
       "maxToolResultCharsForSynthesis": 1000
     },
     "experimental": true,
-    "description": "Variante q4 del Qwen3 recomendado para tools. Existe en el repo ONNX y evita shader-f16; se marca experimental porque la demo oficial de tool calling usa q4f16."
+    "description": "Variante q4 del Qwen3 recomendado para tools. Existe en el repo ONNX y evita shader-f16; se marca experimental porque la demo oficial de tool calling usa q4f16.",
+    "thinking": {
+      "enabled": true,
+      "tagName": "redacted_thinking"
+    }
   },
   {
     "id": "qwen2.5-coder-0.5b-instruct-q4",
