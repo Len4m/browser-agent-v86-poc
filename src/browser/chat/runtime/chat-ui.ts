@@ -83,7 +83,6 @@
 
   function appendThinkingChunk(bubble, chunk) {
     const details = ensureThinkingBlock(bubble);
-    details.open = true;
     const body = details.querySelector(".ba-llm-thinking-body");
     if (body) body.append(document.createTextNode(chunk));
   }
