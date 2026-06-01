@@ -762,7 +762,7 @@
       requiresVm: true, requiresConsole: true, timeoutMs: 1230000, maxOutputBytes: 24000,
       requiredPackages: ["ffuf", "python3"],
       get description() { return t("tools.desc.web.ffuf.dir_light"); },
-      get promptDescription() { return toolPrompt(this.label, '{"url":"http://host/FUZZ","wordlist":"common","threads":2,"rate":10,"filterLength":"0","filterWords":"5","filterLines":"1-3"}'); },
+      get promptDescription() { return toolPrompt(this.label, '{"url":"http://host/FUZZ","wordlist":"common","threads":2,"rate":10}', t("tools.prompt.ffufNoOptionalDefaults")); },
       normalizeArgs: normalizeFfufArgs,
       buildCommand(args) { return captureCommand("ba-ffuf-light", ["ffuf", "python3"], buildFfufLightCommand(args)); },
       formatResult(result, args) { return standardFormat(this, result, args, () => summaryToolOn(t("common.toolShort.ffuf"), args.url), () => summaryToolFailedOn("FFUF", args.url)); },

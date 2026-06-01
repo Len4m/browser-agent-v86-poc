@@ -89,7 +89,7 @@
         wordlist: z.string().optional(),
         threads: z.number().optional(),
         rate: z.number().optional(),
-        maxTimeSec: z.number().optional(),
+        maxTimeSec: z.number().optional().describe(t("tools.schema.ffufMaxTimeSec")),
         filterLength: z.string().optional().describe(t("tools.schema.ffufFilterLength")),
         filterWords: z.string().optional().describe(t("tools.schema.ffufFilterWords")),
         filterLines: z.string().optional().describe(t("tools.schema.ffufFilterLines")),
