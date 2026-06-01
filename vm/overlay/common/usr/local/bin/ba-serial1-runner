@@ -7,6 +7,7 @@ ttyS1. The browser side depends on the marker protocol documented below:
   __BA_S1_BEGIN:<id>:<timeout_s>:<max_bytes>:<marker>
   <base64 lines>
   __BA_S1_END:<id>
+  __BA_S1_CANCEL:<id>
 """
 
 import base64
@@ -159,6 +160,37 @@ class Serial1Runner:
             except OSError:
                 pass
 
+    def consume_cancel_lines(self, job_id):
+        cancelled = False
+        kept = b""
+        while b"\n" in self.input_buffer:
+            line, self.input_buffer = self.input_buffer.split(b"\n", 1)
+            text = line.replace(b"\r", b"").decode("ascii", "ignore")
+            if text.startswith("__BA_S1_CANCEL:"):
+                cancel_id = safe_id(text[len("__BA_S1_CANCEL:") :])
+                if cancel_id in (safe_id(job_id), "*", ""):
+                    cancelled = True
+            # Ignore other input while a job is running. The browser side does
+            # not submit concurrent jobs; keeping stray partial lines would risk
+            # corrupting the next protocol frame.
+        if self.input_buffer:
+            kept = self.input_buffer
+        self.input_buffer = kept
+        return cancelled
+
+    def read_cancel_request(self, job_id):
+        cancelled = self.consume_cancel_lines(job_id)
+        try:
+            data = os.read(self.tty_fd, 4096)
+        except BlockingIOError:
+            data = b""
+        except OSError:
+            data = b""
+        if data:
+            self.input_buffer += data
+            cancelled = self.consume_cancel_lines(job_id) or cancelled
+        return cancelled
+
     def run_script(self, job_id, script_path, timeout_s, max_bytes):
         raw_path = self.job_path(job_id, "raw")
         process = subprocess.Popen(
@@ -175,6 +207,7 @@ class Serial1Runner:
 
         deadline = time.monotonic() + timeout_s
         timed_out = False
+        cancelled = False
         pipe_open = True
         process_exited_at = None
         state = {"max_bytes": max_bytes, "written": 0, "cut": False}
@@ -189,12 +222,23 @@ class Serial1Runner:
                     timed_out = True
                     self.terminate_process_group(process)
 
+                if not cancelled and process_exited_at is None and self.consume_cancel_lines(job_id):
+                    cancelled = True
+                    self.say(f"[ba-s1] cancel id={job_id}")
+                    self.terminate_process_group(process)
+
                 wait_s = 0.05
                 if process_exited_at is not None:
                     wait_s = max(0.0, min(wait_s, (process_exited_at + EXIT_DRAIN_GRACE_S) - now))
                 elif not timed_out:
                     wait_s = max(0.0, min(wait_s, deadline - now))
-                readable, _, _ = select.select([stdout_fd], [], [], wait_s)
+                readable, _, _ = select.select([stdout_fd, self.tty_fd], [], [], wait_s)
+                if self.tty_fd in readable and not cancelled and process_exited_at is None:
+                    if self.read_cancel_request(job_id):
+                        cancelled = True
+                        self.say(f"[ba-s1] cancel id={job_id}")
+                        self.terminate_process_group(process)
+
                 if stdout_fd in readable:
                     while True:
                         try:
@@ -231,6 +275,8 @@ class Serial1Runner:
             process.wait()
 
         rc = int(process.returncode or 0)
+        if cancelled:
+            return 130
         # Preserve a real shell exit code if the timeout flag raced with process
         # completion. Actual timeout kills normally surface as negative signal
         # return codes after terminate_process_group().

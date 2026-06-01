@@ -102,10 +102,13 @@
         rate: z.number().optional(),
         threads: z.number().optional(),
         timeoutSec: z.number().optional(),
+        techDetect: z.boolean().optional().describe(t("tools.schema.techDetect")),
       }),
       "web.nikto.quick": z.object({
         url: z.string().describe(t("tools.schema.url")),
         maxTimeSec: z.number().optional(),
+        timeoutSec: z.number().optional().describe(t("tools.schema.timeoutSec")),
+        tuning: z.string().optional().describe(t("tools.schema.niktoTuning")),
       }),
       "tls.openssl.cert": z.object({
         host: z.string().describe(t("tools.schema.host")),

@@ -208,12 +208,48 @@
     const bg = ensureState();
     const pending = bg.pending;
     if (!pending) return;
-    window.clearTimeout(pending.timer);
+    if (pending.timer) window.clearTimeout(pending.timer);
     bg.pending = null;
     bg.lastResult = result;
     appendLive(`\n[serial1] ${t("bgtools.live.end", { code: result.code })}\n`);
     syncUi();
+    if (!pending.settled) {
+      pending.settled = true;
+      pending.resolve(result);
+    }
+  }
+
+  function settlePending(pending, result) {
+    if (!pending || pending.settled) return false;
+    pending.settled = true;
+    if (pending.timer) {
+      window.clearTimeout(pending.timer);
+      pending.timer = null;
+    }
     pending.resolve(result);
+    return true;
+  }
+
+  function schedulePendingClear(pending, result, delayMs = 5000) {
+    if (!pending) return;
+    if (pending.timer) window.clearTimeout(pending.timer);
+    pending.timer = window.setTimeout(() => {
+      const bg = ensureState();
+      if (bg.pending?.id !== pending.id) return;
+      finishPending({ ...result, raw: bg.pending?.raw || result.raw || "" });
+    }, delayMs);
+  }
+
+  function requestRunnerCancel(pending, reason = t("bgtools.reason.user")) {
+    if (!pending?.id) return false;
+    try {
+      sendSerial1Text(`__BA_S1_CANCEL:${pending.id}\n`);
+      appendLive(`\n[serial1] ${t("bgtools.live.cancelSignal", { reason })}\n`);
+      return true;
+    } catch (error) {
+      appendLive(`\n[serial1] ${t("bgtools.live.cancelSignalFailed", { error: error?.message || String(error) })}\n`);
+      return false;
+    }
   }
 
   function processDiagnosticChar(char) {
@@ -299,7 +335,13 @@
 
     return new Promise((resolve) => {
       const timer = window.setTimeout(() => {
-        finishPending({ code: 124, stdout: "", stderr: t("bgtools.error.timeout"), raw: bg.pending?.raw || "" });
+        const pending = bg.pending;
+        if (!pending) return;
+        requestRunnerCancel(pending, "timeout");
+        const result = { code: 124, stdout: "", stderr: t("bgtools.error.timeout"), raw: pending.raw || "" };
+        settlePending(pending, result);
+        schedulePendingClear(pending, result, 5000);
+        syncUi();
       }, timeoutMs + timeoutGraceMs);
 
       bg.pending = {
@@ -309,6 +351,7 @@
         raw: "",
         resolve,
         timer,
+        settled: false,
         maxRawChars: clampInt(maxOutputBytes, 1024, 1024 * 1024, DEFAULT_MAX_OUTPUT_BYTES) + MAX_PENDING_RAW_OVERHEAD_CHARS,
       };
       syncUi();
@@ -348,14 +391,15 @@
     const bg = ensureState();
     const pending = bg.pending;
     if (!pending) return false;
-    if (pending.timer) window.clearTimeout(pending.timer);
-    const resolve = pending.resolve;
-    bg.pending = null;
-    syncUi();
+    if (!pending.cancelRequested) {
+      pending.cancelRequested = true;
+      requestRunnerCancel(pending, reason);
+    }
     appendLive(`\n[serial1] ${t("bgtools.live.cancelled", { reason })}\n`);
-    try {
-      resolve({ code: 130, stdout: "", stderr: t("bgtools.cancelledBy", { reason }) });
-    } catch {}
+    const result = { code: 130, stdout: "", stderr: t("bgtools.cancelledBy", { reason }), raw: pending.raw || "" };
+    settlePending(pending, result);
+    schedulePendingClear(pending, result, 5000);
+    syncUi();
     return true;
   }
 
@@ -365,9 +409,11 @@
 
   function reset(reason = "reset") {
     const bg = ensureState();
-    if (bg.pending?.timer) window.clearTimeout(bg.pending.timer);
-    if (bg.pending?.resolve) {
-      try { bg.pending.resolve({ code: 130, stdout: "", stderr: t("bgtools.cancelledBy", { reason }) }); } catch {}
+    if (bg.pending) requestRunnerCancel(bg.pending, reason);
+    const pending = bg.pending;
+    if (pending?.timer) window.clearTimeout(pending.timer);
+    if (pending?.resolve && !pending.settled) {
+      try { pending.resolve({ code: 130, stdout: "", stderr: t("bgtools.cancelledBy", { reason }) }); } catch {}
     }
     bg.pending = null;
     bg.lastResult = null;

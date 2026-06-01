@@ -132,7 +132,7 @@
     activeTurnAbortController?.abort();
     activeTurnAbortController = null;
     window.BA_AISDK?.abortActive?.();
-    window.BA_BG_TOOLS?.cancelPending?.("usuario");
+    window.BA_BG_TOOLS?.cancelPending?.(t("bgtools.reason.user"));
     if (window.BA_LLM) window.BA_LLM.generating = false;
     window.BA_LLM_RESOURCE_GOVERNOR?.forceReleaseWork?.();
     clearChatTailIndicator();

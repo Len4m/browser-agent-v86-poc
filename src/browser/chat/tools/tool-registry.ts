@@ -317,6 +317,12 @@
     };
   }
 
+  function normalizeNiktoTuning(value) {
+    const raw = String(value || "123b").trim();
+    if (!/^[0-9a-ex]+$/i.test(raw) || raw.length > 16) throw new Error(t("tools.error.niktoTuningInvalid"));
+    return raw;
+  }
+
   function buildFfufLightCommand(args) {
     const explicitMaxTime = Number.isFinite(Number(args.maxTimeSec)) ? Number(args.maxTimeSec) : 0;
     const filterFlags = [
@@ -412,6 +418,35 @@
     ].join("; ");
   }
 
+  function buildHttpxProbeCommand(args) {
+    const techFlag = args.techDetect ? " -tech-detect" : "";
+    const httpxCommand = `httpx -u ${shellQuote(args.url)} -silent -no-color -disable-update-check -no-stdin -x GET -method -status-code -content-length -content-type -web-server -response-time -title${techFlag} -follow-redirects -threads ${args.threads} -rate-limit ${args.rate} -timeout ${args.timeoutSec} -retries 0 -response-size-to-read 32768`;
+    const outputCommand = `if [ -s "$out" ]; then sed -n '1,120p' "$out"; else printf 'ERROR: httpx returned no results for %s\\n' ${shellQuote(args.url)}; rc=1; fi`;
+    return limitedBodyCommand("ba-httpx", httpxCommand, outputCommand);
+  }
+
+  function buildNiktoQuickCommand(args) {
+    const hardLimitSec = Math.min(args.maxTimeSec + 15, 150);
+    const niktoArgs = [
+      "-h", args.url,
+      "-nointeractive",
+      "-ask", "no",
+      "-Cgidirs", "none",
+      "-no404",
+      "-Tuning", args.tuning,
+      "-timeout", String(args.timeoutSec),
+      "-maxtime", `${args.maxTimeSec}s`,
+    ].map(shellQuote).join(" ");
+    const niktoCommand = [
+      "nikto_cmd=$(command -v nikto 2>/dev/null || command -v nikto.pl 2>/dev/null || true)",
+      "if [ -z \"$nikto_cmd\" ]; then for p in /usr/bin/nikto.pl /usr/share/nikto/program/nikto.pl /usr/share/nikto/nikto.pl; do if [ -f \"$p\" ]; then nikto_cmd=\"$p\"; break; fi; done; fi",
+      "if [ -z \"$nikto_cmd\" ]; then printf 'ERROR: missing command: nikto\\n'; exit 127; fi",
+      `case "$nikto_cmd" in *.pl) nikto_run="perl $nikto_cmd ${niktoArgs}" ;; *) nikto_run="$nikto_cmd ${niktoArgs}" ;; esac`,
+      `if command -v timeout >/dev/null 2>&1; then timeout ${hardLimitSec}s sh -lc "exec $nikto_run"; else sh -lc "exec $nikto_run"; fi`,
+    ].join("; ");
+    return sedLinesBodyCommand("ba-nikto", niktoCommand, 180);
+  }
+
   function truncateText(text, maxBytes = 32768) {
     const value = String(text || "");
     if (value.length <= maxBytes) return { text: value, truncated: false };
@@ -458,6 +493,29 @@
       stderr: result.code === 0 ? cleanStderr : failureDetail(cleanStderr, out.text, result.code),
       truncated: out.truncated,
       summary: result.code === 0 ? okSummary(args) : failSummary(args),
+    };
+  }
+
+  function formatNiktoResult(toolDef, result, args) {
+    const cleanStdout = removeToolNoise(result.stdout || "").replace(/^\s*Terminated\s*\n?/i, "").trim();
+    const cleanStderr = removeToolNoise(result.stderr || "");
+    const out = truncateText(cleanStdout, toolDef.maxOutputBytes || 32768);
+    const combined = `${cleanStdout}\n${cleanStderr}`;
+    const boundedUseful = [124, 137, 143].includes(Number(result.code))
+      && /Nikto\s+v|Target\s+(?:IP|Hostname|Port):/i.test(combined)
+      && /Server:|item\(s\)|anti-clickjacking|X-Content-Type-Options|outdated/i.test(combined);
+    const ok = result.code === 0 || boundedUseful;
+    return {
+      ok,
+      code: result.code,
+      stdout: out.text,
+      stderr: ok ? "" : failureDetail(cleanStderr, out.text, result.code),
+      truncated: out.truncated,
+      summary: boundedUseful
+        ? t("tools.summary.niktoBoundedOk", { url: args.url, code: result.code })
+        : result.code === 0
+          ? summaryToolOn("Nikto", args.url)
+          : summaryToolFailedOn("Nikto", args.url),
     };
   }
 
@@ -731,21 +789,36 @@
       requiresVm: true, requiresConsole: true, timeoutMs: 45000, maxOutputBytes: 24000,
       requiredPackages: ["httpx"],
       get description() { return t("tools.desc.web.httpx.probe"); },
-      get promptDescription() { return toolPrompt(this.label, '{"url":"https://example.com","rate":10,"threads":2}'); },
-      normalizeArgs(args = {}) { return { url: normalizeUrl(args.url || args.target), rate: clampInt(args.rate, 1, 30, 10), threads: clampInt(args.threads, 1, 5, 2), timeoutSec: clampInt(args.timeoutSec, 3, 12, 6) }; },
-      buildCommand(args) { return captureCommand("ba-httpx", ["httpx"], sedLinesBodyCommand("ba-httpx", `printf '%s\\n' ${shellQuote(args.url)} | httpx -silent -status-code -title -tech-detect -follow-redirects -threads ${args.threads} -rate-limit ${args.rate} -timeout ${args.timeoutSec} -retries 0`, 120)); },
+      get promptDescription() { return toolPrompt(this.label, '{"url":"https://example.com","rate":10,"threads":2,"techDetect":false}'); },
+      normalizeArgs(args = {}) {
+        return {
+          url: normalizeUrl(args.url || args.target),
+          rate: clampInt(args.rate, 1, 30, 10),
+          threads: clampInt(args.threads, 1, 5, 2),
+          timeoutSec: clampInt(args.timeoutSec, 1, 10, 3),
+          techDetect: normalizeBool(args.techDetect ?? args.detectTech, false),
+        };
+      },
+      buildCommand(args) { return captureCommand("ba-httpx", ["httpx"], buildHttpxProbeCommand(args)); },
       formatResult(result, args) { return standardFormat(this, result, args, () => summaryToolOn("HTTPX", args.url), () => summaryToolFailedOn("HTTPX", args.url)); },
     },
 
     "web.nikto.quick": {
       name: "web.nikto.quick", get label() { return t("tools.name.web.nikto.quick"); }, riskLevel: 3, category: "web.scan",
-      requiresVm: true, requiresConsole: true, timeoutMs: 80000, maxOutputBytes: 32768,
+      requiresVm: true, requiresConsole: true, timeoutMs: 170000, maxOutputBytes: 32768,
       requiredPackages: ["nikto"],
       get description() { return t("tools.desc.web.nikto.quick"); },
-      get promptDescription() { return toolPrompt(this.label, '{"url":"https://example.com","maxTimeSec":45}'); },
-      normalizeArgs(args = {}) { return { url: normalizeUrl(args.url || args.target), maxTimeSec: clampInt(args.maxTimeSec, 15, 70, 40) }; },
-      buildCommand(args) { return captureCommand("ba-nikto", ["nikto"], sedLinesBodyCommand("ba-nikto", `nikto -h ${shellQuote(args.url)} -nointeractive -maxtime ${args.maxTimeSec}s`, 180)); },
-      formatResult(result, args) { return standardFormat(this, result, args, () => summaryToolOn("Nikto", args.url), () => summaryToolFailedOn("Nikto", args.url)); },
+      get promptDescription() { return toolPrompt(this.label, '{"url":"https://example.com","maxTimeSec":60,"timeoutSec":5,"tuning":"123b"}'); },
+      normalizeArgs(args = {}) {
+        return {
+          url: normalizeUrl(args.url || args.target),
+          maxTimeSec: clampInt(args.maxTimeSec, 15, 120, 60),
+          timeoutSec: clampInt(args.timeoutSec, 2, 15, 5),
+          tuning: normalizeNiktoTuning(args.tuning),
+        };
+      },
+      buildCommand(args) { return captureCommand("ba-nikto", ["perl"], buildNiktoQuickCommand(args)); },
+      formatResult(result, args) { return formatNiktoResult(this, result, args); },
     },
 
     "tls.openssl.cert": {
