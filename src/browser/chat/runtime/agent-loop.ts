@@ -339,7 +339,10 @@
     const policy = window.BA_LLM_CONTEXT?.getPolicy?.(modelConfig) || {};
     const showThinking = Boolean(modelConfig?.thinking?.enabled && llm.settings?.showThinking);
 
-    const referencedArtifact = window.BA_LLM_TOOL_RESULT_POLICY?.selectArtifactForUserText?.(userText) || null;
+    const attachedArtifact = window.BA_LLM_ARTIFACTS?.consumeContextArtifact?.() || null;
+    const referencedArtifact = attachedArtifact
+      || window.BA_LLM_TOOL_RESULT_POLICY?.selectArtifactForUserText?.(userText)
+      || null;
     const nativeToolsMode = shouldEnableNativeTools({ referencedArtifact });
     const activeToolNames = nativeToolsMode ? resolveNativeToolNames(modelConfig) : [];
     const needsVm = userRequestLikelyNeedsVm(userText);

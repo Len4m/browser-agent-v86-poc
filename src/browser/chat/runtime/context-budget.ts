@@ -411,9 +411,10 @@
     ];
 
     if (artifact) {
-      const artifactText = window.BA_LLM_ARTIFACTS?.formatArtifactForModel?.(artifact, {
-        maxChars: policy.maxToolResultChars,
-      }) || "";
+      const artifactLimit = Number(policy.maxToolResultCharsForSynthesis ?? policy.maxToolResultChars);
+      const artifactText = artifactLimit > 0
+        ? (window.BA_LLM_ARTIFACTS?.formatArtifactForModel?.(artifact, { maxChars: artifactLimit }) || "")
+        : t("prompt.artifact.omittedByPolicy", { id: artifact.id || "—" });
       messages.push({
         role: "user",
         content: [

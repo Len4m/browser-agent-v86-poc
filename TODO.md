@@ -8,7 +8,7 @@ Lista de temas detectados para revisar antes de una publicación estable.
 - [X] Revisar el bloque de thinking en modelos que muestran razonamiento: cuándo aparece, cómo se renderiza, toggle de visibilidad y coherencia con el streaming.
 - [X] Revisar la detección de JSON en respuestas de modelos: validar si el parser actual es adecuado para tool calling y si el mensaje «El modelo local no generó texto. Recarga (Ctrl+Shift+R) o prueba otro modelo.» cubre bien los casos reales (respuesta vacía, solo JSON, razonamiento sin texto visible).
 - [X] Revisar integración con Ollama cuando el proyecto esté publicado en internet: CORS, origen permitido, endpoints locales, seguridad y experiencia de configuración.
-- [ ] Mejorar y revisar la gestión de artifacts: ciclo de vida,~~persistencia~~,~~limpieza~~, referencias desde el contexto, visualización en UI y límites de memoria.
+- [X] Mejorar y revisar la gestión de artifacts: ciclo de vida,persistencia, limpieza, referencias desde el contexto, visualización en UI y límites de memoria.
 - [X] Seleccionar mejor los modelos que aceptan y funcionan correctamente con tools por defecto.
 - [ ] Revisar el funcionamiento real de todas las tools creadas y añadir una tool sencilla para escribir ficheros en la VM (p. ej. ruta + contenido, límites de tamaño, creación de directorios opcional y validación de errores/permisos).
 - [X] Revisar la visualización del razonamiento (thinking) en el chat: con el toggle activo, comprobar en qué casos se muestra, si permanece en el historial y si es coherente con tools, respuestas vacías o turnos sin texto final (p. ej. cuando hubo razonamiento pero no respuesta visible, o el modelo ejecutó una tool y el bloque desaparece al cerrar el turno).

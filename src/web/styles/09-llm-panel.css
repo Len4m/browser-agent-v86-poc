@@ -320,6 +320,120 @@
   background: #ffffff;
 }
 
+.ba-llm-artifact-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.32rem;
+  align-items: start;
+  padding: 0.28rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.ba-llm-artifact-row.is-attached {
+  border-color: #38bdf8;
+  background: #f0f9ff;
+}
+
+.ba-llm-artifact-row:hover {
+  border-color: #bae6fd;
+  background: #f0f9ff;
+}
+
+.ba-llm-artifact-row.is-attached:hover {
+  border-color: #0284c7;
+  background: #e0f2fe;
+}
+
+.ba-llm-artifact-summary {
+  min-width: 0;
+  padding: 0.18rem 0.22rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #0f172a;
+  font: inherit;
+  line-height: 1.35;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.ba-llm-artifact-summary:hover {
+  background: transparent;
+  color: #0f172a;
+}
+
+.ba-llm-artifact-summary:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 1px;
+  background: transparent;
+  color: #0f172a;
+}
+
+.ba-llm-artifact-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.ba-llm-artifact-action {
+  min-height: 1.75rem;
+  padding: 0.22rem 0.46rem;
+  border-radius: 7px;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.ba-llm-artifact-action:disabled {
+  cursor: default;
+}
+
+.ba-llm-artifact-action.is-attached-action {
+  border-color: #0284c7;
+  background: #0369a1;
+  color: #ffffff;
+}
+
+.ba-llm-artifact-delete.ba-icon-only {
+  width: 1.85rem;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+}
+
+.ba-llm-artifact-delete.ba-icon-only::before {
+  content: "";
+  display: block;
+  width: 0.95rem;
+  height: 0.95rem;
+  background: currentColor;
+  -webkit-mask-image: url("/assets/icons/lucide/trash-2.svg");
+  mask-image: url("/assets/icons/lucide/trash-2.svg");
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.ba-llm-artifact-preview {
+  grid-column: 1 / -1;
+  max-height: 12rem;
+  margin: 0.12rem 0 0;
+  padding: 0.48rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .ba-llm-resource-lines #ba-llm-clear-artifacts {
   width: fit-content;
   margin-top: 0.12rem;

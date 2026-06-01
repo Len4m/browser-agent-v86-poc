@@ -161,6 +161,7 @@
     messages: [],
     artifacts: [],
     lastArtifactId: null,
+    contextArtifactId: null,
     lastError: "",
     settings: {
       // Nivel máximo de seguridad que el agente puede ejecutar sin pedir
