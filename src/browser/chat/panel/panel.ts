@@ -145,6 +145,22 @@
     if (check) check.disabled = isBusy;
     if (select) select.disabled = isBusy;
     if (custom) custom.disabled = isBusy;
+    syncWorkerUnloadButton();
+  }
+
+  function canUnloadActiveWorker() {
+    const llm = window.BA_LLM;
+    return Boolean(
+      llm?.loaded
+      && !llm.loading
+      && llm.activeModel?.runtime?.worker,
+    );
+  }
+
+  function syncWorkerUnloadButton() {
+    const abort = document.getElementById("ba-llm-abort");
+    if (!abort) return;
+    abort.disabled = !canUnloadActiveWorker();
   }
 
   function bytesLabel(value) {
@@ -313,6 +329,7 @@
       meta.replaceChildren(...items);
     }
     syncThinkingToggleUi();
+    syncWorkerUnloadButton();
   }
 
   async function checkCapabilities(options = {}) {
@@ -782,6 +799,7 @@
       } finally {
         window.BA_LLM.loading = false;
         setButtonBusy(false);
+        syncWorkerUnloadButton();
         window.BA_LLM_AGENT?.updateChatAvailability?.();
       }
     });
@@ -805,10 +823,13 @@
       if (confirmed) window.BA_LLM_AGENT.clearHistory();
     });
     window.BA_LLM_AGENT.updateChatAvailability?.();
+    syncWorkerUnloadButton();
     document.getElementById("ba-llm-abort")?.addEventListener("click", () => {
+      if (!canUnloadActiveWorker()) return;
       window.BA_LLM_AGENT.unloadModel();
       setProgress(null, true);
       setStatus(t("panel.llm.status.workerUnloaded"), "warn");
+      syncWorkerUnloadButton();
     });
   }
 
