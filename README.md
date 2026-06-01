@@ -17,7 +17,7 @@ Estado actual: **beta `0.9.3-beta.2`**. La versión `1.0.0` queda reservada para
 - **Tools de agente en background**: comandos del chat y checks por `serial1` / `/dev/ttyS1`, separados de la consola visible.
 - **Transporte de consola dedicado**: multiplexado xterm/PTY por `serial2` / `/dev/ttyS2` para las pestañas 2-4.
 - **Runners guest en Python 3**: los perfiles VM incluyen `python3` como dependencia base del overlay serial.
-- **LLM en navegador u Ollama local**: Transformers.js con WebGPU/WASM y provider Ollama HTTP opcional.
+- **LLM en navegador u Ollama local**: Transformers.js con WebGPU/WASM y provider Ollama HTTP opcional, con visualización opcional del razonamiento (thinking) configurable por modelo.
 - **Red opcional vía wsnic**: proxy WebSocket local para dar salida de red a la VM.
 
 ## Probar la demo online
