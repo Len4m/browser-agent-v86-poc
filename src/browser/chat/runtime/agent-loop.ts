@@ -17,6 +17,9 @@
     appendFinalAgentBubble,
     flushAssistantBubbleText,
     appendThinkingChunk,
+    detachThinkingBlock,
+    attachThinkingBlock,
+    bubbleHasThinkingContent,
     setChatTailIndicator,
     clearChatTailIndicator,
     renderToolCallBubble,
@@ -83,14 +86,14 @@
 
   function buildEmptyResponseMessage({
     modelConfig,
-    reasoningText = "",
+    hadReasoningStream = false,
     showThinking = false,
     streamIsToolPlan = false,
     toolPhaseSeen = false,
     runnerInfo = {},
   } = {}) {
     const finishReason = runnerInfo.finishReason;
-    if (reasoningText.trim()) {
+    if (hadReasoningStream) {
       return showThinking
         ? t("chat.empty.reasoningOnly.thinking")
         : t("chat.empty.reasoningOnly.noThinking");
@@ -359,6 +362,11 @@
     let bubble = null;
     let mdHost = null;
     let renderer = null;
+    let sdkAssistantText = "";
+    let preToolText = "";
+    let hadReasoningStream = false;
+    let floatingThinkingBlock = null;
+    let toolPhaseSeen = false;
 
     async function createResponseStream(extraClass = "") {
       bubble = createAssistantMessageShell(extraClass);
@@ -366,11 +374,11 @@
       mdHost.className = "ba-llm-md-host";
       bubble.appendChild(mdHost);
       renderer = await window.BA_createMarkdownStreamRenderer(mdHost);
+      if (floatingThinkingBlock) {
+        attachThinkingBlock(bubble, floatingThinkingBlock);
+        floatingThinkingBlock = null;
+      }
       return { bubble, mdHost, renderer };
-    }
-
-    function responseHasVisibleText() {
-      return Boolean((mdHost?.textContent || "").trim());
     }
 
     await createResponseStream();
@@ -384,10 +392,6 @@
     const toolBubbles = new Map();
     let toolSeq = 0;
     let lastToolUi = null;
-    let sdkAssistantText = "";
-    let preToolText = "";
-    let reasoningText = "";
-    let toolPhaseSeen = false;
 
     let maxSteps = modelConfig?.agent?.maxSteps || 2;
     if (toolCallingMode === "weak") maxSteps = 1;
@@ -401,11 +405,10 @@
         toolNames: activeToolNames,
         onToolStart({ toolCall }) {
           agentDebug("tool", "SDK onToolStart", toolCall);
-          if (responseHasVisibleText()) {
-            hidePlanningShell(bubble);
-          } else {
-            removeAssistantMessage(bubble);
+          if (showThinking) {
+            floatingThinkingBlock = detachThinkingBlock(bubble) || floatingThinkingBlock;
           }
+          removeAssistantMessage(bubble);
           const key = `${toolCall.tool}-${++toolSeq}`;
           const toolBubble = createAssistantMessageShell("ba-llm-tool-step");
           renderToolCallBubble(toolBubble, toolCall, t("chat.tool.executingState"));
@@ -475,6 +478,7 @@
       const streamPrompt = window.BA_LLM_CONTEXT.adaptPromptForLocalWeak?.(prompt, modelConfig) || prompt;
       const runnerOutput = await sdk.runAgentStreamTurn({
         model: sdk.getActiveModel(),
+        modelConfig,
         system: streamPrompt.system,
         messages: streamPrompt.messages,
         tools: useToolLoop ? tools : undefined,
@@ -526,8 +530,8 @@
           }
 
           const reasoningChunk = sdk.reasoningChunkFromStreamPart(part);
-          if (reasoningChunk && !isLikelyToolPlanText(reasoningChunk)) {
-            reasoningText += reasoningChunk;
+          if (reasoningChunk) {
+            hadReasoningStream = true;
             if (showThinking) {
               appendThinkingChunk(bubble, reasoningChunk);
             }
@@ -552,32 +556,51 @@
         answerLen: lastToolUi?.answer?.length ?? 0,
       });
 
-      const renderedStreamText = sdkAssistantText.trim();
+      const renderedStreamText = (sdkAssistantText.trim() || (mdHost?.textContent || "").trim());
       const canKeepStreamedBubble = Boolean(renderedStreamText) && !isLikelyToolPlanText(renderedStreamText);
       const finalText = streamFollowUp
         || (toolPhaseSeen && lastToolUi?.answer ? lastToolUi.answer : "")
         || (toolPhaseSeen && lastToolUi?.toolResult && !lastToolUi.toolResult.ok
           ? t("chat.error.toolFailed", { error: lastToolUi.toolResult.stderr || lastToolUi.toolResult.summary || "error" })
           : "");
+      const hasVisibleAnswer = canKeepStreamedBubble
+        || Boolean(finalText && !isLikelyToolPlanText(finalText));
+      const hasThinkingContent = showThinking
+        && bubbleHasThinkingContent(bubble)
+        && !hasVisibleAnswer;
 
-      if (canKeepStreamedBubble) {
-        renderer.end();
-        agentDebug("ui", "keepStreamedBubble", { len: renderedStreamText.length });
-      } else if (finalText && !isLikelyToolPlanText(finalText)) {
+      if (hasVisibleAnswer) {
         showAssistantMessage(bubble);
-        flushAssistantBubbleText(bubble, mdHost, renderer, finalText);
-        agentDebug("ui", "flushAssistantBubbleText", { len: finalText.length });
+        if (canKeepStreamedBubble) {
+          renderer.end();
+          agentDebug("ui", "keepStreamedBubble", { len: renderedStreamText.length });
+        } else {
+          flushAssistantBubbleText(bubble, mdHost, renderer, finalText);
+          agentDebug("ui", "flushAssistantBubbleText", { len: finalText.length });
+        }
+      } else if (hasThinkingContent) {
+        showAssistantMessage(bubble);
+        const fallback = buildEmptyResponseMessage({
+          modelConfig,
+          hadReasoningStream: true,
+          showThinking,
+          streamIsToolPlan,
+          toolPhaseSeen,
+          runnerInfo: runnerOutput,
+        });
+        flushAssistantBubbleText(bubble, mdHost, renderer, fallback);
+        agentDebug("ui", "reasoningOnlyBubble", {
+          hadReasoningStream: true,
+          toolPhaseSeen,
+          streamIsToolPlan,
+        });
       } else {
         hidePlanningShell(bubble);
         removeAssistantMessage(bubble);
-      }
-
-      if (canKeepStreamedBubble || (finalText && !isLikelyToolPlanText(finalText))) {
-        // La respuesta ya quedó renderizada incrementalmente en la burbuja original.
-      } else {
+        floatingThinkingBlock = null;
         const fallback = buildEmptyResponseMessage({
           modelConfig,
-          reasoningText,
+          hadReasoningStream,
           showThinking,
           streamIsToolPlan,
           toolPhaseSeen,
@@ -586,7 +609,7 @@
         agentDebug("ui", "chat vacío → aviso", {
           modelId: modelConfig?.id,
           finishReason: runnerOutput?.finishReason,
-          reasoningChars: reasoningText.length,
+          hadReasoningStream,
           streamIsToolPlan,
           hadToolWork: runnerOutput?.hadToolWork,
         });
@@ -598,6 +621,7 @@
         lastToolUi,
       };
     } finally {
+      floatingThinkingBlock = null;
       clearChatTailIndicator();
       bubble?.setAttribute("aria-busy", "false");
       window.BA_LLM_RESOURCE_GOVERNOR?.finish?.("llm");
