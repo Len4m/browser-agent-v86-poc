@@ -423,7 +423,7 @@
     "description": "Candidato principal para tools en navegador. Es el modelo con evidencia pública más directa para Transformers.js + @browser-ai/transformers-js + AI SDK, usando q4f16 y WebGPU.",
     "thinking": {
       "enabled": true,
-      "tagName": "redacted_thinking"
+      "tagName": "think"
     }
   },
   {
@@ -462,7 +462,7 @@
     "description": "Variante q4 del Qwen3 recomendado para tools. Existe en el repo ONNX y evita shader-f16; se marca experimental porque la demo oficial de tool calling usa q4f16.",
     "thinking": {
       "enabled": true,
-      "tagName": "redacted_thinking"
+      "tagName": "think"
     }
   },
   {
