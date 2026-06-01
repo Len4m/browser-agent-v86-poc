@@ -27,6 +27,7 @@ DEFAULT_MAX_BYTES = 64 * 1024
 MAX_TIMEOUT_S = 600
 MAX_OUTPUT_BYTES = 1024 * 1024
 KILL_GRACE_S = 0.5
+EXIT_DRAIN_GRACE_S = 0.35
 
 
 def safe_id(value):
@@ -175,17 +176,23 @@ class Serial1Runner:
         deadline = time.monotonic() + timeout_s
         timed_out = False
         pipe_open = True
+        process_exited_at = None
         state = {"max_bytes": max_bytes, "written": 0, "cut": False}
 
         with open(raw_path, "wb") as raw_file:
             while pipe_open:
                 now = time.monotonic()
-                if not timed_out and now >= deadline:
+                if process_exited_at is None and process.poll() is not None:
+                    process_exited_at = now
+
+                if not timed_out and process_exited_at is None and now >= deadline:
                     timed_out = True
                     self.terminate_process_group(process)
 
                 wait_s = 0.05
-                if not timed_out:
+                if process_exited_at is not None:
+                    wait_s = max(0.0, min(wait_s, (process_exited_at + EXIT_DRAIN_GRACE_S) - now))
+                elif not timed_out:
                     wait_s = max(0.0, min(wait_s, deadline - now))
                 readable, _, _ = select.select([stdout_fd], [], [], wait_s)
                 if stdout_fd in readable:
@@ -203,6 +210,8 @@ class Serial1Runner:
                         self.emit_truncated_output(data, raw_file, state)
 
                 if process.poll() is not None and not readable:
+                    if process_exited_at is None:
+                        process_exited_at = time.monotonic()
                     try:
                         data = os.read(stdout_fd, 4096)
                     except (BlockingIOError, OSError):
@@ -211,6 +220,8 @@ class Serial1Runner:
                         self.emit_truncated_output(data, raw_file, state)
                     else:
                         pipe_open = False
+                elif process_exited_at is not None and time.monotonic() - process_exited_at >= EXIT_DRAIN_GRACE_S:
+                    pipe_open = False
 
         try:
             process.wait(timeout=0)

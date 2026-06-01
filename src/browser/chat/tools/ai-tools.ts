@@ -47,6 +47,12 @@
         path: z.string().describe(t("tools.schema.vmFsReadPath")),
         maxBytes: z.number().optional().describe(t("tools.schema.maxBytes")),
       }),
+      "vm.fs.write": z.object({
+        path: z.string().describe(t("tools.schema.vmFsWritePath")),
+        content: z.string().describe(t("tools.schema.vmFsWriteContent")),
+        createDirs: z.boolean().optional().describe(t("tools.schema.createDirs")),
+        overwrite: z.boolean().optional().describe(t("tools.schema.overwrite")),
+      }),
       "vm.cmd.which": z.object({
         commands: z.array(z.string()).describe(t("tools.schema.whichCommands")),
       }),

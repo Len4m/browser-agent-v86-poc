@@ -187,7 +187,7 @@
     const idx = clean.lastIndexOf(endToken);
     if (idx < 0) return null;
     const escaped = endToken.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const match = clean.slice(idx).match(new RegExp(`${escaped}\\s*(-?\\d+)`));
+    const match = clean.slice(idx).match(new RegExp(`^${escaped}[ \\t]*(-?\\d+)[ \\t]*\\n`));
     if (!match) return null;
 
     const liveStart = `${pending.marker}_LIVE_START`;

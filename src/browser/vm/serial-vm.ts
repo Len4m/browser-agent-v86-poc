@@ -464,7 +464,7 @@ function parsePendingCommandBuffer(pending) {
     ficheros temporales a /dev/ttyS0. Si esas secciones están presentes, las
     usamos como fuente de verdad y no el transcript visual de la consola.
   */
-  const endRegex = new RegExp(`${escapeRegExp(endToken)}\\s*(-?\\d+)`);
+  const endRegex = new RegExp(`${escapeRegExp(endToken)}[ \\t]*(-?\\d+)[ \\t]*\\n`);
   const endMatch = clean.match(endRegex);
   if (endMatch) {
     const outputEnd = endMatch.index;
