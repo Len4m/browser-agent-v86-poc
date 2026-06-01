@@ -51,27 +51,36 @@ function createWorker() {
   return activeWorker;
 }
 
+function shouldUseReasoningMiddleware(modelConfig) {
+  const thinking = modelConfig?.thinking;
+  if (!thinking?.enabled || !thinking?.tagName) return false;
+  // Ollama con think nativo: el provider ya separa message.thinking → reasoning-delta
+  if (modelConfig.engine === "ollama" && modelConfig.ollamaThink) return false;
+  return true;
+}
+
 function wrapAgentModel(baseModel, modelConfig) {
   const engine = modelConfig?.engine || "transformersjs";
   const toolCalling = modelConfig?.agent?.toolCalling || "fair";
   const parseTextTools = engine === "transformersjs" && (toolCalling === "weak" || toolCalling === "fair");
-  let model = wrapLanguageModel({
-    model: baseModel,
+  const thinking = modelConfig?.thinking;
+  let model = baseModel;
+  if (shouldUseReasoningMiddleware(modelConfig)) {
+    model = wrapLanguageModel({
+      model,
+      middleware: extractReasoningMiddleware({
+        tagName: thinking.tagName,
+        startWithReasoning: Boolean(thinking.startWithReasoning),
+      }),
+    });
+  }
+  model = wrapLanguageModel({
+    model,
     middleware: transformersTextToolMiddleware({
       stripToolChoice: engine === "transformersjs",
       parseTextTools,
     }),
   });
-  const thinking = modelConfig?.thinking;
-  if (thinking?.enabled) {
-    model = wrapLanguageModel({
-      model,
-      middleware: extractReasoningMiddleware({
-        tagName: thinking.tagName || "think",
-        startWithReasoning: Boolean(thinking.startWithReasoning),
-      }),
-    });
-  }
   return model;
 }
 

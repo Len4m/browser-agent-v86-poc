@@ -4,10 +4,8 @@
  * Sin quickInfer, plan weak ni segunda pasada de síntesis: el loop es el de la librería.
  */
 
-import { smoothStream, streamText, stepCountIs } from "ai";
+import { streamText, stepCountIs } from "ai";
 import { looksLikeTextToolPlan } from "./text-tool-parser";
-
-const STREAM_SMOOTHING = smoothStream();
 
 // This module ships in a separate bundle, so the global t() from the app bundle
 // is not in scope; bridge through window.BA_I18N when available.
@@ -104,9 +102,20 @@ async function consumeTextStream(result, { onStreamPart, phase = "main" } = {}) 
   return text;
 }
 
+function resolveProviderOptions(modelConfig) {
+  if ((modelConfig?.engine || "transformersjs") !== "transformersjs") return undefined;
+  if (!modelConfig?.thinking?.enabled) return undefined;
+  return {
+    "transformers-js": {
+      enableThinking: true,
+    },
+  };
+}
+
 /**
  * @param {object} options
  * @param {import('ai').LanguageModel} options.model
+ * @param {object} [options.modelConfig] - catálogo activo (engine, thinking, ollamaThink…)
  * @param {string} [options.system]
  * @param {Array<{role:string,content:string}>} options.messages
  * @param {Record<string, import('ai').Tool>} [options.tools]
@@ -124,6 +133,7 @@ async function consumeTextStream(result, { onStreamPart, phase = "main" } = {}) 
  */
 export async function runAgentStreamTurn({
   model,
+  modelConfig = null,
   system,
   messages,
   tools = {},
@@ -140,6 +150,8 @@ export async function runAgentStreamTurn({
   onStepFinish,
 }) {
   if (!model) throw new Error("No hay modelo AI SDK cargado.");
+
+  const providerOptions = resolveProviderOptions(modelConfig);
 
   const controller = new AbortController();
   let onParentAbort = null;
@@ -200,7 +212,7 @@ export async function runAgentStreamTurn({
     abortSignal: signal,
     prepareStep,
     onStepFinish,
-    experimental_transform: STREAM_SMOOTHING,
+    providerOptions,
   });
 
   let fullText = "";
@@ -247,7 +259,7 @@ export async function runAgentStreamTurn({
           temperature,
           topP,
           abortSignal: signal,
-          experimental_transform: STREAM_SMOOTHING,
+          providerOptions,
         });
         const synthText = await consumeTextStream(synth, { onStreamPart, phase: "synthesis" });
         if (synthText.trim() && !looksLikeTextToolPlan(synthText)) {
