@@ -10,6 +10,16 @@ La forma más sencilla de usar Browser Agent v86 POC es la demo publicada:
 
 No necesitas instalar Node.js, Docker ni clonar el repositorio para probarla. La VM, el chat y los assets se sirven desde la web; los modelos Transformers.js se descargan/cachean en tu navegador. Ollama y wsnic, si los usas, siguen siendo servicios locales de tu máquina porque el navegador llama a tu propio `127.0.0.1`.
 
+## Idioma (ES/EN)
+
+La interfaz está disponible en español e inglés. El idioma se elige en el selector de la cabecera y cambia en caliente, sin recargar la página ni perder la VM en marcha.
+
+- Por defecto se usa español; en navegadores cuyo idioma no es español se selecciona inglés automáticamente.
+- La elección se guarda en `localStorage` (`ba.lang`) y se respeta en siguientes visitas.
+- Solo se mantiene un catálogo de idioma en memoria a la vez (`public/locales/es.json` o `en.json`).
+
+Esta documentación (`README.md` y `docs/`) está escrita en español; las cadenas de la propia aplicación sí están traducidas a ambos idiomas.
+
 ## Requisitos
 
 Para usar un runtime ya generado basta con:

@@ -10,6 +10,8 @@ Estado actual: **beta `0.9.4-beta.1`**. La versión `1.0.0` queda reservada para
 - Repositorio: [https://github.com/Len4m/browser-agent-v86-poc](https://github.com/Len4m/browser-agent-v86-poc)
 - Autor: Lenam [lenamgenx@protonmail.com](mailto:lenamgenx@protonmail.com) ([https://Len4m.github.io](https://Len4m.github.io))
 
+> **English**: the web UI is available in English. It is auto-selected for non-Spanish browsers and can be switched any time from the language selector in the header. This repository documentation (README and `docs/`) is written in Spanish.
+
 ## Qué incluye
 
 - **VM Alpine x86 en el navegador**: arranque por initramfs, perfiles generados y discos HDA opcionales como discos de datos.
@@ -19,6 +21,7 @@ Estado actual: **beta `0.9.4-beta.1`**. La versión `1.0.0` queda reservada para
 - **Runners guest en Python 3**: los perfiles VM incluyen `python3` como dependencia base del overlay serial.
 - **LLM en navegador u Ollama local**: Transformers.js con WebGPU/WASM y provider Ollama HTTP opcional, con visualización opcional del razonamiento (thinking) configurable por modelo.
 - **Red opcional vía wsnic**: proxy WebSocket local para dar salida de red a la VM.
+- **UI bilingüe ES/EN**: selector de idioma en la cabecera con cambio en caliente (sin recargar ni perder la VM); por defecto español, e inglés automático en navegadores no españoles.
 
 ## Probar la demo online
 

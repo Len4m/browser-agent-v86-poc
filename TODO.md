@@ -38,8 +38,8 @@ Lista de temas detectados para revisar antes de una publicación estable.
 
 - [X] Revisar textos visibles de la UI y documentación para preparar internacionalización: separar cadenas traducibles, decidir idioma base y evitar textos hardcodeados en JavaScript cuando sea posible. Tener especial cuidado con el uso de memoria: no cargar catálogos de idiomas grandes ni mantener duplicadas cadenas que no sean necesarias en runtime.
 - [X] Traducir la UI y los prompts LLM al inglés: catálogo `en.json` en paridad con `es.json` (~780 claves), selector ES/EN y comprobación de claves en `npm run check`.
-- [ ] Revisar la calidad de las traducciones al inglés: `npm run check` garantiza paridad de claves, no que el texto EN sea correcto o natural. Repasar manualmente las cadenas más visibles (errores, panel LLM, chat, checks).
-- [ ] Alinear la documentación con i18n: actualizar `README.md` y `docs/USAGE.md` (y lo que aplique) para reflejar el selector de idioma ES/EN y no dejar solo contenido en español donde deba servir también a usuarios en inglés.
+- [X] Revisar la calidad de las traducciones al inglés: `npm run check` garantiza paridad de claves, no que el texto EN sea correcto o natural. Repasar manualmente las cadenas más visibles (errores, panel LLM, chat, checks).
+- [X] Alinear la documentación con i18n: actualizar `README.md` y `docs/USAGE.md` (y lo que aplique) para reflejar el selector de idioma ES/EN y no dejar solo contenido en español donde deba servir también a usuarios en inglés.
 
 ## Build, CSS y tamaño
 

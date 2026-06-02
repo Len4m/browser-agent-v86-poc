@@ -75,10 +75,19 @@ flowchart LR
 - `public/assets/app.js`
 - `public/assets/ai-sdk-bridge.mjs`
 - `public/assets/app.css` cuando se ejecuta con `--minify` o `BA_MINIFY=1`
+- `public/locales/es.json` y `public/locales/en.json`
 
 El entry `src/browser/main.ts` instala `window.BA` desde `src/browser/compat/window-api.ts`. Después el script concatena fuentes TypeScript en el orden `browserSourceOrder`. Este orden mantiene contratos globales históricos mientras los módulos se migran por dominio.
 
 Regla: si cambia el orden de inicialización del browser, se modifica solo `browserSourceOrder` en `scripts/build/frontend.mjs`.
+
+## i18n
+
+Toda la copy de UI vive en catálogos JSON (`src/web/locales/*.json`) y el código solo referencia claves vía `t()`/`tn()` (`src/browser/app/i18n.ts`).
+
+- Idiomas soportados: `es` (base) y `en`. Para mantener memoria baja, solo se carga un catálogo a la vez en `public/locales/`.
+- Selección: idioma guardado en `localStorage` (`ba.lang`); si no hay, navegador en español → `es`, en otro caso → `en`. El selector de cabecera (`src/browser/app/lang-selector.ts`) cambia el idioma en caliente sin recargar.
+- `npm run check` ejecuta `scripts/check/i18n.mjs` para garantizar paridad de claves entre `es.json` y `en.json`. La paridad de claves no valida la calidad del texto; las cadenas nuevas deben añadirse en ambos catálogos.
 
 ## Build LLM
 
