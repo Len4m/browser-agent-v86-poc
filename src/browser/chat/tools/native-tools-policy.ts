@@ -38,12 +38,12 @@
     if (picked.length) return picked.slice(0, getMaxNativeTools(modelConfig));
 
     const fallback = [
+      "vm.python.exec",
+      "vm.sh.exec",
       "vm.fs.list",
       "vm.fs.read",
-      "vm.sys.info",
-      "vm.console.status",
+      "vm.fs.write",
       "vm.cmd.which",
-      "net.ip.status",
       "web.curl.head",
     ];
     return fallback.filter((n) => available.has(n)).slice(0, getMaxNativeTools(modelConfig));

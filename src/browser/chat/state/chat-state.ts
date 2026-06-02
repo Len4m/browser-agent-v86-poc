@@ -13,13 +13,23 @@
 
   function defaultAgentMeta(model) {
     const id = model.id || "";
-    const vmRead = ["vm.fs.list", "vm.fs.read", "vm.sys.info"];
+    // Orden canónico de tools por defecto. Cada modelo activa solo las primeras
+    // según su maxNativeTools (getDefaultToolNames recorta a ese límite).
+    const defaultTools = [
+      "vm.python.exec",
+      "vm.sh.exec",
+      "vm.fs.list",
+      "vm.fs.read",
+      "vm.fs.write",
+      "vm.cmd.which",
+      "web.curl.head",
+    ];
     if (model.engine === "ollama") {
       return {
         maxSteps: 4,
         maxNativeTools: 10,
         toolCalling: "good",
-        defaultNativeTools: [...vmRead, "vm.console.status", "vm.cmd.which", "net.ip.status", "web.curl.head"],
+        defaultNativeTools: defaultTools,
       };
     }
     if (model.toolProfile === "tiny-fallback" || id.includes("270m")) {
@@ -27,7 +37,7 @@
         maxSteps: 1,
         maxNativeTools: 1,
         toolCalling: "weak",
-        defaultNativeTools: ["vm.fs.list"],
+        defaultNativeTools: defaultTools,
       };
     }
     if (id.includes("0.5b") || (id.includes("qwen3") && id.includes("0.6"))) {
@@ -35,7 +45,7 @@
         maxSteps: 2,
         maxNativeTools: 2,
         toolCalling: "weak",
-        defaultNativeTools: vmRead.slice(0, 2),
+        defaultNativeTools: defaultTools,
       };
     }
     if (id.includes("3b")) {
@@ -43,7 +53,7 @@
         maxSteps: 3,
         maxNativeTools: 8,
         toolCalling: "fair",
-        defaultNativeTools: [...vmRead, "vm.console.status", "vm.cmd.which", "net.ip.status", "web.curl.head"],
+        defaultNativeTools: defaultTools,
       };
     }
     if (id.includes("llama") && (id.includes("1b-instruct") || id.includes("1b-instruct-onnx"))) {
@@ -51,7 +61,7 @@
         maxSteps: 2,
         maxNativeTools: 2,
         toolCalling: "weak",
-        defaultNativeTools: vmRead.slice(0, 2),
+        defaultNativeTools: defaultTools,
       };
     }
     if (id.includes("1.5b") || id.includes("1b") || id.includes("1.7b")) {
@@ -59,7 +69,7 @@
         maxSteps: 3,
         maxNativeTools: 5,
         toolCalling: "fair",
-        defaultNativeTools: [...vmRead, "vm.console.status", "vm.cmd.which"],
+        defaultNativeTools: defaultTools,
       };
     }
     if (model.toolProfile === "reasoning-light" || id.includes("qwen3")) {
@@ -67,7 +77,7 @@
         maxSteps: 3,
         maxNativeTools: 4,
         toolCalling: "good",
-        defaultNativeTools: [...vmRead, "vm.console.status"],
+        defaultNativeTools: defaultTools,
       };
     }
     if (model.toolProfile === "middle-tools" || model.toolProfile === "strong-json") {
@@ -75,14 +85,14 @@
         maxSteps: 3,
         maxNativeTools: 6,
         toolCalling: "good",
-        defaultNativeTools: [...vmRead, "vm.console.status", "vm.cmd.which", "web.curl.head"],
+        defaultNativeTools: defaultTools,
       };
     }
     return {
       maxSteps: 3,
       maxNativeTools: 5,
       toolCalling: "fair",
-      defaultNativeTools: [...vmRead, "vm.console.status"],
+      defaultNativeTools: defaultTools,
     };
   }
 
