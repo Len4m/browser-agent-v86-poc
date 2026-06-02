@@ -326,7 +326,6 @@ body.chat-expanded .workspace-grid > .panel:first-child {
   top: auto;
   height: auto;
   max-height: none;
-  overflow: visible;
 }
 body.chat-expanded .workspace-grid > .panel:first-child .chat-log {
   flex: 0 0 auto;
