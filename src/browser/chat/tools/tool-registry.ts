@@ -850,9 +850,32 @@
 
   function getTool(name) { return TOOLS[String(name || "")]; }
 
+  // Orden coherente de presentación: primero por dominio/categoría (VM, red, web,
+  // TLS) y, dentro de cada grupo, por nivel de riesgo ascendente y luego nombre.
+  const TOOL_CATEGORY_ORDER = [
+    "vm.fs", "vm.system", "vm.exec",
+    "net.local", "net.dns", "net.scan",
+    "web.http", "web.fuzz", "web.scan",
+    "tls",
+  ];
+
+  function toolCategoryRank(category) {
+    const idx = TOOL_CATEGORY_ORDER.indexOf(String(category || ""));
+    return idx === -1 ? TOOL_CATEGORY_ORDER.length : idx;
+  }
+
+  function compareToolsForDisplay(a, b) {
+    const byCategory = toolCategoryRank(a.category) - toolCategoryRank(b.category);
+    if (byCategory !== 0) return byCategory;
+    const byRisk = (Number(a.riskLevel) || 0) - (Number(b.riskLevel) || 0);
+    if (byRisk !== 0) return byRisk;
+    return String(a.name).localeCompare(String(b.name));
+  }
+
   function listTools({ profileId = baseRuntimeContext().activeProfile, includeUnavailable = false } = {}) {
     return Object.values(TOOLS)
       .filter((tool) => includeUnavailable || isToolEnabledForProfile(tool, profileId))
+      .sort(compareToolsForDisplay)
       .map((tool) => ({
         name: tool.name,
         label: tool.label,
