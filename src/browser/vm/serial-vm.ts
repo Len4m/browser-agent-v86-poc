@@ -83,6 +83,34 @@ function scheduleSerialScrollToBottom() {
   });
 }
 
+function getSerialSelectionText(term) {
+  if (!term) return "";
+  try {
+    if (typeof term.getSelection === "function") return String(term.getSelection() || "");
+  } catch {}
+  return "";
+}
+
+function getSerialHelperTextarea(term, container = $("serial-console")) {
+  return term?.textarea
+    || term?._core?.textarea
+    || container?.querySelector?.(".xterm-helper-textarea")
+    || null;
+}
+
+function primeSerialClipboardTextarea(term, container, text) {
+  const textarea = getSerialHelperTextarea(term, container);
+  if (!textarea) return false;
+  try {
+    textarea.value = String(text || "");
+    textarea.focus({ preventScroll: true });
+    textarea.select();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function teardownSerialTerminalHelpers() {
   if (state.serialResizeObserver) {
     try { state.serialResizeObserver.disconnect(); } catch {}
@@ -100,6 +128,13 @@ function teardownSerialTerminalHelpers() {
     try { state.serialWriteDisposable.dispose(); } catch {}
   }
   state.serialWriteDisposable = null;
+  if (state.serialContextMenuContainer && state.serialContextMenuHandler) {
+    try {
+      state.serialContextMenuContainer.removeEventListener("contextmenu", state.serialContextMenuHandler);
+    } catch {}
+  }
+  state.serialContextMenuContainer = null;
+  state.serialContextMenuHandler = null;
   state.serialKeyHandlerAttached = false;
 }
 
@@ -122,11 +157,19 @@ function setupSerialTerminalHelpers() {
       if (event.type !== "keydown") return true;
       if (!event.ctrlKey || event.shiftKey || event.altKey || event.metaKey) return true;
       if (String(event.key || "").toLowerCase() !== "c") return true;
-      if (typeof term.hasSelection === "function" && term.hasSelection()) return true;
       try { state.vm?.serial0_send?.("\x03"); } catch {}
       return false;
     });
     state.serialKeyHandlerAttached = true;
+  }
+
+  if (!state.serialContextMenuHandler) {
+    state.serialContextMenuHandler = () => {
+      const selected = getSerialSelectionText(term);
+      if (selected) primeSerialClipboardTextarea(term, container, selected);
+    };
+    container.addEventListener("contextmenu", state.serialContextMenuHandler);
+    state.serialContextMenuContainer = container;
   }
 
   try {

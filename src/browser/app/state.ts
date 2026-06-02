@@ -27,6 +27,8 @@ const state = {
   serialScrollRaf: 0,
   serialWriteDisposable: null,
   serialKeyHandlerAttached: false,
+  serialContextMenuContainer: null,
+  serialContextMenuHandler: null,
   snapshotRestoring: false,
   diskMounted: false,
   consoleTabs: {

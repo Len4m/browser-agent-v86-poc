@@ -142,7 +142,6 @@
   color: #d1d5db;
 }
 #serial-console.serial-screen:focus { outline: 3px solid rgba(59,130,246,.35); outline-offset: 2px; }
-#serial-console .xterm-helper-textarea { left: 0 !important; top: 0 !important; }
 #screen-container.hidden-vga { display: none !important; }
 #vm-lock-overlay {
   display: none;

@@ -27,7 +27,7 @@ Lista de temas detectados para revisar antes de una publicación estable.
 
 - [X] Revisar manualmente la rama`xterm-direct-consoles`: consolas xterm con PTYs independientes dentro de la VM, máximo 4 sesiones, transporte multiplexado por`serial2` y tools separadas por`serial1`.
 - [X] Decidir el lenguaje de los runners guest en`vm/overlay/common/usr/local/bin/`: se mantiene `python3` como dependencia obligatoria de todos los perfiles y se migra `ba-serial1-runner` a **Python 3**, igual que `ba-serial2-console-runner`. Criterio: la red/v86 dominan la latencia, el runner serial1 es persistente y no paga arranque de Python por job, y unificar en Python simplifica el protocolo, timeouts y drenaje de stdout/stderr.
-- [ ] La consola1 (la que funciona por serial0) no permite copiar texto con el botón derecho del ratón ni por ningún otro medio, mientras que en el resto de consolas sí es posible copiar usando el botón derecho.
+- [X] La consola1 (la que funciona por serial0) no permite copiar texto con el botón derecho del ratón ni por ningún otro medio, mientras que en el resto de consolas sí es posible copiar usando el botón derecho.
 
 ## VM y carga inicial
 
