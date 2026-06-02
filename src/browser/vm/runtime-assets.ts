@@ -15,37 +15,79 @@ function addMessage(role, text) {
   return msg;
 }
 
-function loadScript(src) {
+function makeAbortError(message = t("common.operationCancelled")) {
+  const error = new Error(String(message || t("common.operationCancelled")));
+  error.name = "AbortError";
+  return error;
+}
+
+function isAbortError(error) {
+  return error?.name === "AbortError";
+}
+
+function throwIfAborted(signal) {
+  if (signal?.aborted) throw makeAbortError(signal.reason?.message || signal.reason || t("common.operationCancelled"));
+}
+
+function loadScript(src, { signal = null } = {}) {
   return new Promise((resolve, reject) => {
+    try { throwIfAborted(signal); } catch (error) { reject(error); return; }
+
     const existing = Array.from(document.scripts).find((script) => script.dataset.v86Loader === src);
     if (existing) {
-      if (window.V86Starter || window.V86) resolve();
-      existing.addEventListener("load", resolve, { once: true });
-      existing.addEventListener("error", () => reject(new Error(t("common.loadFailed", { src }))), { once: true });
+      if (window.V86Starter || window.V86) {
+        resolve();
+        return;
+      }
+      const cleanup = () => {
+        existing.removeEventListener("load", onLoad);
+        existing.removeEventListener("error", onError);
+        signal?.removeEventListener?.("abort", onAbort);
+      };
+      const onLoad = () => { cleanup(); resolve(); };
+      const onError = () => { cleanup(); reject(new Error(t("common.loadFailed", { src }))); };
+      const onAbort = () => { cleanup(); reject(makeAbortError(signal?.reason)); };
+      existing.addEventListener("load", onLoad, { once: true });
+      existing.addEventListener("error", onError, { once: true });
+      signal?.addEventListener?.("abort", onAbort, { once: true });
       return;
     }
 
     const script = document.createElement("script");
+    const cleanup = () => {
+      script.onload = null;
+      script.onerror = null;
+      signal?.removeEventListener?.("abort", onAbort);
+    };
+    const onAbort = () => {
+      cleanup();
+      try { script.remove(); } catch {}
+      reject(makeAbortError(signal?.reason));
+    };
     script.src = src;
     script.async = true;
     script.dataset.v86Loader = src;
-    script.onload = resolve;
-    script.onerror = () => reject(new Error(t("common.loadFailed", { src })));
+    script.onload = () => { cleanup(); resolve(); };
+    script.onerror = () => { cleanup(); reject(new Error(t("common.loadFailed", { src }))); };
+    signal?.addEventListener?.("abort", onAbort, { once: true });
     document.head.appendChild(script);
   });
 }
 
-async function checkAsset(url) {
+async function checkAsset(url, { signal = null } = {}) {
+  throwIfAborted(signal);
   try {
-    const res = await fetch(url, { method: "HEAD", cache: "no-store" });
+    const res = await fetch(url, { method: "HEAD", cache: "no-store", signal });
     if (res.ok) return { ok: true, detail: String(res.status) };
     return { ok: false, detail: String(res.status) };
-  } catch {
+  } catch (error) {
+    if (isAbortError(error)) throw error;
     try {
-      const res = await fetch(url, { method: "GET", cache: "no-store" });
+      const res = await fetch(url, { method: "GET", cache: "no-store", signal });
       if (res.ok) return { ok: true, detail: String(res.status) };
       return { ok: false, detail: String(res.status) };
     } catch (error) {
+      if (isAbortError(error)) throw error;
       return { ok: false, detail: error.message };
     }
   }
@@ -198,16 +240,26 @@ function v86RestoreState(buffer) {
   });
 }
 
-function setLoading(show, { title = t("common.loading"), detail = "", percent = null, indeterminate = false } = {}) {
+function setLoading(show, {
+  title = t("common.loading"),
+  detail = "",
+  percent = null,
+  indeterminate = false,
+  cancelable = false,
+  cancelLabel = t("common.cancel"),
+  onCancel = null,
+} = {}) {
   const overlay = $("loading-overlay");
   const titleEl = $("loading-title");
   const detailEl = $("loading-detail");
   const bar = $("loading-bar");
   const percentEl = $("loading-percent");
+  const cancelButton = $("loading-cancel");
   if (!overlay) return;
 
   overlay.classList.toggle("show", Boolean(show));
   overlay.setAttribute("aria-hidden", show ? "false" : "true");
+  if (!show) document.body.classList.remove("app-booting");
   if (titleEl) titleEl.textContent = title;
   if (detailEl) detailEl.textContent = detail;
 
@@ -217,29 +269,46 @@ function setLoading(show, { title = t("common.loading"), detail = "", percent = 
     else bar.style.width = `${Math.max(0, Math.min(100, percent)).toFixed(1)}%`;
   }
   if (percentEl) percentEl.textContent = percent === null ? "" : `${Math.round(percent)}%`;
+
+  state.loadingCancelHandler = show && cancelable && typeof onCancel === "function" ? onCancel : null;
+  if (cancelButton) {
+    cancelButton.hidden = !state.loadingCancelHandler;
+    cancelButton.disabled = false;
+    cancelButton.textContent = cancelLabel;
+    cancelButton.onclick = state.loadingCancelHandler
+      ? () => {
+          cancelButton.disabled = true;
+          state.loadingCancelHandler?.();
+        }
+      : null;
+  }
 }
 
 function nextPaint() {
   return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
 
-async function getAssetSize(url) {
+async function getAssetSize(url, { signal = null } = {}) {
+  throwIfAborted(signal);
   try {
-    const res = await fetch(url, { method: "HEAD", cache: "no-store" });
+    const res = await fetch(url, { method: "HEAD", cache: "no-store", signal });
     const size = Number(res.headers.get("content-length") || "0");
     return res.ok && Number.isFinite(size) ? size : 0;
-  } catch {
+  } catch (error) {
+    if (isAbortError(error)) throw error;
     return 0;
   }
 }
 
-async function fetchAssetBufferWithProgress(url, onProgress) {
-  const response = await fetch(url, { cache: "no-store" });
+async function fetchAssetBufferWithProgress(url, onProgress, { signal = null } = {}) {
+  throwIfAborted(signal);
+  const response = await fetch(url, { cache: "no-store", signal });
   if (!response.ok) throw new Error(`HTTP ${response.status} descargando ${url}`);
 
   const total = Number(response.headers.get("content-length") || "0");
   if (!response.body) {
     const buffer = await response.arrayBuffer();
+    throwIfAborted(signal);
     onProgress?.(buffer.byteLength, total || buffer.byteLength);
     return buffer;
   }
@@ -249,6 +318,7 @@ async function fetchAssetBufferWithProgress(url, onProgress) {
   let loaded = 0;
 
   for (;;) {
+    throwIfAborted(signal);
     const { done, value } = await reader.read();
     if (done) break;
     chunks.push(value);
@@ -256,6 +326,7 @@ async function fetchAssetBufferWithProgress(url, onProgress) {
     onProgress?.(loaded, total);
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
+  throwIfAborted(signal);
 
   const merged = new Uint8Array(loaded);
   let offset = 0;
@@ -266,7 +337,12 @@ async function fetchAssetBufferWithProgress(url, onProgress) {
   return merged.buffer;
 }
 
-async function preloadVmAssets(cfg) {
+async function preloadVmAssets(cfg, { signal = null, onCancel = null } = {}) {
+  throwIfAborted(signal);
+  const cancellableLoading = signal && onCancel
+    ? { cancelable: true, cancelLabel: t("vm.loading.cancel"), onCancel }
+    : {};
+  const showLoading = (options) => setLoading(true, { ...cancellableLoading, ...options });
   const cacheKey = JSON.stringify({
     libv86: cfg.libv86,
     wasm: cfg.wasm,
@@ -276,7 +352,7 @@ async function preloadVmAssets(cfg) {
     initrd: cfg.initrd || "",
   });
   if (state.assetBuffers && state.assetCacheKey === cacheKey) {
-    setLoading(true, { title: t("vm.loading.preparing"), detail: t("vm.loading.assetsCached"), percent: 100 });
+    showLoading({ title: t("vm.loading.preparing"), detail: t("vm.loading.assetsCached"), percent: 100 });
     await nextPaint();
     return state.assetBuffers;
   }
@@ -291,29 +367,32 @@ async function preloadVmAssets(cfg) {
   ];
 
   const buffers = {};
-  setLoading(true, { title: t("vm.loading.preparing"), detail: t("vm.loading.calculatingSize"), percent: null, indeterminate: true });
+  showLoading({ title: t("vm.loading.preparing"), detail: t("vm.loading.calculatingSize"), percent: null, indeterminate: true });
   await nextPaint();
+  throwIfAborted(signal);
 
-  const sizes = await Promise.all(assets.map((asset) => getAssetSize(asset.url)));
+  const sizes = await Promise.all(assets.map((asset) => getAssetSize(asset.url, { signal })));
   const totalBytes = sizes.reduce((sum, size) => sum + size, 0);
   let completedBytes = 0;
 
   for (let i = 0; i < assets.length; i += 1) {
+    throwIfAborted(signal);
     const asset = assets[i];
     const knownSize = sizes[i] || 0;
 
-    setLoading(true, {
+    showLoading({
       title: t("vm.loading.downloading"),
       detail: `${asset.name} · 0 B${knownSize ? ` / ${formatBytes(knownSize)}` : ""}`,
       percent: totalBytes ? (completedBytes / totalBytes) * 100 : null,
       indeterminate: !totalBytes,
     });
     await nextPaint();
+    throwIfAborted(signal);
 
     if (asset.mode === "script") {
-      await loadScript(asset.url);
+      await loadScript(asset.url, { signal });
       completedBytes += knownSize;
-      setLoading(true, {
+      showLoading({
         title: t("vm.loading.downloading"),
         detail: t("vm.loading.assetReady", { name: asset.name }),
         percent: totalBytes ? (completedBytes / totalBytes) * 100 : null,
@@ -333,18 +412,19 @@ async function preloadVmAssets(cfg) {
         ? `${formatBytes(loaded)} / ${formatBytes(knownSize || responseTotal)}`
         : formatBytes(loaded);
 
-      setLoading(true, {
+      showLoading({
         title: t("vm.loading.downloading"),
         detail: `${asset.name} · ${sizeLabel}`,
         percent,
         indeterminate: !totalBytes && !responseTotal,
       });
-    });
+    }, { signal });
 
     if (asset.mode === "buffer") buffers[asset.key] = buffer;
     completedBytes += knownSize || buffer.byteLength || 0;
   }
 
+  throwIfAborted(signal);
   state.assetBuffers = buffers;
   state.assetCacheKey = cacheKey;
   setLoading(true, { title: t("vm.loading.starting"), detail: t("vm.loading.initializing"), percent: 100 });

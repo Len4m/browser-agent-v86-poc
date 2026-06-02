@@ -152,6 +152,7 @@ function init() {
   $("command-form").addEventListener("submit", runCommandFromInput);
   $("chat-form").addEventListener("submit", sendChat);
   initChatInputKeys();
+  setLoading(false);
 
   window.setTimeout(() => runChecks({ probeWsRelay: false }), 400);
 }

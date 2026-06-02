@@ -201,7 +201,7 @@ async function resyncVmAfterRestore() {
   logTool(`[snapshot] revalidando seriales y consolas xterm tras restore...${NL}`);
 
   const serial1Probe = window.BA_BG_TOOLS?.probeRunnerReady?.({ timeoutMs: 1800 }) || Promise.resolve(false);
-  const serial2Probe = window.BA_CONSOLE_CONTROL?.probeRunnerReady?.({ timeoutMs: 1600 }) || Promise.resolve(false);
+  const serial2Probe = window.BA_CONSOLE_CONTROL?.probeRunnerReady?.({ timeoutMs: 2600 }) || Promise.resolve(false);
   const [serial1Ok, serial2Ok] = await Promise.all([
     serial1Probe.catch(() => false),
     serial2Probe.catch(() => false),
@@ -213,24 +213,41 @@ async function resyncVmAfterRestore() {
   if (serial2Ok) logTool(`[snapshot] serial2/ttyS2 revalidado.${NL}`);
   else logTool(`[snapshot] aviso: serial2/ttyS2 no ha respondido al probe; las consolas xterm pueden no estar listas.${NL}`);
 
-  const consolesSynced = typeof syncConsoleTabsFromDaemon === "function"
-    ? await syncConsoleTabsFromDaemon({ repaint: false }).catch(() => false)
-    : false;
-  if (consolesSynced) {
-    state.consoleTabs.initializing = false;
-    state.consoleTabs.ready = true;
-    logTool(`[snapshot] consolas xterm sincronizadas con el snapshot.${NL}`);
-  } else {
-    state.consoleTabs.initializing = true;
-    renderConsoleTabs();
-    window.setTimeout(() => finalizeConsoleTabsReady(), 700);
-    logTool(`[snapshot] se reintentará la inicialización de consolas xterm.${NL}`);
+  if (typeof finalizeConsoleTabsReady === "function") {
+    await finalizeConsoleTabsReady({ extraReady: serial2Ok });
+  }
+
+  if (serial2Ok && typeof syncConsoleTabsFromDaemon === "function") {
+    const before = state.consoleTabs.tabs.length;
+    const consolesSynced = await syncConsoleTabsFromDaemon({ repaint: false, createMissing: true }).catch(() => false);
+    if (consolesSynced) {
+      const restoredCount = Math.max(0, state.consoleTabs.tabs.length - before);
+      logTool(`[snapshot] consolas xterm sincronizadas con el snapshot${restoredCount ? ` (${restoredCount} pestaña(s) restaurada(s))` : ""}.${NL}`);
+    } else {
+      logTool(`[snapshot] aviso: no se pudo listar sesiones xterm restauradas.${NL}`);
+    }
   }
 
   renderConsoleTabs();
   syncDiskCheckButton();
   syncSnapshotButtons();
   maybeConfigureNetwork();
+}
+
+function cancelVmStart() {
+  const controller = state.vmStartAbortController;
+  if (!state.vmStarting || !controller || controller.signal.aborted) return false;
+  const error = makeAbortError(t("vm.loading.cancelled"));
+  logTool(`${NL}[host] ${t("vm.loading.cancelLog")}${NL}`);
+  setBadge($("vm-detail"), t("common.operationCancelled"), "warn");
+  setLoading(true, {
+    title: t("vm.loading.cancelling"),
+    detail: t("vm.loading.cancellingDetail"),
+    percent: null,
+    indeterminate: true,
+  });
+  controller.abort(error);
+  return true;
 }
 
 async function toggleVmPower() {
@@ -257,26 +274,54 @@ async function startVm(options = {}) {
     logTool(`${NL}[snapshot] restaurando snapshot. Debes usar la misma RAM/disco/configuración que al guardarlo. Los discos hda no están incluidos en el snapshot.${NL}`);
   }
 
-  if (runtime.hda) {
-    const diskCheck = await checkAsset(runtime.hda.url);
-    if (!diskCheck.ok) {
-      setBadge($("vm-detail"), t("vm.badge.diskNotFound"), "bad");
-      logTool(`${NL}[host] no existe la imagen de disco ${runtime.hda.url}. Genera esa imagen raw o usa Disco: RAM/initramfs.${NL}`);
-      return;
-    }
-  }
-
   state.vmStarting = true;
+  const startAbortController = new AbortController();
+  state.vmStartAbortController = startAbortController;
+  const startCancelOptions = {
+    cancelable: true,
+    cancelLabel: t("vm.loading.cancel"),
+    onCancel: cancelVmStart,
+  };
   setVmOptionsLocked(true);
   if (startButton) startButton.disabled = true;
   setBadge($("badge-vm"), t("vm.badge.loading"), "warn");
   setBadge($("vm-detail"), t("common.downloadingLower"), "warn");
-  setLoading(true, { title: t("vm.loading.preparing"), detail: t("vm.loading.startingDownload"), percent: null, indeterminate: true });
-  await nextPaint();
-  logTool(`${NL}[host] preparando assets de v86...${NL}`);
 
   try {
-    const buffers = await preloadVmAssets(cfg);
+    if (runtime.hda) {
+      setLoading(true, {
+        title: t("vm.loading.preparing"),
+        detail: t("vm.loading.checkingDisk"),
+        percent: null,
+        indeterminate: true,
+        ...startCancelOptions,
+      });
+      await nextPaint();
+      const diskCheck = await checkAsset(runtime.hda.url, { signal: startAbortController.signal });
+      throwIfAborted(startAbortController.signal);
+      if (!diskCheck.ok) {
+        setBadge($("vm-detail"), t("vm.badge.diskNotFound"), "bad");
+        logTool(`${NL}[host] no existe la imagen de disco ${runtime.hda.url}. Genera esa imagen raw o usa Disco: RAM/initramfs.${NL}`);
+        setLoading(false);
+        return;
+      }
+    }
+
+    setLoading(true, {
+      title: t("vm.loading.preparing"),
+      detail: t("vm.loading.startingDownload"),
+      percent: null,
+      indeterminate: true,
+      ...startCancelOptions,
+    });
+    await nextPaint();
+    logTool(`${NL}[host] preparando assets de v86...${NL}`);
+
+    const buffers = await preloadVmAssets(cfg, {
+      signal: startAbortController.signal,
+      onCancel: cancelVmStart,
+    });
+    throwIfAborted(startAbortController.signal);
 
     const Starter = window.V86Starter || window.V86;
     if (!Starter) throw new Error("window.V86Starter no existe");
@@ -388,14 +433,21 @@ async function startVm(options = {}) {
     window.setTimeout(() => scheduleSerialFit({ focus: true }), 250);
     setLoading(false);
   } catch (error) {
-    setBadge($("badge-vm"), t("vm.badge.error"), "bad");
-    setBadge($("vm-detail"), error.message, "bad");
-    logTool(`[host] error: ${error.message}${NL}`);
+    if (isAbortError(error)) {
+      setBadge($("badge-vm"), t("common.v86Inactive"), "");
+      setBadge($("vm-detail"), t("common.operationCancelled"), "warn");
+      logTool(`[host] ${t("vm.loading.cancelled")}${NL}`);
+    } else {
+      setBadge($("badge-vm"), t("vm.badge.error"), "bad");
+      setBadge($("vm-detail"), error.message, "bad");
+      logTool(`[host] error: ${error.message}${NL}`);
+    }
     state.activeRuntime = null;
     state.diskMounted = false;
     syncDiskCheckButton();
     setLoading(false);
   } finally {
+    if (state.vmStartAbortController === startAbortController) state.vmStartAbortController = null;
     state.vmStarting = false;
     setVmOptionsLocked(Boolean(state.vm));
     syncPowerButtons();

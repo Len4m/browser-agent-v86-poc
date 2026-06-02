@@ -369,11 +369,24 @@ function openRestoreSnapshotPicker() {
   input.click();
 }
 
+async function confirmRestoreSnapshot() {
+  if (typeof showBaModal !== "function") return window.confirm(t("vm.snapshot.restoreConfirm"));
+  const result = await showBaModal({
+    title: t("vm.snapshot.restore"),
+    message: t("vm.snapshot.restoreConfirm"),
+    buttons: [
+      { id: "cancel", label: t("common.cancel"), variant: "secondary", cancel: true },
+      { id: "restore", label: t("vm.snapshot.restore"), variant: "danger" },
+    ],
+  });
+  return result === "restore";
+}
+
 async function restoreSnapshotFromFile(event) {
   const file = event.target.files?.[0];
   if (!file) return;
 
-  const shouldContinue = !state.vm || window.confirm(t("vm.snapshot.restoreConfirm"));
+  const shouldContinue = !state.vm || await confirmRestoreSnapshot();
   if (!shouldContinue) return;
 
   setAgentBusy(true, t("vm.snapshot.reading"));

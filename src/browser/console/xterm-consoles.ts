@@ -398,15 +398,50 @@ function setConsoleTabsStatus(text, tone = "") {
   if (status) setBadge(status, text, tone);
 }
 
-async function syncConsoleTabsFromDaemon({ repaint = true } = {}) {
+function humanConsoleNumberForRestoredSession(sessionId) {
+  const value = Number.parseInt(String(sessionId || ""), 10);
+  const used = new Set(state.consoleTabs.tabs.map((tab) => Number(tab.humanNumber || 0)));
+  if (Number.isInteger(value) && value > 1 && value <= state.consoleTabs.maxHumanConsoles && !used.has(value)) {
+    return value;
+  }
+  return getNextHumanConsoleNumber();
+}
+
+function ensureConsoleTabForDaemonSession(session) {
+  const sessionId = String(session?.id || "");
+  if (!sessionId || findConsoleTabBySession(sessionId)) return null;
+  if (state.consoleTabs.tabs.filter((tab) => tab.owner === "human").length >= state.consoleTabs.maxHumanConsoles) return null;
+
+  const humanNumber = humanConsoleNumberForRestoredSession(sessionId);
+  if (!humanNumber) return null;
+
+  const tab = {
+    id: `human-${humanNumber}`,
+    owner: "human",
+    title: String(humanNumber),
+    sessionId,
+    humanNumber,
+    closable: true,
+    status: session?.alive ? "ready" : "closed",
+    userInputSeen: false,
+    restored: true,
+  };
+  state.consoleTabs.tabs.push(tab);
+  createBrowserTerminal(tab);
+  return tab;
+}
+
+async function syncConsoleTabsFromDaemon({ repaint = true, createMissing = false } = {}) {
   if (!state.vm || !state.vmReady || !window.BA_CONSOLE_CONTROL?.listSessions) return false;
   const sessions = await window.BA_CONSOLE_CONTROL.listSessions().catch(() => []);
   if (!Array.isArray(sessions)) return false;
   state.consoleTabs.extraReady = true;
+  ensureConsoleOutputSubscription();
   const seen = new Set();
   for (const session of sessions) {
     seen.add(String(session.id));
-    const tab = findConsoleTabBySession(session.id);
+    const tab = findConsoleTabBySession(session.id)
+      || (createMissing && session?.alive ? ensureConsoleTabForDaemonSession(session) : null);
     if (tab) tab.status = session.alive ? "ready" : "closed";
   }
   for (const tab of state.consoleTabs.tabs) {
@@ -414,6 +449,7 @@ async function syncConsoleTabsFromDaemon({ repaint = true } = {}) {
       tab.status = "closed";
     }
   }
+  setActiveConsolePane(state.consoleTabs.activeId || "human-1");
   if (repaint) renderConsoleTabs();
   return true;
 }

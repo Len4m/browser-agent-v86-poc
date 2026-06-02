@@ -29,7 +29,7 @@
   <link rel="stylesheet" href="./vendor/xterm/xterm.css" />
   <link rel="stylesheet" href="./style.css" />
 </head>
-<body>
+<body class="app-booting">
   <main class="app">
     <header class="header">
       <div>
@@ -218,17 +218,32 @@
     </div>
   </main>
 
-  <div id="loading-overlay" aria-hidden="true">
+  <div id="loading-overlay" aria-hidden="false">
     <div class="loading-card" role="status" aria-live="polite">
       <div class="loading-head">
         <div class="loading-spinner"></div>
-        <div id="loading-title" data-i18n="common.loading">common.loading</div>
+        <div id="loading-title" data-i18n="app.loading.initialTitle">Loading Browser Agent</div>
       </div>
-      <div id="loading-detail"></div>
+      <div id="loading-detail" data-i18n="app.loading.initialDetail">Preparing browser UI and runtime resources…</div>
       <div class="loading-progress"><div id="loading-bar"></div></div>
       <div id="loading-percent"></div>
+      <div class="loading-actions">
+        <button id="loading-cancel" type="button" class="secondary danger-light" hidden data-i18n="common.cancel">common.cancel</button>
+      </div>
     </div>
   </div>
+
+  <script>
+    (function syncInitialLoadingText() {
+      try {
+        var catalog = (window.__BA_I18N__ && window.__BA_I18N__.catalog) || {};
+        var title = document.getElementById("loading-title");
+        var detail = document.getElementById("loading-detail");
+        if (title && catalog["app.loading.initialTitle"]) title.textContent = catalog["app.loading.initialTitle"];
+        if (detail && catalog["app.loading.initialDetail"]) detail.textContent = catalog["app.loading.initialDetail"];
+      } catch (e) {}
+    })();
+  </script>
 
   <div id="ba-modal-overlay" class="ba-modal-overlay" aria-hidden="true">
     <div class="ba-modal-card" role="dialog" aria-modal="true" aria-labelledby="ba-modal-title">

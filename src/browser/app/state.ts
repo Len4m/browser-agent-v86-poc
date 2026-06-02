@@ -18,6 +18,8 @@ const state = {
   networkConfiguring: false,
   agentBusy: false,
   vmStarting: false,
+  vmStartAbortController: null,
+  loadingCancelHandler: null,
   activeRuntime: null,
   assetBuffers: null,
   assetCacheKey: "",
