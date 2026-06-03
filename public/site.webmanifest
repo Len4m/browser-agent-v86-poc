@@ -1,0 +1,22 @@
+{
+  "name": "Browser Agent v86 POC",
+  "short_name": "Browser Agent",
+  "description": "Run a Linux x86 VM with v86, local browser LLM chat, and agent tools from a static web app.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "browser",
+  "background_color": "#f8fafc",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/assets/icons/browser-agent.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

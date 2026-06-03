@@ -4,6 +4,29 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Browser Agent v86 POC</title>
+  <meta name="description" content="Run a Linux x86 VM with v86, local browser LLM chat, and agent tools from a static web app. UI available in English and Spanish." />
+  <meta name="application-name" content="Browser Agent v86 POC" />
+  <meta name="theme-color" content="#2563eb" />
+  <meta name="robots" content="index,follow" />
+  <link rel="canonical" href="%BA_CANONICAL_URL%" />
+  <link rel="icon" href="/favicon.ico" sizes="any" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Browser Agent v86 POC" />
+  <meta property="og:title" content="Browser Agent v86 POC" />
+  <meta property="og:description" content="Run a Linux x86 VM with v86, local browser LLM chat, and agent tools from a static web app." />
+  <meta property="og:url" content="%BA_CANONICAL_URL%" />
+  <meta property="og:image" content="%BA_SOCIAL_IMAGE_URL%" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Browser Agent v86 preview with a Linux terminal and local AI chat" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Browser Agent v86 POC" />
+  <meta name="twitter:description" content="Run a Linux x86 VM with v86, local browser LLM chat, and agent tools from a static web app." />
+  <meta name="twitter:image" content="%BA_SOCIAL_IMAGE_URL%" />
+  <meta name="twitter:image:alt" content="Browser Agent v86 preview with a Linux terminal and local AI chat" />
   <script>
     // Preload the active i18n catalog synchronously so t() returns the chosen
     // language from the very first script eval (fixes eval-time constants).
@@ -32,9 +55,20 @@
 <body class="app-booting">
   <main class="app">
     <header class="header">
-      <div>
-        <h1>Browser Agent POC</h1>
-        <p data-i18n="header.tagline">header.tagline</p>
+      <div class="header-brand">
+        <img
+          class="header-brand-icon"
+          src="/assets/icons/browser-agent-header-64.webp"
+          srcset="/assets/icons/browser-agent-header-64.webp 1x, /assets/icons/browser-agent-header-96.webp 2x"
+          width="54"
+          height="54"
+          alt=""
+          decoding="async"
+        />
+        <div class="header-brand-copy">
+          <h1>Browser Agent POC</h1>
+          <p data-i18n="header.tagline">header.tagline</p>
+        </div>
       </div>
       <div class="badges">
         <span id="badge-version" class="badge app-version-badge" data-i18n-attr="title:header.version.title">v—</span>

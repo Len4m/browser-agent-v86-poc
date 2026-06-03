@@ -31,6 +31,9 @@ public/v86/
 # Paquetes locales de distribución
 *.zip
 
+# Imágenes de referencia generadas/importadas manualmente
+/ChatGPT Image*.png
+
 # Sistema/editor
 .vscode/
 .DS_Store

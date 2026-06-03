@@ -228,9 +228,24 @@ Contenido mínimo:
 - `v86/bios/`
 - `v86/images/`
 - `v86/disks/`
+- `favicon.ico`, `apple-touch-icon.png`, `site.webmanifest` y `robots.txt`
 - `_headers` si despliegas en una plataforma compatible como Cloudflare Pages
 
 El servidor final debe enviar COOP/COEP/CORP y soportar `Range`. `public/_headers` documenta esas cabeceras para Cloudflare Pages, pero otros servidores necesitan configuración equivalente.
+
+Para el build público de la demo oficial:
+
+```bash
+npm run build:prod
+```
+
+`build:prod` usa `https://browseragent.icu/` como `BA_PUBLIC_SITE_URL` por defecto. Para otro dominio:
+
+```bash
+BA_PUBLIC_SITE_URL=https://tu-dominio.example/ npm run build:prod
+```
+
+Ese valor se usa para `canonical`, `og:url` e imágenes Open Graph/Twitter absolutas. Si se ejecuta el build no productivo sin esa variable, el HTML queda portable con URLs relativas al origen.
 
 Paquete local con servidor incluido:
 

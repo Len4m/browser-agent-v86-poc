@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Browser Agent v86 POC preview</title>
+  <desc id="desc">Preview image showing a Linux terminal and local AI chat in a browser app.</desc>
+  <defs>
+    <linearGradient id="header" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#0891b2"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-12%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#0f172a" flood-opacity=".18"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="630" fill="#f8fafc"/>
+  <rect x="64" y="56" width="1072" height="518" rx="34" fill="#ffffff" stroke="#cbd5e1" filter="url(#shadow)"/>
+  <rect x="64" y="56" width="1072" height="86" rx="34" fill="url(#header)"/>
+  <path d="M64 116h1072v26H64z" fill="url(#header)"/>
+  <path d="M65 142h1070v397c0 19-15 34-34 34H99c-19 0-34-15-34-34Z" fill="#ffffff"/>
+  <circle cx="118" cy="99" r="12" fill="#dbeafe"/>
+  <circle cx="158" cy="99" r="12" fill="#bfdbfe"/>
+  <circle cx="198" cy="99" r="12" fill="#93c5fd"/>
+  <text x="244" y="108" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="25" font-weight="700" fill="#eff6ff">browseragent.icu</text>
+
+  <image xlink:href="../../../public/assets/icons/browser-agent.png" x="95" y="168" width="350" height="350" preserveAspectRatio="xMidYMid meet"/>
+
+  <g transform="translate(485 176)">
+    <text x="0" y="48" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="64" font-weight="800" fill="#0f172a">Browser Agent v86</text>
+    <text x="0" y="96" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="28" font-weight="600" fill="#334155">Linux VM + local AI agent in your browser</text>
+    <text x="0" y="140" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="22" fill="#475569">Run v86, chat with a browser LLM, and execute tools</text>
+    <text x="0" y="174" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="22" fill="#475569">inside the VM from a static web app.</text>
+
+    <g transform="translate(0 220)">
+      <rect x="0" y="0" width="160" height="46" rx="23" fill="#eff6ff" stroke="#bfdbfe"/>
+      <text x="80" y="30" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="800" fill="#1d4ed8">v86 Linux</text>
+      <rect x="180" y="0" width="220" height="46" rx="23" fill="#ecfeff" stroke="#a5f3fc"/>
+      <text x="290" y="30" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="800" fill="#0e7490">WebGPU/WASM LLM</text>
+      <rect x="420" y="0" width="160" height="46" rx="23" fill="#f0fdf4" stroke="#bbf7d0"/>
+      <text x="500" y="30" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="800" fill="#047857">VM tools</text>
+    </g>
+  </g>
+
+  <g transform="translate(618 462)">
+    <rect x="0" y="0" width="420" height="86" rx="22" fill="#f8fafc" stroke="#cbd5e1"/>
+    <circle cx="42" cy="43" r="18" fill="#2563eb"/>
+    <path d="m36 42 10 10 20-24" fill="none" stroke="#ffffff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="78" y="36" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="20" font-weight="800" fill="#0f172a">Static app, local execution</text>
+    <text x="78" y="64" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="17" fill="#475569">English and Spanish UI</text>
+  </g>
+</svg>

@@ -20,8 +20,8 @@ Lista de temas detectados para revisar antes de una publicación estable.
 ## Producto y publicación
 
 - [X] Crear repositorio público`https://github.com/Len4m/browser-agent-v86-poc` cuando se decida publicar.
-- [ ] Metadatos básicos para la demo pública (`https://browseragent.icu/`): hoy `index.html` solo tiene charset, viewport y título; no hay favicon real (el servidor responde 204 en`/favicon.ico`),`meta description`, Open Graph/Twitter Card ni `canonical`. Añadir favicon (y opcionalmente`apple-touch-icon`), description,`og:*`/`twitter:*` con imagen de preview,`link rel="canonical"` y, si encaja,`robots.txt`/`sitemap.xml` en `public/` para mejorar snippet en buscadores y vistas previas al compartir el enlace.
-- [ ] SEO multilingüe por URL (mejora opcional para publicación): hoy el idioma es solo en cliente (misma URL + selector ES/EN), insuficiente para indexar ES y EN por separado. Valorar rutas distintas (p. ej. `/` y `/en/`) con `lang`, meta y `hreflang` por idioma, sitemap con ambas URLs y alinear el selector con la ruta; preferir generación estática en build (sin lógica extra en servidor más allá de servir `public/`). Complementa el punto anterior; puede aplazarse si basta meta en inglés con mención a la UI en español.
+- [X] Metadatos básicos para la demo pública (`https://browseragent.icu/`): favicon real, `apple-touch-icon`, `meta description`, Open Graph/Twitter Card con imagen de preview, `canonical` configurable por `BA_PUBLIC_SITE_URL` y `robots.txt` estático en `public/`. No se añade `sitemap.xml` mientras la SPA pública no exponga rutas indexables diferenciadas.
+- [ ] SEO multilingüe por URL (mejora opcional para publicación): hoy el idioma es solo en cliente (misma URL + selector ES/EN), insuficiente para indexar ES y EN por separado. Valorar rutas distintas (p. ej. `/` y `/en/`) con `lang`, meta y `hreflang` por idioma; valorar `sitemap.xml` solo si se crean rutas estáticas indexables. Preferir generación estática en build (sin lógica extra en servidor más allá de servir `public/`). Complementa el punto anterior; puede aplazarse si basta meta en inglés con mención a la UI en español.
 
 ## Consola y xterm.js
 

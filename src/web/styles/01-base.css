@@ -83,6 +83,20 @@ input:focus { box-shadow: var(--ba-focus-blue); }
   padding: 18px;
   margin-bottom: 16px;
 }
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.header-brand-icon {
+  flex: 0 0 auto;
+  width: 54px;
+  height: 54px;
+}
+.header-brand-copy {
+  min-width: 0;
+}
 h1 { margin: 0; font-size: 22px; }
 h2 { margin: 0; font-size: 15px; }
 p { margin: 6px 0; color: var(--ba-color-subtle); font-size: 14px; }
@@ -189,6 +203,7 @@ p { margin: 6px 0; color: var(--ba-color-subtle); font-size: 14px; }
 @media (max-width: 900px) {
   .two, .three { grid-template-columns: 1fr; }
   .header { align-items: flex-start; flex-direction: column; }
+  .header-brand { align-items: flex-start; }
   .badges { justify-content: flex-start; }
 }
 

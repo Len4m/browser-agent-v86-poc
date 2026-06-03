@@ -280,5 +280,6 @@ Archivos clave:
 6. Nueva tool en `src/browser/chat/tools/tool-registry.ts`; no duplicar catálogos.
 7. Cambios en perfiles, overlay o runners requieren `npm run setup`.
 8. Cambios en provider AI SDK o worker requieren `npm run build`.
-9. Mantener límites explícitos para logs, artifacts, historial y salidas de tools.
-10. Probar consolas xterm, cierre, refresco, programas de pantalla completa y tools tras tocar seriales o geometría de consola.
+9. `npm run build:prod` usa `https://browseragent.icu/` como `BA_PUBLIC_SITE_URL` por defecto; otros dominios deben sobrescribir esa variable para generar canonical y Open Graph/Twitter con URLs absolutas del dominio correcto.
+10. Mantener límites explícitos para logs, artifacts, historial y salidas de tools.
+11. Probar consolas xterm, cierre, refresco, programas de pantalla completa y tools tras tocar seriales o geometría de consola.

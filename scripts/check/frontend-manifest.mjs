@@ -41,6 +41,14 @@ const expectedVendorFiles = [
 
 const orphanCss = allCss.filter((f) => !loadedCss.includes(f));
 const requiredFiles = [
+  "favicon.ico",
+  "apple-touch-icon.png",
+  "site.webmanifest",
+  "robots.txt",
+  "assets/browser-agent-preview.png",
+  "assets/icons/browser-agent.png",
+  "assets/icons/browser-agent-header-64.webp",
+  "assets/icons/browser-agent-header-96.webp",
   "assets/app.js",
   "assets/ai-sdk-bridge.mjs",
   "assets/chat/ai-sdk-browser.mjs",
@@ -73,6 +81,24 @@ if (!loadedAssets.includes("assets/ai-sdk-bridge.mjs")) {
 if (!indexCss.includes("style.css") && !indexCss.includes("assets/app.css")) {
   failed = true;
   console.error("index.html debe cargar ./style.css o ./assets/app.css");
+}
+
+const requiredSeoSnippets = [
+  ["meta description", /<meta name="description" content="[^"]{40,180}" \/>/],
+  ["canonical", /<link rel="canonical" href="(?:\/|https?:\/\/[^"]+)" \/>/],
+  ["favicon ico", /<link rel="icon" href="\/favicon\.ico" sizes="any" \/>/],
+  ["header brand icon", /<img\s+class="header-brand-icon"\s+src="\/assets\/icons\/browser-agent-header-64\.webp"\s+srcset="\/assets\/icons\/browser-agent-header-64\.webp 1x, \/assets\/icons\/browser-agent-header-96\.webp 2x"\s+width="54"\s+height="54"\s+alt=""\s+decoding="async"\s+\/>/],
+  ["Open Graph title", /<meta property="og:title" content="Browser Agent v86 POC" \/>/],
+  ["Open Graph image", /<meta property="og:image" content="(?:\/assets\/browser-agent-preview\.png|https?:\/\/[^"]+\/assets\/browser-agent-preview\.png)" \/>/],
+  ["Twitter Card", /<meta name="twitter:card" content="summary_large_image" \/>/],
+  ["Twitter image", /<meta name="twitter:image" content="(?:\/assets\/browser-agent-preview\.png|https?:\/\/[^"]+\/assets\/browser-agent-preview\.png)" \/>/],
+];
+
+for (const [label, pattern] of requiredSeoSnippets) {
+  if (!pattern.test(indexHtml)) {
+    failed = true;
+    console.error(`index.html debe incluir SEO/meta válido: ${label}`);
+  }
 }
 
 for (const [file, pattern] of hashedRuntimeRefs) {

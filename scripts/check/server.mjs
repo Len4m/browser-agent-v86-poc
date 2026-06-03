@@ -47,6 +47,14 @@ try {
   assert(range.status === 206, "Range request no devuelve 206");
   assert(range.headers.get("accept-ranges") === "bytes", "Falta Accept-Ranges");
 
+  const favicon = await fetch(`${base}/favicon.ico`, { method: "HEAD" });
+  assert(favicon.status === 200, "/favicon.ico debe servirse como archivo real");
+  assert((favicon.headers.get("content-type") || "").startsWith("image/x-icon"), "/favicon.ico debe usar MIME image/x-icon");
+
+  const robots = await fetch(`${base}/robots.txt`, { method: "HEAD" });
+  assert(robots.status === 200, "/robots.txt debe servirse");
+  assert((robots.headers.get("content-type") || "").startsWith("text/plain"), "/robots.txt debe usar MIME text/plain");
+
   console.log("OK server headers/range");
   stop(0);
 } catch (error) {

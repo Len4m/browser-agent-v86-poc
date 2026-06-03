@@ -1,7 +1,7 @@
 {
   "name": "browser-agent-v86-poc",
   "description": "Browser Agent v86 POC",
-  "version": "0.9.5-beta.0",
+  "version": "0.9.5-beta.1",
   "author": "Lenam <lenamgenx@protonmail.com> (https://Len4m.github.io)",
   "license": "MIT",
   "private": true,
@@ -19,7 +19,7 @@
     "prepare:local": "node scripts/vm/setup.mjs && node scripts/build/index.mjs",
     "setup": "node scripts/vm/setup.mjs",
     "build": "node scripts/build/index.mjs",
-    "build:prod": "BA_MINIFY=1 node scripts/build/index.mjs",
+    "build:prod": "BA_PUBLIC_SITE_URL=${BA_PUBLIC_SITE_URL:-https://browseragent.icu/} BA_MINIFY=1 node scripts/build/index.mjs",
     "check": "tsc --noEmit && node scripts/check/index.mjs",
     "clean": "node scripts/clean/index.mjs",
     "clean:runtime": "node scripts/clean/runtime.mjs",

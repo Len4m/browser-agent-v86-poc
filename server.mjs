@@ -13,8 +13,16 @@ const mime = {
   ".js": "text/javascript; charset=utf-8",
   ".mjs": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
+  ".txt": "text/plain; charset=utf-8",
+  ".xml": "application/xml; charset=utf-8",
+  ".webmanifest": "application/manifest+json; charset=utf-8",
   ".svg": "image/svg+xml; charset=utf-8",
   ".svgz": "image/svg+xml",
+  ".ico": "image/x-icon",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
   ".json": "application/json; charset=utf-8",
   ".wasm": "application/wasm",
   ".onnx": "application/octet-stream",
@@ -69,13 +77,6 @@ const server = createServer((req, res) => {
   res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
   res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
   res.setHeader("Access-Control-Allow-Origin", "*");
-
-  // Avoid a noisy 404 in the browser console when the page asks for a favicon.
-  if ((requestUrl.split("?")[0] || "") === "/favicon.ico") {
-    res.writeHead(204);
-    res.end();
-    return;
-  }
 
   if (!path || !existsSync(path) || !statSync(path).isFile()) {
     res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });

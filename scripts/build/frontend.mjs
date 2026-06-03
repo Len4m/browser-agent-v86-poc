@@ -117,8 +117,40 @@ function publicHref(relativePath) {
   return `./${relativePath.replace(/^\/+/, "")}?v=${cacheKeyForPublicFile(relativePath)}`;
 }
 
+function normalizePublicSiteUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const candidate = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`;
+  const url = new URL(candidate);
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error(`BA_PUBLIC_SITE_URL debe usar http o https: ${raw}`);
+  }
+  url.hash = "";
+  url.search = "";
+  if (!url.pathname.endsWith("/")) url.pathname += "/";
+  return url.href;
+}
+
+const publicSiteUrl = normalizePublicSiteUrl(process.env.BA_PUBLIC_SITE_URL);
+const canonicalUrl = publicSiteUrl || "/";
+
+function publicAssetUrl(relativePath) {
+  const clean = relativePath.replace(/^\/+/, "");
+  return publicSiteUrl ? new URL(clean, publicSiteUrl).href : `/${clean}`;
+}
+
+function escapeHtmlAttr(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 function renderIndexHtml({ cssHref, bridgeHref, appHref }) {
   return readFileSync(sourceIndexFile, "utf8")
+    .replaceAll("%BA_CANONICAL_URL%", escapeHtmlAttr(canonicalUrl))
+    .replaceAll("%BA_SOCIAL_IMAGE_URL%", escapeHtmlAttr(publicAssetUrl("assets/browser-agent-preview.png")))
     .replace(/href="\.\/vendor\/xterm\/xterm\.css(?:\?v=[^"]*)?"/g, `href="./vendor/xterm/xterm.css?v=${cacheKeyForPublicFile("vendor/xterm/xterm.css")}"`)
     .replace(/href="\.\/(?:style\.css|assets\/app\.css)(?:\?v=[^"]*)?"/g, `href="${cssHref}"`)
     .replace(/id="cfg-bzimage" type="hidden" value="[^"]*"/g, `id="cfg-bzimage" type="hidden" value="${versionedPublicPath("v86/images/alpine-vmlinuz-lts")}"`)
@@ -247,3 +279,6 @@ console.log(`OK frontend bundle: public/assets/app.js (${browserSourceOrder.leng
 console.log(`OK AI SDK bridge: public/assets/ai-sdk-bridge.mjs (${sizeSummary(bridgeOutFile)})`);
 if (localeFiles.length) console.log(`OK i18n locales: public/locales/ (${localeFiles.join(", ")})`);
 if (minify) console.log(`OK CSS bundle: public/assets/app.css (${sizeSummary(cssBundleFile)})`);
+console.log(publicSiteUrl
+  ? `OK SEO metadata: ${publicSiteUrl}`
+  : "OK SEO metadata: origin-relative URLs (set BA_PUBLIC_SITE_URL for absolute canonical/social URLs)");
