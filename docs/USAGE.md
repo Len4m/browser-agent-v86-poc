@@ -18,7 +18,7 @@ La interfaz está disponible en español e inglés. El idioma se elige en el sel
 - La elección se guarda en `localStorage` (`ba.lang`) y se respeta en siguientes visitas.
 - Solo se mantiene un catálogo de idioma en memoria a la vez (`public/locales/es.json` o `en.json`).
 
-Esta documentación (`README.md` y `docs/`) está escrita en español; las cadenas de la propia aplicación sí están traducidas a ambos idiomas.
+La interfaz y los [manuales de usuario](USER_MANUAL.es.md) están en español e inglés (`USER_MANUAL.es.md` / `USER_MANUAL.en.md`). Esta guía, `README.md` y `ARCHITECTURE.md` están solo en español.
 
 ## Requisitos
 
@@ -202,7 +202,7 @@ Regenera con `npm run build` después de tocar:
 
 ## Limpieza
 
-Usa `npm run clean` durante el desarrollo normal. Borra `build/` y las salidas generadas por el build en `public/`: HTML/CSS generado y bundles. No borra `public/vendor/` ni `public/v86/`.
+Usa `npm run clean` durante el desarrollo normal. Borra `build/` y las salidas generadas por el build en `public/`: `index.html`, `style.css`, `styles/`, `locales/` (copiados desde `src/web/`), bundles JS y `assets/chat/`. No borra `public/vendor/` ni `public/v86/`, ni los estáticos versionados en git (`favicon.ico`, iconos, `robots.txt`, etc.).
 
 Usa `npm run clean:runtime` cuando quieras forzar una regeneración del runtime pesado: vendors, v86, BIOS, initramfs, perfiles y discos. Después ejecuta `npm run setup` o `npm run prepare:local` antes de arrancar la VM.
 

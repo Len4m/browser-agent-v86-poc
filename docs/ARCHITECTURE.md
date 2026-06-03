@@ -264,7 +264,7 @@ Archivos clave:
 
 ## Limpieza
 
-`npm run clean` borra `build/` y las salidas generadas por el build en `public/`: `public/index.html`, CSS generado y bundles. No borra `public/vendor/` ni `public/v86/`.
+`npm run clean` borra `build/` y las salidas generadas por el build en `public/`: `index.html`, CSS, `styles/`, `locales/` (desde `src/web/`), bundles y `assets/chat/`. No borra `public/vendor/` ni `public/v86/`, ni estáticos versionados (`favicon.ico`, iconos, `robots.txt`, etc.).
 
 `npm run clean:runtime` borra el runtime pesado generado por `setup`: `public/vendor/` y `public/v86/`. Después hay que ejecutar `npm run setup` o `npm run prepare:local` antes de arrancar la VM.
 

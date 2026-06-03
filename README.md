@@ -1,16 +1,16 @@
 # Browser Agent v86 POC
 
-[![Versión beta](https://img.shields.io/badge/version-0.9.5--beta.1-orange)](https://github.com/Len4m/browser-agent-v86-poc)
+[![Versión beta](https://img.shields.io/badge/version-0.9.5--beta.2-orange)](https://github.com/Len4m/browser-agent-v86-poc)
 
 Browser Agent v86 POC ejecuta una **VM Linux x86 con v86**, un **chat con LLM desde el navegador** y herramientas de agente que pueden lanzar comandos dentro de la VM. El objetivo es experimentar con IA local, Linux, automatización y red desde una aplicación web servida como archivos estáticos.
 
-Estado actual: **beta `0.9.5-beta.1`**. La versión `1.0.0` queda reservada para la primera publicación estable.
+Estado actual: **beta `0.9.5-beta.2`**. La versión `1.0.0` queda reservada para la primera publicación estable.
 
 - Demo: [https://browseragent.icu/](https://browseragent.icu/)
 - Repositorio: [https://github.com/Len4m/browser-agent-v86-poc](https://github.com/Len4m/browser-agent-v86-poc)
 - Autor: Lenam [lenamgenx@protonmail.com](mailto:lenamgenx@protonmail.com) ([https://Len4m.github.io](https://Len4m.github.io))
 
-> **English**: the web UI is available in English. It is auto-selected for non-Spanish browsers and can be switched any time from the language selector in the header. This repository documentation (README and `docs/`) is written in Spanish.
+> **English**: the web UI is available in English (auto-selected for non-Spanish browsers; switch anytime from the header). For end-user help, see [docs/USER_MANUAL.en.md](docs/USER_MANUAL.en.md). Developer and repo docs (`USAGE`, `ARCHITECTURE`, this README) are in Spanish only for now — see [Documentation](#documentación) below.
 
 ## Qué incluye
 
@@ -76,14 +76,23 @@ src/web/            # plantilla HTML y CSS fuente
 scripts/            # tooling por dominio: build, check, clean, vm y llm
 vm/profiles/        # perfiles Alpine de VM
 vm/overlay/common/  # runners y ficheros incluidos en el initramfs
-docs/USAGE.md       # uso, desarrollo, distribución y troubleshooting
-docs/ARCHITECTURE.md # arquitectura y contratos internos
+docs/USER_MANUAL.es.md  # manual de uso (usuarios finales), español
+docs/USER_MANUAL.en.md  # user manual (end users), English
+docs/USAGE.md           # uso, desarrollo, distribución y troubleshooting (español)
+docs/ARCHITECTURE.md    # arquitectura y contratos internos (español)
 ```
 
 ## Documentación
 
-- [docs/USAGE.md](docs/USAGE.md): instalación local, uso de VM/LLM/wsnic, scripts, runtime zip y problemas habituales.
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): arquitectura frontend, build, VM, seriales, LLM y reglas de mantenimiento.
+| Documento | Idioma | Contenido |
+| --- | --- | --- |
+| [README.md](README.md) | ES | Entrada al repositorio (este fichero). |
+| [docs/USER_MANUAL.es.md](docs/USER_MANUAL.es.md) | ES | Manual de uso de la aplicación (VM, chat, paneles); sin instalación ni desarrollo. |
+| [docs/USER_MANUAL.en.md](docs/USER_MANUAL.en.md) | EN | Same scope as the Spanish user manual. |
+| [docs/USAGE.md](docs/USAGE.md) | ES | Instalación local, VM/LLM/wsnic, scripts, runtime zip y problemas habituales. |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | ES | Arquitectura frontend, build, VM, seriales, LLM y reglas de mantenimiento. |
+
+Los manuales de usuario enlazan entre sí por idioma. Para contribuir o desplegar el proyecto, usa `USAGE` y `ARCHITECTURE`.
 
 ## Licencia
 

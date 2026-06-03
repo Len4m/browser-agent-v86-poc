@@ -5,6 +5,7 @@ export const buildTargets = [
   "public/index.html",
   "public/style.css",
   "public/styles",
+  "public/locales",
   "public/assets/app.js",
   "public/assets/app.css",
   "public/assets/ai-sdk-bridge.mjs",
