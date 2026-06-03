@@ -59,11 +59,13 @@ Abre `http://127.0.0.1:5173/`.
 
 ## Primer uso
 
-1. Pulsa **Comprobar** para validar cabeceras, assets, serial1 y runners de la VM cuando corresponda.
-2. Antes de arrancar, elige perfil, RAM, VRAM y disco.
-3. Pulsa **Arrancar VM** y espera a que la shell esté lista.
-4. Para usar chat, abre el panel **LLM**, selecciona backend/modelo y pulsa cargar.
-5. Usa las consolas xterm, el formulario manual o el chat con tools habilitadas.
+1. Selecciona el perfil de VM.
+2. Pulsa **Arrancar VM** y espera a que aparezca la shell; la primera vez puede descargar assets grandes.
+3. Si el navegador acepta WebGPU, carga un modelo Transformers.js u Ollama desde el panel **LLM**. Con solo WASM, para agente/tools suele ser mejor usar Ollama o probar otro navegador/equipo con WebGPU.
+4. Usa el chat para pedir acciones dentro de la VM, o las consolas xterm para comprobar y ejecutar manualmente.
+5. Si necesitas red en la VM, configura wsnic desde **Red WS**.
+
+Puedes pulsar **Comprobar** en cualquier momento para validar cabeceras, assets, seriales, runners, red y tools cuando corresponda.
 
 Los perfiles generados aparecen desde `/v86/images/profiles/index.json`. Si no aparecen, ejecuta `npm run setup`.
 

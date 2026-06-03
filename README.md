@@ -47,11 +47,13 @@ Abre `http://127.0.0.1:5173/`.
 
 Primer uso recomendado:
 
-1. Pulsa **Comprobar**.
-2. Elige perfil, RAM, VRAM y disco antes de arrancar.
-3. Pulsa **Arrancar VM**.
-4. Carga un modelo en el panel **LLM** si vas a usar el chat.
-5. Usa la consola, el formulario manual o el chat.
+1. Selecciona el perfil de VM.
+2. Pulsa **Arrancar VM** y espera a que aparezca la shell; la primera vez puede descargar assets grandes.
+3. Si el navegador acepta WebGPU, carga un modelo Transformers.js u Ollama desde el panel **LLM**. Con solo WASM, para agente/tools suele ser mejor usar Ollama o probar otro navegador/equipo con WebGPU.
+4. Usa el chat para pedir acciones dentro de la VM, o las consolas para comprobar y ejecutar manualmente.
+5. Si necesitas red en la VM, configura wsnic desde **Red WS**.
+
+Puedes pulsar **Comprobar** en cualquier momento para revisar el estado de la app, VM, assets, red y tools.
 
 El detalle de requisitos, scripts, empaquetado y solución de problemas está en [docs/USAGE.md](docs/USAGE.md).
 

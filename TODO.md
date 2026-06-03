@@ -45,9 +45,10 @@ Lista de temas detectados para revisar antes de una publicación estable.
 ## Documentación y manual de usuario
 
 - [ ] Mantener `README.md` y la documentación de `docs/` en español e inglés, con estructura equivalente y enlaces claros entre idiomas.
-- [ ] Crear un manual de uso de la aplicación separado de la documentación del repositorio: debe explicar el funcionamiento para usuarios finales sin centrarse en instalación, desarrollo ni scripts.
+- [X] Crear un manual de uso de la aplicación separado de la documentación del repositorio: debe explicar el funcionamiento para usuarios finales sin centrarse en instalación, desarrollo ni scripts.
 - [ ] Enlazar el manual de uso desde la GUI, respetando el idioma activo cuando existan versiones ES/EN.
-- [ ] Documentar en el manual las pantallas principales, botones, controles, perfiles VM, consolas, chat LLM, tools, carga de modelos, snapshots, discos y estados/errores habituales con capturas o imágenes actualizadas.
+- [X] Documentar en el manual las pantallas principales, botones, controles, perfiles VM, consolas, chat LLM, tools, carga de modelos, snapshots, discos y estados/errores habituales.
+- [ ] Añadir capturas definitivas al manual: vista principal con VM encendida, consola visible y paneles inferiores abiertos; capturas de detalle para selector de tools, artifacts, recursos/contexto del LLM y ejemplos de ejecución del agente.
 
 ## Build, CSS y tamaño
 

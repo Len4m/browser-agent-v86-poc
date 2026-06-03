@@ -1,0 +1,228 @@
+# Manual de uso de Browser Agent v86 POC
+
+> English version: [USER_MANUAL.en.md](USER_MANUAL.en.md)
+
+Este manual explica como usar la aplicacion ya abierta. No cubre instalacion, desarrollo, generacion de perfiles ni scripts del repositorio.
+
+## Vista general
+
+Browser Agent v86 POC combina tres zonas de trabajo:
+
+- **Chat**: conversacion con un LLM local del navegador o con Ollama local.
+- **VM**: maquina Linux x86 ejecutada con v86, con perfiles, consolas, discos y snapshots.
+- **Paneles inferiores**: red wsnic, informacion LLM y comprobaciones de estado.
+
+
+![Browser Agent v86 POC](assets/20260604_010743_image.png)
+
+La cabecera muestra el estado global:
+
+- **Versión**: versión actual de la aplicación.
+- **v86**: estado de la VM.
+- **WebGPU/WASM**: backend de inferencia disponible para modelos locales. Puede mostrar WebGPU o WASM según lo que acepte el navegador.
+- **WS**: estado de la red wsnic.
+- **Idioma**: selector ES/EN. Cambia la interfaz sin recargar la página ni perder la VM.
+- **GitHub**: abre el repositorio del proyecto.
+
+## Flujo recomendado
+
+1. Selecciona el **Perfil** de VM que quieres usar.
+2. Pulsa **Arrancar VM**. La primera vez puede descargar assets grandes; espera a que la consola muestre la shell.
+3. Si el navegador acepta **WebGPU**, puedes usar un modelo Transformers.js local o un modelo Ollama y cargarlo desde el panel **LLM**. Transformers.js descarga y cachea el modelo en el navegador. Si solo tienes **WASM**, para uso con agente y tools suele ser mejor usar Ollama o probar otro navegador/equipo con WebGPU.
+4. Habla con el chat para pedir acciones dentro de la VM, o usa las consolas para comprobar y ejecutar lo que necesites manualmente.
+5. Si necesitas salida de red dentro de la VM, configura **wsnic** desde el panel **Red WS**.
+
+Puedes pulsar **Comprobar** en cualquier momento para revisar si la aplicación, la VM, la red, los assets y las tools están en buen estado.
+
+## Chat
+
+El panel de chat esta a la izquierda en escritorio y arriba en movil.
+
+- **Expandir chat** cambia entre vista dividida y chat a ancho completo.
+- **Limpiar chat** borra el historial visible, la memoria interna del LLM y los artifacts del turno.
+- **Botón de tools** abre el selector de herramientas que el agente puede usar. Las tools disponibles varían según el perfil de VM seleccionado.
+- **Campo de mensaje** queda deshabilitado hasta que haya un modelo listo; consulta el apartado **Panel LLM**.
+- **Enviar / detener** envía el mensaje; durante una generación puede detener el turno activo.
+
+Usa prompts concretos. Por ejemplo: "comprueba la IP de la VM", "lista /etc", "haz una petición HEAD a este host autorizado", "crea un script Python que procese este fichero y guárdalo en `/tmp`" o "resume el último artifact".
+
+La calidad del chat con tools depende mucho del modelo elegido. Algunos modelos siguen instrucciones y llamadas a herramientas mejor que otros. Además, cuanto menor sea el contexto del modelo, más conviene limitar la cantidad de tools activas en una petición para reducir ruido, uso de memoria y errores de planificación.
+
+## VM, perfiles y discos
+
+Antes de arrancar puedes configurar:
+
+| Control          | Funcion                                                                                            |
+| ---------------- | -------------------------------------------------------------------------------------------------- |
+| **Perfil** | Selecciona una imagen Alpine preparada.                                                            |
+| **RAM**    | Memoria principal en modo **Libre / manual**. En perfiles generados se aplica la recomendada. |
+| **VRAM**   | Memoria de video en modo **Libre / manual**.                                                  |
+| **Disco**  | Selecciona ejecucion solo en RAM/initramfs o un disco HDA de datos.                                |
+
+Perfiles habituales:
+
+| Perfil                  | Uso recomendado                                                          |
+| ----------------------- | ------------------------------------------------------------------------ |
+| `alpine-base`         | Shell Alpine minima con utilidades basicas.                              |
+| `alpine-pentest-lite` | Reconocimiento ligero con herramientas como nmap y ffuf.                 |
+| `alpine-pentest-web`  | Pruebas web mas completas con herramientas adicionales como nikto/httpx. |
+
+Los discos HDA son discos de datos. El sistema arranca desde initramfs; si eliges un HDA, monta o desmonta el disco con el boton de disco cuando la VM este lista. Los snapshots guardan el estado de la VM, pero no sustituyen a una estrategia de persistencia para datos importantes.
+
+### Controles de VM
+
+- **Arrancar VM / Apagar VM** inicia o detiene la VM. Al apagar se pierden cambios que no esten en snapshot o en disco persistente.
+- **Montar disco / Desmontar disco** aparece cuando hay un HDA seleccionado.
+- **Nueva consola** crea una pestaña xterm adicional, hasta el limite de la aplicacion.
+- **Renombrar consola** permite cambiar el nombre de una pestaña con doble clic sobre su etiqueta para organizar mejor varias sesiones.
+- **Redibujar consola** fuerza el repintado de la consola activa.
+- **Cerrar consola** cierra la pestaña xterm activa si no es la consola base.
+- **Ayuda de consola** explica seriales, PTY y separacion de tools.
+- **Cancelar tool** intenta cancelar una herramienta background en ejecucion.
+
+### Consolas
+
+La primera consola usa `serial0` y muestra el arranque base de la VM. Las consolas adicionales usan PTY dentro de la VM por `serial2`.
+
+Las tools del agente, las comprobaciones y el formulario manual no escriben en la consola visible: usan `serial1` / `/dev/ttyS1`. Esta separacion evita que una tool ensucie o bloquee la sesion interactiva.
+
+### Ejecucion manual y log de tools
+
+Debajo de la VM hay un log de tools y un formulario de comando manual.
+
+- El log muestra ejecuciones internas, red, snapshots, disco y salida de tools.
+- El campo de comando ejecuta una orden dentro de la VM por `serial1`.
+- Si una tool esta activa, algunos controles se bloquean hasta que termine o se cancele.
+
+Este formulario es util para comandos cortos de comprobacion. Para trabajo interactivo usa las pestañas de consola.
+
+### Snapshots
+
+- **Guardar snapshot** descarga un fichero `.v86state` con el estado actual de la VM.
+- **Restaurar snapshot** pide un fichero de estado y reinicia/restaura la VM.
+- Restaura con configuracion compatible: RAM, disco y perfil deben coincidir razonablemente con el estado guardado.
+- Los snapshots pueden no incluir datos escritos en discos HDA; revisa los avisos del log.
+
+Antes de apagar la VM, guarda snapshot si quieres conservar el estado de RAM/procesos.
+
+## Panel LLM
+
+El panel **LLM** permite elegir y cargar el motor de inferencia:
+
+- **Modelo**: lista modelos Transformers.js para navegador y opciones Ollama.
+- **Ollama endpoint**: aparece al elegir un modelo Ollama; usa normalmente `http://127.0.0.1:11434`.
+- **Cargar modelo** descarga/cachea el modelo y prepara el worker.
+- **Mostrar razonamiento** aparece en modelos compatibles con thinking.
+- **Recursos y contexto** muestra presupuesto de contexto, artifacts y operacion activa.
+- **Autonomia de tools** define hasta que nivel de riesgo puede actuar el agente sin pedir permiso.
+- **Descargar worker** libera el worker/modelo cargado.
+
+WebGPU es la ruta recomendada para modelos locales. Si WebGPU falla y el modelo lo permite, la aplicacion puede intentar fallback WASM experimental.
+
+### Ollama
+
+Ollama se ejecuta fuera del navegador, normalmente en tu equipo. El navegador llama directamente al endpoint HTTP de Ollama, por defecto `http://127.0.0.1:11434`.
+
+Para que funcione desde la app, Ollama debe permitir el origen desde el que abres Browser Agent. Configura la variable de entorno `OLLAMA_ORIGINS` antes de arrancar Ollama.
+
+Ejemplo para uso local:
+
+```bash
+OLLAMA_ORIGINS=http://127.0.0.1:5173 ollama serve
+```
+
+Ejemplo para la demo publicada:
+
+```bash
+OLLAMA_ORIGINS=https://browseragent.icu ollama serve
+```
+
+Si sirves la app desde otro puerto o dominio, usa ese origen exacto. Además, el modelo elegido debe existir en tu Ollama local; si no existe, instálalo con `ollama pull <modelo>`.
+
+### Tools
+
+Dentro del panel **LLM**, las tools controlan como el chat interactua con la VM. Son acciones que el chat puede ejecutar dentro de la VM: leer ficheros, escribir ficheros, ejecutar comandos controlados, consultar paquetes, comprobar red, hacer peticiones HTTP o lanzar herramientas de pentest permitidas por el perfil.
+
+- Activa o desactiva tools desde el boton de llave del chat.
+- Las tools disponibles dependen del perfil seleccionado. Por ejemplo, los perfiles de pentest muestran herramientas que no aparecen en el perfil base.
+- Cada tool tiene un nivel de seguridad: nivel 1 para lectura acotada, nivel 2 para diagnostico de bajo impacto y nivel 3 para acciones activas como comandos controlados o escaneos ligeros.
+- La **Autonomia de tools** decide hasta que nivel puede actuar el agente sin pedir confirmacion. Los niveles superiores al permitido muestran confirmacion antes de ejecutarse.
+- El selector de tools permite reducir cuantas herramientas ve el modelo en una peticion. Esto ayuda con modelos pequeños o con poco contexto.
+
+Usa tools de red y pentest solo contra sistemas propios o con autorizacion.
+
+### Artifacts
+
+Los artifacts son resultados reales de tools guardados por el panel **LLM** para no saturar el chat ni reenviar salidas largas al modelo en cada turno.
+
+- Se guardan hasta **10 artifacts** recientes, con un limite total aproximado de **1 MB**. Si se supera el limite, se eliminan primero los mas antiguos.
+- Cada artifact puede contener salida recortada: la vista para pantalla y el texto compacto para modelo tienen limites distintos.
+- Puedes abrir la vista previa de un artifact desde **Recursos y contexto**.
+- Puedes adjuntar un artifact al contexto de la siguiente interaccion del chat cuando el modelo tenga presupuesto suficiente. Si no hay margen de contexto, la UI lo marca como no enviable.
+- Puedes quitar un artifact del contexto, eliminar artifacts individuales o limpiar todos los artifacts desde el panel.
+
+## Red wsnic
+
+El panel **WS** conecta la VM a `wsnic`, que en la practica actua como una interfaz de red virtual accesible por WebSocket. La UI lo llama proxy local por simplicidad, pero se parece mas a un punto de acceso/bridge para la red de la VM.
+
+Cuando esta conectado, wsnic da salida de red a la VM hacia Internet y hacia las redes que pueda alcanzar el host donde ejecutes el contenedor Docker. Esto implica que la VM puede acceder a recursos de la red local del host si la configuracion de red del host lo permite.
+
+Con red disponible, tambien puedes instalar paquetes Alpine dentro de la VM con `apk`, por ejemplo `apk add htop`. Recuerda que los cambios hechos en RAM/initramfs se pierden al apagar salvo que guardes/restaures estado segun el flujo de snapshots.
+
+- **URL** indica el endpoint WebSocket del proxy.
+- **Conectar / Desconectar** abre o cierra la conexion.
+- Al conectar, la app intenta configurar la red dentro de la VM cuando esta lista.
+- Los badges de cabecera y panel indican si wsnic esta desconectado, conectando, conectado o con error.
+
+Google Chrome y otros navegadores basados en Chromium pueden mostrar un permiso de acceso a red local al conectar con wsnic en `127.0.0.1`. Debes permitirlo para que la pagina pueda abrir el WebSocket local.
+
+Comando mostrado por la UI para abrir wsnic local:
+
+```bash
+docker rm -f browser-agent-wsnic 2>/dev/null || true; docker run -d --name browser-agent-wsnic --restart unless-stopped --cap-add=NET_ADMIN --device /dev/net/tun:/dev/net/tun --sysctl net.ipv4.ip_forward=1 --sysctl net.ipv4.conf.all.forwarding=1 --sysctl net.ipv4.conf.default.forwarding=1 -p 127.0.0.1:8086:8086 chschnell86/wsnic -i
+```
+
+Comando para cerrarlo:
+
+```bash
+docker rm -f browser-agent-wsnic
+```
+
+La red es opcional. Sin wsnic, la VM puede funcionar localmente, pero no tendra salida de red real.
+
+Hasta ahora se ha probado principalmente con wsnic local en el mismo equipo que abre la aplicacion. Queda pendiente validar bien un wsnic remoto; si lo expones en red, hazlo solo en entornos controlados porque estas dando conectividad de red a la VM.
+
+## Comprobaciones
+
+El panel **Comprobar** ejecuta validaciones de entorno y estado:
+
+- cabeceras necesarias para `SharedArrayBuffer`;
+- assets v86 y vendor;
+- disponibilidad WebGPU/WASM;
+- APIs de snapshot;
+- seriales y runners cuando la VM esta activa;
+- paquetes y tools esperadas por perfil.
+
+Si una comprobacion falla, revisa el detalle y el log de tools antes de arrancar de nuevo.
+
+## Estados y errores habituales
+
+| Estado o error                   | Que significa                                              | Accion recomendada                                                         |
+| -------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------- |
+| **v86 inactiva / apagada** | La VM aun no esta arrancada.                               | Elige perfil/disco y pulsa **Arrancar VM**.                           |
+| **WebGPU no disponible**   | El navegador o equipo no exponen WebGPU compatible.        | Usa otro navegador/equipo o un modelo con fallback WASM.                   |
+| **serial1 no preparado**   | El runner de tools aun no responde dentro de la VM.        | Espera al arranque completo y ejecuta **Comprobar**.                  |
+| **tool en ejecucion**      | Hay una operacion background activa.                       | Espera o pulsa **Cancelar tool** si procede.                          |
+| **modelo no cargado**      | El chat no puede generar aun.                              | Abre **LLM**, elige backend/modelo y pulsa **Cargar modelo**.   |
+| **wsnic no conecta**       | El proxy WebSocket local no esta disponible o no responde. | Revisa la URL del panel **WS** y el servicio wsnic local.             |
+| **snapshot error**         | No se pudo guardar o restaurar estado.                     | Comprueba memoria, fichero seleccionado y compatibilidad de configuracion. |
+| **disco no montado**       | Hay HDA seleccionado, pero no esta montado en la VM.       | Pulsa **Montar disco** cuando la shell este lista.                    |
+
+## Buenas practicas
+
+- Arranca primero con `alpine-base` si solo necesitas probar la VM.
+- Usa un modelo Ollama si tu navegador no acepta WebGPU correctamente, o prueba otro navegador con soporte WebGPU. Puedes revisar compatibilidad en [Can I use WebGPU](https://caniuse.com/webgpu).
+- Usa menos tools activas si el modelo local responde mal o consume demasiada memoria.
+- Mantén baja la concurrencia de herramientas de red dentro de v86.
+- Guarda snapshot antes de acciones largas o cambios que no quieras perder.
+- Consulta el log de tools cuando el chat diga que una herramienta fallo o genero un artifact.
