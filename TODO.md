@@ -42,6 +42,13 @@ Lista de temas detectados para revisar antes de una publicación estable.
 - [X] Revisar la calidad de las traducciones al inglés: `npm run check` garantiza paridad de claves, no que el texto EN sea correcto o natural. Repasar manualmente las cadenas más visibles (errores, panel LLM, chat, checks).
 - [X] Alinear la documentación con i18n: actualizar `README.md` y `docs/USAGE.md` (y lo que aplique) para reflejar el selector de idioma ES/EN y no dejar solo contenido en español donde deba servir también a usuarios en inglés.
 
+## Documentación y manual de usuario
+
+- [ ] Mantener `README.md` y la documentación de `docs/` en español e inglés, con estructura equivalente y enlaces claros entre idiomas.
+- [ ] Crear un manual de uso de la aplicación separado de la documentación del repositorio: debe explicar el funcionamiento para usuarios finales sin centrarse en instalación, desarrollo ni scripts.
+- [ ] Enlazar el manual de uso desde la GUI, respetando el idioma activo cuando existan versiones ES/EN.
+- [ ] Documentar en el manual las pantallas principales, botones, controles, perfiles VM, consolas, chat LLM, tools, carga de modelos, snapshots, discos y estados/errores habituales con capturas o imágenes actualizadas.
+
 ## Build, CSS y tamaño
 
 - [X] Revisar HTML/CSS generado o inyectado desde JavaScript (p. ej. plantillas del panel LLM): decidir qué puede vivir directamente en`index.html` o ficheros estáticos para evitar construcción en runtime, reducir JS y simplificar mantenimiento.
