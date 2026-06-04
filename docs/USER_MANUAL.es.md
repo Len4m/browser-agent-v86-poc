@@ -163,7 +163,9 @@ Los artifacts son resultados reales de tools guardados por el panel **LLM** para
 
 ## Red wsnic
 
-El panel **WS** conecta la VM a `wsnic`, que en la practica actua como una interfaz de red virtual accesible por WebSocket. La UI lo llama proxy local por simplicidad, pero se parece mas a un punto de acceso/bridge para la red de la VM.
+`wsnic` emula la NIC de la VM sobre WebSockets y la enlaza a una red virtual en tu equipo (servicio local en Docker).
+
+El panel **WS** conecta el navegador con ese servicio. La UI lo llama proxy local por simplicidad, pero se parece mas a un punto de acceso/bridge para la red de la VM.
 
 Cuando esta conectado, wsnic da salida de red a la VM hacia Internet y hacia las redes que pueda alcanzar el host donde ejecutes el contenedor Docker. Esto implica que la VM puede acceder a recursos de la red local del host si la configuracion de red del host lo permite.
 
@@ -173,6 +175,8 @@ Con red disponible, tambien puedes instalar paquetes Alpine dentro de la VM con 
 - **Conectar / Desconectar** abre o cierra la conexion.
 - Al conectar, la app intenta configurar la red dentro de la VM cuando esta lista.
 - Los badges de cabecera y panel indican si wsnic esta desconectado, conectando, conectado o con error.
+
+Con el contenedor wsnic en marcha, **Conectar** en el panel y la red configurada en la VM, ya tienes salida a Internet y a la red desde **dentro de la VM** (`curl`, `apk`, herramientas del chat, etc.). No necesitas nada mas para ese uso habitual.
 
 Google Chrome y otros navegadores basados en Chromium pueden mostrar un permiso de acceso a red local al conectar con wsnic en `127.0.0.1`. Debes permitirlo para que la pagina pueda abrir el WebSocket local.
 
@@ -191,6 +195,26 @@ docker rm -f browser-agent-wsnic
 La red es opcional. Sin wsnic, la VM puede funcionar localmente, pero no tendra salida de red real.
 
 Hasta ahora se ha probado principalmente con wsnic local en el mismo equipo que abre la aplicacion. Queda pendiente validar bien un wsnic remoto; si lo expones en red, hazlo solo en entornos controlados porque estas dando conectividad de red a la VM.
+
+### Opcional: acceso desde el host (Linux)
+
+Solo si quieres que **tu ordenador** (fuera del navegador) llegue a la VM — por ejemplo para probar un servidor que arranques en la VM desde el host. No es obligatorio para usar la red dentro de la VM.
+
+Por defecto wsnic usa `192.168.86.0/24` (puerta de enlace `192.168.86.1`). Cada pestaña conectada recibe una IP distinta (p. ej. `.2` y `.3` con dos VMs). Compruebala en la consola de la VM con `ip -4 addr`.
+
+> **Advertencia:** si tu LAN ya usa la subred `192.168.86.0/24`, puede haber conflicto de rutas. Arranca wsnic con otra subred (`-s`, p. ej. `192.168.87.0/24`); esa opcion no viene en el comando Docker por defecto de la UI.
+
+El bridge vive dentro del contenedor Docker. Enruta la subred hacia la IP del contenedor en `docker0`:
+
+```bash
+WSNIC_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' browser-agent-wsnic)
+sudo ip route add 192.168.86.0/24 via "$WSNIC_IP" dev docker0
+ping -c 2 192.168.86.2   # sustituye por la IP de tu VM
+```
+
+Con la ruta activa puedes consumir servicios de la VM (HTTP, puertos de prueba, etc.) desde el host. Puedes ejecutarlo con todo en marcha; no reinicies contenedor, VM ni navegador. Si la ruta ya existe: `sudo ip route replace ...` (mismos parametros). Para quitarla: `sudo ip route del 192.168.86.0/24 via "$WSNIC_IP" dev docker0`. Tras reiniciar el **equipo**, repite el bloque cuando el contenedor este arriba.
+
+Alternativa sin rutas en el host: `docker run --rm -it --network container:browser-agent-wsnic alpine` y desde ahi `ping` o `curl` a la IP de la VM.
 
 ## Comprobaciones
 
