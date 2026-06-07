@@ -59,7 +59,7 @@ Lista de temas detectados para revisar antes de una publicación estable.
 - [X] Revisar CSS: ahora hay muchos ficheros; agrupar o simplificar reglas si mejora mantenimiento y permite reducir bytes sin perder claridad.
 - [X] Revisar configuración de esbuild para reducir tamaño: minify en runtime zip, sourcemaps opcionales, splitting si aporta valor, tree shaking real y separación de bundles pesados.
 - [X] Revisar qué assets se copian a`public/vendor/` y asegurar que solo se incluyen los necesarios para ejecución.
-- [X] Reorganizar `scripts/` en subcarpetas: hoy hay ~19 ficheros mezclados (build, check, clean, setup/VM, LLM). Agrupar por dominio (p. ej. `scripts/build/`, `scripts/check/`, `scripts/clean/`, `scripts/vm/`, `scripts/llm/`) y actualizar referencias en `package.json`, `build.mjs` y documentación. Aparte, revisar scripts de **migración ya consumida** que no entran en `npm run build` ni `npm run check`: p. ej. `migrate-i18n-to-json.mjs` (sirvió para volcar el español inline a `es.json`; probablemente ya no hace falta). Decidir si archivarlos en una carpeta tipo `scripts/archive/` o quitarlos del repo para no confundirlos con tooling activo.
+- [X] Reorganizar `scripts/` con orquestadores simples en la raíz (`build.mjs`, `setup.mjs`, `check.mjs`, `clean.mjs`) y pasos internos en `build/`, `setup/`, `check/` y `clean/`.
 
 ## Calidad y tests
 

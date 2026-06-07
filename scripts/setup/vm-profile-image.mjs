@@ -105,7 +105,7 @@ if (extraRepositories.length) console.log(`Repos extra: ${extraRepositories.join
 console.log(`Salida: ${output}`);
 
 console.log("\n== Descargando assets base ==");
-run(process.execPath, ["scripts/vm/download-assets.mjs"]);
+run(process.execPath, ["scripts/setup/runtime-assets.mjs"]);
 
 const profileBuildDir = join(root, "build", "profiles", id);
 mkdirSync(profileBuildDir, { recursive: true });
@@ -128,7 +128,7 @@ writeFileSync(buildCommandsFile, [
 ].join("\n"));
 
 console.log("\n== Generando imagen del perfil ==");
-run("bash", ["scripts/vm/build-alpine-initramfs.sh"], {
+run("bash", ["scripts/setup/vm-alpine-initramfs.sh"], {
   env: {
     PROFILE_ID: id,
     PROFILE_NAME: name,

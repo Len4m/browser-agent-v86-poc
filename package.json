@@ -16,13 +16,13 @@
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
-    "prepare:local": "node scripts/vm/setup.mjs && node scripts/build/index.mjs",
-    "setup": "node scripts/vm/setup.mjs",
-    "build": "node scripts/build/index.mjs",
-    "build:prod": "BA_PUBLIC_SITE_URL=${BA_PUBLIC_SITE_URL:-https://browseragent.icu/} BA_MINIFY=1 node scripts/build/index.mjs",
-    "check": "tsc --noEmit && node scripts/check/index.mjs",
-    "clean": "node scripts/clean/index.mjs",
-    "clean:runtime": "node scripts/clean/runtime.mjs",
+    "prepare:local": "npm run setup && npm run build",
+    "setup": "node scripts/setup.mjs",
+    "build": "node scripts/build.mjs",
+    "build:prod": "BA_PUBLIC_SITE_URL=${BA_PUBLIC_SITE_URL:-https://browseragent.icu/} BA_MINIFY=1 node scripts/build.mjs",
+    "check": "tsc --noEmit && node scripts/check.mjs",
+    "clean": "node scripts/clean.mjs",
+    "clean:runtime": "node scripts/clean-runtime.mjs",
     "clean:all": "npm run clean && npm run clean:runtime"
   },
   "engines": {

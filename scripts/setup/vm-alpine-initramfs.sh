@@ -57,7 +57,7 @@ fi
 
 if [ ! -f "$MINIROOTFS" ]; then
   echo "No existe $MINIROOTFS" >&2
-  echo "Ejecuta primero: node scripts/vm/download-assets.mjs" >&2
+  echo "Ejecuta primero: node scripts/setup/runtime-assets.mjs" >&2
   exit 1
 fi
 

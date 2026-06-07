@@ -73,7 +73,7 @@ No abras `index.html` como `file://`. `npm start` ya sirve `public/` con las cab
 public/             # raíz servida al navegador; contiene salidas generadas y assets estáticos
 src/browser/        # código TypeScript del frontend
 src/web/            # plantilla HTML y CSS fuente
-scripts/            # tooling por dominio: build, check, clean, vm y llm
+scripts/            # scripts principales y pasos internos de build/setup/check/clean
 vm/profiles/        # perfiles Alpine de VM
 vm/overlay/common/  # runners y ficheros incluidos en el initramfs
 docs/USER_MANUAL.es.md  # manual de uso (usuarios finales), español

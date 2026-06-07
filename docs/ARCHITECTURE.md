@@ -89,14 +89,15 @@ Toda la copy de UI vive en catálogos JSON (`src/web/locales/*.json`) y el códi
 - Selección: idioma guardado en `localStorage` (`ba.lang`); si no hay, navegador en español → `es`, en otro caso → `en`. El selector de cabecera (`src/browser/app/lang-selector.ts`) cambia el idioma en caliente sin recargar.
 - `npm run check` ejecuta `scripts/check/i18n.mjs` para garantizar paridad de claves entre `es.json` y `en.json`. La paridad de claves no valida la calidad del texto; las cadenas nuevas deben añadirse en ambos catálogos.
 
-## Build LLM
+## Build de la app
 
-`scripts/build/index.mjs` ejecuta, en orden:
+`scripts/build.mjs` ejecuta, en orden:
 
-1. `scripts/llm/build-models.mjs`
-2. `scripts/vm/download-assets.mjs`
-3. `scripts/llm/build-ai-bundle.mjs`
-4. `scripts/build/frontend.mjs`
+1. `scripts/build/llm-model-catalog.mjs`
+2. `scripts/build/llm-browser-bundles.mjs`
+3. `scripts/build/frontend.mjs`
+
+`npm run build` presupone que `npm run setup` ya ha preparado los assets base de runtime que el HTML versiona, como xterm y el perfil Alpine base.
 
 Salidas LLM:
 
@@ -109,7 +110,7 @@ El bridge importa el bundle generado con query versionada y expone `window.BA_AI
 
 ## Assets de runtime
 
-Las librerías de runtime deben estar declaradas en `package.json` y copiarse desde `node_modules` con `scripts/vm/download-assets.mjs`:
+Las librerías de runtime deben estar declaradas en `package.json` y copiarse desde `node_modules` con `scripts/setup/runtime-assets.mjs`:
 
 | Dependencia | Salida |
 | --- | --- |
@@ -184,20 +185,20 @@ Fuentes de runners:
 - `vm/overlay/common/usr/local/bin/ba-serial1-runner`
 - `vm/overlay/common/usr/local/bin/ba-serial2-console-runner`
 
-Ambos runners guest están escritos en Python 3 y son procesos persistentes supervisados por el initramfs. Por tanto, `python3` es dependencia obligatoria de todos los perfiles VM; `npm run check` y `scripts/vm/build-profile.mjs` lo validan.
+Ambos runners guest están escritos en Python 3 y son procesos persistentes supervisados por el initramfs. Por tanto, `python3` es dependencia obligatoria de todos los perfiles VM; `npm run check` y `scripts/setup/vm-profile-image.mjs` lo validan.
 
 ## VM e imágenes
 
-`scripts/vm/setup.mjs` ejecuta:
+`scripts/setup.mjs` ejecuta:
 
-1. `scripts/vm/download-assets.mjs`
-2. `scripts/vm/build-alpine-initramfs.sh`
-3. `scripts/vm/build-profile.mjs vm/profiles/alpine-base.json`
-4. `scripts/vm/build-profile.mjs vm/profiles/alpine-pentest-lite.json`
-5. `scripts/vm/build-profile.mjs vm/profiles/alpine-pentest-web.json`
-6. `scripts/vm/create-disks.sh`
+1. `scripts/setup/runtime-assets.mjs`
+2. `scripts/setup/vm-alpine-initramfs.sh`
+3. `scripts/setup/vm-profile-image.mjs vm/profiles/alpine-base.json`
+4. `scripts/setup/vm-profile-image.mjs vm/profiles/alpine-pentest-lite.json`
+5. `scripts/setup/vm-profile-image.mjs vm/profiles/alpine-pentest-web.json`
+6. `scripts/setup/vm-hda-data-disks.sh`
 
-`scripts/vm/build-profile.mjs` genera manifests en `public/v86/images/profiles/` y mantiene `index.json`. Los perfiles usan initramfs; los discos HDA creados por `scripts/vm/create-disks.sh` son imágenes ext2 raw para datos.
+`scripts/setup/vm-profile-image.mjs` genera manifests en `public/v86/images/profiles/` y mantiene `index.json`. Los perfiles usan initramfs; los discos HDA creados por `scripts/setup/vm-hda-data-disks.sh` son imágenes ext2 raw para datos.
 
 Los runners seriales se instalan desde `vm/overlay/common/usr/local/bin/`. Tras cambiar overlay, perfiles, runners o build de Alpine, ejecutar `npm run setup`.
 
@@ -249,9 +250,9 @@ Archivos clave:
 `npm run check` ejecuta:
 
 - `tsc --noEmit`
-- `scripts/check/index.mjs`
+- `scripts/check.mjs`
 
-`scripts/check/index.mjs` ejecuta:
+`scripts/check.mjs` ejecuta:
 
 - `scripts/check/llm-models.mjs`
 - `scripts/check/vm-profiles.mjs`

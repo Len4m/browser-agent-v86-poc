@@ -164,7 +164,7 @@ Flujo recomendado:
 | `npm install` | Instala dependencias npm; no genera los assets pesados |
 | `npm run prepare:local` | Ejecuta `setup` y `build` para dejar un entorno local usable |
 | `npm run setup` | Descarga/copia assets base, genera initramfs, perfiles y discos |
-| `npm run build` | Genera catálogo LLM, vendors, worker/bridge LLM y bundle frontend |
+| `npm run build` | Genera catálogo LLM, worker/bridge LLM y bundle frontend; requiere haber ejecutado `setup` al menos una vez |
 | `npm run build:prod` | Genera el runtime minificado para producción: JS/CSS minificados y hashes de caché |
 | `npm run check` | Valida TypeScript, modelos LLM, perfiles VM, manifest frontend, sintaxis JS y servidor |
 | `npm run clean` | Borra `build/` y las salidas generadas por el build en `public/` |
@@ -176,7 +176,7 @@ Regenera con `npm run setup` después de tocar:
 
 - `vm/profiles/*.json`
 - `vm/overlay/common/`
-- `scripts/vm/build-alpine-initramfs.sh`
+- `scripts/setup/vm-alpine-initramfs.sh`
 - runners seriales
 
 Los perfiles VM deben mantener `python3` en `packages`, porque los runners seriales del guest dependen de Python 3.
@@ -197,7 +197,7 @@ Regenera con `npm run build` después de tocar:
 | `src/web/styles/` | `public/assets/app.css` | `npm run build:prod` |
 | `src/browser/chat/provider/ai-sdk/`, `data/llm-models.json` | `public/assets/chat/`, `build/browser/generated/` | `npm run build` |
 | `vm/profiles/*.json`, `vm/overlay/common/` | `build/profiles/`, `public/v86/images/profiles/` | `npm run setup` |
-| v86, xterm, DOMPurify, streaming-markdown, BIOS y Alpine base | `public/vendor/`, `public/v86/build/`, `public/v86/bios/`, `public/v86/images/` | `npm run build` o `npm run setup` |
+| v86, xterm, DOMPurify, streaming-markdown, BIOS y Alpine base | `public/vendor/`, `public/v86/build/`, `public/v86/bios/`, `public/v86/images/` | `npm run setup` |
 | Discos HDA locales | `public/v86/disks/` | `npm run setup` |
 
 ## Limpieza

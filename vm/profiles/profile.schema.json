@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Len4m/browser-agent-v86-poc/schemas/vm-profile.schema.json",
   "title": "Browser Agent v86 VM profile",
-  "description": "Schema for source VM profiles in vm/profiles/*.json. Profiles are consumed by scripts/vm/build-profile.mjs to generate public v86 initramfs manifests.",
+  "description": "Schema for source VM profiles in vm/profiles/*.json. Profiles are consumed by scripts/setup/vm-profile-image.mjs to generate public v86 initramfs manifests.",
   "type": "object",
   "additionalProperties": false,
   "required": ["id"],
@@ -112,7 +112,7 @@
         "type": "string",
         "minLength": 1
       },
-      "description": "Shell commands executed by scripts/vm/build-alpine-initramfs.sh against /rootfs during image generation."
+      "description": "Shell commands executed by scripts/setup/vm-alpine-initramfs.sh against /rootfs during image generation."
     },
     "validationCommands": {
       "type": "array",
