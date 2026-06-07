@@ -151,6 +151,7 @@ function renderIndexHtml({ cssHref, bridgeHref, appHref }) {
   return readFileSync(sourceIndexFile, "utf8")
     .replaceAll("%BA_CANONICAL_URL%", escapeHtmlAttr(canonicalUrl))
     .replaceAll("%BA_SOCIAL_IMAGE_URL%", escapeHtmlAttr(publicAssetUrl("assets/browser-agent-preview.png")))
+    .replaceAll("%BA_SOCIAL_LOGO_URL%", escapeHtmlAttr(publicAssetUrl("assets/icons/browser-agent-header-64.webp")))
     .replace(/href="\.\/vendor\/xterm\/xterm\.css(?:\?v=[^"]*)?"/g, `href="./vendor/xterm/xterm.css?v=${cacheKeyForPublicFile("vendor/xterm/xterm.css")}"`)
     .replace(/href="\.\/(?:style\.css|assets\/app\.css)(?:\?v=[^"]*)?"/g, `href="${cssHref}"`)
     .replace(/id="cfg-bzimage" type="hidden" value="[^"]*"/g, `id="cfg-bzimage" type="hidden" value="${versionedPublicPath("v86/images/alpine-vmlinuz-lts")}"`)

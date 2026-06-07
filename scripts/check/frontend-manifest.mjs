@@ -88,8 +88,9 @@ const requiredSeoSnippets = [
   ["canonical", /<link rel="canonical" href="(?:\/|https?:\/\/[^"]+)" \/>/],
   ["favicon ico", /<link rel="icon" href="\/favicon\.ico" sizes="any" \/>/],
   ["header brand icon", /<img\s+class="header-brand-icon"\s+src="\/assets\/icons\/browser-agent-header-64\.webp"\s+srcset="\/assets\/icons\/browser-agent-header-64\.webp 1x, \/assets\/icons\/browser-agent-header-96\.webp 2x"\s+width="54"\s+height="54"\s+alt=""\s+decoding="async"\s+\/>/],
-  ["Open Graph title", /<meta property="og:title" content="Browser Agent v86 POC" \/>/],
+  ["Open Graph title", /<meta property="og:title" content="Browser Agent v86 - Linux VM and AI Agent in Your Browser" \/>/],
   ["Open Graph image", /<meta property="og:image" content="(?:\/assets\/browser-agent-preview\.png|https?:\/\/[^"]+\/assets\/browser-agent-preview\.png)" \/>/],
+  ["Open Graph logo", /<meta property="og:logo" content="(?:\/assets\/icons\/browser-agent-header-64\.webp|https?:\/\/[^"]+\/assets\/icons\/browser-agent-header-64\.webp)" \/>/],
   ["Twitter Card", /<meta name="twitter:card" content="summary_large_image" \/>/],
   ["Twitter image", /<meta name="twitter:image" content="(?:\/assets\/browser-agent-preview\.png|https?:\/\/[^"]+\/assets\/browser-agent-preview\.png)" \/>/],
 ];
