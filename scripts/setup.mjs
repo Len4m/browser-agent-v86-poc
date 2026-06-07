@@ -1,16 +1,33 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = fileURLToPath(new URL("..", import.meta.url));
+const profilesDir = join(root, "vm", "profiles");
+const profileFiles = readdirSync(profilesDir)
+  .filter((file) => file.endsWith(".json") && !file.endsWith(".schema.json"))
+  .sort()
+  .map((file) => `vm/profiles/${file}`);
+
+if (!profileFiles.length) {
+  console.error("No VM profiles found in vm/profiles/*.json");
+  process.exit(1);
+}
 
 const steps = [
+  [process.execPath, ["scripts/check/vm-profiles.mjs"]],
   [process.execPath, ["scripts/setup/runtime-assets.mjs"]],
   ["bash", ["scripts/setup/vm-alpine-initramfs.sh"]],
-  [process.execPath, ["scripts/setup/vm-profile-image.mjs", "vm/profiles/alpine-base.json"]],
-  [process.execPath, ["scripts/setup/vm-profile-image.mjs", "vm/profiles/alpine-pentest-lite.json"]],
-  [process.execPath, ["scripts/setup/vm-profile-image.mjs", "vm/profiles/alpine-pentest-web.json"]],
+  ...profileFiles.map((profilePath) => [
+    process.execPath,
+    ["scripts/setup/vm-profile-image.mjs", profilePath],
+  ]),
   ["bash", ["scripts/setup/vm-hda-data-disks.sh"]],
 ];
 
 for (const [command, args] of steps) {
-  const result = spawnSync(command, args, { stdio: "inherit" });
+  const result = spawnSync(command, args, { cwd: root, stdio: "inherit" });
   if (result.status !== 0) process.exit(result.status ?? 1);
 }

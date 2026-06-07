@@ -191,12 +191,13 @@ Ambos runners guest están escritos en Python 3 y son procesos persistentes supe
 
 `scripts/setup.mjs` ejecuta:
 
-1. `scripts/setup/runtime-assets.mjs`
-2. `scripts/setup/vm-alpine-initramfs.sh`
-3. `scripts/setup/vm-profile-image.mjs vm/profiles/alpine-base.json`
-4. `scripts/setup/vm-profile-image.mjs vm/profiles/alpine-pentest-lite.json`
-5. `scripts/setup/vm-profile-image.mjs vm/profiles/alpine-pentest-web.json`
-6. `scripts/setup/vm-hda-data-disks.sh`
+1. `scripts/check/vm-profiles.mjs`
+2. `scripts/setup/runtime-assets.mjs`
+3. `scripts/setup/vm-alpine-initramfs.sh`
+4. `scripts/setup/vm-profile-image.mjs vm/profiles/*.json` para cada perfil válido, en orden de nombre de fichero
+5. `scripts/setup/vm-hda-data-disks.sh`
+
+El listado de perfiles se descubre desde `vm/profiles/*.json`, excluyendo `profile.schema.json`. Si algún perfil no pasa el schema, `setup` se detiene antes de generar imágenes.
 
 `scripts/setup/vm-profile-image.mjs` genera manifests en `public/v86/images/profiles/` y mantiene `index.json`. Los perfiles usan initramfs; los discos HDA creados por `scripts/setup/vm-hda-data-disks.sh` son imágenes ext2 raw para datos.
 
