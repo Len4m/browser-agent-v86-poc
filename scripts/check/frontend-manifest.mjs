@@ -16,6 +16,46 @@ function extract(pattern, text) {
   return [...text.matchAll(pattern)].map((m) => m[1]);
 }
 
+function attributesFor(tag) {
+  const attributes = {};
+  for (const match of tag.matchAll(/\s([^\s=]+)\s*=\s*"([^"]*)"/g)) {
+    attributes[match[1].toLowerCase()] = match[2];
+  }
+  return attributes;
+}
+
+function findMetaContent(attribute, value) {
+  for (const match of indexHtml.matchAll(/<meta\b[^>]*>/g)) {
+    const attributes = attributesFor(match[0]);
+    if (attributes[attribute] === value) return attributes.content || "";
+  }
+  return "";
+}
+
+function findLinkHref(rel) {
+  for (const match of indexHtml.matchAll(/<link\b[^>]*>/g)) {
+    const attributes = attributesFor(match[0]);
+    const rels = (attributes.rel || "").split(/\s+/).filter(Boolean);
+    if (rels.includes(rel)) return attributes.href || "";
+  }
+  return "";
+}
+
+function isCanonicalUrl(value) {
+  return value === "/" || /^https?:\/\/[^\s"]+$/.test(value);
+}
+
+function isPublicAssetUrl(value, expectedPath) {
+  const path = `/${expectedPath.replace(/^\/+/, "")}`;
+  if (value === path) return true;
+  try {
+    const url = new URL(value);
+    return (url.protocol === "http:" || url.protocol === "https:") && url.pathname === path;
+  } catch {
+    return false;
+  }
+}
+
 const indexHtml = readFileSync(join(publicRoot, "index.html"), "utf8");
 const styleCss = readFileSync(join(publicRoot, "style.css"), "utf8");
 
@@ -83,23 +123,72 @@ if (!indexCss.includes("style.css") && !indexCss.includes("assets/app.css")) {
   console.error("index.html debe cargar ./style.css o ./assets/app.css");
 }
 
-const requiredSeoSnippets = [
-  ["meta description", /<meta name="description" content="[^"]{40,180}" \/>/],
-  ["canonical", /<link rel="canonical" href="(?:\/|https?:\/\/[^"]+)" \/>/],
-  ["favicon ico", /<link rel="icon" href="\/favicon\.ico" sizes="any" \/>/],
-  ["header brand icon", /<img\s+class="header-brand-icon"\s+src="\/assets\/icons\/browser-agent-header-64\.webp"\s+srcset="\/assets\/icons\/browser-agent-header-64\.webp 1x, \/assets\/icons\/browser-agent-header-96\.webp 2x"\s+width="54"\s+height="54"\s+alt=""\s+decoding="async"\s+\/>/],
-  ["Open Graph title", /<meta property="og:title" content="Browser Agent v86 - Linux VM and AI Agent in Your Browser" \/>/],
-  ["Open Graph image", /<meta property="og:image" content="(?:\/assets\/browser-agent-preview\.png|https?:\/\/[^"]+\/assets\/browser-agent-preview\.png)" \/>/],
-  ["Open Graph logo", /<meta property="og:logo" content="(?:\/assets\/icons\/browser-agent-header-64\.webp|https?:\/\/[^"]+\/assets\/icons\/browser-agent-header-64\.webp)" \/>/],
-  ["Twitter Card", /<meta name="twitter:card" content="summary_large_image" \/>/],
-  ["Twitter image", /<meta name="twitter:image" content="(?:\/assets\/browser-agent-preview\.png|https?:\/\/[^"]+\/assets\/browser-agent-preview\.png)" \/>/],
+const metaDescription = findMetaContent("name", "description");
+const canonicalUrl = findLinkHref("canonical");
+const faviconHref = findLinkHref("icon");
+const ogTitle = findMetaContent("property", "og:title");
+const ogDescription = findMetaContent("property", "og:description");
+const ogUrl = findMetaContent("property", "og:url");
+const ogImage = findMetaContent("property", "og:image");
+const ogLogo = findMetaContent("property", "og:logo");
+const twitterCard = findMetaContent("name", "twitter:card");
+const twitterTitle = findMetaContent("name", "twitter:title");
+const twitterDescription = findMetaContent("name", "twitter:description");
+const twitterImage = findMetaContent("name", "twitter:image");
+
+const requiredTextMeta = [
+  ["meta description", metaDescription],
+  ["Open Graph title", ogTitle],
+  ["Open Graph description", ogDescription],
+  ["Twitter title", twitterTitle],
+  ["Twitter description", twitterDescription],
 ];
 
-for (const [label, pattern] of requiredSeoSnippets) {
-  if (!pattern.test(indexHtml)) {
+for (const [label, content] of requiredTextMeta) {
+  if (!content.trim()) {
     failed = true;
-    console.error(`index.html debe incluir SEO/meta válido: ${label}`);
+    console.error(`index.html debe incluir ${label} no vacío`);
   }
+}
+
+if (!isCanonicalUrl(canonicalUrl)) {
+  failed = true;
+  console.error("index.html debe incluir canonical con / o URL absoluta http(s)");
+}
+
+if (!isCanonicalUrl(ogUrl)) {
+  failed = true;
+  console.error("index.html debe incluir og:url con / o URL absoluta http(s)");
+}
+
+if (canonicalUrl && ogUrl && canonicalUrl !== ogUrl) {
+  failed = true;
+  console.error("index.html debe mantener canonical y og:url sincronizados");
+}
+
+if (faviconHref !== "/favicon.ico") {
+  failed = true;
+  console.error("index.html debe enlazar /favicon.ico como icono principal");
+}
+
+if (twitterCard !== "summary_large_image") {
+  failed = true;
+  console.error("index.html debe declarar twitter:card=summary_large_image");
+}
+
+if (!isPublicAssetUrl(ogImage, "assets/browser-agent-preview.png")) {
+  failed = true;
+  console.error("index.html debe incluir og:image apuntando a assets/browser-agent-preview.png");
+}
+
+if (!isPublicAssetUrl(twitterImage, "assets/browser-agent-preview.png")) {
+  failed = true;
+  console.error("index.html debe incluir twitter:image apuntando a assets/browser-agent-preview.png");
+}
+
+if (!isPublicAssetUrl(ogLogo, "assets/icons/browser-agent-header-64.webp")) {
+  failed = true;
+  console.error("index.html debe incluir og:logo apuntando a assets/icons/browser-agent-header-64.webp");
 }
 
 for (const [file, pattern] of hashedRuntimeRefs) {
