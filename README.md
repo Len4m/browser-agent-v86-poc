@@ -88,7 +88,7 @@ docs/ARCHITECTURE.md    # arquitectura y contratos internos (español)
 | --- | --- | --- |
 | [README.md](README.md) | ES | Entrada al repositorio (este fichero). |
 | [docs/USER_MANUAL.es.md](docs/USER_MANUAL.es.md) | ES | Manual de uso de la aplicación (VM, chat, paneles); sin instalación ni desarrollo. |
-| [docs/USER_MANUAL.en.md](docs/USER_MANUAL.en.md) | EN | Same scope as the Spanish user manual. |
+| [docs/USER_MANUAL.en.md](docs/USER_MANUAL.en.md) | EN | User manual for application usage (VM, chat, panels); does not cover installation or development. |
 | [docs/USAGE.md](docs/USAGE.md) | ES | Instalación local, VM/LLM/wsnic, scripts, runtime zip y problemas habituales. |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | ES | Arquitectura frontend, build, VM, seriales, LLM y reglas de mantenimiento. |
 
@@ -96,4 +96,13 @@ Los manuales de usuario enlazan entre sí por idioma. Para contribuir o desplega
 
 ## Licencia
 
-MIT. Consulta [LICENSE](LICENSE).
+El código propio de Browser Agent v86 POC se publica bajo licencia MIT. Consulta [LICENSE](LICENSE).
+
+El runtime incluye o descarga componentes de terceros con sus propias licencias. Hay un resumen en [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt).
+
+Dependencias principales de terceros:
+
+- v86: BSD-2-Clause.
+- `@browser-ai/transformers-js`, `@huggingface/transformers` y AI SDK (`ai`): Apache-2.0.
+- Los perfiles Alpine generados pueden contener paquetes con licencias GPL, LGPL y otras licencias por paquete. Al redistribuir initramfs, imagenes o perfiles generados hay que conservar los avisos correspondientes y cumplir sus obligaciones.
+- Los modelos LLM descargados por el usuario desde Hugging Face, Ollama u otros origenes mantienen sus propias licencias y no pasan a estar cubiertos por la licencia MIT de este repositorio.

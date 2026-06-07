@@ -1,0 +1,28 @@
+Third-party notices
+===================
+
+Browser Agent v86 POC is MIT licensed. Third-party components keep their own
+licenses.
+
+Main components:
+
+- v86: BSD-2-Clause, https://github.com/copy/v86/blob/master/LICENSE
+- @browser-ai/transformers-js: Apache-2.0, https://github.com/jakobhoeg/browser-ai
+- @huggingface/transformers: Apache-2.0, https://github.com/huggingface/transformers.js/blob/main/LICENSE
+- ai / AI SDK: Apache-2.0, https://github.com/vercel/ai/blob/main/LICENSE
+- @xterm/xterm: MIT, https://github.com/xtermjs/xterm.js
+- DOMPurify: MPL-2.0 OR Apache-2.0, https://github.com/cure53/DOMPurify/blob/main/LICENSE
+- streaming-markdown: MIT, https://github.com/thetarnav/streaming-markdown
+- zod: MIT, https://github.com/colinhacks/zod
+- esbuild: MIT, https://github.com/evanw/esbuild/blob/main/LICENSE.md
+- TypeScript: Apache-2.0, https://github.com/microsoft/TypeScript/blob/main/LICENSE.txt
+
+Generated Alpine VM profiles, initramfs files and disk images are not MIT
+licensed as a whole. They may contain Alpine packages under GPL, LGPL, MIT,
+BSD, Apache-2.0, MPL and other licenses. Redistribute those generated files only
+with the corresponding package notices and source-code availability where the
+included package licenses require it.
+
+Downloaded LLM models, Ollama models, BIOS/firmware files, Linux kernels and
+Alpine base assets keep their upstream licenses. Review those upstream licenses
+before redistributing them or using them commercially.
