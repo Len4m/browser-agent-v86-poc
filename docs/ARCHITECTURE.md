@@ -16,13 +16,13 @@ flowchart LR
     AiBundle["AI SDK bundle<br/>assets/chat/ai-sdk-browser.mjs"]
     Worker["Transformers.js worker"]
     V86["v86 emulator"]
-  end
 
-  subgraph VM["VM Alpine x86"]
-    PTY["PTYs de usuario 2-4<br/>/bin/sh, nano, top..."]
-    S1["ba-serial1-runner<br/>tools/checks"]
-    S2["ba-serial2-console-runner<br/>daemon xterm/PTY"]
-    Tools["Comandos Alpine"]
+    subgraph VM["VM Alpine x86"]
+      PTY["PTYs de usuario 2-4<br/>/bin/sh, nano, top..."]
+      S1["ba-serial1-runner<br/>tools/checks"]
+      S2["ba-serial2-console-runner<br/>daemon xterm/PTY"]
+      Tools["Comandos Alpine"]
+    end
   end
 
   subgraph Local["Servicios locales opcionales"]
