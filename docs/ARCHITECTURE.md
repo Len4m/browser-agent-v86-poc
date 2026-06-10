@@ -7,43 +7,57 @@ La VM corre con **v86** y Alpine x86. La capa LLM usa **AI SDK v6** con backends
 ## Vista general
 
 ```mermaid
+---
+config:
+  layout: elk
+  elk:
+    nodePlacementStrategy: BRANDES_KOEPF
+    considerModelOrder: NODES_AND_EDGES
+---
 flowchart LR
   subgraph Browser["Navegador"]
+    direction TB
     UI["UI<br/>public/index.html + app.js"]
-    Xterm["⌨️ xterm.js<br/>hasta 4 pestañas"]
     Chat["💬 Chat LLM"]
+    Xterm["⌨️ xterm.js<br/>hasta 4 pestañas"]
     Bridge["AI SDK bridge<br/>assets/ai-sdk-bridge.mjs"]
     AiBundle["AI SDK bundle<br/>assets/chat/ai-sdk-browser.mjs"]
     Worker["Transformers.js worker"]
     V86["🖥️ v86 emulator"]
 
     subgraph VM["🐧 VM Alpine x86"]
-      PTY["PTYs de usuario 2-4<br/>/bin/sh, nano, top..."]
+      direction TB
       S1["ba-serial1-runner<br/>tools/checks"]
       S2["ba-serial2-console-runner<br/>daemon xterm/PTY"]
+      PTY["PTYs de usuario 2-4<br/>/bin/sh, nano, top..."]
       Tools["Comandos Alpine"]
     end
   end
 
   subgraph Local["🏠 Servicios locales opcionales"]
+    direction TB
     Ollama["🦙 Ollama<br/>127.0.0.1:11434"]
     Wsnic["wsnic<br/>127.0.0.1:8086"]
   end
 
   UI --> Chat
   UI --> Xterm
-  UI --> V86
+  UI -->|"arranque · snapshots · disco"| V86
+
   Chat --> Bridge
   Bridge --> AiBundle
   AiBundle --> Worker
   Bridge --> Ollama
+
   Chat -->|"execVm / tools"| V86
   Xterm <-->|"serial0 / ttyS0<br/>arranque real"| V86
   Xterm <-->|"serial2 / ttyS2<br/>frames base64"| V86
+
   V86 -->|"ttyS1"| S1
   S1 --> Tools
   V86 -->|"ttyS2"| S2
   S2 <-->|"openpty/select"| PTY
+
   V86 <-->|"red WS opcional"| Wsnic
 ```
 
