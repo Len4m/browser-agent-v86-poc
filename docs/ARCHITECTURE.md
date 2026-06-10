@@ -20,8 +20,7 @@ flowchart LR
     UI["UI<br/>public/index.html + app.js"]
     Chat["💬 Chat LLM"]
     Xterm["⌨️ xterm.js<br/>hasta 4 pestañas"]
-    Bridge["AI SDK bridge<br/>assets/ai-sdk-bridge.mjs"]
-    AiBundle["AI SDK bundle<br/>assets/chat/ai-sdk-browser.mjs"]
+    AiSdk["AI SDK v6<br/>bridge + ai-sdk-browser.mjs"]
     Worker["Transformers.js worker"]
     V86["🖥️ v86 emulator"]
 
@@ -44,18 +43,17 @@ flowchart LR
   UI --> Xterm
   UI -->|"arranque · snapshots · disco"| V86
 
-  Chat --> Bridge
-  Bridge --> AiBundle
-  AiBundle --> Worker
-  Bridge --> Ollama
+  Chat --> AiSdk
+  AiSdk -->|"transformersjs"| Worker
+  AiSdk --> Ollama
+  AiSdk -->|"serial1 / ttyS1<br/>tools del agente"| V86
 
-  Chat -->|"execVm / tools"| V86
   Xterm <-->|"serial0 / ttyS0<br/>arranque real"| V86
   Xterm <-->|"serial2 / ttyS2<br/>frames base64"| V86
 
-  V86 -->|"ttyS1"| S1
+  V86 -->|"serial1 / ttyS1"| S1
   S1 --> Tools
-  V86 -->|"ttyS2"| S2
+  V86 -->|"serial2 / ttyS2"| S2
   S2 <-->|"openpty/select"| PTY
 
   V86 <-->|"red WS opcional"| Wsnic
