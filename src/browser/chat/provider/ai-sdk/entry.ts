@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Re-exports for browser bundle (esbuild -> public/assets/chat/ai-sdk-browser.mjs)
 export {
   streamText,

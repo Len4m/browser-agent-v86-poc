@@ -1,48 +1,80 @@
-// @ts-nocheck
 // Browser Agent v86 - 01 ui state
-// Split from app.js in v9.35. Load order is defined in index.html.
+// Modern modules import these helpers directly. Legacy ordered sources receive
+// global aliases through compat/legacy-facades.ts.
 
-function setBadge(el, text, tone = "") {
+import { $, state } from "../app/state";
+import { t, tn } from "../app/i18n";
+import { stripAnsi } from "../app/text-utils";
+
+const TOOL_LOG_MAX_CHARS = 50000;
+
+type LegacyWindow = Window & typeof globalThis & {
+  BA_LLM_AGENT?: {
+    updateChatAvailability?: () => void;
+  };
+  renderConsoleTabs?: () => void;
+  syncConsoleInputLock?: () => void;
+};
+
+function legacyWindow(): LegacyWindow {
+  return window;
+}
+
+function setDisabled(el: Element | null, disabled: boolean): void {
+  if (
+    el instanceof HTMLButtonElement
+    || el instanceof HTMLInputElement
+    || el instanceof HTMLSelectElement
+    || el instanceof HTMLTextAreaElement
+  ) {
+    el.disabled = disabled;
+  }
+}
+
+function activeRuntimeHasHda(): boolean {
+  const runtime = state.activeRuntime;
+  return Boolean(runtime && typeof runtime === "object" && "hda" in runtime && (runtime as { hda?: unknown }).hda);
+}
+
+export function setBadge(el: Element | null, text: string, tone = ""): void {
   if (!el) return;
   el.textContent = text;
   el.className = `badge ${tone}`.trim();
 }
 
-const TOOL_LOG_MAX_CHARS = 50000;
-
-function safeTrim(text, max = TOOL_LOG_MAX_CHARS) {
+export function safeTrim(text: string, max = TOOL_LOG_MAX_CHARS): string {
   if (!text) return "";
   return text.length > max ? text.slice(text.length - max) : text;
 }
 
-function appendBoundedText(current, addition, max = TOOL_LOG_MAX_CHARS) {
-  const next = String(addition ?? "");
+export function appendBoundedText(current: string, addition: string, max = TOOL_LOG_MAX_CHARS): string {
+  const next = addition;
   if (next.length >= max) return next.slice(next.length - max);
   const keepCurrent = Math.max(0, max - next.length);
-  const previous = String(current ?? "");
+  const previous = current;
   return `${previous.length > keepCurrent ? previous.slice(previous.length - keepCurrent) : previous}${next}`;
 }
 
-function logTool(text, { strip = true } = {}) {
+export function logTool(text: string, { strip = true }: { strip?: boolean } = {}): void {
   const terminal = $("terminal");
   if (!terminal) return;
-  const cleanText = strip ? stripAnsi(text) : String(text ?? "");
-  terminal.textContent = appendBoundedText(terminal.textContent, cleanText);
+  const cleanText = strip ? stripAnsi(text) : text;
+  terminal.textContent = appendBoundedText(terminal.textContent || "", cleanText);
   terminal.scrollTop = terminal.scrollHeight;
 }
 
-function formatLoggedCommand(command, max = 360) {
-  const text = String(command || "").replace(/\s+/g, " ").trim();
+export function formatLoggedCommand(command: string, max = 360): string {
+  const text = command.replace(/\s+/g, " ").trim();
   if (text.length <= max) return text;
   return `${text.slice(0, max)} … ${tn("vm.controls.charsTruncated", text.length)}`;
 }
 
-function syncDiskCheckButton() {
+export function syncDiskCheckButton(): void {
   const button = $("check-disk");
   if (!button) return;
-  const hasBootDisk = Boolean(state.vm && state.activeRuntime?.hda);
+  const hasBootDisk = Boolean(state.vm && activeRuntimeHasHda());
   button.hidden = !hasBootDisk;
-  button.disabled = !hasBootDisk || !state.vmReady || state.agentBusy || Boolean(state.pending) || Boolean(state.bgTools?.pending);
+  setDisabled(button, !hasBootDisk || !state.vmReady || state.agentBusy || Boolean(state.pending) || Boolean(state.bgTools.pending));
   button.textContent = state.diskMounted
     ? t("vm.controls.disk.unmount")
     : t("vm.controls.disk.mount");
@@ -51,14 +83,12 @@ function syncDiskCheckButton() {
     : t("vm.controls.disk.mount.title");
 }
 
-function syncSnapshotButtons() {
-  const saveButton = $("save-state");
-  const restoreButton = $("restore-state");
-  if (saveButton) saveButton.disabled = !state.vm || state.vmStarting || state.agentBusy || Boolean(state.pending) || Boolean(state.bgTools?.pending);
-  if (restoreButton) restoreButton.disabled = state.vmStarting || state.agentBusy || Boolean(state.pending) || Boolean(state.bgTools?.pending);
+export function syncSnapshotButtons(): void {
+  setDisabled($("save-state"), !state.vm || state.vmStarting || state.agentBusy || Boolean(state.pending) || Boolean(state.bgTools.pending));
+  setDisabled($("restore-state"), state.vmStarting || state.agentBusy || Boolean(state.pending) || Boolean(state.bgTools.pending));
 }
 
-function syncPowerButtons() {
+export function syncPowerButtons(): void {
   const powerButton = $("start-vm");
   const vmVisible = Boolean(state.vm || state.vmStarting);
   const vmOn = Boolean(state.vm);
@@ -66,7 +96,7 @@ function syncPowerButtons() {
   document.body.classList.toggle("vm-console-active", vmVisible);
 
   if (powerButton) {
-    powerButton.disabled = state.vmStarting || (vmOn && (state.agentBusy || Boolean(state.pending) || Boolean(state.bgTools?.pending)));
+    setDisabled(powerButton, state.vmStarting || (vmOn && (state.agentBusy || Boolean(state.pending) || Boolean(state.bgTools.pending))));
     powerButton.textContent = state.vmStarting
       ? t("vm.controls.power.starting")
       : vmOn
@@ -80,16 +110,16 @@ function syncPowerButtons() {
   }
 }
 
-function isWsConnected() {
+export function isWsConnected(): boolean {
   return Boolean(state.wsSocket && state.wsSocket.readyState === WebSocket.OPEN);
 }
 
-function syncWsButton() {
+export function syncWsButton(): void {
   const button = $("connect-ws");
   if (!button) return;
 
   const connected = isWsConnected();
-  button.disabled = state.wsConnecting;
+  setDisabled(button, state.wsConnecting);
   button.textContent = state.wsConnecting
     ? t("common.connectingEllipsis")
     : connected
@@ -102,41 +132,40 @@ function syncWsButton() {
     : t("vm.controls.ws.connect.title");
 }
 
-function syncChecksButton() {
+export function syncChecksButton(): void {
   const button = $("run-checks");
   if (!button) return;
-  button.disabled = Boolean(state.checksRunning || state.bgTools?.pending);
+  setDisabled(button, Boolean(state.checksRunning || state.bgTools.pending));
   button.textContent = state.checksRunning
     ? t("common.checkingEllipsis")
-    : (state.bgTools?.pending
+    : (state.bgTools.pending
       ? t("vm.controls.checks.toolActive")
       : t("common.runChecks"));
   button.setAttribute("aria-busy", state.checksRunning ? "true" : "false");
 }
 
-function blurSerialConsole() {
+export function blurSerialConsole(): void {
   const active = document.activeElement;
-  if (active?.closest?.("#serial-console, .xterm, .xterm-helper-textarea")) {
-    try { active.blur(); } catch {}
+  if (active instanceof HTMLElement && active.closest("#serial-console, .xterm, .xterm-helper-textarea")) {
+    try {
+      active.blur();
+    } catch {
+      // Focus changes are best-effort.
+    }
   }
 }
 
-function setAgentBusy(value, detail = "") {
+export function setAgentBusy(value: boolean, detail = ""): void {
   state.agentBusy = value;
   document.body.classList.toggle("agent-busy", value);
 
   const overlay = $("vm-lock-overlay");
   if (overlay) overlay.textContent = value ? (detail || t("common.agentUsingVm")) : "";
 
-  const chatInput = $("chat-input");
-  const chatButton = document.getElementById("chat-submit-btn");
-  const commandInput = $("command-input");
-  const commandButton = document.querySelector("#command-form button");
-
-  if (chatInput) chatInput.disabled = value;
-  if (chatButton) chatButton.disabled = value;
-  if (commandInput) commandInput.disabled = value;
-  if (commandButton) commandButton.disabled = value;
+  setDisabled($("chat-input"), value);
+  setDisabled(document.getElementById("chat-submit-btn"), value);
+  setDisabled($("command-input"), value);
+  setDisabled(document.querySelector("#command-form button"), value);
 
   if (value) blurSerialConsole();
   syncPowerButtons();
@@ -144,8 +173,10 @@ function setAgentBusy(value, detail = "") {
   syncSnapshotButtons();
   syncWsButton();
   syncChecksButton();
-  renderConsoleTabs();
-  syncConsoleInputLock();
+
+  const legacy = legacyWindow();
+  legacy.renderConsoleTabs?.();
+  legacy.syncConsoleInputLock?.();
 
   // v9.37.8: the chat is controlled by the local LLM state, not by the
   // VM/network buttons. setAgentBusy() is used by many VM operations and it
@@ -153,13 +184,15 @@ function setAgentBusy(value, detail = "") {
   // final enabled/disabled state after VM UI synchronization. This prevents
   // unrelated actions such as WS connect/disconnect from being required to
   // re-enable the chat after a model load.
-  window.BA_LLM_AGENT?.updateChatAvailability?.();
+  legacy.BA_LLM_AGENT?.updateChatAvailability?.();
 }
 
-window.addEventListener("ba:langchange", () => {
-  syncDiskCheckButton();
-  syncSnapshotButtons();
-  syncPowerButtons();
-  syncWsButton();
-  syncChecksButton();
-});
+export function initStatusControls(): void {
+  window.addEventListener("ba:langchange", () => {
+    syncDiskCheckButton();
+    syncSnapshotButtons();
+    syncPowerButtons();
+    syncWsButton();
+    syncChecksButton();
+  });
+}

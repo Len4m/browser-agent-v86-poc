@@ -1,19 +1,47 @@
-// @ts-nocheck
 // Browser Agent v86 - 02 modal
-// Split from app.js in v9.35. Load order is defined in index.html.
+// Modern modules import these helpers directly. Legacy ordered sources receive
+// global aliases through compat/legacy-facades.ts.
 
-function sleepMs(ms) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
+import { $ } from "../app/state";
+import { t } from "../app/i18n";
+
+export interface ModalButton {
+  id: string;
+  label?: string;
+  variant?: string;
+  cancel?: boolean;
 }
 
-function normalizeModalButtons(buttons = []) {
+export interface ShowModalOptions {
+  title?: string;
+  message?: string;
+  detail?: string;
+  buttons?: ModalButton[];
+  closeOnBackdrop?: boolean;
+}
+
+export interface ShowModalPanelOptions {
+  title?: string;
+  onMount?: (bodyEl: HTMLElement) => void;
+  buttons?: ModalButton[];
+  closeOnBackdrop?: boolean;
+}
+
+interface ModalLayoutElements {
+  messageEl: HTMLElement | null;
+  detailEl: HTMLElement | null;
+  bodyEl: HTMLElement | null;
+  iconEl: HTMLElement | null;
+}
+
+function normalizeModalButtons(buttons: ModalButton[] = []): ModalButton[] {
   return buttons.length ? buttons : [
     { id: "cancel", label: t("common.cancel"), variant: "secondary" },
     { id: "ok", label: t("common.accept"), variant: "primary" },
   ];
 }
 
-function resetBaModalLayout({ messageEl, detailEl, bodyEl, iconEl }) {
+function resetBaModalLayout({ messageEl, detailEl, bodyEl, iconEl }: ModalLayoutElements): void {
   if (messageEl) messageEl.hidden = false;
   if (detailEl) detailEl.hidden = !detailEl.textContent;
   if (bodyEl) {
@@ -23,7 +51,11 @@ function resetBaModalLayout({ messageEl, detailEl, bodyEl, iconEl }) {
   if (iconEl) iconEl.hidden = false;
 }
 
-function bindBaModalActions(actionsEl, normalizedButtons, cleanup) {
+function bindBaModalActions(
+  actionsEl: HTMLElement,
+  normalizedButtons: ModalButton[],
+  cleanup: (result: string) => void,
+): void {
   actionsEl.replaceChildren();
   for (const button of normalizedButtons) {
     const el = document.createElement("button");
@@ -35,13 +67,29 @@ function bindBaModalActions(actionsEl, normalizedButtons, cleanup) {
   }
 }
 
-function showBaModal({
+function focusElement(el: Element | null): void {
+  if (el instanceof HTMLElement) {
+    try {
+      el.focus();
+    } catch {
+      // Focus restoration is best-effort.
+    }
+  }
+}
+
+function messageFromError(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  return "Error";
+}
+
+export function showBaModal({
   title = t("modal.confirmTitle"),
   message = "",
   detail = "",
   buttons = [],
   closeOnBackdrop = false,
-} = {}) {
+}: ShowModalOptions = {}): Promise<string> {
   return new Promise((resolve) => {
     const overlay = $("ba-modal-overlay");
     const titleEl = $("ba-modal-title");
@@ -49,65 +97,72 @@ function showBaModal({
     const detailEl = $("ba-modal-detail");
     const bodyEl = $("ba-modal-body");
     const actionsEl = $("ba-modal-actions");
-    const iconEl = overlay?.querySelector(".ba-modal-icon");
+    const iconEl = overlay?.querySelector<HTMLElement>(".ba-modal-icon") || null;
     if (!overlay || !titleEl || !messageEl || !detailEl || !actionsEl) {
       resolve(window.confirm(`${title}\n\n${message}${detail ? `\n\n${detail}` : ""}`) ? "confirm" : "cancel");
       return;
     }
+    const modalOverlay = overlay;
+    const modalTitleEl = titleEl;
+    const modalMessageEl = messageEl;
+    const modalDetailEl = detailEl;
+    const modalBodyEl = bodyEl;
+    const modalActionsEl = actionsEl;
+    const modalIconEl = iconEl;
 
     const normalizedButtons = normalizeModalButtons(buttons);
     let settled = false;
     const previousFocus = document.activeElement;
 
-    function cleanup(result) {
+    function cleanup(result: string): void {
       if (settled) return;
       settled = true;
-      overlay.classList.remove("show", "ba-modal-panel-mode");
-      overlay.setAttribute("aria-hidden", "true");
+      modalOverlay.classList.remove("show", "ba-modal-panel-mode");
+      modalOverlay.setAttribute("aria-hidden", "true");
       document.removeEventListener("keydown", onKeyDown);
-      overlay.removeEventListener("pointerdown", onBackdropPointerDown);
-      resetBaModalLayout({ messageEl, detailEl, bodyEl, iconEl });
-      try { previousFocus?.focus?.(); } catch {}
+      modalOverlay.removeEventListener("pointerdown", onBackdropPointerDown);
+      resetBaModalLayout({ messageEl: modalMessageEl, detailEl: modalDetailEl, bodyEl: modalBodyEl, iconEl: modalIconEl });
+      focusElement(previousFocus);
       resolve(result);
     }
 
-    function onKeyDown(event) {
+    function onKeyDown(event: KeyboardEvent): void {
       if (event.key === "Escape") {
         const cancel = normalizedButtons.find((button) => button.cancel) || normalizedButtons[0];
         cleanup(cancel.id);
       }
     }
 
-    function onBackdropPointerDown(event) {
-      if (!closeOnBackdrop || event.target !== overlay) return;
+    function onBackdropPointerDown(event: PointerEvent): void {
+      if (!closeOnBackdrop || event.target !== modalOverlay) return;
       const cancel = normalizedButtons.find((button) => button.cancel) || normalizedButtons[0];
       cleanup(cancel.id);
     }
 
-    titleEl.textContent = title;
-    messageEl.textContent = message;
-    detailEl.textContent = detail || "";
-    resetBaModalLayout({ messageEl, detailEl, bodyEl, iconEl });
-    detailEl.hidden = !detail;
-    bindBaModalActions(actionsEl, normalizedButtons, cleanup);
+    modalTitleEl.textContent = title;
+    modalMessageEl.textContent = message;
+    modalDetailEl.textContent = detail || "";
+    resetBaModalLayout({ messageEl: modalMessageEl, detailEl: modalDetailEl, bodyEl: modalBodyEl, iconEl: modalIconEl });
+    modalDetailEl.hidden = !detail;
+    bindBaModalActions(modalActionsEl, normalizedButtons, cleanup);
 
-    overlay.classList.add("show");
-    overlay.setAttribute("aria-hidden", "false");
+    modalOverlay.classList.add("show");
+    modalOverlay.setAttribute("aria-hidden", "false");
     document.addEventListener("keydown", onKeyDown);
-    overlay.addEventListener("pointerdown", onBackdropPointerDown);
+    modalOverlay.addEventListener("pointerdown", onBackdropPointerDown);
     window.setTimeout(() => {
-      const preferred = actionsEl.querySelector(".ba-modal-button.danger, .ba-modal-button.primary") || actionsEl.querySelector("button");
-      try { preferred?.focus?.(); } catch {}
+      const preferred = modalActionsEl.querySelector(".ba-modal-button.danger, .ba-modal-button.primary") || modalActionsEl.querySelector("button");
+      focusElement(preferred);
     }, 0);
   });
 }
 
-function showBaModalPanel({
+export function showBaModalPanel({
   title = t("modal.panelTitle"),
   onMount,
   buttons = [{ id: "close", label: t("common.done"), variant: "primary" }],
   closeOnBackdrop = true,
-} = {}) {
+}: ShowModalPanelOptions = {}): Promise<string> {
   return new Promise((resolve) => {
     const overlay = $("ba-modal-overlay");
     const titleEl = $("ba-modal-title");
@@ -115,67 +170,79 @@ function showBaModalPanel({
     const detailEl = $("ba-modal-detail");
     const bodyEl = $("ba-modal-body");
     const actionsEl = $("ba-modal-actions");
-    const iconEl = overlay?.querySelector(".ba-modal-icon");
-    if (!overlay || !titleEl || !bodyEl || !actionsEl) {
+    const iconEl = overlay?.querySelector<HTMLElement>(".ba-modal-icon") || null;
+    if (!overlay || !titleEl || !messageEl || !detailEl || !bodyEl || !actionsEl) {
       resolve("close");
       return;
     }
+    const modalOverlay = overlay;
+    const modalTitleEl = titleEl;
+    const modalMessageEl = messageEl;
+    const modalDetailEl = detailEl;
+    const modalBodyEl = bodyEl;
+    const modalActionsEl = actionsEl;
+    const modalIconEl = iconEl;
 
     const normalizedButtons = normalizeModalButtons(buttons);
     let settled = false;
     const previousFocus = document.activeElement;
 
-    function cleanup(result) {
+    function cleanup(result: string): void {
       if (settled) return;
       settled = true;
-      overlay.classList.remove("show", "ba-modal-panel-mode");
-      overlay.setAttribute("aria-hidden", "true");
+      modalOverlay.classList.remove("show", "ba-modal-panel-mode");
+      modalOverlay.setAttribute("aria-hidden", "true");
       document.removeEventListener("keydown", onKeyDown);
-      overlay.removeEventListener("pointerdown", onBackdropPointerDown);
-      resetBaModalLayout({ messageEl, detailEl, bodyEl, iconEl });
-      try { previousFocus?.focus?.(); } catch {}
+      modalOverlay.removeEventListener("pointerdown", onBackdropPointerDown);
+      resetBaModalLayout({ messageEl: modalMessageEl, detailEl: modalDetailEl, bodyEl: modalBodyEl, iconEl: modalIconEl });
+      focusElement(previousFocus);
       resolve(result);
     }
 
-    function onKeyDown(event) {
+    function onKeyDown(event: KeyboardEvent): void {
       if (event.key === "Escape") {
         const cancel = normalizedButtons.find((button) => button.cancel) || normalizedButtons[0];
         cleanup(cancel.id);
       }
     }
 
-    function onBackdropPointerDown(event) {
-      if (!closeOnBackdrop || event.target !== overlay) return;
+    function onBackdropPointerDown(event: PointerEvent): void {
+      if (!closeOnBackdrop || event.target !== modalOverlay) return;
       const cancel = normalizedButtons.find((button) => button.cancel) || normalizedButtons[0];
       cleanup(cancel.id);
     }
 
-    titleEl.textContent = title;
-    messageEl.textContent = "";
-    messageEl.hidden = true;
-    detailEl.textContent = "";
-    detailEl.hidden = true;
-    bodyEl.hidden = false;
-    bodyEl.replaceChildren();
-    if (iconEl) iconEl.hidden = true;
-    bindBaModalActions(actionsEl, normalizedButtons, cleanup);
+    modalTitleEl.textContent = title;
+    modalMessageEl.textContent = "";
+    modalMessageEl.hidden = true;
+    modalDetailEl.textContent = "";
+    modalDetailEl.hidden = true;
+    modalBodyEl.hidden = false;
+    modalBodyEl.replaceChildren();
+    if (modalIconEl) modalIconEl.hidden = true;
+    bindBaModalActions(modalActionsEl, normalizedButtons, cleanup);
 
-    try { onMount?.(bodyEl); } catch (error) {
-      bodyEl.innerHTML = `<p class="ba-modal-detail">${String(error?.message || error)}</p>`;
+    try {
+      onMount?.(modalBodyEl);
+    } catch (error) {
+      const errorEl = document.createElement("p");
+      errorEl.className = "ba-modal-detail";
+      errorEl.textContent = messageFromError(error);
+      modalBodyEl.replaceChildren(errorEl);
     }
 
-    overlay.classList.add("show", "ba-modal-panel-mode");
-    overlay.setAttribute("aria-hidden", "false");
+    modalOverlay.classList.add("show", "ba-modal-panel-mode");
+    modalOverlay.setAttribute("aria-hidden", "false");
     document.addEventListener("keydown", onKeyDown);
-    overlay.addEventListener("pointerdown", onBackdropPointerDown);
+    modalOverlay.addEventListener("pointerdown", onBackdropPointerDown);
     window.setTimeout(() => {
-      const preferred = bodyEl.querySelector("input:not([disabled])") || actionsEl.querySelector("button");
-      try { preferred?.focus?.(); } catch {}
+      const preferred = modalBodyEl.querySelector("input:not([disabled])") || modalActionsEl.querySelector("button");
+      focusElement(preferred);
     }, 0);
   });
 }
 
-async function confirmVmShutdown() {
+export async function confirmVmShutdown(): Promise<boolean> {
   const result = await showBaModal({
     title: t("common.shutdownVm"),
     message: t("modal.shutdown.message"),

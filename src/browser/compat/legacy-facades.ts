@@ -21,6 +21,23 @@ import {
 } from "../app/i18n";
 import { initLangSelector } from "../app/lang-selector";
 import { initOriginAwareness, originApi } from "../app/origin-awareness";
+import { confirmVmShutdown, showBaModal, showBaModalPanel } from "../ui/modal";
+import {
+  appendBoundedText,
+  blurSerialConsole,
+  formatLoggedCommand,
+  initStatusControls,
+  isWsConnected,
+  logTool,
+  safeTrim,
+  setAgentBusy,
+  setBadge,
+  syncChecksButton,
+  syncDiskCheckButton,
+  syncPowerButtons,
+  syncSnapshotButtons,
+  syncWsButton,
+} from "../ui/status-controls";
 import { initTooltips } from "../ui/tooltips";
 import {
   BA_TEXT_UTILS,
@@ -63,6 +80,22 @@ type LegacyWindow = Window & typeof globalThis & {
   trimLines: typeof trimLines;
   trimLinesSimple: typeof trimLinesSimple;
   utf8ToBase64: typeof utf8ToBase64;
+  confirmVmShutdown: typeof confirmVmShutdown;
+  showBaModal: typeof showBaModal;
+  showBaModalPanel: typeof showBaModalPanel;
+  appendBoundedText: typeof appendBoundedText;
+  blurSerialConsole: typeof blurSerialConsole;
+  formatLoggedCommand: typeof formatLoggedCommand;
+  isWsConnected: typeof isWsConnected;
+  logTool: typeof logTool;
+  safeTrim: typeof safeTrim;
+  setAgentBusy: typeof setAgentBusy;
+  setBadge: typeof setBadge;
+  syncChecksButton: typeof syncChecksButton;
+  syncDiskCheckButton: typeof syncDiskCheckButton;
+  syncPowerButtons: typeof syncPowerButtons;
+  syncSnapshotButtons: typeof syncSnapshotButtons;
+  syncWsButton: typeof syncWsButton;
 };
 
 let installed = false;
@@ -97,6 +130,22 @@ export function installLegacyFacades(): void {
     trimLines,
     trimLinesSimple,
     utf8ToBase64,
+    confirmVmShutdown,
+    showBaModal,
+    showBaModalPanel,
+    appendBoundedText,
+    blurSerialConsole,
+    formatLoggedCommand,
+    isWsConnected,
+    logTool,
+    safeTrim,
+    setAgentBusy,
+    setBadge,
+    syncChecksButton,
+    syncDiskCheckButton,
+    syncPowerButtons,
+    syncSnapshotButtons,
+    syncWsButton,
   });
 
   legacyWindow.BA_I18N = i18nApi;
@@ -105,6 +154,7 @@ export function installLegacyFacades(): void {
 
   void initI18n();
   initOriginAwareness();
+  initStatusControls();
   initLangSelector();
   initTooltips();
 }

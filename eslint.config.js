@@ -13,9 +13,13 @@ const modernBrowserTs = [
   "src/browser/app/state.ts",
   "src/browser/app/text-utils.ts",
   "src/browser/compat/**/*.ts",
+  "src/browser/chat/provider/ai-sdk/entry.ts",
+  "src/browser/chat/provider/ai-sdk/llm-browser-ai.worker.ts",
   "src/browser/core/**/*.ts",
   "src/browser/main.ts",
   "src/browser/types/**/*.d.ts",
+  "src/browser/ui/modal.ts",
+  "src/browser/ui/status-controls.ts",
   "src/browser/ui/tooltips.ts",
 ];
 
@@ -25,8 +29,12 @@ const noInternalWindowGlobalsTs = [
   "src/browser/app/origin-awareness.ts",
   "src/browser/app/state.ts",
   "src/browser/app/text-utils.ts",
+  "src/browser/chat/provider/ai-sdk/entry.ts",
+  "src/browser/chat/provider/ai-sdk/llm-browser-ai.worker.ts",
   "src/browser/core/**/*.ts",
   "src/browser/main.ts",
+  "src/browser/ui/modal.ts",
+  "src/browser/ui/status-controls.ts",
   "src/browser/ui/tooltips.ts",
 ];
 
