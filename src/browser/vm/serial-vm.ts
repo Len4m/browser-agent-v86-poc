@@ -516,33 +516,11 @@ function onSerialByte(byte) {
   onSerialChar(String.fromCharCode(byte));
 }
 
-function escapeRegExp(text) {
-  return String(text).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function normalizeTerminalStreamForMarkers(text) {
-  // serial0 es un terminal visual, no un canal stdout puro. Los marcadores
-  // pueden venir mezclados con CSI, CR o movimientos de cursor.
-  let value = stripAnsi(String(text || "")).split(CR).join(NL);
-  for (let i = 0; i < 8 && value.includes("\b"); i += 1) {
-    value = value.replace(/[^\n]\b/g, "");
-  }
-  return value;
-}
-
 function finishPendingCommand(pending, result) {
   window.clearTimeout(pending.timer);
   if (state.pending === pending) state.pending = null;
   renderConsoleTabs();
   pending.resolve(result);
-}
-
-function extractBetweenLast(text, beginToken, endToken, beforeIndex = text.length) {
-  const endIndex = text.lastIndexOf(endToken, beforeIndex);
-  if (endIndex < 0) return null;
-  const beginIndex = text.lastIndexOf(beginToken, endIndex);
-  if (beginIndex < 0) return null;
-  return text.slice(beginIndex + beginToken.length, endIndex);
 }
 
 function parsePendingCommandBuffer(pending) {

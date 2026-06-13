@@ -20,9 +20,11 @@ const modernBrowserTs = [
   "src/browser/core/**/*.ts",
   "src/browser/main.ts",
   "src/browser/types/**/*.d.ts",
+  "src/browser/ui/checks-panel.ts",
   "src/browser/ui/modal.ts",
   "src/browser/ui/status-controls.ts",
   "src/browser/ui/tooltips.ts",
+  "src/browser/vm/terminal-markers.ts",
   "src/browser/vm/profile-config.ts",
   "src/browser/vm/runtime-assets.ts",
 ];
@@ -38,9 +40,11 @@ const noInternalWindowGlobalsTs = [
   "src/browser/chat/provider/ai-sdk/text-tool-parser.ts",
   "src/browser/core/**/*.ts",
   "src/browser/main.ts",
+  "src/browser/ui/checks-panel.ts",
   "src/browser/ui/modal.ts",
   "src/browser/ui/status-controls.ts",
   "src/browser/ui/tooltips.ts",
+  "src/browser/vm/terminal-markers.ts",
   "src/browser/vm/profile-config.ts",
   "src/browser/vm/runtime-assets.ts",
 ];

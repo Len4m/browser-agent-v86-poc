@@ -21,9 +21,11 @@ import {
 } from "../app/i18n";
 import { initLangSelector } from "../app/lang-selector";
 import { initOriginAwareness, originApi } from "../app/origin-awareness";
+import { runChecks } from "../ui/checks-panel";
 import { confirmVmShutdown, showBaModal, showBaModalPanel } from "../ui/modal";
 import * as profileConfig from "../vm/profile-config";
 import * as runtimeAssets from "../vm/runtime-assets";
+import * as terminalMarkers from "../vm/terminal-markers";
 import {
   appendBoundedText,
   blurSerialConsole,
@@ -54,7 +56,7 @@ import {
   utf8ToBase64,
 } from "../app/text-utils";
 
-type LegacyWindow = Window & typeof globalThis & typeof profileConfig & typeof runtimeAssets & {
+type LegacyWindow = Window & typeof globalThis & typeof profileConfig & typeof runtimeAssets & typeof terminalMarkers & {
   $: typeof $;
   CR: typeof CR;
   DOCKER_WSNIC_COMMAND: typeof DOCKER_WSNIC_COMMAND;
@@ -83,6 +85,7 @@ type LegacyWindow = Window & typeof globalThis & typeof profileConfig & typeof r
   trimLinesSimple: typeof trimLinesSimple;
   utf8ToBase64: typeof utf8ToBase64;
   confirmVmShutdown: typeof confirmVmShutdown;
+  runChecks: typeof runChecks;
   showBaModal: typeof showBaModal;
   showBaModalPanel: typeof showBaModalPanel;
   appendBoundedText: typeof appendBoundedText;
@@ -107,7 +110,7 @@ export function installLegacyFacades(): void {
   installed = true;
 
   const legacyWindow = window as LegacyWindow;
-  Object.assign(legacyWindow, profileConfig, runtimeAssets, {
+  Object.assign(legacyWindow, profileConfig, runtimeAssets, terminalMarkers, {
     $,
     CR,
     DOCKER_WSNIC_COMMAND,
@@ -133,6 +136,7 @@ export function installLegacyFacades(): void {
     trimLinesSimple,
     utf8ToBase64,
     confirmVmShutdown,
+    runChecks,
     showBaModal,
     showBaModalPanel,
     appendBoundedText,

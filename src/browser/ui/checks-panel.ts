@@ -1,8 +1,90 @@
-// @ts-nocheck
-// Browser Agent v86 - 08 checks
-// Split from app.js in v9.35. Load order is defined in index.html.
+// Browser Agent v86 - checks panel
+// Modern modules import runChecks directly. Legacy ordered sources receive a
+// global alias through compat/legacy-facades.ts.
 
-function formatCheckBadgeText(ok, detail = "") {
+import { $, NL, state } from "../app/state";
+import { t, tn } from "../app/i18n";
+import { shellQuote } from "../app/text-utils";
+import { getConfig, getSelectedProfile, getVmRuntimeConfig, getWsRelayUrl, type VmProfile } from "../vm/profile-config";
+import { checkAsset, checkWsRelayEndpoint, loadScript } from "../vm/runtime-assets";
+import {
+  firstMatchingVmCheckLine,
+  lastNonEmptyLine,
+  normalizeTerminalStreamForMarkers,
+} from "../vm/terminal-markers";
+import { isWsConnected, logTool, setBadge, syncChecksButton } from "./status-controls";
+
+interface RunChecksOptions {
+  probeWsRelay?: boolean;
+}
+
+interface ExecVmOptions {
+  lock?: boolean;
+  label?: string;
+  timeoutMs?: number;
+  log?: boolean;
+  targetTools?: boolean;
+  maxOutputBytes?: number;
+}
+
+interface ExecVmResult {
+  code: number;
+  stdout: string;
+  stderr: string;
+}
+
+interface BackgroundToolsDiagnostics {
+  serial1Available?: boolean;
+  runnerReady?: boolean;
+  lastError?: string;
+}
+
+interface BackgroundToolsApi {
+  diagnostics?: () => BackgroundToolsDiagnostics | null;
+  waitForRunnerReady?: (timeoutMs: number) => Promise<unknown>;
+}
+
+interface VmApi {
+  serial0_send?: unknown;
+  save_state?: unknown;
+  restore_state?: unknown;
+}
+
+type LegacyWindow = Window & typeof globalThis & {
+  execVm?: (command: string, options?: ExecVmOptions) => Promise<unknown>;
+  BA_BG_TOOLS?: BackgroundToolsApi;
+  V86Starter?: unknown;
+  V86?: unknown;
+};
+
+interface ToolCheck {
+  label: string;
+  test: string;
+}
+
+function legacyWindow(): LegacyWindow {
+  return window;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function vmApi(): VmApi | null {
+  return typeof state.vm === "object" && state.vm !== null ? state.vm : null;
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  return "Error";
+}
+
+function hasWebGpu(): boolean {
+  return Boolean((navigator as Navigator & { gpu?: unknown }).gpu);
+}
+
+function formatCheckBadgeText(ok: boolean, detail = ""): string {
   if (ok) return t("checks.badge.ok");
   const clean = String(detail || "").trim();
   if (!clean) return t("checks.badge.fail");
@@ -11,7 +93,7 @@ function formatCheckBadgeText(ok, detail = "") {
   return clean;
 }
 
-function addCheck(container, name, ok, detail = "") {
+function addCheck(container: HTMLElement, name: string, ok: boolean, detail = ""): boolean {
   const row = document.createElement("div");
   row.className = "check";
   const label = document.createElement("span");
@@ -25,7 +107,7 @@ function addCheck(container, name, ok, detail = "") {
   return ok;
 }
 
-function addSkippedCheck(container, name, detail = "") {
+function addSkippedCheck(container: HTMLElement, name: string, detail = ""): void {
   const row = document.createElement("div");
   row.className = "check";
   const label = document.createElement("span");
@@ -38,7 +120,7 @@ function addSkippedCheck(container, name, detail = "") {
   container.appendChild(row);
 }
 
-function updateChecksSummaryFromDom() {
+function updateChecksSummaryFromDom(): void {
   const container = $("checks");
   const summary = $("checks-summary");
   if (!container || !summary) return;
@@ -57,40 +139,25 @@ function updateChecksSummaryFromDom() {
   setBadge(summary, `${okCount}/${total}`, hasBad || okCount !== total ? "warn" : "good");
 }
 
-function cleanVmCheckLines(text) {
-  return String(text || "")
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n")
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .filter((line) => !/^\[ba-s1\]\s+(start|end)\b/.test(line))
-    .filter((line) => !/^BA_SERIAL1_/.test(line));
-}
-
-function firstMatchingVmCheckLine(text, predicate) {
-  return cleanVmCheckLines(text).find(predicate) || "";
-}
-
-function getVmCommandCheckSkipReason() {
+function getVmCommandCheckSkipReason(): string {
   if (!state.vm) return t("common.v86NotStarted");
   if (!state.vmReady) return t("common.waitingShell");
   if (state.snapshotRestoring) return t("common.restoringSnapshot");
   if (state.vmStarting) return t("checks.skip.vmStarting");
   if (state.pending) return t("checks.skip.serial0Busy");
-  if (state.bgTools?.pending) return t("checks.skip.bgToolBusy");
+  if (state.bgTools.pending) return t("checks.skip.bgToolBusy");
   if (state.agentBusy) return t("checks.skip.vmBusy");
-  const diag = window.BA_BG_TOOLS?.diagnostics?.();
+  const diag = legacyWindow().BA_BG_TOOLS?.diagnostics?.();
   if (diag && !diag.serial1Available) return t("common.serialUnavailable", { port: "1" });
   if (diag && !diag.runnerReady) return t("checks.skip.runnerNotReady");
   return "";
 }
 
-function getExpectedToolChecks(profile) {
+function getExpectedToolChecks(profile: VmProfile | null): ToolCheck[] {
   const packages = new Set(profile?.packages || []);
-  const checks = [];
+  const checks: ToolCheck[] = [];
 
-  const addTool = (label, test) => {
+  const addTool = (label: string, test: string): void => {
     if (!checks.some((item) => item.label === label)) checks.push({ label, test });
   };
 
@@ -115,45 +182,57 @@ function getExpectedToolChecks(profile) {
   return checks;
 }
 
-function makePackageCheckCommand(packages) {
-  const list = (packages || []).map(shellQuote).join(" ");
+function makePackageCheckCommand(packages: string[] = []): string {
+  const list = packages.map(shellQuote).join(" ");
   if (!list) return "P=BA_PKG; echo ${P}_OK";
   return `P=BA_PKG; missing=""; for p in ${list}; do apk info -e "$p" >/dev/null 2>&1 || missing="$missing $p"; done; if [ -n "$missing" ]; then echo "\${P}_MISSING:$missing"; exit 1; else echo "\${P}_OK"; fi`;
 }
 
-function makeToolCheckCommand(toolChecks) {
+function makeToolCheckCommand(toolChecks: ToolCheck[]): string {
   if (!toolChecks.length) return "P=BA_TOOLS; echo ${P}_OK";
   const tests = toolChecks.map((item) => `(${item.test}) >/dev/null 2>&1 || missing="$missing ${item.label}"`).join("; ");
   return `P=BA_TOOLS; missing=""; ${tests}; if [ -n "$missing" ]; then echo "\${P}_MISSING:$missing"; exit 1; else echo "\${P}_OK"; fi`;
 }
 
-async function runVmCheck(command, { label = t("checks.label.vmCheck"), timeoutMs = 12000 } = {}) {
-  return execVm(command, {
+function normalizeExecVmResult(result: unknown): ExecVmResult {
+  if (!isRecord(result)) return { code: 1, stdout: "", stderr: "invalid execVm result" };
+  return {
+    code: Number.isFinite(Number(result.code)) ? Number(result.code) : 1,
+    stdout: typeof result.stdout === "string" ? result.stdout : "",
+    stderr: typeof result.stderr === "string" ? result.stderr : "",
+  };
+}
+
+async function runVmCheck(command: string, { label = t("checks.label.vmCheck"), timeoutMs = 12000 }: ExecVmOptions = {}): Promise<ExecVmResult> {
+  const execVm = legacyWindow().execVm;
+  if (!execVm) return { code: 1, stdout: "", stderr: "execVm unavailable" };
+  const result: unknown = await execVm(command, {
     lock: true,
     label,
     timeoutMs,
     log: false,
     targetTools: true,
   });
+  return normalizeExecVmResult(result);
 }
 
-async function runChecks({ probeWsRelay = true } = {}) {
+export async function runChecks({ probeWsRelay = true }: RunChecksOptions = {}): Promise<void> {
   if (state.checksRunning) return;
   state.checksRunning = true;
   syncChecksButton();
   setBadge($("checks-summary"), t("common.checking"), "warn");
   try {
-
     const container = $("checks");
+    if (!container) return;
     container.textContent = "";
     let okCount = 0;
     let total = 0;
-    const add = (name, ok, detail = "") => {
+    const add = (name: string, ok: boolean, detail = ""): void => {
       total += 1;
       if (addCheck(container, name, ok, detail)) okCount += 1;
     };
 
-    add(t("checks.item.webgpu"), Boolean(navigator.gpu), navigator.gpu ? t("checks.badge.ok") : t("common.notDetected"));
+    add(t("checks.item.webgpu"), hasWebGpu(), hasWebGpu() ? t("checks.badge.ok") : t("common.notDetected"));
     add(t("checks.item.websocketApi"), Boolean(window.WebSocket), window.WebSocket ? t("checks.badge.ok") : t("common.notAvailable"));
 
     const wsRelayUrl = getWsRelayUrl();
@@ -171,7 +250,7 @@ async function runChecks({ probeWsRelay = true } = {}) {
       wsConnected && wsConfigured,
       wsConnected
         ? (wsConfigured ? t("checks.detail.connectedConfigured") : t("checks.detail.connectedUnconfigured"))
-        : t("checks.detail.notConnectedWeb")
+        : t("checks.detail.notConnectedWeb"),
     );
 
     add(t("checks.item.coopCoep"), Boolean(window.crossOriginIsolated), window.crossOriginIsolated ? t("checks.badge.ok") : t("checks.detail.notIsolated"));
@@ -200,16 +279,16 @@ async function runChecks({ probeWsRelay = true } = {}) {
 
     const cfg = getConfig();
     const profile = getSelectedProfile();
-    if (profile) add(t("checks.item.profileSelected"), true, `${profile.name || profile.id} · ${profile.output}`);
+    if (profile) add(t("checks.item.profileSelected"), true, `${profile.name || profile.id} · ${profile.output || ""}`);
     else add(t("checks.item.profileSelected"), true, t("common.freeManual"));
 
-    const assets = [
+    const assets: Array<[string, string]> = [
       ["libv86.js", cfg.libv86],
       ["v86.wasm", cfg.wasm],
       ["BIOS", cfg.bios],
       ["VGA BIOS", cfg.vgaBios],
       ["Alpine vmlinuz", cfg.bzimage],
-      ...(cfg.initrd ? [["Alpine initramfs", cfg.initrd]] : []),
+      ...(cfg.initrd ? [["Alpine initramfs", cfg.initrd] as [string, string]] : []),
     ];
 
     for (const [name, url] of assets) {
@@ -217,23 +296,25 @@ async function runChecks({ probeWsRelay = true } = {}) {
       add(name, result.ok, result.ok ? url : `${url} · ${result.detail}`);
     }
 
+    const legacy = legacyWindow();
     try {
-      if (!window.V86Starter && !window.V86) await loadScript(cfg.libv86);
-      add(t("checks.item.v86starter"), Boolean(window.V86Starter || window.V86), t("checks.detail.notLoaded"));
+      if (!legacy.V86Starter && !legacy.V86) await loadScript(cfg.libv86);
+      add(t("checks.item.v86starter"), Boolean(legacy.V86Starter || legacy.V86), t("checks.detail.notLoaded"));
     } catch (error) {
-      add(t("checks.item.v86starter"), false, error.message);
+      add(t("checks.item.v86starter"), false, errorMessage(error));
     }
 
+    const vm = vmApi();
     add(t("checks.item.vmStarted"), Boolean(state.vm), state.vm ? t("checks.badge.ok") : t("common.pending"));
-    add(t("checks.item.serial0Api"), Boolean(state.vm?.serial0_send), state.vm?.serial0_send ? t("checks.badge.ok") : t("common.pending"));
-    const bgDiagBeforeWait = window.BA_BG_TOOLS?.diagnostics?.() || null;
+    add(t("checks.item.serial0Api"), typeof vm?.serial0_send === "function", typeof vm?.serial0_send === "function" ? t("checks.badge.ok") : t("common.pending"));
+    const bgDiagBeforeWait = legacy.BA_BG_TOOLS?.diagnostics?.() || null;
     add(t("checks.item.serial1Api"), Boolean(bgDiagBeforeWait?.serial1Available), bgDiagBeforeWait?.serial1Available ? t("checks.badge.ok") : t("common.pending"));
     if (state.vm && state.vmReady && bgDiagBeforeWait?.serial1Available && !bgDiagBeforeWait?.runnerReady) {
-      await window.BA_BG_TOOLS?.waitForRunnerReady?.(1500);
+      await legacy.BA_BG_TOOLS?.waitForRunnerReady?.(1500);
     }
-    const bgDiag = window.BA_BG_TOOLS?.diagnostics?.() || null;
+    const bgDiag = legacy.BA_BG_TOOLS?.diagnostics?.() || null;
     add(t("checks.item.runnerSerial1"), Boolean(bgDiag?.runnerReady), bgDiag?.runnerReady ? t("checks.detail.runnerReady") : (bgDiag?.lastError || t("common.notReady")));
-    add(t("checks.item.snapshotApi"), Boolean(state.vm?.save_state && state.vm?.restore_state), state.vm ? "save_state/restore_state" : t("common.pending"));
+    add(t("checks.item.snapshotApi"), Boolean(typeof vm?.save_state === "function" && typeof vm?.restore_state === "function"), state.vm ? "save_state/restore_state" : t("common.pending"));
 
     const vmSkipReason = getVmCommandCheckSkipReason();
 
@@ -249,7 +330,7 @@ async function runChecks({ probeWsRelay = true } = {}) {
       });
       const vmProfileId = profile
         ? firstMatchingVmCheckLine(profileIdResult.stdout, (line) => line === profile.id) || lastNonEmptyLine(profileIdResult.stdout)
-        : firstMatchingVmCheckLine(profileIdResult.stdout, (line) => line && line !== "unknown") || lastNonEmptyLine(profileIdResult.stdout);
+        : firstMatchingVmCheckLine(profileIdResult.stdout, (line) => line !== "" && line !== "unknown") || lastNonEmptyLine(profileIdResult.stdout);
       const profileOk = profile ? vmProfileId === profile.id : Boolean(vmProfileId && vmProfileId !== "unknown");
       add(t("checks.item.profileInVm"), profileOk, profile ? t("checks.detail.profileExpected", { id: vmProfileId || t("common.noData"), expected: profile.id }) : vmProfileId || t("common.noData"));
 
@@ -308,15 +389,13 @@ async function runChecks({ probeWsRelay = true } = {}) {
 
     updateChecksSummaryFromDom();
 
-    // El retorno visual a la pestaña 1 se hace en finally, también si algún
-    // check lanza una excepción.
+    // The visual return to tab 1 happens in finally, including thrown checks.
+    void okCount;
+    void total;
   } catch (error) {
-    const message = error?.message || String(error);
+    const message = errorMessage(error);
     logTool(`${NL}${t("checks.log.warnError", { message })}${NL}`);
 
-    // No dejamos la cabecera en "error" sin una fila visible que lo explique.
-    // Si una comprobación lanza una excepción, la convertimos en una fila roja
-    // y el resumen se recalcula desde el DOM en el finally.
     const container = $("checks");
     if (container) addCheck(container, t("checks.item.checksError"), false, message);
   } finally {
