@@ -7,6 +7,7 @@ const steps = [
   [process.execPath, ["scripts/check/frontend-manifest.mjs"]],
   [process.execPath, ["scripts/check/js-syntax.mjs"]],
   [process.execPath, ["scripts/check/i18n.mjs"]],
+  [process.execPath, ["scripts/check/browser-modernity.mjs"]],
   [process.execPath, ["scripts/check/server.mjs"]],
 ];
 

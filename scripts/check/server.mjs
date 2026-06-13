@@ -31,7 +31,9 @@ async function waitForServer() {
     try {
       const response = await fetch(base, { method: "HEAD" });
       if (response.ok) return response;
-    } catch {}
+    } catch {
+      // Retry until the local server accepts connections.
+    }
     await new Promise((resolve) => setTimeout(resolve, 150));
   }
   throw new Error("server.mjs no arrancó a tiempo");

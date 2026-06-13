@@ -96,9 +96,9 @@ flowchart LR
 - `public/assets/app.css` cuando se ejecuta con `--minify` o `BA_MINIFY=1`
 - `public/locales/es.json` y `public/locales/en.json`
 
-El entry `src/browser/main.ts` instala `window.BA` desde `src/browser/compat/window-api.ts`. Después el script concatena fuentes TypeScript en el orden `browserSourceOrder`. Este orden mantiene contratos globales históricos mientras los módulos se migran por dominio.
+El entry `src/browser/main.ts` instala `window.BA` desde `src/browser/compat/window-api.ts` y carga los módulos ya migrados a ESM. Mientras quede código legacy, `src/browser/compat/legacy-facades.ts` publica facades temporales para que las fuentes todavía concatenadas sigan encontrando sus símbolos históricos. Después el script concatena las fuentes TypeScript restantes en el orden `browserSourceOrder`.
 
-Regla: si cambia el orden de inicialización del browser, se modifica solo `browserSourceOrder` en `scripts/build/frontend.mjs`.
+Regla: los módulos ya migrados no vuelven a `browserSourceOrder`; el ratchet `scripts/check/browser-modernity.mjs` lo valida.
 
 ## i18n
 
@@ -270,6 +270,8 @@ Archivos clave:
 `npm run check` ejecuta:
 
 - `tsc --noEmit`
+- `npm run lint`
+- `npm test`
 - `scripts/check.mjs`
 
 `scripts/check.mjs` ejecuta:
@@ -279,9 +281,14 @@ Archivos clave:
 - `scripts/check/frontend-manifest.mjs`
 - `scripts/check/js-syntax.mjs`
 - `scripts/check/i18n.mjs`
+- `scripts/check/browser-modernity.mjs`
 - `scripts/check/server.mjs`
 
 `check-server` arranca `server.mjs` en `127.0.0.1:5199` y valida COOP, COEP, CORP y `Range`.
+
+`npm run lint` usa ESLint flat config (`eslint.config.js`). Los módulos migrados se validan con reglas TypeScript type-aware; los ficheros legacy conservan un override temporal para permitir la migración por dominios sin bloquear todo el repositorio.
+
+`npm test` compila `tests/**/*.test.ts` con esbuild hacia `build/test/` y ejecuta `node --test`. Los primeros tests cubren helpers puros migrados; cada nuevo módulo puro debe añadir pruebas enfocadas.
 
 ## Limpieza
 
@@ -294,7 +301,7 @@ Archivos clave:
 ## Reglas de mantenimiento
 
 1. Código nuevo de aplicación en `src/browser/` con TypeScript.
-2. Cambios de orden del bundle principal solo en `browserSourceOrder`.
+2. El código migrado debe importarse desde `src/browser/main.ts` o desde módulos importados por este, no volver a `browserSourceOrder`.
 3. Nuevo CSS en `src/web/styles/` y `@import` desde `src/web/styles/style.css`.
 4. Nuevas librerías browser vía `package.json` + script de copia/bundle, no copiadas a mano en `public/vendor/`.
 5. Nuevo modelo en `data/llm-models.json` y regeneración con `npm run build`.
@@ -304,3 +311,4 @@ Archivos clave:
 9. `npm run build:prod` usa `https://browseragent.icu/` como `BA_PUBLIC_SITE_URL` por defecto; otros dominios deben sobrescribir esa variable para generar canonical y Open Graph/Twitter con URLs absolutas del dominio correcto.
 10. Mantener límites explícitos para logs, artifacts, historial y salidas de tools.
 11. Probar consolas xterm, cierre, refresco, programas de pantalla completa y tools tras tocar seriales o geometría de consola.
+12. Bajar los límites de `scripts/check/browser-modernity.mjs` cada vez que se elimine `@ts-nocheck`, un global interno, un script inline o una entrada legacy de `browserSourceOrder`.

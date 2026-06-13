@@ -20,7 +20,9 @@
     "setup": "node scripts/setup.mjs",
     "build": "node scripts/build.mjs",
     "build:prod": "BA_PUBLIC_SITE_URL=${BA_PUBLIC_SITE_URL:-https://browseragent.icu/} BA_MINIFY=1 node scripts/build.mjs",
-    "check": "tsc --noEmit && node scripts/check.mjs",
+    "lint": "eslint .",
+    "test": "node scripts/test.mjs",
+    "check": "tsc --noEmit && npm run lint && npm test && node scripts/check.mjs",
     "clean": "node scripts/clean.mjs",
     "clean:runtime": "node scripts/clean-runtime.mjs",
     "clean:all": "npm run clean && npm run clean:runtime"
@@ -40,6 +42,10 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "typescript": "^5.9.3"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.5.0",
+    "globals": "^17.6.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.61.0"
   }
 }

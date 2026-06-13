@@ -9,7 +9,7 @@ import * as esbuild from "esbuild";
 import { gzipSync } from "node:zlib";
 import { readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
 const minify = process.env.BA_MINIFY === "1" || process.argv.includes("--minify");

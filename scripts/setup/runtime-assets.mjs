@@ -78,7 +78,9 @@ function download(url, dest) {
       if (settled) return;
       settled = true;
       file.close(() => {});
-      try { unlinkSync(dest); } catch {}
+      try { unlinkSync(dest); } catch {
+        // Best-effort cleanup of partial downloads.
+      }
       reject(error);
     }
 

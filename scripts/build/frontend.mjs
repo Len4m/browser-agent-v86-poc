@@ -33,10 +33,6 @@ const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"))
 const appVersion = packageJson.version || "0.0.0";
 
 const browserSourceOrder = [
-  "src/browser/app/state.ts",
-  "src/browser/app/i18n.ts",
-  "src/browser/app/text-utils.ts",
-  "src/browser/app/origin-awareness.ts",
   "src/browser/ui/status-controls.ts",
   "src/browser/ui/modal.ts",
   "src/browser/console/xterm-consoles.ts",
@@ -67,8 +63,6 @@ const browserSourceOrder = [
   "src/browser/chat/panel/template.ts",
   "src/browser/chat/panel/capabilities-view.ts",
   "src/browser/chat/panel/panel.ts",
-  "src/browser/ui/tooltips.ts",
-  "src/browser/app/lang-selector.ts",
 ];
 
 const minify = process.env.BA_MINIFY === "1" || process.argv.includes("--minify");
