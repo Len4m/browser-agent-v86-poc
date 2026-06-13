@@ -1,19 +1,40 @@
-// @ts-nocheck
 /**
  * Parsea tool calls escritos como texto (weak local models).
  * Extiende los patrones de @browser-ai/transformers-js (```tool_call) con ```json y JSON suelto.
  */
 
-function generateToolCallId() {
+export type ToolArguments = Record<string, unknown>;
+
+export interface ParsedTextToolCall {
+  toolCallId: string;
+  toolName: string;
+  args: ToolArguments;
+}
+
+export interface ParseTextToolCallsOptions {
+  allowedToolNames?: string[];
+}
+
+export interface ParseTextToolCallsResult {
+  toolCalls: ParsedTextToolCall[];
+  textContent: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function generateToolCallId(): string {
   return `call_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
-function normalizeArgs(raw) {
+function normalizeArgs(raw: unknown): ToolArguments {
   if (raw === undefined || raw === null) return {};
-  if (typeof raw === "object") return raw;
+  if (isRecord(raw)) return raw;
   if (typeof raw === "string") {
     try {
-      return JSON.parse(raw);
+      const parsed: unknown = JSON.parse(raw);
+      return isRecord(parsed) ? parsed : {};
     } catch {
       return {};
     }
@@ -21,8 +42,8 @@ function normalizeArgs(raw) {
   return {};
 }
 
-function finalizeArgs(toolName, args) {
-  const out = { ...args };
+function finalizeArgs(toolName: string, args: ToolArguments): ToolArguments | null {
+  const out: ToolArguments = { ...args };
   if (toolName === "vm.fs.list") {
     if (!out.path || typeof out.path !== "string") return null;
     if (!out.maxEntries || Number(out.maxEntries) <= 0) out.maxEntries = 120;
@@ -34,19 +55,21 @@ function finalizeArgs(toolName, args) {
   return out;
 }
 
-function pushCall(calls, call) {
-  const name = call?.name || call?.toolName;
-  if (!name || typeof name !== "string") return;
-  const args = finalizeArgs(name, normalizeArgs(call.arguments ?? call.parameters));
+function pushCall(calls: ParsedTextToolCall[], call: unknown): void {
+  if (!isRecord(call)) return;
+  const rawName = call.name ?? call.toolName;
+  if (!rawName || typeof rawName !== "string") return;
+  const args = finalizeArgs(rawName, normalizeArgs(call.arguments ?? call.parameters));
   if (!args) return;
+  const rawId = call.id ?? call.toolCallId;
   calls.push({
-    toolCallId: call.id || call.toolCallId || generateToolCallId(),
-    toolName: name,
+    toolCallId: typeof rawId === "string" && rawId ? rawId : generateToolCallId(),
+    toolName: rawName,
     args,
   });
 }
 
-function findMatchingBrace(text, openIndex) {
+function findMatchingBrace(text: string, openIndex: number): number {
   if (text[openIndex] !== "{") return -1;
   let depth = 0;
   let inString = false;
@@ -78,30 +101,31 @@ function findMatchingBrace(text, openIndex) {
   return -1;
 }
 
-function parseFencedBlocks(text, calls) {
+function parseFencedBlocks(text: string, calls: ParsedTextToolCall[]): void {
   const fenceRe = /```(?:tool[_-]?call|json)\s*([\s\S]*?)```/gi;
   for (const match of text.matchAll(fenceRe)) {
     const inner = (match[1] || "").trim();
     if (!inner) continue;
     try {
-      const parsed = JSON.parse(inner);
-      const arr = Array.isArray(parsed) ? parsed : [parsed];
-      for (const call of arr) pushCall(calls, call);
+      const parsed: unknown = JSON.parse(inner);
+      const items = Array.isArray(parsed) ? parsed : [parsed];
+      for (const call of items) pushCall(calls, call);
     } catch {
       for (const line of inner.split("\n")) {
         const trimmed = line.trim();
         if (!trimmed) continue;
         try {
-          pushCall(calls, JSON.parse(trimmed));
+          const parsedLine: unknown = JSON.parse(trimmed);
+          pushCall(calls, parsedLine);
         } catch {
-          // ignore
+          // Ignore malformed line-level JSON.
         }
       }
     }
   }
 }
 
-function parseLooseToolObjects(text, calls) {
+function parseLooseToolObjects(text: string, calls: ParsedTextToolCall[]): void {
   let searchFrom = 0;
   while (searchFrom < text.length) {
     const nameIdx = text.indexOf('"name"', searchFrom);
@@ -117,30 +141,25 @@ function parseLooseToolObjects(text, calls) {
       continue;
     }
     try {
-      const obj = JSON.parse(text.slice(open, close + 1));
-      if (obj?.name && (obj.arguments !== undefined || obj.parameters !== undefined)) {
+      const obj: unknown = JSON.parse(text.slice(open, close + 1));
+      if (isRecord(obj) && obj.name && (obj.arguments !== undefined || obj.parameters !== undefined)) {
         pushCall(calls, obj);
       }
     } catch {
-      // ignore
+      // Ignore malformed loose JSON.
     }
     searchFrom = close + 1;
   }
 }
 
-/**
- * @param {string} text
- * @param {{ allowedToolNames?: string[] }} [options]
- * @returns {{ toolCalls: Array<{toolCallId:string,toolName:string,args:object}>, textContent: string }}
- */
-export function parseTextToolCalls(text, options = {}) {
+export function parseTextToolCalls(text: string, options: ParseTextToolCallsOptions = {}): ParseTextToolCallsResult {
   const raw = String(text || "");
-  const calls = [];
+  const calls: ParsedTextToolCall[] = [];
   parseFencedBlocks(raw, calls);
   parseLooseToolObjects(raw, calls);
 
-  const seen = new Set();
-  const deduped = [];
+  const seen = new Set<string>();
+  const deduped: ParsedTextToolCall[] = [];
   for (const call of calls) {
     const key = `${call.toolName}:${JSON.stringify(call.args)}`;
     if (seen.has(key)) continue;
@@ -152,7 +171,7 @@ export function parseTextToolCalls(text, options = {}) {
     ? new Set(options.allowedToolNames)
     : null;
   const filtered = allowed
-    ? deduped.filter((c) => allowed.has(c.toolName))
+    ? deduped.filter((call) => allowed.has(call.toolName))
     : deduped;
 
   let textContent = raw.replace(/```(?:tool[_-]?call|json)\s*[\s\S]*?```/gi, "");
@@ -171,14 +190,14 @@ export function parseTextToolCalls(text, options = {}) {
       continue;
     }
     try {
-      const obj = JSON.parse(textContent.slice(open, close + 1));
-      if (obj?.name && (obj.arguments !== undefined || obj.parameters !== undefined)) {
+      const obj: unknown = JSON.parse(textContent.slice(open, close + 1));
+      if (isRecord(obj) && obj.name && (obj.arguments !== undefined || obj.parameters !== undefined)) {
         textContent = textContent.slice(0, open) + textContent.slice(close + 1);
         searchFrom = open;
         continue;
       }
     } catch {
-      // ignore
+      // Ignore malformed loose JSON while cleaning display text.
     }
     searchFrom = nameIdx + 6;
   }
@@ -190,7 +209,7 @@ export function parseTextToolCalls(text, options = {}) {
   };
 }
 
-export function looksLikeTextToolPlan(text) {
+export function looksLikeTextToolPlan(text: string): boolean {
   const s = String(text || "");
   return /```(?:tool[_-]?call|json)\b/i.test(s)
     || /^\s*\{\s*"name"\s*:\s*"(vm|web|net|tls)\./m.test(s)

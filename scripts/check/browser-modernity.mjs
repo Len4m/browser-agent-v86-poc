@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../..", import.meta.url));
 
 const limits = {
-  tsNocheckFiles: 30,
+  tsNocheckFiles: 29,
   browserSourceOrderEntries: 26,
   inlineScriptBlocks: 2,
   internalWindowAssignments: 28,
@@ -33,6 +33,7 @@ const migratedModules = [
   "src/browser/chat/provider/ai-sdk/browser-agent-runner.ts",
   "src/browser/chat/provider/ai-sdk/entry.ts",
   "src/browser/chat/provider/ai-sdk/llm-browser-ai.worker.ts",
+  "src/browser/chat/provider/ai-sdk/text-tool-parser.ts",
 ];
 
 function walk(dir, out = []) {
