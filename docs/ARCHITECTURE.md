@@ -6,7 +6,12 @@ La VM corre con **v86** y Alpine x86. La capa LLM usa **AI SDK v6** con backends
 
 ## Vista general
 
-```mermaid
+![Vista general de la arquitectura](assets/architecture-overview.svg)
+
+<details>
+<summary>Fuente Mermaid para regenerar la imagen</summary>
+
+```text
 ---
 config:
   layout: elk
@@ -58,6 +63,8 @@ flowchart LR
 
   V86 <-->|"red WS opcional"| Wsnic
 ```
+
+</details>
 
 ## Raíz servida
 
