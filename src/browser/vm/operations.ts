@@ -1,8 +1,156 @@
-// @ts-nocheck
-// Browser Agent v86 - 07 tools network disk snapshot
-// Split from app.js in v9.35. Load order is defined in index.html.
+// Browser Agent v86 - VM tools, network, disk and snapshot operations.
+// Modern modules import these helpers directly. Legacy ordered sources receive
+// global aliases through compat/legacy-facades.ts.
 
-function buildExecVmWrappedCommand(command, marker, maxOutputBytes) {
+import {
+  $,
+  DOCKER_WSNIC_COMMAND,
+  NL,
+  VM_DISK_MOUNT_COMMAND,
+  VM_DISK_UNMOUNT_COMMAND,
+  VM_NETWORK_COMMAND,
+  state,
+} from "../app/state";
+import { t } from "../app/i18n";
+import { isPublishedOrigin } from "../app/origin-awareness";
+import { clampExecVmOutputBytes } from "../app/text-utils";
+import { showBaModal } from "../ui/modal";
+import {
+  formatLoggedCommand,
+  isWsConnected,
+  logTool,
+  setAgentBusy,
+  setBadge,
+  syncDiskCheckButton,
+  syncSnapshotButtons,
+  syncWsButton,
+} from "../ui/status-controls";
+import { getVmRuntimeConfig, getWsRelayUrl, type VmRuntimeConfig } from "./profile-config";
+import {
+  addMessage,
+  downloadArrayBuffer,
+  formatBytes,
+  nextPaint,
+  normalizeLs,
+  setLoading,
+  timestampForFilename,
+  v86SaveState,
+} from "./runtime-assets";
+
+export interface ExecVmOptions {
+  lock?: boolean;
+  label?: string;
+  timeoutMs?: number;
+  log?: boolean;
+  targetTools?: boolean;
+  resolveOnTokens?: string[];
+  rejectOnTokens?: string[];
+  maxOutputBytes?: number;
+}
+
+export interface ExecVmResult {
+  code: number;
+  stdout: string;
+  stderr: string;
+}
+
+interface BackgroundExecVmOptions {
+  label: string;
+  timeoutMs: number;
+  maxOutputBytes: number;
+  log: boolean;
+}
+
+interface BackgroundToolsApi {
+  execVm?: (command: string, options: BackgroundExecVmOptions) => unknown;
+}
+
+interface LlmStateApi {
+  generating?: boolean;
+}
+
+interface LlmAgentApi {
+  isChatOperationActive?: () => boolean;
+  stopActiveTurn?: () => void;
+  handleUserMessage?: (text: string) => unknown;
+}
+
+interface StartVmOptions {
+  restoreStateBuffer?: ArrayBuffer | null;
+}
+
+interface StopVmOptions {
+  confirmShutdown?: boolean;
+}
+
+type LegacyWindow = Window & typeof globalThis & {
+  BA_BG_TOOLS?: BackgroundToolsApi;
+  BA_LLM?: LlmStateApi;
+  BA_LLM_AGENT?: LlmAgentApi;
+  renderConsoleTabs?: () => void;
+  startVm?: (options?: StartVmOptions) => unknown;
+  stopVm?: (options?: StopVmOptions) => unknown;
+};
+
+interface VmSerialApi {
+  serial0_send?: (text: string) => void;
+}
+
+interface ExecVmPending {
+  marker: string;
+  raw: string;
+  resolve: (result: ExecVmResult) => void;
+  timer: number;
+  resolveOnTokens: string[];
+  rejectOnTokens: string[];
+  bytesSinceParse: number;
+  maxRawChars: number;
+}
+
+function legacyWindow(): LegacyWindow {
+  return window;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  return "Error";
+}
+
+function normalizeExecVmResult(result: unknown): ExecVmResult {
+  if (!isRecord(result)) return { code: 1, stdout: "", stderr: "invalid execVm result" };
+  return {
+    code: Number.isFinite(Number(result.code)) ? Number(result.code) : 1,
+    stdout: typeof result.stdout === "string" ? result.stdout : "",
+    stderr: typeof result.stderr === "string" ? result.stderr : "",
+  };
+}
+
+function vmSerialApi(): VmSerialApi | null {
+  return isRecord(state.vm) ? state.vm : null;
+}
+
+function renderConsoleTabs(): void {
+  legacyWindow().renderConsoleTabs?.();
+}
+
+function isVmRuntimeConfig(value: unknown): value is VmRuntimeConfig {
+  return isRecord(value)
+    && typeof value.ramMb === "number"
+    && typeof value.vramMb === "number"
+    && typeof value.diskMode === "string"
+    && ("hda" in value);
+}
+
+function activeRuntimeConfig(): VmRuntimeConfig | null {
+  return isVmRuntimeConfig(state.activeRuntime) ? state.activeRuntime : null;
+}
+
+function buildExecVmWrappedCommand(command: string, marker: string, maxOutputBytes: number | undefined): string {
   const safeCommand = normalizeLs(command);
   const limit = clampExecVmOutputBytes(maxOutputBytes);
   const errLimit = Math.max(1024, Math.min(32768, limit));
@@ -15,54 +163,81 @@ function buildExecVmWrappedCommand(command, marker, maxOutputBytes) {
   const markerEnd = `${marker}_END`;
 
   /*
-    v9.44: stdout/stderr no se capturan desde el repintado visual de la consola.
-    El comando real se redirige a ficheros temporales y solo después se emite
-    una copia limitada directamente a /dev/ttyS0 entre secciones únicas.
-    Esto evita fragmentos de eco como "__rc", "___END:$__rc" o letras sueltas
-    mezcladas con la salida real.
+    v9.44: stdout/stderr are not captured from the visual console repaint.
+    The real command writes to temporary files, then emits bounded sections
+    directly to /dev/ttyS0 so parser markers do not mix with echoed fragments.
   */
   return [
-    `__ba_tty=/dev/ttyS0`,
-    `__ba_dir=/tmp/ba-execvm`,
+    "__ba_tty=/dev/ttyS0",
+    "__ba_dir=/tmp/ba-execvm",
     `__ba_out="$__ba_dir/${safeId}.out"`,
     `__ba_err="$__ba_dir/${safeId}.err"`,
-    `mkdir -p "$__ba_dir" 2>/dev/null || true`,
-    `rm -f "$__ba_out" "$__ba_err" 2>/dev/null || true`,
-    `printf '\n${markerStart}\n${markerStdoutStart}\n' > "$__ba_tty" 2>/dev/null || printf '\n${markerStart}\n${markerStdoutStart}\n'`,
+    'mkdir -p "$__ba_dir" 2>/dev/null || true',
+    'rm -f "$__ba_out" "$__ba_err" 2>/dev/null || true',
+    `printf '\\n${markerStart}\\n${markerStdoutStart}\\n' > "$__ba_tty" 2>/dev/null || printf '\\n${markerStart}\\n${markerStdoutStart}\\n'`,
     `( TERM=dumb; export TERM; ${safeCommand} ) > "$__ba_out" 2> "$__ba_err"`,
-    `__rc=$?`,
+    "__rc=$?",
     `head -c ${limit} "$__ba_out" > "$__ba_tty" 2>/dev/null || true`,
-    `printf '\n${markerStdoutEnd}\n${markerStderrStart}\n' > "$__ba_tty" 2>/dev/null || printf '\n${markerStdoutEnd}\n${markerStderrStart}\n'`,
+    `printf '\\n${markerStdoutEnd}\\n${markerStderrStart}\\n' > "$__ba_tty" 2>/dev/null || printf '\\n${markerStdoutEnd}\\n${markerStderrStart}\\n'`,
     `head -c ${errLimit} "$__ba_err" > "$__ba_tty" 2>/dev/null || true`,
-    `printf '\n${markerStderrEnd}\n${markerEnd}:%s\n' "$__rc" > "$__ba_tty" 2>/dev/null || printf '\n${markerStderrEnd}\n${markerEnd}:%s\n' "$__rc"`,
-    `rm -f "$__ba_out" "$__ba_err" 2>/dev/null || true`,
-    `stty echo 2>/dev/null || true`,
+    `printf '\\n${markerStderrEnd}\\n${markerEnd}:%s\\n' "$__rc" > "$__ba_tty" 2>/dev/null || printf '\\n${markerStderrEnd}\\n${markerEnd}:%s\\n' "$__rc"`,
+    'rm -f "$__ba_out" "$__ba_err" 2>/dev/null || true',
+    "stty echo 2>/dev/null || true",
   ].join("; ") + NL;
 }
 
-async function execVm(command, { lock = true, label = t("common.agentUsingVm"), timeoutMs = 25000, log = true, targetTools = true, resolveOnTokens = [], rejectOnTokens = [], maxOutputBytes = 65536 } = {}) {
+export async function execVm(command: string, {
+  lock = true,
+  label = t("common.agentUsingVm"),
+  timeoutMs = 25000,
+  log = true,
+  targetTools = true,
+  resolveOnTokens = [],
+  rejectOnTokens = [],
+  maxOutputBytes = 65536,
+}: ExecVmOptions = {}): Promise<ExecVmResult> {
   if (!state.vm) return { code: 1, stdout: "", stderr: t("common.v86NotStarted") };
   if (!state.vmReady) return { code: 1, stdout: "", stderr: t("common.vmBooting") };
 
-  // Las operaciones internas/tools usan UART1/ttyS1 y no cambian la consola visible.
-  // No hacemos fallback silencioso a serial0 para evitar interferir con el usuario.
+  // Internal tool commands use UART1/ttyS1 and do not touch the visible console.
+  // There is no silent fallback to serial0 because that would interfere with the user.
   if (targetTools) {
-    if (window.BA_BG_TOOLS?.execVm) {
-      return window.BA_BG_TOOLS.execVm(command, { label, timeoutMs, maxOutputBytes, log });
+    const bgExecVm = legacyWindow().BA_BG_TOOLS?.execVm;
+    if (bgExecVm) {
+      try {
+        const raw = await bgExecVm(command, {
+          label,
+          timeoutMs,
+          maxOutputBytes: clampExecVmOutputBytes(maxOutputBytes),
+          log,
+        });
+        return normalizeExecVmResult(raw);
+      } catch (error) {
+        return { code: 1, stdout: "", stderr: errorMessage(error) };
+      }
     }
     return { code: 1, stdout: "", stderr: t("vm.error.serial1NotInit") };
   }
 
-  if (state.pending || state.agentBusy || state.bgTools?.pending) return { code: 1, stdout: "", stderr: t("vm.error.busy") };
+  if (state.pending || state.agentBusy || state.bgTools.pending) {
+    return { code: 1, stdout: "", stderr: t("vm.error.busy") };
+  }
 
+  const vm = vmSerialApi();
+  const sendSerial0 = vm?.serial0_send;
+  if (typeof sendSerial0 !== "function") {
+    return { code: 1, stdout: "", stderr: t("checks.item.serial0Api") };
+  }
+
+  const outputLimit = clampExecVmOutputBytes(maxOutputBytes);
   const marker = `__BAGENT_${Date.now()}_${Math.random().toString(16).slice(2)}__`;
-  const wrapped = buildExecVmWrappedCommand(command, marker, maxOutputBytes);
+  const wrapped = buildExecVmWrappedCommand(command, marker, outputLimit);
 
   if (lock) setAgentBusy(true, label);
   if (log) logTool(`${NL}[tool] ${formatLoggedCommand(command)}${NL}`);
 
-  return new Promise((resolve) => {
-    const finish = (result) => {
+  return new Promise<ExecVmResult>((resolve) => {
+    const finish = (result: ExecVmResult): void => {
       if (lock) setAgentBusy(false);
       resolve(result);
     };
@@ -73,7 +248,7 @@ async function execVm(command, { lock = true, label = t("common.agentUsingVm"), 
       finish({ code: 124, stdout: "", stderr: t("vm.error.timeoutSerial") });
     }, timeoutMs);
 
-    state.pending = {
+    const pending: ExecVmPending = {
       marker,
       raw: "",
       resolve: finish,
@@ -82,55 +257,57 @@ async function execVm(command, { lock = true, label = t("common.agentUsingVm"), 
       rejectOnTokens,
       bytesSinceParse: 0,
       // Keep enough tail for limited stdout/stderr plus markers. This prevents
-      // accidental unbounded growth if serial0 emits noise while a command hangs.
-      maxRawChars: clampExecVmOutputBytes(maxOutputBytes) + 96 * 1024,
+      // unbounded growth if serial0 emits noise while a command hangs.
+      maxRawChars: outputLimit + 96 * 1024,
     };
+    state.pending = pending;
     renderConsoleTabs();
     try {
-      state.vm.serial0_send(wrapped);
+      sendSerial0(wrapped);
     } catch (error) {
       window.clearTimeout(timer);
       state.pending = null;
       renderConsoleTabs();
-      finish({ code: 1, stdout: "", stderr: error.message });
+      finish({ code: 1, stdout: "", stderr: errorMessage(error) });
     }
   });
 }
 
-async function runCommandFromInput(event) {
+export async function runCommandFromInput(event: Event): Promise<void> {
   event.preventDefault();
-  const command = $("command-input").value.trim();
+  const command = $<HTMLInputElement>("command-input")?.value.trim() || "";
   if (!command) return;
   const result = await execVm(command, { lock: true, label: t("vm.exec.manualLabel") });
   if (result.stdout) logTool(`${NL}${result.stdout}${NL}`);
   if (result.stderr) logTool(`${NL}[stderr] ${result.stderr}${NL}`);
 }
 
-async function sendChat(event) {
+export async function sendChat(event: Event): Promise<void> {
   event.preventDefault();
-  if (window.BA_LLM_AGENT?.isChatOperationActive?.()) {
-    window.BA_LLM_AGENT.stopActiveTurn?.();
+  const legacy = legacyWindow();
+  const agent = legacy.BA_LLM_AGENT;
+  if (agent?.isChatOperationActive?.()) {
+    agent.stopActiveTurn?.();
     return;
   }
-  const input = $("chat-input");
-  const text = input.value.trim();
-  if (!text || state.agentBusy || window.BA_LLM?.generating) return;
+
+  const input = $<HTMLTextAreaElement>("chat-input");
+  const text = input?.value.trim() || "";
+  if (!input || !text || state.agentBusy || legacy.BA_LLM?.generating) return;
   input.value = "";
   addMessage("user", text);
 
   // v9.37.2: the chat is now real-LLM only. The old mock command mapper is
-  // intentionally disabled so we can validate the local model path before
-  // connecting autonomous tools to the VM in the next step.
-  if (window.BA_LLM_AGENT?.handleUserMessage) {
-    await window.BA_LLM_AGENT.handleUserMessage(text);
+  // intentionally disabled while autonomous tools are validated against the VM.
+  if (agent?.handleUserMessage) {
+    await agent.handleUserMessage(text);
     return;
   }
 
   addMessage("agent", t("chat.agentTransformersNotReady"));
 }
 
-
-async function configureNetworkInVm() {
+export async function configureNetworkInVm(): Promise<void> {
   if (state.networkConfiguring || state.networkConfigured) return;
 
   if (!state.vm || !state.vmReady) {
@@ -139,7 +316,9 @@ async function configureNetworkInVm() {
   }
 
   if (state.pending || state.agentBusy) {
-    window.setTimeout(() => configureNetworkInVm(), 450);
+    window.setTimeout(() => {
+      void configureNetworkInVm();
+    }, 450);
     return;
   }
 
@@ -165,12 +344,10 @@ async function configureNetworkInVm() {
     setBadge($("ws-detail"), t("net.badge.wsnicOkNoNet"), "warn");
     logTool(`[network] ${t("net.wsnicRespondsNotConfigured")}${NL}`);
   }
-
 }
 
-
-async function toggleDiskInVm() {
-  const runtime = state.activeRuntime;
+export async function toggleDiskInVm(): Promise<void> {
+  const runtime = activeRuntimeConfig();
   if (!runtime?.hda) return;
 
   if (!state.vm || !state.vmReady) {
@@ -197,27 +374,25 @@ async function toggleDiskInVm() {
       setBadge($("vm-detail"), t("vm.disk.badge.notMounted"), "warn");
       logTool(`[disk] ${t("vm.disk.mountFailed")}${NL}`);
     }
+  } else if (result.stdout.includes("DISK_UNMOUNT_OK") || result.stdout.includes("DISK_NOT_MOUNTED")) {
+    state.diskMounted = false;
+    setBadge($("vm-detail"), t("vm.disk.badge.unmounted"), "good");
+    logTool(`[disk] ${t("vm.disk.unmountedAt")}${NL}`);
   } else {
-    if (result.stdout.includes("DISK_UNMOUNT_OK") || result.stdout.includes("DISK_NOT_MOUNTED")) {
-      state.diskMounted = false;
-      setBadge($("vm-detail"), t("vm.disk.badge.unmounted"), "good");
-      logTool(`[disk] ${t("vm.disk.unmountedAt")}${NL}`);
-    } else {
-      state.diskMounted = true;
-      setBadge($("vm-detail"), t("vm.disk.badge.inUse"), "warn");
-      logTool(`[disk] ${t("vm.disk.unmountFailed")}${NL}`);
-    }
+    state.diskMounted = true;
+    setBadge($("vm-detail"), t("vm.disk.badge.inUse"), "warn");
+    logTool(`[disk] ${t("vm.disk.unmountFailed")}${NL}`);
   }
 
   syncDiskCheckButton();
 }
 
-function maybeConfigureNetwork() {
+export function maybeConfigureNetwork(): void {
   if (!state.networkAutoRequested || state.networkConfigured || state.networkConfiguring) return;
-  configureNetworkInVm();
+  void configureNetworkInVm();
 }
 
-async function confirmWsDisconnect() {
+async function confirmWsDisconnect(): Promise<boolean> {
   const result = await showBaModal({
     title: t("ws.disconnect.title"),
     message: t("ws.disconnect.message"),
@@ -230,7 +405,7 @@ async function confirmWsDisconnect() {
   return result === "disconnect";
 }
 
-async function disconnectWs({ confirmDisconnect = true } = {}) {
+export async function disconnectWs({ confirmDisconnect = true }: { confirmDisconnect?: boolean } = {}): Promise<void> {
   if (!state.wsSocket && !state.wsConnecting) {
     state.networkAutoRequested = false;
     state.networkConfigured = false;
@@ -253,7 +428,11 @@ async function disconnectWs({ confirmDisconnect = true } = {}) {
   state.networkConfigured = false;
   state.networkConfiguring = false;
 
-  try { socket?.close?.(); } catch {}
+  try {
+    socket?.close();
+  } catch {
+    // Closing a WebSocket is best-effort.
+  }
 
   setBadge($("badge-ws"), t("ws.badge.disconnected"), "");
   setBadge($("ws-detail"), t("common.disconnected"), "");
@@ -261,14 +440,14 @@ async function disconnectWs({ confirmDisconnect = true } = {}) {
   syncWsButton();
 }
 
-async function connectWs() {
+export async function connectWs(): Promise<void> {
   if (isWsConnected()) {
     await disconnectWs({ confirmDisconnect: true });
     return;
   }
 
   const url = getWsRelayUrl();
-  if (window.BA_ORIGIN?.isPublishedOrigin?.()) {
+  if (isPublishedOrigin()) {
     logTool(`${NL}[network] ${t("net.localPermissionNotice", { url })}${NL}`);
   }
   if (!window.WebSocket) {
@@ -288,13 +467,17 @@ async function connectWs() {
     const timeout = window.setTimeout(() => {
       if (state.wsSocket === socket) state.wsSocket = null;
       state.wsConnecting = false;
-      try { socket.close(); } catch {}
+      try {
+        socket.close();
+      } catch {
+        // Closing a timed-out probe socket is best-effort.
+      }
       setBadge($("badge-ws"), t("ws.badge.disconnected"), "");
       setBadge($("ws-detail"), t("common.noResponse"), "warn");
       syncWsButton();
     }, 1800);
 
-    socket.onopen = () => {
+    socket.onopen = (): void => {
       window.clearTimeout(timeout);
       state.wsSocket = socket;
       state.wsConnecting = false;
@@ -306,7 +489,7 @@ async function connectWs() {
       syncWsButton();
       maybeConfigureNetwork();
     };
-    socket.onerror = () => {
+    socket.onerror = (): void => {
       window.clearTimeout(timeout);
       if (state.wsSocket === socket) state.wsSocket = null;
       state.wsConnecting = false;
@@ -314,7 +497,7 @@ async function connectWs() {
       setBadge($("ws-detail"), t("common.cannotConnect"), "bad");
       syncWsButton();
     };
-    socket.onclose = () => {
+    socket.onclose = (): void => {
       window.clearTimeout(timeout);
       if (state.wsSocket === socket) state.wsSocket = null;
       state.wsConnecting = false;
@@ -328,20 +511,25 @@ async function connectWs() {
   } catch (error) {
     state.wsConnecting = false;
     setBadge($("badge-ws"), t("ws.badge.error"), "bad");
-    setBadge($("ws-detail"), error.message, "bad");
+    setBadge($("ws-detail"), errorMessage(error), "bad");
     syncWsButton();
   }
 }
 
-async function saveSnapshot() {
-  if (!state.vm || state.vmStarting || state.agentBusy || state.pending || state.bgTools?.pending) return;
+export async function saveSnapshot(): Promise<void> {
+  if (!state.vm || state.vmStarting || state.agentBusy || state.pending || state.bgTools.pending) return;
 
-  const runtime = state.activeRuntime || getVmRuntimeConfig();
+  const runtime = activeRuntimeConfig() ?? getVmRuntimeConfig();
   const diskLabel = runtime.hda ? `hda-${runtime.hda.sizeMb}mb` : "initramfs";
   const filename = `browser-agent-v86-${runtime.ramMb}mb-${diskLabel}-${timestampForFilename()}.v86state`;
 
   setAgentBusy(true, t("vm.snapshot.saving"));
-  setLoading(true, { title: t("vm.snapshot.savingTitle"), detail: t("vm.snapshot.savingDetail"), percent: null, indeterminate: true });
+  setLoading(true, {
+    title: t("vm.snapshot.savingTitle"),
+    detail: t("vm.snapshot.savingDetail"),
+    percent: null,
+    indeterminate: true,
+  });
   await nextPaint();
   logTool(`${NL}[snapshot] ${t("vm.snapshot.savingLog")}${NL}`);
   if (runtime.hda) {
@@ -353,7 +541,7 @@ async function saveSnapshot() {
     downloadArrayBuffer(buffer, filename);
     logTool(`[snapshot] ${t("vm.snapshot.downloaded", { filename, size: formatBytes(buffer.byteLength) })}${NL}`);
   } catch (error) {
-    logTool(`[snapshot] ${t("vm.snapshot.saveError", { error: error.message })}${NL}`);
+    logTool(`[snapshot] ${t("vm.snapshot.saveError", { error: errorMessage(error) })}${NL}`);
     setBadge($("vm-detail"), t("common.snapshotError"), "bad");
   } finally {
     setLoading(false);
@@ -362,15 +550,14 @@ async function saveSnapshot() {
   }
 }
 
-function openRestoreSnapshotPicker() {
-  const input = $("restore-state-file");
-  if (!input || state.vmStarting || state.agentBusy || state.pending || state.bgTools?.pending) return;
+export function openRestoreSnapshotPicker(): void {
+  const input = $<HTMLInputElement>("restore-state-file");
+  if (!input || state.vmStarting || state.agentBusy || state.pending || state.bgTools.pending) return;
   input.value = "";
   input.click();
 }
 
-async function confirmRestoreSnapshot() {
-  if (typeof showBaModal !== "function") return window.confirm(t("vm.snapshot.restoreConfirm"));
+async function confirmRestoreSnapshot(): Promise<boolean> {
   const result = await showBaModal({
     title: t("vm.snapshot.restore"),
     message: t("vm.snapshot.restoreConfirm"),
@@ -382,15 +569,33 @@ async function confirmRestoreSnapshot() {
   return result === "restore";
 }
 
-async function restoreSnapshotFromFile(event) {
-  const file = event.target.files?.[0];
+async function stopVmForRestore(): Promise<void> {
+  const stopVm = legacyWindow().stopVm;
+  if (!stopVm) throw new Error("stopVm unavailable");
+  await stopVm({ confirmShutdown: false });
+}
+
+async function startVmForRestore(buffer: ArrayBuffer): Promise<void> {
+  const startVm = legacyWindow().startVm;
+  if (!startVm) throw new Error("startVm unavailable");
+  await startVm({ restoreStateBuffer: buffer });
+}
+
+export async function restoreSnapshotFromFile(event: Event): Promise<void> {
+  const input = event.target instanceof HTMLInputElement ? event.target : null;
+  const file = input?.files?.[0] || null;
   if (!file) return;
 
   const shouldContinue = !state.vm || await confirmRestoreSnapshot();
   if (!shouldContinue) return;
 
   setAgentBusy(true, t("vm.snapshot.reading"));
-  setLoading(true, { title: t("vm.snapshot.readingTitle"), detail: `${file.name} · ${formatBytes(file.size)}`, percent: null, indeterminate: true });
+  setLoading(true, {
+    title: t("vm.snapshot.readingTitle"),
+    detail: `${file.name} · ${formatBytes(file.size)}`,
+    percent: null,
+    indeterminate: true,
+  });
   await nextPaint();
 
   try {
@@ -399,22 +604,23 @@ async function restoreSnapshotFromFile(event) {
     logTool(`[snapshot] ${t("vm.snapshot.hdaNotInSnapshot")}${NL}`);
     setAgentBusy(false);
 
-    if (state.vm) await stopVm({ confirmShutdown: false });
-    await startVm({ restoreStateBuffer: buffer });
+    if (state.vm) await stopVmForRestore();
+    await startVmForRestore(buffer);
   } catch (error) {
-    logTool(`[snapshot] ${t("vm.snapshot.restoreError", { error: error.message })}${NL}`);
+    logTool(`[snapshot] ${t("vm.snapshot.restoreError", { error: errorMessage(error) })}${NL}`);
     setLoading(false);
     setAgentBusy(false);
     syncSnapshotButtons();
   }
 }
 
-async function copyDockerCommand(event) {
-  const targetId = event?.currentTarget?.dataset?.copyTarget || "docker-command";
+export async function copyDockerCommand(event?: Event): Promise<void> {
+  const target = event?.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+  const targetId = target?.dataset.copyTarget || "docker-command";
   const command = $(targetId)?.textContent?.trim() || DOCKER_WSNIC_COMMAND;
   const status = $("copy-docker-status");
 
-  async function fallbackCopy(text) {
+  function fallbackCopy(text: string): void {
     const textarea = document.createElement("textarea");
     textarea.value = text;
     textarea.setAttribute("readonly", "");
@@ -430,13 +636,13 @@ async function copyDockerCommand(event) {
     if (navigator.clipboard?.writeText && window.isSecureContext) {
       await navigator.clipboard.writeText(command);
     } else {
-      await fallbackCopy(command);
+      fallbackCopy(command);
     }
     if (status) status.textContent = t("common.copied");
     logTool(`${NL}[host] ${t("docker.copiedLog")}${NL}`);
   } catch (error) {
     if (status) status.textContent = t("common.copyFailed");
-    logTool(`${NL}[host] ${t("docker.copyFailedLog", { error: error.message })}${NL}`);
+    logTool(`${NL}[host] ${t("docker.copyFailedLog", { error: errorMessage(error) })}${NL}`);
   }
 
   window.setTimeout(() => {

@@ -37,7 +37,6 @@ const browserSourceOrder = [
   "src/browser/vm/serial-vm.ts",
   "src/browser/vm/background-tools-serial1.ts",
   "src/browser/vm/console-control-serial2.ts",
-  "src/browser/vm/operations.ts",
   "build/browser/generated/10a-llm-models-catalog.js",
   "src/browser/chat/state/chat-state.ts",
   "src/browser/chat/state/capabilities.ts",

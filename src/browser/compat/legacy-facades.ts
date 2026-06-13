@@ -23,6 +23,7 @@ import { initLangSelector } from "../app/lang-selector";
 import { initOriginAwareness, originApi } from "../app/origin-awareness";
 import { runChecks } from "../ui/checks-panel";
 import { confirmVmShutdown, showBaModal, showBaModalPanel } from "../ui/modal";
+import * as vmOperations from "../vm/operations";
 import * as profileConfig from "../vm/profile-config";
 import * as runtimeAssets from "../vm/runtime-assets";
 import * as terminalMarkers from "../vm/terminal-markers";
@@ -56,7 +57,7 @@ import {
   utf8ToBase64,
 } from "../app/text-utils";
 
-type LegacyWindow = Window & typeof globalThis & typeof profileConfig & typeof runtimeAssets & typeof terminalMarkers & {
+type LegacyWindow = Window & typeof globalThis & typeof vmOperations & typeof profileConfig & typeof runtimeAssets & typeof terminalMarkers & {
   $: typeof $;
   CR: typeof CR;
   DOCKER_WSNIC_COMMAND: typeof DOCKER_WSNIC_COMMAND;
@@ -110,7 +111,7 @@ export function installLegacyFacades(): void {
   installed = true;
 
   const legacyWindow = window as LegacyWindow;
-  Object.assign(legacyWindow, profileConfig, runtimeAssets, terminalMarkers, {
+  Object.assign(legacyWindow, vmOperations, profileConfig, runtimeAssets, terminalMarkers, {
     $,
     CR,
     DOCKER_WSNIC_COMMAND,
