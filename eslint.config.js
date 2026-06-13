@@ -21,6 +21,8 @@ const modernBrowserTs = [
   "src/browser/ui/modal.ts",
   "src/browser/ui/status-controls.ts",
   "src/browser/ui/tooltips.ts",
+  "src/browser/vm/profile-config.ts",
+  "src/browser/vm/runtime-assets.ts",
 ];
 
 const noInternalWindowGlobalsTs = [
@@ -36,6 +38,8 @@ const noInternalWindowGlobalsTs = [
   "src/browser/ui/modal.ts",
   "src/browser/ui/status-controls.ts",
   "src/browser/ui/tooltips.ts",
+  "src/browser/vm/profile-config.ts",
+  "src/browser/vm/runtime-assets.ts",
 ];
 
 const nodeJsFiles = [

@@ -1,8 +1,105 @@
-// @ts-nocheck
-// Browser Agent v86 - 05 runtime utils assets
-// Split from app.js in v9.35. Load order is defined in index.html.
+// Browser Agent v86 - VM runtime assets and UI helpers
+// Modern modules import these helpers directly. Legacy ordered sources receive
+// global aliases through compat/legacy-facades.ts.
 
-function addMessage(role, text) {
+import { $, state } from "../app/state";
+import { t } from "../app/i18n";
+
+export interface AssetCheckResult {
+  ok: boolean;
+  detail: string;
+}
+
+export interface AbortableOptions {
+  signal?: AbortSignal | null;
+}
+
+export type LoadScriptOptions = AbortableOptions;
+
+export interface LoadingOptions {
+  title?: string;
+  detail?: string;
+  percent?: number | null;
+  indeterminate?: boolean;
+  cancelable?: boolean;
+  cancelLabel?: string;
+  onCancel?: (() => void) | null;
+}
+
+export interface PreloadVmAssetsOptions extends AbortableOptions {
+  onCancel?: (() => void) | null;
+}
+
+export interface PreloadVmAssetsConfig {
+  libv86: string;
+  wasm: string;
+  bios: string;
+  vgaBios: string;
+  bzimage: string;
+  initrd?: string;
+}
+
+export type VmAssetBuffers = Record<string, ArrayBuffer>;
+
+interface AssetSpec {
+  key: string;
+  name: string;
+  url: string;
+  mode: "script" | "cache" | "buffer";
+}
+
+type LegacyWindow = Window & typeof globalThis & {
+  V86Starter?: unknown;
+  V86?: unknown;
+};
+
+interface V86StateApi {
+  save_state?: (done: (error: unknown, result?: unknown) => void) => unknown;
+  restore_state?: (buffer: ArrayBuffer, done: (error?: unknown) => void) => unknown;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
+  return isRecord(value) && typeof value.then === "function";
+}
+
+function messageFromUnknown(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (typeof error === "number" || typeof error === "boolean" || typeof error === "bigint") return String(error);
+  return "Error";
+}
+
+function errorFromUnknown(error: unknown): Error {
+  return error instanceof Error ? error : new Error(messageFromUnknown(error));
+}
+
+function abortReasonMessage(signal: AbortSignal | null | undefined): string {
+  const reason: unknown = signal?.reason;
+  if (reason instanceof Error) return reason.message;
+  if (typeof reason === "string" && reason) return reason;
+  return t("common.operationCancelled");
+}
+
+function hasV86Runtime(): boolean {
+  const legacyWindow = window as LegacyWindow;
+  return Boolean(legacyWindow.V86Starter || legacyWindow.V86);
+}
+
+function vmStateApi(): V86StateApi | null {
+  return isRecord(state.vm) ? state.vm : null;
+}
+
+function copyBytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy.buffer;
+}
+
+export function addMessage(role: string, text: string): HTMLDivElement {
   const log = $("chat-log");
   const msg = document.createElement("div");
   msg.className = `msg ${role}`;
@@ -10,71 +107,97 @@ function addMessage(role, text) {
   bubble.className = "bubble";
   bubble.textContent = text;
   msg.appendChild(bubble);
-  log.appendChild(msg);
-  log.scrollTop = log.scrollHeight;
+  if (log) {
+    log.appendChild(msg);
+    log.scrollTop = log.scrollHeight;
+  }
   return msg;
 }
 
-function makeAbortError(message = t("common.operationCancelled")) {
-  const error = new Error(String(message || t("common.operationCancelled")));
+export function makeAbortError(message: unknown = t("common.operationCancelled")): Error {
+  const error = new Error(message == null ? t("common.operationCancelled") : messageFromUnknown(message));
   error.name = "AbortError";
   return error;
 }
 
-function isAbortError(error) {
-  return error?.name === "AbortError";
+export function isAbortError(error: unknown): boolean {
+  return isRecord(error) && error.name === "AbortError";
 }
 
-function throwIfAborted(signal) {
-  if (signal?.aborted) throw makeAbortError(signal.reason?.message || signal.reason || t("common.operationCancelled"));
+export function throwIfAborted(signal?: AbortSignal | null): void {
+  if (signal?.aborted) throw makeAbortError(abortReasonMessage(signal));
 }
 
-function loadScript(src, { signal = null } = {}) {
+export function loadScript(src: string, { signal = null }: LoadScriptOptions = {}): Promise<void> {
   return new Promise((resolve, reject) => {
-    try { throwIfAborted(signal); } catch (error) { reject(error); return; }
+    try {
+      throwIfAborted(signal);
+    } catch (error) {
+      reject(errorFromUnknown(error));
+      return;
+    }
 
     const existing = Array.from(document.scripts).find((script) => script.dataset.v86Loader === src);
     if (existing) {
-      if (window.V86Starter || window.V86) {
+      if (hasV86Runtime()) {
         resolve();
         return;
       }
-      const cleanup = () => {
+      const cleanup = (): void => {
         existing.removeEventListener("load", onLoad);
         existing.removeEventListener("error", onError);
-        signal?.removeEventListener?.("abort", onAbort);
+        signal?.removeEventListener("abort", onAbort);
       };
-      const onLoad = () => { cleanup(); resolve(); };
-      const onError = () => { cleanup(); reject(new Error(t("common.loadFailed", { src }))); };
-      const onAbort = () => { cleanup(); reject(makeAbortError(signal?.reason)); };
+      const onLoad = (): void => {
+        cleanup();
+        resolve();
+      };
+      const onError = (): void => {
+        cleanup();
+        reject(new Error(t("common.loadFailed", { src })));
+      };
+      const onAbort = (): void => {
+        cleanup();
+        reject(makeAbortError(abortReasonMessage(signal)));
+      };
       existing.addEventListener("load", onLoad, { once: true });
       existing.addEventListener("error", onError, { once: true });
-      signal?.addEventListener?.("abort", onAbort, { once: true });
+      signal?.addEventListener("abort", onAbort, { once: true });
       return;
     }
 
     const script = document.createElement("script");
-    const cleanup = () => {
+    const cleanup = (): void => {
       script.onload = null;
       script.onerror = null;
-      signal?.removeEventListener?.("abort", onAbort);
+      signal?.removeEventListener("abort", onAbort);
     };
-    const onAbort = () => {
+    const onAbort = (): void => {
       cleanup();
-      try { script.remove(); } catch {}
-      reject(makeAbortError(signal?.reason));
+      try {
+        script.remove();
+      } catch {
+        // Removing a partially appended script is best-effort.
+      }
+      reject(makeAbortError(abortReasonMessage(signal)));
     };
     script.src = src;
     script.async = true;
     script.dataset.v86Loader = src;
-    script.onload = () => { cleanup(); resolve(); };
-    script.onerror = () => { cleanup(); reject(new Error(t("common.loadFailed", { src }))); };
-    signal?.addEventListener?.("abort", onAbort, { once: true });
+    script.onload = (): void => {
+      cleanup();
+      resolve();
+    };
+    script.onerror = (): void => {
+      cleanup();
+      reject(new Error(t("common.loadFailed", { src })));
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
     document.head.appendChild(script);
   });
 }
 
-async function checkAsset(url, { signal = null } = {}) {
+export async function checkAsset(url: string, { signal = null }: AbortableOptions = {}): Promise<AssetCheckResult> {
   throwIfAborted(signal);
   try {
     const res = await fetch(url, { method: "HEAD", cache: "no-store", signal });
@@ -86,14 +209,14 @@ async function checkAsset(url, { signal = null } = {}) {
       const res = await fetch(url, { method: "GET", cache: "no-store", signal });
       if (res.ok) return { ok: true, detail: String(res.status) };
       return { ok: false, detail: String(res.status) };
-    } catch (error) {
-      if (isAbortError(error)) throw error;
-      return { ok: false, detail: error.message };
+    } catch (fallbackError) {
+      if (isAbortError(fallbackError)) throw fallbackError;
+      return { ok: false, detail: messageFromUnknown(fallbackError) };
     }
   }
 }
 
-function checkWsRelayEndpoint(url, timeoutMs = 1600) {
+export function checkWsRelayEndpoint(url: string, timeoutMs = 1600): Promise<AssetCheckResult> {
   return new Promise((resolve) => {
     if (!window.WebSocket) {
       resolve({ ok: false, detail: t("checks.detail.wsNoWebSocket") });
@@ -110,41 +233,45 @@ function checkWsRelayEndpoint(url, timeoutMs = 1600) {
       return;
     }
 
-    let socket;
+    let socket: WebSocket | null = null;
     let settled = false;
+    let timer = 0;
 
-    const finish = (ok, detail) => {
+    const finish = (ok: boolean, detail: string): void => {
       if (settled) return;
       settled = true;
       window.clearTimeout(timer);
-      try { socket?.close?.(); } catch {}
+      try {
+        socket?.close();
+      } catch {
+        // Closing a probe socket is best-effort.
+      }
       resolve({ ok, detail });
     };
 
-    const timer = window.setTimeout(() => finish(false, t("common.noResponse")), timeoutMs);
+    timer = window.setTimeout(() => finish(false, t("common.noResponse")), timeoutMs);
 
     try {
       socket = new WebSocket(url);
-      socket.onopen = () => finish(true, t("checks.detail.wsConnectOk"));
-      socket.onerror = () => finish(false, t("checks.detail.wsConnectionError"));
-      socket.onclose = () => {
+      socket.onopen = (): void => finish(true, t("checks.detail.wsConnectOk"));
+      socket.onerror = (): void => finish(false, t("checks.detail.wsConnectionError"));
+      socket.onclose = (): void => {
         if (!settled) finish(false, t("common.closed"));
       };
     } catch (error) {
-      finish(false, error.message);
+      finish(false, messageFromUnknown(error));
     }
   });
 }
 
-function normalizeLs(command) {
+export function normalizeLs(command: string): string {
   const trimmed = command.trim();
   if (trimmed === "ls") return "ls --color=never";
-  if (trimmed.startsWith("ls ")) return "ls --color=never" + trimmed.slice(2);
+  if (trimmed.startsWith("ls ")) return `ls --color=never${trimmed.slice(2)}`;
   return command;
 }
 
-
-function formatBytes(bytes) {
+export function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
   const units = ["B", "KB", "MB", "GB"];
   let value = bytes;
@@ -156,20 +283,22 @@ function formatBytes(bytes) {
   return `${value >= 10 || unit === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[unit]}`;
 }
 
-function timestampForFilename() {
+export function timestampForFilename(): string {
   const d = new Date();
-  const pad = (n) => String(n).padStart(2, "0");
+  const pad = (n: number): string => String(n).padStart(2, "0");
   return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 }
 
-function normalizeStateBuffer(value) {
+export function normalizeStateBuffer(value: unknown): ArrayBuffer {
   if (value instanceof ArrayBuffer) return value;
-  if (value instanceof Uint8Array) return value.slice().buffer;
-  if (ArrayBuffer.isView(value)) return value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength);
+  if (value instanceof Uint8Array) return copyBytesToArrayBuffer(value);
+  if (ArrayBuffer.isView(value)) {
+    return copyBytesToArrayBuffer(new Uint8Array(value.buffer, value.byteOffset, value.byteLength));
+  }
   throw new Error(t("vm.snapshot.error.invalidBuffer"));
 }
 
-function downloadArrayBuffer(buffer, filename) {
+export function downloadArrayBuffer(buffer: ArrayBuffer, filename: string): void {
   const blob = new Blob([buffer], { type: "application/octet-stream" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -181,30 +310,35 @@ function downloadArrayBuffer(buffer, filename) {
   window.setTimeout(() => URL.revokeObjectURL(url), 3000);
 }
 
-function v86SaveState() {
+export function v86SaveState(): Promise<ArrayBuffer> {
   return new Promise((resolve, reject) => {
-    if (!state.vm?.save_state) {
+    const vm = vmStateApi();
+    if (!vm?.save_state) {
       reject(new Error(t("vm.snapshot.error.noSaveState")));
       return;
     }
 
     let settled = false;
-    const done = (error, result) => {
+    const done = (error: unknown, result?: unknown): void => {
       if (settled) return;
       settled = true;
       window.clearTimeout(timer);
-      if (error) reject(error instanceof Error ? error : new Error(String(error)));
-      else {
-        try { resolve(normalizeStateBuffer(result)); }
-        catch (e) { reject(e); }
+      if (error) {
+        reject(errorFromUnknown(error));
+        return;
+      }
+      try {
+        resolve(normalizeStateBuffer(result));
+      } catch (normalizeError) {
+        reject(errorFromUnknown(normalizeError));
       }
     };
 
     const timer = window.setTimeout(() => done(new Error(t("vm.snapshot.error.saveTimeout"))), 120000);
 
     try {
-      const ret = state.vm.save_state(done);
-      if (ret?.then) ret.then((result) => done(null, result), done);
+      const ret = vm.save_state(done);
+      if (isPromiseLike(ret)) ret.then((result) => done(null, result), done);
       else if (ret instanceof ArrayBuffer || ArrayBuffer.isView(ret)) done(null, ret);
     } catch (error) {
       done(error);
@@ -212,27 +346,28 @@ function v86SaveState() {
   });
 }
 
-function v86RestoreState(buffer) {
+export function v86RestoreState(buffer: ArrayBuffer): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (!state.vm?.restore_state) {
+    const vm = vmStateApi();
+    if (!vm?.restore_state) {
       reject(new Error(t("vm.snapshot.error.noRestoreState")));
       return;
     }
 
     let settled = false;
-    const done = (error) => {
+    const done = (error?: unknown): void => {
       if (settled) return;
       settled = true;
       window.clearTimeout(timer);
-      if (error) reject(error instanceof Error ? error : new Error(String(error)));
+      if (error) reject(errorFromUnknown(error));
       else resolve();
     };
 
     const timer = window.setTimeout(() => done(new Error(t("vm.snapshot.error.restoreTimeout"))), 120000);
 
     try {
-      const ret = state.vm.restore_state(buffer, done);
-      if (ret?.then) ret.then(() => done(), done);
+      const ret = vm.restore_state(buffer, done);
+      if (isPromiseLike(ret)) ret.then(() => done(), done);
       else if (ret !== undefined) done();
     } catch (error) {
       done(error);
@@ -240,7 +375,7 @@ function v86RestoreState(buffer) {
   });
 }
 
-function setLoading(show, {
+export function setLoading(show: boolean, {
   title = t("common.loading"),
   detail = "",
   percent = null,
@@ -248,13 +383,13 @@ function setLoading(show, {
   cancelable = false,
   cancelLabel = t("common.cancel"),
   onCancel = null,
-} = {}) {
+}: LoadingOptions = {}): void {
   const overlay = $("loading-overlay");
   const titleEl = $("loading-title");
   const detailEl = $("loading-detail");
   const bar = $("loading-bar");
   const percentEl = $("loading-percent");
-  const cancelButton = $("loading-cancel");
+  const cancelButton = $<HTMLButtonElement>("loading-cancel");
   if (!overlay) return;
 
   overlay.classList.toggle("show", Boolean(show));
@@ -284,11 +419,13 @@ function setLoading(show, {
   }
 }
 
-function nextPaint() {
-  return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+export function nextPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
 }
 
-async function getAssetSize(url, { signal = null } = {}) {
+export async function getAssetSize(url: string, { signal = null }: AbortableOptions = {}): Promise<number> {
   throwIfAborted(signal);
   try {
     const res = await fetch(url, { method: "HEAD", cache: "no-store", signal });
@@ -300,7 +437,11 @@ async function getAssetSize(url, { signal = null } = {}) {
   }
 }
 
-async function fetchAssetBufferWithProgress(url, onProgress, { signal = null } = {}) {
+export async function fetchAssetBufferWithProgress(
+  url: string,
+  onProgress?: (loaded: number, total: number) => void,
+  { signal = null }: AbortableOptions = {},
+): Promise<ArrayBuffer> {
   throwIfAborted(signal);
   const response = await fetch(url, { cache: "no-store", signal });
   if (!response.ok) throw new Error(`HTTP ${response.status} descargando ${url}`);
@@ -314,7 +455,7 @@ async function fetchAssetBufferWithProgress(url, onProgress, { signal = null } =
   }
 
   const reader = response.body.getReader();
-  const chunks = [];
+  const chunks: Uint8Array[] = [];
   let loaded = 0;
 
   for (;;) {
@@ -324,7 +465,9 @@ async function fetchAssetBufferWithProgress(url, onProgress, { signal = null } =
     chunks.push(value);
     loaded += value.byteLength;
     onProgress?.(loaded, total);
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise<void>((resolve) => {
+      window.setTimeout(resolve, 0);
+    });
   }
   throwIfAborted(signal);
 
@@ -337,12 +480,15 @@ async function fetchAssetBufferWithProgress(url, onProgress, { signal = null } =
   return merged.buffer;
 }
 
-async function preloadVmAssets(cfg, { signal = null, onCancel = null } = {}) {
+export async function preloadVmAssets(
+  cfg: PreloadVmAssetsConfig,
+  { signal = null, onCancel = null }: PreloadVmAssetsOptions = {},
+): Promise<VmAssetBuffers> {
   throwIfAborted(signal);
-  const cancellableLoading = signal && onCancel
+  const cancellableLoading: LoadingOptions = signal && onCancel
     ? { cancelable: true, cancelLabel: t("vm.loading.cancel"), onCancel }
     : {};
-  const showLoading = (options) => setLoading(true, { ...cancellableLoading, ...options });
+  const showLoading = (options: LoadingOptions): void => setLoading(true, { ...cancellableLoading, ...options });
   const cacheKey = JSON.stringify({
     libv86: cfg.libv86,
     wasm: cfg.wasm,
@@ -357,16 +503,16 @@ async function preloadVmAssets(cfg, { signal = null, onCancel = null } = {}) {
     return state.assetBuffers;
   }
 
-  const assets = [
+  const assets: AssetSpec[] = [
     { key: "libv86", name: "libv86.js", url: cfg.libv86, mode: "script" },
     { key: "wasm", name: "v86.wasm", url: cfg.wasm, mode: "cache" },
     { key: "bios", name: "BIOS", url: cfg.bios, mode: "buffer" },
     { key: "vgaBios", name: "VGA BIOS", url: cfg.vgaBios, mode: "buffer" },
     { key: "bzimage", name: "Alpine vmlinuz", url: cfg.bzimage, mode: "buffer" },
-    ...(cfg.initrd ? [{ key: "initrd", name: "Alpine initramfs", url: cfg.initrd, mode: "buffer" }] : []),
+    ...(cfg.initrd ? [{ key: "initrd", name: "Alpine initramfs", url: cfg.initrd, mode: "buffer" as const }] : []),
   ];
 
-  const buffers = {};
+  const buffers: VmAssetBuffers = {};
   showLoading({ title: t("vm.loading.preparing"), detail: t("vm.loading.calculatingSize"), percent: null, indeterminate: true });
   await nextPaint();
   throwIfAborted(signal);
@@ -378,6 +524,7 @@ async function preloadVmAssets(cfg, { signal = null, onCancel = null } = {}) {
   for (let i = 0; i < assets.length; i += 1) {
     throwIfAborted(signal);
     const asset = assets[i];
+    if (!asset) continue;
     const knownSize = sizes[i] || 0;
 
     showLoading({

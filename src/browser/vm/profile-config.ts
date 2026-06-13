@@ -1,33 +1,103 @@
-// @ts-nocheck
-// Browser Agent v86 - 04 vm profile config
-// Split from app.js in v9.35. Load order is defined in index.html.
+// Browser Agent v86 - VM profile config
+// Modern modules import these helpers directly. Legacy ordered sources receive
+// global aliases through compat/legacy-facades.ts.
 
-function getSelectedProfile() {
-  const id = $("vm-profile")?.value || "manual";
-  if (id === "manual") return null;
-  return state.profiles.find((profile) => profile.id === id) || null;
+import { $, state } from "../app/state";
+import { t, tn } from "../app/i18n";
+import { formatBytes } from "./runtime-assets";
+
+export interface VmProfile {
+  id: string;
+  name?: string;
+  output?: string;
+  kernelOutput?: string;
+  initramfsBytes?: number;
+  recommendedRamMb?: number;
+  minRamMb?: number;
+  recommendedVramMb?: number;
+  defaultDisk?: string;
+  packages?: string[];
 }
 
-function getConfig() {
+export interface VmConfig {
+  libv86: string;
+  wasm: string;
+  bios: string;
+  vgaBios: string;
+  bzimage: string;
+  initrd: string;
+  profile: VmProfile | null;
+}
+
+export interface VmRuntimeConfig {
+  ramMb: number;
+  vramMb: number;
+  diskMode: string;
+  hda: {
+    sizeMb: number;
+    url: string;
+  } | null;
+}
+
+interface ProfileOptions {
+  applyDefaults?: boolean;
+}
+
+let initialized = false;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isVmProfile(value: unknown): value is VmProfile {
+  return isRecord(value) && typeof value.id === "string";
+}
+
+function getProfiles(): VmProfile[] {
+  return state.profiles.filter(isVmProfile);
+}
+
+function inputValue(id: string): string {
+  return $<HTMLInputElement>(id)?.value.trim() || "";
+}
+
+function setDisabled(el: Element | null, disabled: boolean): void {
+  if (
+    el instanceof HTMLButtonElement
+    || el instanceof HTMLInputElement
+    || el instanceof HTMLSelectElement
+    || el instanceof HTMLTextAreaElement
+  ) {
+    el.disabled = disabled;
+  }
+}
+
+export function getSelectedProfile(): VmProfile | null {
+  const id = $<HTMLSelectElement>("vm-profile")?.value || "manual";
+  if (id === "manual") return null;
+  return getProfiles().find((profile) => profile.id === id) || null;
+}
+
+export function getConfig(): VmConfig {
   const profile = getSelectedProfile();
   return {
-    libv86: $("cfg-libv86").value.trim(),
-    wasm: $("cfg-wasm").value.trim(),
-    bios: $("cfg-bios").value.trim(),
-    vgaBios: $("cfg-vga").value.trim(),
-    bzimage: profile?.kernelOutput || $("cfg-bzimage").value.trim(),
-    initrd: profile?.output || $("cfg-initrd")?.value?.trim() || "",
+    libv86: inputValue("cfg-libv86"),
+    wasm: inputValue("cfg-wasm"),
+    bios: inputValue("cfg-bios"),
+    vgaBios: inputValue("cfg-vga"),
+    bzimage: profile?.kernelOutput || inputValue("cfg-bzimage"),
+    initrd: profile?.output || inputValue("cfg-initrd"),
     profile,
   };
 }
 
-function formatProfileBytes(bytes) {
+function formatProfileBytes(bytes: number | undefined): string {
   const value = Number(bytes || 0);
   return value ? formatBytes(value) : t("vm.profile.sizePending");
 }
 
-function setSelectValueIfExists(id, value) {
-  const select = $(id);
+function setSelectValueIfExists(id: string, value: string | number | null | undefined): void {
+  const select = $<HTMLSelectElement>(id);
   if (!select || value == null) return;
   const text = String(value);
   if (Array.from(select.options).some((option) => option.value === text)) {
@@ -35,7 +105,7 @@ function setSelectValueIfExists(id, value) {
   }
 }
 
-function syncProfileControls({ applyDefaults = false } = {}) {
+export function syncProfileControls({ applyDefaults = false }: ProfileOptions = {}): void {
   const profile = getSelectedProfile();
   const isManual = !profile;
   const vmRunning = Boolean(state.vm || state.vmStarting);
@@ -53,13 +123,13 @@ function syncProfileControls({ applyDefaults = false } = {}) {
     if (profile.defaultDisk) setSelectValueIfExists("vm-disk", profile.defaultDisk);
   }
 
-  if (profileSelect) profileSelect.disabled = vmRunning;
-  if (ram) ram.disabled = vmRunning || Boolean(profile);
-  if (vram) vram.disabled = vmRunning || Boolean(profile);
-  if (disk) disk.disabled = vmRunning;
+  setDisabled(profileSelect, vmRunning);
+  setDisabled(ram, vmRunning || Boolean(profile));
+  setDisabled(vram, vmRunning || Boolean(profile));
+  setDisabled(disk, vmRunning);
 }
 
-function updateProfileHint({ applyDefaults = false } = {}) {
+export function updateProfileHint({ applyDefaults = false }: ProfileOptions = {}): void {
   const hint = $("vm-profile-hint");
   const profile = getSelectedProfile();
   if (!hint) return;
@@ -80,16 +150,16 @@ function updateProfileHint({ applyDefaults = false } = {}) {
   syncProfileControls({ applyDefaults: false });
 }
 
-async function loadProfiles() {
-  const select = $("vm-profile");
+export async function loadProfiles(): Promise<void> {
+  const select = $<HTMLSelectElement>("vm-profile");
   if (!select) return;
 
   try {
     const response = await fetch("/v86/images/profiles/index.json", { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const profiles = await response.json();
-    state.profiles = Array.isArray(profiles) ? profiles : [];
-  } catch (error) {
+    const profiles: unknown = await response.json();
+    state.profiles = Array.isArray(profiles) ? profiles.filter(isVmProfile) : [];
+  } catch {
     state.profiles = [];
     const hint = $("vm-profile-hint");
     if (hint) hint.textContent = t("vm.profile.none");
@@ -101,7 +171,7 @@ async function loadProfiles() {
   manual.textContent = t("common.freeManual");
   select.appendChild(manual);
 
-  for (const profile of state.profiles) {
+  for (const profile of getProfiles()) {
     const option = document.createElement("option");
     option.value = profile.id;
     option.textContent = profile.name || profile.id;
@@ -112,16 +182,16 @@ async function loadProfiles() {
   updateProfileHint({ applyDefaults: false });
 }
 
-function getWsRelayUrl() {
-  const value = $("ws-url")?.value?.trim();
+export function getWsRelayUrl(): string {
+  const value = $<HTMLInputElement>("ws-url")?.value.trim();
   return value || "ws://127.0.0.1:8086/wsnic";
 }
 
-function getVmRuntimeConfig() {
-  const ramMb = Number($("vm-ram-mb")?.value || "512");
-  const vramMb = Number($("vm-vram-mb")?.value || "8");
-  const diskValue = $("vm-disk")?.value || "initramfs";
-  const config = {
+export function getVmRuntimeConfig(): VmRuntimeConfig {
+  const ramMb = Number($<HTMLSelectElement>("vm-ram-mb")?.value || "512");
+  const vramMb = Number($<HTMLSelectElement>("vm-vram-mb")?.value || "8");
+  const diskValue = $<HTMLSelectElement>("vm-disk")?.value || "initramfs";
+  const config: VmRuntimeConfig = {
     ramMb: Number.isFinite(ramMb) ? ramMb : 512,
     vramMb: Number.isFinite(vramMb) ? vramMb : 8,
     diskMode: diskValue,
@@ -141,18 +211,17 @@ function getVmRuntimeConfig() {
   return config;
 }
 
-function setVmOptionsLocked(locked) {
+export function setVmOptionsLocked(locked: boolean): void {
   if (locked) {
     for (const id of ["vm-profile", "vm-ram-mb", "vm-vram-mb", "vm-disk"]) {
-      const el = $(id);
-      if (el) el.disabled = true;
+      setDisabled($(id), true);
     }
     return;
   }
   syncProfileControls({ applyDefaults: false });
 }
 
-function updateDiskHint() {
+export function updateDiskHint(): void {
   const hint = $("vm-disk-hint");
   if (!hint) return;
   const runtime = getVmRuntimeConfig();
@@ -166,7 +235,11 @@ function updateDiskHint() {
   }
 }
 
-window.addEventListener("ba:langchange", () => {
-  updateProfileHint({ applyDefaults: false });
-  updateDiskHint();
-});
+export function initProfileConfig(): void {
+  if (initialized) return;
+  initialized = true;
+  window.addEventListener("ba:langchange", () => {
+    updateProfileHint({ applyDefaults: false });
+    updateDiskHint();
+  });
+}

@@ -34,8 +34,6 @@ const appVersion = packageJson.version || "0.0.0";
 
 const browserSourceOrder = [
   "src/browser/console/xterm-consoles.ts",
-  "src/browser/vm/profile-config.ts",
-  "src/browser/vm/runtime-assets.ts",
   "src/browser/vm/serial-vm.ts",
   "src/browser/vm/background-tools-serial1.ts",
   "src/browser/vm/console-control-serial2.ts",
