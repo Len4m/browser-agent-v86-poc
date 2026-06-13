@@ -1,59 +1,151 @@
-// @ts-nocheck
 /**
  * Turno de agente unificado sobre AI SDK (streamText + stopWhen + prepareStep).
- * Sin quickInfer, plan weak ni segunda pasada de síntesis: el loop es el de la librería.
+ * Sin quickInfer, plan weak ni segunda pasada de sintesis: el loop es el de la libreria.
  */
 
-import { streamText, stepCountIs } from "ai";
+import {
+  streamText,
+  stepCountIs,
+  type FinishReason,
+  type LanguageModel,
+  type ModelMessage,
+  type OnStepFinishEvent,
+  type PrepareStepFunction,
+  type StepResult,
+  type TextStreamPart,
+  type ToolSet,
+} from "ai";
 import { looksLikeTextToolPlan } from "./text-tool-parser";
 
-// This module ships in a separate bundle, so the global t() from the app bundle
-// is not in scope; bridge through window.BA_I18N when available.
-function t(key, vars) {
-  const fn = typeof window !== "undefined" && window.BA_I18N?.t;
-  return fn ? fn(key, vars) : key;
+type StreamPhase = "main" | "synthesis";
+type AgentStep = StepResult<ToolSet>;
+type AgentStreamResult = ReturnType<typeof streamText<ToolSet>>;
+type AgentStreamPart = TextStreamPart<ToolSet> & { phase: StreamPhase };
+type AgentProviderOptions = NonNullable<Parameters<typeof streamText<ToolSet>>[0]["providerOptions"]>;
+type I18nVars = Record<string, string | number>;
+
+interface LlmModelConfig {
+  engine?: string;
+  thinking?: {
+    enabled?: boolean;
+  };
 }
 
-export function textChunkFromStreamPart(part) {
-  if (!part) return "";
-  if (part.type === "text-delta") return part.text ?? part.textDelta ?? part.delta ?? "";
-  if (part.type === "text") return part.text ?? "";
+export interface RunAgentStreamTurnOptions {
+  model: LanguageModel;
+  modelConfig?: LlmModelConfig | null;
+  system?: string;
+  messages: ModelMessage[];
+  tools?: ToolSet;
+  maxSteps?: number;
+  maxTokens?: number;
+  synthesisMaxTokens?: number;
+  temperature?: number;
+  topP?: number;
+  needsVm?: boolean;
+  enableThinking?: boolean;
+  toolCalling?: "weak" | "fair" | "good";
+  activeToolNames?: string[] | null;
+  abortSignal?: AbortSignal;
+  onStreamPart?: (part: AgentStreamPart) => void;
+  onStepFinish?: (event: OnStepFinishEvent<ToolSet>) => PromiseLike<void> | void;
+}
+
+export interface RunAgentStreamTurnResult {
+  text: string;
+  result: AgentStreamResult;
+  steps: AgentStep[];
+  finishReason: FinishReason | null;
+  hadToolWork: boolean;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function textFromUnknown(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") return String(value);
   return "";
 }
 
-export function reasoningChunkFromStreamPart(part) {
-  if (!part) return "";
+function jsonStringify(value: unknown): string {
+  try {
+    const out = JSON.stringify(value);
+    return typeof out === "string" ? out : "";
+  } catch {
+    return "";
+  }
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  const text = textFromUnknown(error);
+  return text || "Error";
+}
+
+function isAbortError(error: unknown): boolean {
+  return isRecord(error) && error.name === "AbortError";
+}
+
+// This module ships in a separate bundle, so the global t() from the app bundle
+// is not in scope; bridge through window.BA_I18N when available.
+function t(key: string, vars?: I18nVars): string {
+  const legacyWindow = typeof window !== "undefined" ? window : null;
+  const fn = legacyWindow?.BA_I18N?.t;
+  return fn ? fn(key, vars) : key;
+}
+
+export function textChunkFromStreamPart(part: unknown): string {
+  if (!isRecord(part)) return "";
+  if (part.type === "text-delta") {
+    return textFromUnknown(part.text) || textFromUnknown(part.textDelta) || textFromUnknown(part.delta);
+  }
+  if (part.type === "text") return textFromUnknown(part.text);
+  return "";
+}
+
+export function reasoningChunkFromStreamPart(part: unknown): string {
+  if (!isRecord(part)) return "";
   if (part.type === "reasoning-delta" || part.type === "reasoning") {
-    return part.text ?? part.textDelta ?? part.delta ?? "";
+    return textFromUnknown(part.text) || textFromUnknown(part.textDelta) || textFromUnknown(part.delta);
   }
   return "";
 }
 
-function isGpuInferenceFailure(message) {
-  return /out of device memory|VK_ERROR_OUT_OF_DEVICE_MEMORY|WebGPU validation failed|Invalid Buffer|Device lost|failed to call OrtRun|CreateBuffer|null function|function signature mismatch|unaligned accesses|Instance reference no longer exists|memoria GPU agotada|WebGPU inválido|RuntimeError:/i.test(String(message || ""));
+function isGpuInferenceFailure(message: string): boolean {
+  return /out of device memory|VK_ERROR_OUT_OF_DEVICE_MEMORY|WebGPU validation failed|Invalid Buffer|Device lost|failed to call OrtRun|CreateBuffer|null function|function signature mismatch|unaligned accesses|Instance reference no longer exists|memoria GPU agotada|WebGPU inválido|RuntimeError:/i.test(message);
 }
 
-function toolOutputToText(output) {
+function toolOutputToText(output: unknown): string {
   if (output == null) return "";
   if (typeof output === "string") return output;
-  if (typeof output === "object" && typeof output.modelText === "string") return output.modelText;
-  if (output.type === "text") return String(output.value || "");
-  if (output.type === "json") return JSON.stringify(output.value ?? {});
-  if (output.type === "content") return JSON.stringify(output.value ?? []);
-  if (output.type === "error-text") return String(output.value || "");
-  if (output.type === "error-json") return JSON.stringify(output.value ?? {});
-  if (output.type === "execution-denied") return `execution denied: ${output.reason || ""}`.trim();
-  return JSON.stringify(output);
+  if (!isRecord(output)) return jsonStringify(output);
+  if (typeof output.modelText === "string") return output.modelText;
+
+  switch (output.type) {
+    case "text":
+    case "error-text":
+      return textFromUnknown(output.value);
+    case "json":
+    case "content":
+    case "error-json":
+      return jsonStringify(output.value ?? {});
+    case "execution-denied":
+      return `execution denied: ${textFromUnknown(output.reason)}`.trim();
+    default:
+      return jsonStringify(output);
+  }
 }
 
-function collectToolResultText(steps = []) {
-  const chunks = [];
-  for (const step of steps || []) {
-    for (const result of step?.toolResults || []) {
-      const output = toolOutputToText(result.output ?? result.result);
+function collectToolResultText(steps: AgentStep[] = []): string {
+  const chunks: string[] = [];
+  for (const step of steps) {
+    for (const result of step.toolResults) {
+      const output = toolOutputToText(result.output);
       if (!output.trim()) continue;
       chunks.push([
-        `Tool: ${result.toolName || result.tool || "tool"}`,
+        `Tool: ${result.toolName || "tool"}`,
         `Tool call id: ${result.toolCallId || "sin-id"}`,
         "---BEGIN_TOOL_PAYLOAD---",
         output,
@@ -64,14 +156,21 @@ function collectToolResultText(steps = []) {
   return chunks.join("\n\n");
 }
 
-function buildExplicitToolSynthesisMessages({ messages = [], toolResultText = "" }) {
-  const originalUser = [...(messages || [])].reverse().find((msg) => msg?.role === "user")?.content || "";
+function buildExplicitToolSynthesisMessages({
+  messages = [],
+  toolResultText = "",
+}: {
+  messages?: ModelMessage[];
+  toolResultText?: string;
+}): ModelMessage[] {
+  const originalUser = [...messages].reverse().find((msg) => msg.role === "user")?.content || "";
+  const originalUserText = typeof originalUser === "string" ? originalUser : jsonStringify(originalUser);
   return [
     {
       role: "user",
       content: [
-        originalUser
-          ? t("prompt.synth.originalUser", { user: originalUser })
+        originalUserText
+          ? t("prompt.synth.originalUser", { user: originalUserText })
           : t("prompt.synth.originalUserFallback"),
         "",
         t("prompt.synth.toolContext"),
@@ -84,7 +183,10 @@ function buildExplicitToolSynthesisMessages({ messages = [], toolResultText = ""
   ];
 }
 
-async function consumeTextStream(result, { onStreamPart, phase = "main" } = {}) {
+async function consumeTextStream(
+  result: AgentStreamResult,
+  { onStreamPart, phase = "main" }: { onStreamPart?: (part: AgentStreamPart) => void; phase?: StreamPhase } = {},
+): Promise<string> {
   let text = "";
   for await (const part of result.fullStream) {
     onStreamPart?.({ ...part, phase });
@@ -96,13 +198,13 @@ async function consumeTextStream(result, { onStreamPart, phase = "main" } = {}) 
       const resolved = await result.text;
       if (resolved) text = String(resolved);
     } catch {
-      // ignore
+      // The stream itself is the primary source; text is a fallback.
     }
   }
   return text;
 }
 
-function resolveProviderOptions(modelConfig, { enableThinking = false } = {}) {
+function resolveProviderOptions(modelConfig: LlmModelConfig | null, { enableThinking = false }: { enableThinking?: boolean } = {}): AgentProviderOptions | undefined {
   if ((modelConfig?.engine || "transformersjs") !== "transformersjs") return undefined;
   if (!modelConfig?.thinking?.enabled || !enableThinking) return undefined;
   return {
@@ -112,26 +214,6 @@ function resolveProviderOptions(modelConfig, { enableThinking = false } = {}) {
   };
 }
 
-/**
- * @param {object} options
- * @param {import('ai').LanguageModel} options.model
- * @param {object} [options.modelConfig] - catálogo activo (engine, thinking, ollamaThink…)
- * @param {string} [options.system]
- * @param {Array<{role:string,content:string}>} options.messages
- * @param {Record<string, import('ai').Tool>} [options.tools]
- * @param {number} [options.maxSteps]
- * @param {number} [options.maxTokens]
- * @param {number} [options.synthesisMaxTokens]
- * @param {number} [options.temperature]
- * @param {number} [options.topP]
- * @param {boolean} [options.needsVm] - si false, prepareStep fuerza toolChoice 'none' (solo chat)
- * @param {boolean} [options.enableThinking] - activa reasoning del provider solo cuando la UI lo pide.
- * @param {"weak"|"fair"|"good"} [options.toolCalling] - controla cuántos pasos pueden exponer tools.
- * @param {string[]} [options.activeToolNames] - subconjunto de tools para activeTools
- * @param {AbortSignal} [options.abortSignal]
- * @param {(part: object) => void} [options.onStreamPart]
- * @param {(event: object) => void|Promise<void>} [options.onStepFinish]
- */
 export async function runAgentStreamTurn({
   model,
   modelConfig = null,
@@ -150,18 +232,18 @@ export async function runAgentStreamTurn({
   abortSignal,
   onStreamPart,
   onStepFinish,
-}) {
+}: RunAgentStreamTurnOptions): Promise<RunAgentStreamTurnResult> {
   if (!model) throw new Error("No hay modelo AI SDK cargado.");
 
   const providerOptions = resolveProviderOptions(modelConfig, { enableThinking });
 
   const controller = new AbortController();
-  let onParentAbort = null;
+  let onParentAbort: (() => void) | null = null;
   if (abortSignal) {
     if (abortSignal.aborted) {
       controller.abort(abortSignal.reason);
     } else {
-      onParentAbort = () => controller.abort(abortSignal.reason);
+      onParentAbort = (): void => controller.abort(abortSignal.reason);
       abortSignal.addEventListener("abort", onParentAbort, { once: true });
     }
   }
@@ -172,29 +254,30 @@ export async function runAgentStreamTurn({
     throw error;
   }
 
-  const rawToolEntries = tools && typeof tools === "object" ? Object.entries(tools) : [];
+  const rawToolEntries = Object.entries(tools);
   const allToolKeys = rawToolEntries.map(([name]) => name);
   const hasExplicitActiveToolFilter = Array.isArray(activeToolNames);
   const activeTools = hasExplicitActiveToolFilter
-    ? activeToolNames.filter((n) => allToolKeys.includes(n))
+    ? activeToolNames.filter((name) => allToolKeys.includes(name))
     : allToolKeys;
   const useToolsThisTurn = Boolean(needsVm && activeTools.length > 0);
   const toolEntries = useToolsThisTurn
     ? rawToolEntries.filter(([name]) => activeTools.includes(name))
     : [];
-  const toolDefs = useToolsThisTurn ? Object.fromEntries(toolEntries) : undefined;
+  const noTools: ToolSet = {};
+  const toolDefs: ToolSet | undefined = useToolsThisTurn ? Object.fromEntries(toolEntries) : undefined;
 
-  const prepareStep = async ({ stepNumber }) => {
+  const prepareStep: PrepareStepFunction<ToolSet> = ({ stepNumber }) => {
     if (!useToolsThisTurn) {
-      return { tools: {} };
+      return { tools: noTools };
     }
-    // Modelos débiles: un paso de tool y luego síntesis. Modelos fair pueden
+    // Modelos debiles: un paso de tool y luego sintesis. Modelos fair pueden
     // encadenar una segunda tool si el AI SDK lo decide; good mantiene el loop.
     if (toolCalling === "weak" && stepNumber > 0) {
-      return { tools: {} };
+      return { tools: noTools };
     }
     if (toolCalling === "fair" && stepNumber > 1) {
-      return { tools: {} };
+      return { tools: noTools };
     }
     if (activeTools.length > 0) {
       return { activeTools };
@@ -218,7 +301,7 @@ export async function runAgentStreamTurn({
   });
 
   let fullText = "";
-  let steps = [];
+  let steps: AgentStep[] = [];
   try {
     fullText = await consumeTextStream(result, { onStreamPart, phase: "main" });
     try {
@@ -228,7 +311,7 @@ export async function runAgentStreamTurn({
     }
 
     const hadToolWork = steps.some(
-      (s) => (s.toolCalls?.length ?? 0) > 0 || (s.toolResults?.length ?? 0) > 0,
+      (step) => step.toolCalls.length > 0 || step.toolResults.length > 0,
     );
     const needsSynthesis = useToolsThisTurn
       && hadToolWork
@@ -243,7 +326,7 @@ export async function runAgentStreamTurn({
       const toolResultText = collectToolResultText(steps);
       const continuationMessages = toolResultText
         ? buildExplicitToolSynthesisMessages({ messages, toolResultText })
-        : (steps[steps.length - 1]?.response?.messages ?? messages ?? []);
+        : (steps[steps.length - 1]?.response.messages ?? messages);
       const synthMaxOutputTokens = Number.isFinite(Number(synthesisMaxTokens)) && Number(synthesisMaxTokens) > 0
         ? Number(synthesisMaxTokens)
         : Math.min(Number(maxTokens) || 256, 320);
@@ -272,20 +355,24 @@ export async function runAgentStreamTurn({
       }
     }
   } catch (error) {
-    if (error?.name === "AbortError") throw error;
-    const msg = error?.message || String(error);
+    if (isAbortError(error)) throw error;
+    const msg = errorMessage(error);
     if (isGpuInferenceFailure(msg)) {
-      throw new Error(`Inferencia local falló (memoria GPU agotada o WebGPU inválido): ${msg}`);
+      throw new Error(`Inferencia local fallo (memoria GPU agotada o WebGPU invalido): ${msg}`);
     }
     throw error;
   } finally {
     if (onParentAbort && abortSignal) {
-      try { abortSignal.removeEventListener("abort", onParentAbort); } catch { /* ignore */ }
+      try {
+        abortSignal.removeEventListener("abort", onParentAbort);
+      } catch {
+        // Parent signal cleanup is best-effort.
+      }
     }
   }
 
   const hadToolWork = steps.some(
-    (s) => (s.toolCalls?.length ?? 0) > 0 || (s.toolResults?.length ?? 0) > 0,
+    (step) => step.toolCalls.length > 0 || step.toolResults.length > 0,
   );
 
   return {

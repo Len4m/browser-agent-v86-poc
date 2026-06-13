@@ -13,6 +13,7 @@ const modernBrowserTs = [
   "src/browser/app/state.ts",
   "src/browser/app/text-utils.ts",
   "src/browser/compat/**/*.ts",
+  "src/browser/chat/provider/ai-sdk/browser-agent-runner.ts",
   "src/browser/chat/provider/ai-sdk/entry.ts",
   "src/browser/chat/provider/ai-sdk/llm-browser-ai.worker.ts",
   "src/browser/core/**/*.ts",
