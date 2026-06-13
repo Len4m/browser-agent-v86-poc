@@ -23,6 +23,7 @@ import { initLangSelector } from "../app/lang-selector";
 import { initOriginAwareness, originApi } from "../app/origin-awareness";
 import { runChecks } from "../ui/checks-panel";
 import { confirmVmShutdown, showBaModal, showBaModalPanel } from "../ui/modal";
+import { consoleControlApi } from "../vm/console-control-serial2";
 import * as vmOperations from "../vm/operations";
 import * as profileConfig from "../vm/profile-config";
 import * as runtimeAssets from "../vm/runtime-assets";
@@ -76,6 +77,7 @@ type LegacyWindow = Window & typeof globalThis & typeof vmOperations & typeof pr
   BA_I18N: typeof i18nApi;
   BA_ORIGIN: typeof originApi;
   BA_TEXT_UTILS: typeof BA_TEXT_UTILS;
+  BA_CONSOLE_CONTROL: typeof consoleControlApi;
   clampExecVmOutputBytes: typeof clampExecVmOutputBytes;
   clampInt: typeof clampInt;
   normalizeNewlines: typeof normalizeNewlines;
@@ -158,6 +160,7 @@ export function installLegacyFacades(): void {
   legacyWindow.BA_I18N = i18nApi;
   legacyWindow.BA_ORIGIN = originApi;
   legacyWindow.BA_TEXT_UTILS = BA_TEXT_UTILS;
+  legacyWindow.BA_CONSOLE_CONTROL = consoleControlApi;
 
   void initI18n();
   initOriginAwareness();
