@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 const tsconfigRootDir = dirname(fileURLToPath(import.meta.url));
 
 const modernBrowserTs = [
+  "src/browser/app/bootstrap.ts",
   "src/browser/app/i18n.ts",
   "src/browser/app/lang-selector.ts",
   "src/browser/app/origin-awareness.ts",
@@ -38,6 +39,7 @@ const modernBrowserTs = [
 ];
 
 const noInternalWindowGlobalsTs = [
+  "src/browser/app/bootstrap.ts",
   "src/browser/app/i18n.ts",
   "src/browser/app/lang-selector.ts",
   "src/browser/app/origin-awareness.ts",

@@ -1,11 +1,48 @@
-// @ts-nocheck
 // Browser Agent v86 - 09 bootstrap layout
 // Split from app.js in v9.35. Load order is defined in index.html.
 // v9.37.20: header GPU badge delegates to the shared LLM capability service.
 
+import { backgroundToolsApi } from "../vm/background-tools-serial1";
+import {
+  cancelCurrentTool,
+  closeHumanConsoleTab,
+  createHumanConsoleTab,
+  getActiveConsoleTab,
+  redrawActiveConsoleScreen,
+  renderConsoleTabs,
+  showConsoleHelpModal,
+} from "../console/xterm-consoles";
+import { ensureLLMCapabilities, syncLLMCapabilityBadges } from "../chat/state/capabilities";
+import { originApi } from "./origin-awareness";
+import { addMessage, setLoading } from "../vm/runtime-assets";
+import { $, state } from "./state";
+import {
+  connectWs,
+  copyDockerCommand,
+  openRestoreSnapshotPicker,
+  restoreSnapshotFromFile,
+  runCommandFromInput,
+  saveSnapshot,
+  sendChat,
+  toggleDiskInVm,
+} from "../vm/operations";
+import { loadProfiles, updateDiskHint, updateProfileHint } from "../vm/profile-config";
+import { runChecks } from "../ui/checks-panel";
+import { scheduleSerialFit, toggleVmPower } from "../vm/serial-vm";
+import {
+  syncChecksButton,
+  syncDiskCheckButton,
+  syncPowerButtons,
+  syncSnapshotButtons,
+  syncWsButton,
+} from "../ui/status-controls";
+import { t } from "./i18n";
+
 const CHAT_LAYOUT_STORAGE_KEY = "ba.chatExpanded";
 
-function setChatExpanded(expanded, { persist = true } = {}) {
+let initialized = false;
+
+function setChatExpanded(expanded: boolean, { persist = true }: { persist?: boolean } = {}): void {
   const enabled = Boolean(expanded);
   document.body.classList.toggle("chat-expanded", enabled);
   const button = $("chat-layout-toggle");
@@ -20,23 +57,31 @@ function setChatExpanded(expanded, { persist = true } = {}) {
       : t("app.chatToggle.expand.title");
   }
   if (persist) {
-    try { window.localStorage?.setItem(CHAT_LAYOUT_STORAGE_KEY, enabled ? "1" : "0"); } catch (_) {}
+    try {
+      window.localStorage?.setItem(CHAT_LAYOUT_STORAGE_KEY, enabled ? "1" : "0");
+    } catch {
+      // Ignore storage failures in private modes or restricted embeds.
+    }
   }
 }
 
-function initChatLayoutToggle() {
+function initChatLayoutToggle(): void {
   const button = $("chat-layout-toggle");
   if (!button) return;
   let initial = false;
-  try { initial = window.localStorage?.getItem(CHAT_LAYOUT_STORAGE_KEY) === "1"; } catch (_) {}
+  try {
+    initial = window.localStorage?.getItem(CHAT_LAYOUT_STORAGE_KEY) === "1";
+  } catch {
+    initial = false;
+  }
   setChatExpanded(initial, { persist: false });
   button.addEventListener("click", () => {
     setChatExpanded(!document.body.classList.contains("chat-expanded"));
-    scheduleSerialFit?.();
+    scheduleSerialFit();
   });
 }
 
-function enhanceInterface() {
+function enhanceInterface(): void {
   document.body.classList.add("xterm-direct-console-mode-pending");
 
   const terminal = $("terminal");
@@ -51,7 +96,7 @@ function enhanceInterface() {
     serialConsole.classList.add("serial-screen");
   }
 
-  if (terminal && vmPanel) {
+  if (terminal && vmPanel && terminal.parentNode) {
     terminal.className = "terminal tool-log";
     terminal.textContent = t("app.toolLog.intro") + "\n";
 
@@ -72,19 +117,21 @@ function enhanceInterface() {
     }
   }
 
-  const commandButton = document.querySelector("#command-form button");
+  const commandButton = document.querySelector<HTMLButtonElement>("#command-form button");
   if (commandButton) {
     commandButton.textContent = t("common.tool");
     commandButton.classList.add("manual-tool-btn");
     commandButton.title = commandButton.title || t("app.manualTool.title");
   }
 
-  window.BA_BG_TOOLS?.mountUi?.();
+  backgroundToolsApi.mountUi();
 
-  window.addEventListener("resize", () => scheduleSerialFit());
+  window.addEventListener("resize", () => {
+    scheduleSerialFit();
+  });
 }
 
-function applyDockerCopyLabels() {
+function applyDockerCopyLabels(): void {
   const pairs = [
     { id: "copy-docker-command", action: t("common.dockerAction.start") },
     { id: "copy-docker-stop-command", action: t("common.dockerAction.stop") },
@@ -97,7 +144,10 @@ function applyDockerCopyLabels() {
   }
 }
 
-function init() {
+export function initBootstrap(): void {
+  if (initialized) return;
+  initialized = true;
+
   enhanceInterface();
   applyDockerCopyLabels();
   initChatLayoutToggle();
@@ -109,63 +159,89 @@ function init() {
   // used by the LLM panel/model selector. This avoids the old mismatch where
   // the page header only checked navigator.gpu while the LLM panel checked the
   // real GPUAdapter/features such as shader-f16.
-  window.BA_syncLLMCapabilityBadges?.(window.BA_LLM?.capabilities || null, "ready");
-  window.BA_ensureLLMCapabilities?.({ source: "startup" }).catch((error) => {
+  syncLLMCapabilityBadges();
+  void ensureLLMCapabilities({ source: "startup" }).catch((error: unknown) => {
     console.warn("[llm-capabilities] startup check failed", error);
   });
   const welcomeMessage = addMessage("agent", t("app.chat.welcome"));
   welcomeMessage?.querySelector?.(".bubble")?.setAttribute("data-i18n", "app.chat.welcome");
-  loadProfiles();
+  void loadProfiles();
   renderConsoleTabs();
 
   $("console-help")?.addEventListener("click", showConsoleHelpModal);
   $("cancel-tool")?.addEventListener("click", cancelCurrentTool);
-  $("new-console")?.addEventListener("click", createHumanConsoleTab);
-  $("redraw-console")?.addEventListener("click", redrawActiveConsoleScreen);
-  $("close-console")?.addEventListener("click", () => closeHumanConsoleTab(getActiveConsoleTab()?.id));
-  $("start-vm").addEventListener("click", toggleVmPower);
-  $("save-state")?.addEventListener("click", saveSnapshot);
+  $("new-console")?.addEventListener("click", () => {
+    void createHumanConsoleTab();
+  });
+  $("redraw-console")?.addEventListener("click", () => {
+    void redrawActiveConsoleScreen();
+  });
+  $("close-console")?.addEventListener("click", () => {
+    void closeHumanConsoleTab(getActiveConsoleTab()?.id);
+  });
+  $("start-vm")?.addEventListener("click", () => {
+    void toggleVmPower();
+  });
+  $("save-state")?.addEventListener("click", () => {
+    void saveSnapshot();
+  });
   $("restore-state")?.addEventListener("click", openRestoreSnapshotPicker);
-  $("restore-state-file")?.addEventListener("change", restoreSnapshotFromFile);
-  $("check-disk")?.addEventListener("click", toggleDiskInVm);
-  $("run-checks").addEventListener("click", runChecks);
-  $("connect-ws").addEventListener("click", connectWs);
-  $("copy-docker-command")?.addEventListener("click", copyDockerCommand);
-  $("copy-docker-stop-command")?.addEventListener("click", copyDockerCommand);
+  $("restore-state-file")?.addEventListener("change", (event) => {
+    void restoreSnapshotFromFile(event);
+  });
+  $("check-disk")?.addEventListener("click", () => {
+    void toggleDiskInVm();
+  });
+  $("run-checks")?.addEventListener("click", () => {
+    void runChecks();
+  });
+  $("connect-ws")?.addEventListener("click", () => {
+    void connectWs();
+  });
+  $("copy-docker-command")?.addEventListener("click", (event) => {
+    void copyDockerCommand(event);
+  });
+  $("copy-docker-stop-command")?.addEventListener("click", (event) => {
+    void copyDockerCommand(event);
+  });
   $("vm-profile")?.addEventListener("change", () => {
     state.assetBuffers = null;
     state.assetCacheKey = "";
     updateProfileHint({ applyDefaults: true });
     updateDiskHint();
-    runChecks();
+    void runChecks();
   });
   $("vm-ram-mb")?.addEventListener("change", () => { state.assetBuffers = null; state.assetCacheKey = ""; });
   $("vm-vram-mb")?.addEventListener("change", () => { state.assetBuffers = null; state.assetCacheKey = ""; });
   $("vm-disk")?.addEventListener("change", () => { updateDiskHint(); syncDiskCheckButton(); });
   updateDiskHint();
-  window.BA_ORIGIN?.syncWarnings?.();
+  originApi.syncWarnings();
   syncPowerButtons();
   syncDiskCheckButton();
   syncSnapshotButtons();
   syncWsButton();
   syncChecksButton();
-  $("command-form").addEventListener("submit", runCommandFromInput);
-  $("chat-form").addEventListener("submit", sendChat);
+  $("command-form")?.addEventListener("submit", (event) => {
+    void runCommandFromInput(event);
+  });
+  $("chat-form")?.addEventListener("submit", (event) => {
+    void sendChat(event);
+  });
   initChatInputKeys();
   setLoading(false);
 
-  window.setTimeout(() => runChecks({ probeWsRelay: false }), 400);
+  window.setTimeout(() => {
+    void runChecks({ probeWsRelay: false });
+  }, 400);
 }
 
-function initChatInputKeys() {
-  const input = $("chat-input");
+function initChatInputKeys(): void {
+  const input = $<HTMLTextAreaElement>("chat-input");
   if (!input || input.dataset.chatKeysBound === "1") return;
   input.dataset.chatKeysBound = "1";
   input.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
     event.preventDefault();
-    $("chat-form")?.requestSubmit?.();
+    $<HTMLFormElement>("chat-form")?.requestSubmit();
   });
 }
-
-init();

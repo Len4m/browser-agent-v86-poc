@@ -8,6 +8,7 @@ import {
   VM_NETWORK_COMMAND,
   state,
 } from "../app/state";
+import { initBootstrap } from "../app/bootstrap";
 import {
   applyDomTranslations,
   getLang,
@@ -188,4 +189,5 @@ export function installLegacyFacades(): void {
   profileConfig.initProfileConfig();
   initLangSelector();
   initTooltips();
+  initBootstrap();
 }

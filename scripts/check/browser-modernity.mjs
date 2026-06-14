@@ -13,13 +13,14 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../..", import.meta.url));
 
 const limits = {
-  tsNocheckFiles: 20,
-  browserSourceOrderEntries: 16,
+  tsNocheckFiles: 19,
+  browserSourceOrderEntries: 15,
   inlineScriptBlocks: 2,
   internalWindowAssignments: 18,
 };
 
 const migratedModules = [
+  "src/browser/app/bootstrap.ts",
   "src/browser/app/state.ts",
   "src/browser/app/i18n.ts",
   "src/browser/app/text-utils.ts",
