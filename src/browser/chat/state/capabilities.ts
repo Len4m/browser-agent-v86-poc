@@ -1,153 +1,237 @@
-// @ts-nocheck
-// Browser Agent v86 - 11 LLM capabilities
-// v9.37.20: single shared capability detector for header, LLM panel and model selector.
-//
-// This module only requests a GPUAdapter to know whether WebGPU and optional
-// features such as shader-f16 are exposed by the browser. It does not create a
-// GPUDevice; Transformers.js/ONNX Runtime will create the execution device only
-// when the user loads a model.
+// Browser Agent v86 - LLM capability detector.
+// This service requests a GPUAdapter to know whether WebGPU and optional
+// features such as shader-f16 are exposed. It does not create a GPUDevice.
 
-(function initLLMCapabilityService() {
-  function baseResult() {
+import { t } from "../../app/i18n";
+import { setBadge } from "../../ui/status-controls";
+import type { LlmState } from "./chat-state";
+
+export interface LlmCapabilities {
+  secureContext: boolean;
+  webgpu: boolean;
+  adapter: { info: unknown } | null;
+  features: string[];
+  limits: {
+    maxBufferSize?: number;
+    maxStorageBufferBindingSize?: number;
+    maxComputeWorkgroupStorageSize?: number;
+    maxComputeInvocationsPerWorkgroup?: number;
+  };
+  shaderF16: boolean;
+  recommendedDtype: "q4" | "q4f16";
+  reason: string;
+  checkedAt: number;
+}
+
+export interface CapabilityBadge {
+  text: string;
+  tone: string;
+  title: string;
+}
+
+export interface EnsureCapabilitiesOptions {
+  force?: boolean;
+  source?: string;
+}
+
+type GpuAdapterLike = {
+  info?: unknown;
+  features?: Set<string> | Iterable<string>;
+  limits?: {
+    maxBufferSize?: number;
+    maxStorageBufferBindingSize?: number;
+    maxComputeWorkgroupStorageSize?: number;
+    maxComputeInvocationsPerWorkgroup?: number;
+  };
+};
+
+type GpuNavigator = Navigator & {
+  gpu?: {
+    requestAdapter?: (options?: { powerPreference?: string }) => Promise<GpuAdapterLike | null>;
+  };
+};
+
+type LlmCapabilitiesWindow = Window & typeof globalThis & {
+  BA_LLM?: LlmState;
+  BA_detectLLMCapabilities?: typeof detectLLMCapabilities;
+  BA_ensureLLMCapabilities?: typeof ensureLLMCapabilities;
+  BA_syncLLMCapabilityBadges?: typeof syncLLMCapabilityBadges;
+};
+
+let initialized = false;
+
+function legacyWindow(): LlmCapabilitiesWindow {
+  return window;
+}
+
+function baseResult(): LlmCapabilities {
+  return {
+    secureContext: Boolean(window.isSecureContext),
+    webgpu: false,
+    adapter: null,
+    features: [],
+    limits: {},
+    shaderF16: false,
+    recommendedDtype: "q4",
+    reason: "",
+    checkedAt: 0,
+  };
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  return "Error";
+}
+
+function isCapabilitiesResult(value: unknown): value is LlmCapabilities {
+  return typeof value === "object"
+    && value !== null
+    && "secureContext" in value
+    && "webgpu" in value
+    && "shaderF16" in value;
+}
+
+function currentCapabilities(): LlmCapabilities | null {
+  const capabilities = legacyWindow().BA_LLM?.capabilities;
+  return isCapabilitiesResult(capabilities) ? capabilities : null;
+}
+
+function navigatorGpu(): GpuNavigator["gpu"] | null {
+  return (navigator as GpuNavigator).gpu || null;
+}
+
+export function capabilityBadgeFor(result: LlmCapabilities | null, state = "ready"): CapabilityBadge {
+  if (state === "checking") return { text: t("caps.badge.checking"), tone: "warn", title: t("caps.badge.checkingTitle") };
+  if (!result) return { text: t("caps.badge.pending"), tone: "warn", title: t("common.inferencePending") };
+  if (result.webgpu) {
     return {
-      secureContext: Boolean(window.isSecureContext),
-      webgpu: false,
-      adapter: null,
-      features: [],
-      limits: {},
-      shaderF16: false,
-      recommendedDtype: "q4",
-      reason: "",
-      checkedAt: 0,
-    };
-  }
-
-  function capabilityBadgeFor(result, state = "ready") {
-    if (state === "checking") return { text: t("caps.badge.checking"), tone: "warn", title: t("caps.badge.checkingTitle") };
-    if (!result) return { text: t("caps.badge.pending"), tone: "warn", title: t("common.inferencePending") };
-    if (result.webgpu) return {
       text: result.shaderF16 ? t("caps.badge.webgpuF16") : t("caps.badge.webgpuReady"),
       tone: "good",
       title: result.shaderF16
         ? t("caps.badge.webgpuF16Title")
         : t("caps.badge.webgpuReadyTitle"),
     };
-    return {
-      text: t("common.wasm"),
-      tone: "warn",
-      title: result.reason ? t("caps.badge.wasmReasonTitle", { reason: result.reason }) : t("caps.badge.wasmTitle"),
-    };
+  }
+  return {
+    text: t("common.wasm"),
+    tone: "warn",
+    title: result.reason ? t("caps.badge.wasmReasonTitle", { reason: result.reason }) : t("caps.badge.wasmTitle"),
+  };
+}
+
+export function syncLLMCapabilityBadges(result: LlmCapabilities | null = currentCapabilities(), state = "ready"): CapabilityBadge {
+  const badgeInfo = capabilityBadgeFor(result, state);
+  const targets = [
+    document.getElementById("badge-gpu"),
+    document.getElementById("ba-llm-summary-compat"),
+  ].filter((target): target is HTMLElement => Boolean(target));
+
+  for (const target of targets) {
+    setBadge(target, badgeInfo.text, badgeInfo.tone);
+    if (target.id === "ba-llm-summary-compat") {
+      target.classList.add("ba-llm-summary-compat");
+    }
+    target.title = badgeInfo.title;
   }
 
-  function syncLLMCapabilityBadges(result = window.BA_LLM?.capabilities || null, state = "ready") {
-    const badgeInfo = capabilityBadgeFor(result, state);
-    const targets = [
-      document.getElementById("badge-gpu"),
-      document.getElementById("ba-llm-summary-compat"),
-    ].filter(Boolean);
+  return badgeInfo;
+}
 
-    for (const target of targets) {
-      if (typeof setBadge === "function") {
-        setBadge(target, badgeInfo.text, badgeInfo.tone);
-      } else {
-        target.textContent = badgeInfo.text;
-        target.className = `badge ${badgeInfo.tone}`.trim();
-      }
-      if (target.id === "ba-llm-summary-compat") {
-        target.classList.add("ba-llm-summary-compat");
-      }
-      target.title = badgeInfo.title;
-    }
+export async function detectLLMCapabilities(): Promise<LlmCapabilities> {
+  const result = baseResult();
 
-    return badgeInfo;
-  }
-
-  async function detectLLMCapabilities() {
-    const result = baseResult();
-
-    if (!result.secureContext) {
-      result.reason = t("caps.reason.secureContext");
-      result.checkedAt = Date.now();
-      return result;
-    }
-
-    if (!navigator.gpu) {
-      result.reason = t("caps.reason.noGpu");
-      result.checkedAt = Date.now();
-      return result;
-    }
-
-    try {
-      const adapter = await navigator.gpu.requestAdapter({ powerPreference: "high-performance" });
-      if (!adapter) {
-        result.reason = t("caps.reason.noAdapter");
-        result.checkedAt = Date.now();
-        return result;
-      }
-
-      result.webgpu = true;
-      result.adapter = { info: adapter.info || null };
-      result.features = Array.from(adapter.features || []);
-      result.shaderF16 = adapter.features?.has?.("shader-f16") || false;
-      result.recommendedDtype = result.shaderF16 ? "q4f16" : "q4";
-      result.limits = {
-        maxBufferSize: adapter.limits?.maxBufferSize,
-        maxStorageBufferBindingSize: adapter.limits?.maxStorageBufferBindingSize,
-        maxComputeWorkgroupStorageSize: adapter.limits?.maxComputeWorkgroupStorageSize,
-        maxComputeInvocationsPerWorkgroup: adapter.limits?.maxComputeInvocationsPerWorkgroup,
-      };
-      result.reason = t("caps.reason.available");
-    } catch (error) {
-      result.reason = error?.message ? t("caps.reason.browserError", { message: error.message }) : String(error);
-    }
-
+  if (!result.secureContext) {
+    result.reason = t("caps.reason.secureContext");
     result.checkedAt = Date.now();
     return result;
   }
 
-  function emitCapabilities(result, source = "unknown") {
-    window.dispatchEvent(new CustomEvent("ba-llm:capabilities", {
-      detail: { capabilities: result, source },
-    }));
+  const gpu = navigatorGpu();
+  if (!gpu?.requestAdapter) {
+    result.reason = t("caps.reason.noGpu");
+    result.checkedAt = Date.now();
+    return result;
   }
 
-  async function ensureLLMCapabilities(options = {}) {
-    const { force = false, source = "unknown" } = options;
-
-    if (window.BA_LLM?.capabilitiesChecked && window.BA_LLM.capabilities && !force) {
-      syncLLMCapabilityBadges(window.BA_LLM.capabilities, "ready");
-      return window.BA_LLM.capabilities;
-    }
-
-    if (window.BA_LLM?.capabilitiesChecking && !force) return window.BA_LLM.capabilitiesChecking;
-
-    syncLLMCapabilityBadges(window.BA_LLM?.capabilities || null, "checking");
-
-    const promise = (async () => {
-      const result = await detectLLMCapabilities();
-      if (window.BA_LLM) {
-        window.BA_LLM.capabilities = result;
-        window.BA_LLM.capabilitiesChecked = true;
-      }
-      syncLLMCapabilityBadges(result, "ready");
-      emitCapabilities(result, source);
+  try {
+    const adapter = await gpu.requestAdapter({ powerPreference: "high-performance" });
+    if (!adapter) {
+      result.reason = t("caps.reason.noAdapter");
+      result.checkedAt = Date.now();
       return result;
-    })();
-
-    if (window.BA_LLM) window.BA_LLM.capabilitiesChecking = promise;
-
-    try {
-      return await promise;
-    } finally {
-      if (window.BA_LLM?.capabilitiesChecking === promise) {
-        window.BA_LLM.capabilitiesChecking = null;
-      }
     }
+
+    const features = adapter.features ? Array.from(adapter.features) : [];
+    result.webgpu = true;
+    result.adapter = { info: adapter.info || null };
+    result.features = features;
+    result.shaderF16 = features.includes("shader-f16");
+    result.recommendedDtype = result.shaderF16 ? "q4f16" : "q4";
+    result.limits = {
+      maxBufferSize: adapter.limits?.maxBufferSize,
+      maxStorageBufferBindingSize: adapter.limits?.maxStorageBufferBindingSize,
+      maxComputeWorkgroupStorageSize: adapter.limits?.maxComputeWorkgroupStorageSize,
+      maxComputeInvocationsPerWorkgroup: adapter.limits?.maxComputeInvocationsPerWorkgroup,
+    };
+    result.reason = t("caps.reason.available");
+  } catch (error) {
+    result.reason = t("caps.reason.browserError", { message: errorMessage(error) });
   }
 
-  window.addEventListener("ba:langchange", () => syncLLMCapabilityBadges(window.BA_LLM?.capabilities || null, "ready"));
+  result.checkedAt = Date.now();
+  return result;
+}
 
-  window.BA_detectLLMCapabilities = detectLLMCapabilities;
-  window.BA_ensureLLMCapabilities = ensureLLMCapabilities;
-  window.BA_syncLLMCapabilityBadges = syncLLMCapabilityBadges;
-})();
+function emitCapabilities(result: LlmCapabilities, source = "unknown"): void {
+  window.dispatchEvent(new CustomEvent("ba-llm:capabilities", {
+    detail: { capabilities: result, source },
+  }));
+}
+
+export async function ensureLLMCapabilities(options: EnsureCapabilitiesOptions = {}): Promise<LlmCapabilities> {
+  const { force = false, source = "unknown" } = options;
+  const llm = legacyWindow().BA_LLM;
+  const existing = currentCapabilities();
+
+  if (llm?.capabilitiesChecked && existing && !force) {
+    syncLLMCapabilityBadges(existing, "ready");
+    return existing;
+  }
+
+  if (llm?.capabilitiesChecking && !force) {
+    const checked = await llm.capabilitiesChecking;
+    return isCapabilitiesResult(checked) ? checked : (currentCapabilities() || baseResult());
+  }
+
+  syncLLMCapabilityBadges(existing, "checking");
+
+  const promise = (async (): Promise<LlmCapabilities> => {
+    const result = await detectLLMCapabilities();
+    const currentLlm = legacyWindow().BA_LLM;
+    if (currentLlm) {
+      currentLlm.capabilities = result;
+      currentLlm.capabilitiesChecked = true;
+    }
+    syncLLMCapabilityBadges(result, "ready");
+    emitCapabilities(result, source);
+    return result;
+  })();
+
+  if (llm) llm.capabilitiesChecking = promise;
+
+  try {
+    return await promise;
+  } finally {
+    const currentLlm = legacyWindow().BA_LLM;
+    if (currentLlm?.capabilitiesChecking === promise) {
+      currentLlm.capabilitiesChecking = null;
+    }
+  }
+}
+
+export function initLlmCapabilities(): void {
+  if (initialized) return;
+  initialized = true;
+  window.addEventListener("ba:langchange", () => syncLLMCapabilityBadges(currentCapabilities(), "ready"));
+}
