@@ -41,6 +41,16 @@ function findLinkHref(rel) {
   return "";
 }
 
+function findScriptAttributes(expectedPath) {
+  const clean = expectedPath.replace(/^\/+/, "");
+  for (const match of indexHtml.matchAll(/<script\b[^>]*>/g)) {
+    const attributes = attributesFor(match[0]);
+    const src = attributes.src || "";
+    if (src === `./${clean}` || src.startsWith(`./${clean}?`)) return attributes;
+  }
+  return null;
+}
+
 function isCanonicalUrl(value) {
   return value === "/" || /^https?:\/\/[^\s"]+$/.test(value);
 }
@@ -63,6 +73,8 @@ const loadedJs = extract(/src="\.\/(js\/[^"?]+\.(?:js|mjs))(?:\?[^"]*)?"/g, inde
 const loadedAssets = extract(/src="\.\/(assets\/[^"?]+\.(?:js|mjs))(?:\?[^"]*)?"/g, indexHtml);
 const indexCss = extract(/href="\.\/((?:style|assets\/app)\.css)(?:\?v=[^"]*)?"/g, indexHtml);
 const loadedCss = extract(/@import url\("\.\/(styles\/[^"?]+\.css)(?:\?v=[^"]*)?"\)/g, styleCss);
+const appScript = findScriptAttributes("assets/app.js");
+const bridgeScript = findScriptAttributes("assets/ai-sdk-bridge.mjs");
 const hashedRuntimeRefs = [
   ["vendor/xterm/xterm.js", /src="\.\/vendor\/xterm\/xterm\.js\?v=[a-f0-9]{12}"/],
   ["assets/ai-sdk-bridge.mjs", /src="\.\/assets\/ai-sdk-bridge\.mjs\?v=[a-f0-9]{12}"/],
@@ -113,9 +125,19 @@ if (!loadedAssets.includes("assets/app.js")) {
   console.error("index.html debe cargar ./assets/app.js");
 }
 
+if (appScript?.type !== "module") {
+  failed = true;
+  console.error("index.html debe cargar ./assets/app.js con type=\"module\"");
+}
+
 if (!loadedAssets.includes("assets/ai-sdk-bridge.mjs")) {
   failed = true;
   console.error("index.html debe cargar ./assets/ai-sdk-bridge.mjs como bridge ESM");
+}
+
+if (bridgeScript?.type !== "module") {
+  failed = true;
+  console.error("index.html debe cargar ./assets/ai-sdk-bridge.mjs con type=\"module\"");
 }
 
 if (!indexCss.includes("style.css") && !indexCss.includes("assets/app.css")) {

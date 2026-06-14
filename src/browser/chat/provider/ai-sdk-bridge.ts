@@ -365,3 +365,4 @@ const aiSdkApi = {
 window.BA_AISDK = aiSdkApi;
 
 window.BA_AISDK_READY = Promise.resolve(true);
+window.dispatchEvent(new CustomEvent("ba-aisdk:ready", { detail: { ready: true } }));

@@ -28,28 +28,6 @@
   <meta name="twitter:description" content="Run a Linux x86 VM, terminal tools, and local AI agent workflows directly from your browser." />
   <meta name="twitter:image" content="%BA_SOCIAL_IMAGE_URL%" />
   <meta name="twitter:image:alt" content="Browser Agent v86 preview with a Linux terminal and local AI chat" />
-  <script>
-    // Preload the active i18n catalog synchronously so t() returns the chosen
-    // language from the very first script eval (fixes eval-time constants).
-    (function preloadLocale() {
-      try {
-        var stored = localStorage.getItem("ba.lang");
-        var browserLangs = [navigator.language].concat(navigator.languages || []).filter(Boolean);
-        var isSpanish = browserLangs.some(function (value) {
-          value = String(value).toLowerCase();
-          return value === "es" || value.indexOf("es-") === 0;
-        });
-        var lang = stored || (isSpanish ? "es" : "en");
-        document.documentElement.lang = lang;
-        var xhr = new XMLHttpRequest();
-        xhr.open("GET", "./locales/" + lang + ".json", false);
-        xhr.send();
-        if (xhr.status >= 200 && xhr.status < 300) {
-          window.__BA_I18N__ = { lang: lang, catalog: JSON.parse(xhr.responseText) };
-        }
-      } catch (e) {}
-    })();
-  </script>
   <link rel="stylesheet" href="./vendor/xterm/xterm.css" />
   <link rel="stylesheet" href="./style.css" />
 </head>
@@ -268,18 +246,6 @@
     </div>
   </div>
 
-  <script>
-    (function syncInitialLoadingText() {
-      try {
-        var catalog = (window.__BA_I18N__ && window.__BA_I18N__.catalog) || {};
-        var title = document.getElementById("loading-title");
-        var detail = document.getElementById("loading-detail");
-        if (title && catalog["app.loading.initialTitle"]) title.textContent = catalog["app.loading.initialTitle"];
-        if (detail && catalog["app.loading.initialDetail"]) detail.textContent = catalog["app.loading.initialDetail"];
-      } catch (e) {}
-    })();
-  </script>
-
   <div id="ba-modal-overlay" class="ba-modal-overlay" aria-hidden="true">
     <div class="ba-modal-card" role="dialog" aria-modal="true" aria-labelledby="ba-modal-title">
       <div class="ba-modal-icon">!</div>
@@ -300,6 +266,6 @@
   <script type="module" src="./assets/ai-sdk-bridge.mjs"></script>
 
   <!-- Main application bundle generated from src. -->
-  <script src="./assets/app.js"></script>
+  <script type="module" src="./assets/app.js"></script>
 </body>
 </html>

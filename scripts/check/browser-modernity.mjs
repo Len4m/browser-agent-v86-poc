@@ -2,9 +2,9 @@
 /**
  * Ratchet for the browser ESM migration.
  *
- * These limits intentionally reflect the current transitional baseline. Every
- * migrated slice should lower one or more values here so regressions are caught
- * before the final "no legacy globals/scripts" state is reached.
+ * These limits capture the accepted browser runtime boundaries so regressions
+ * are caught when code reintroduces removed globals, inline scripts or disabled
+ * TypeScript checks.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -14,12 +14,13 @@ const root = fileURLToPath(new URL("../..", import.meta.url));
 
 const limits = {
   tsNocheckFiles: 0,
-  inlineScriptBlocks: 2,
+  inlineScriptBlocks: 0,
   internalWindowAssignments: 2,
-  legacyCompatibilityNames: 0,
+  removedCompatibilityNames: 0,
 };
 
 const tsNocheckPattern = /^\s*\/\/\s*@ts-nocheck\b/m;
+const removedCompatibilityNamesPattern = /\b(?:[Ll]egacyWindow|install[Ll]egacyFacades)\b/g;
 
 function walk(dir, out = []) {
   for (const entry of readdirSync(join(root, dir))) {
@@ -53,8 +54,8 @@ const metrics = {
     (sum, file) => sum + countMatches(read(file), /\bwindow\.BA_[A-Za-z0-9_$]+\s*=/g),
     0,
   ),
-  legacyCompatibilityNames: browserTsFiles.reduce(
-    (sum, file) => sum + countMatches(read(file), /\b(?:LegacyWindow|legacyWindow|installLegacyFacades)\b/g),
+  removedCompatibilityNames: browserTsFiles.reduce(
+    (sum, file) => sum + countMatches(read(file), removedCompatibilityNamesPattern),
     0,
   ),
 };
@@ -76,5 +77,5 @@ console.log([
   `@ts-nocheck ${metrics.tsNocheckFiles}/${limits.tsNocheckFiles}`,
   `inline scripts ${metrics.inlineScriptBlocks}/${limits.inlineScriptBlocks}`,
   `window.BA_* assignments ${metrics.internalWindowAssignments}/${limits.internalWindowAssignments}`,
-  `legacy names ${metrics.legacyCompatibilityNames}/${limits.legacyCompatibilityNames}`,
+  `removed compat names ${metrics.removedCompatibilityNames}/${limits.removedCompatibilityNames}`,
 ].join(" "));

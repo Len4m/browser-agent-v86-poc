@@ -1,5 +1,5 @@
 // Browser Agent v86 - 09 bootstrap layout
-// Split from app.js in v9.35. Load order is defined in index.html.
+// Application bootstrap wired by the ESM entry point.
 // v9.37.20: header GPU badge delegates to the shared LLM capability service.
 
 import { backgroundToolsApi } from "../vm/background-tools-serial1";

@@ -439,7 +439,7 @@
   },
   {
     "id": "qwen2.5-coder-0.5b-instruct-q4",
-    "label": "Qwen2.5 Coder 0.5B Instruct ONNX · q4 legacy",
+    "label": "Qwen2.5 Coder 0.5B Instruct ONNX · q4 experimental",
     "shortLabel": "Qwen2.5 Coder 0.5B q4",
     "engine": "transformersjs",
     "engineLabel": "Transformers.js v4",
@@ -452,7 +452,7 @@
     "minMemoryLabel": "GPU/RAM baja",
     "languageLabel": "EN fuerte · ES aceptable · código/tools",
     "requiresShaderF16": false,
-    "compatibilityLabel": "q4 · legacy probado en este proyecto · tools experimental",
+    "compatibilityLabel": "q4 · probado en este proyecto · tools experimental",
     "temperature": 0.1,
     "topP": 0.85,
     "toolProfile": "strong-json",
@@ -469,7 +469,7 @@
       "maxToolResultCharsForSynthesis": 1000
     },
     "experimental": true,
-    "description": "Opción q4 ligera que ya estaba en el proyecto y funcionaba para respuestas estructuradas/tool-calling mediante el parser de texto. Se mantiene como legacy experimental porque el informe no la clasifica entre los modelos con evidencia pública fuerte."
+    "description": "Opción q4 ligera probada en este proyecto para respuestas estructuradas/tool-calling mediante el parser de texto. Se mantiene como experimental porque el informe no la clasifica entre los modelos con evidencia pública fuerte."
   },
   {
     "id": "glm-edge-1.5b-chat-onnx-q4",

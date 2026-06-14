@@ -123,26 +123,6 @@ export function getSupportedLangs(): SupportedLang[] {
 export function initI18n(): Promise<unknown> {
   if (baI18nStarted) return baI18nReady;
   baI18nStarted = true;
-  const pre = window.__BA_I18N__;
-  if (pre?.lang && pre.catalog) {
-    baActiveLang = isSupportedLang(pre.lang) ? pre.lang : I18N_BASE_LANG;
-    baActiveCatalog = pre.catalog;
-    const run = () => {
-      try {
-        document.documentElement.lang = baActiveLang;
-      } catch {}
-      applyDomTranslations();
-      try {
-        window.dispatchEvent(new CustomEvent("ba:langchange", { detail: { lang: baActiveLang } }));
-      } catch {}
-    };
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", run, { once: true });
-    } else {
-      run();
-    }
-    return baI18nReady;
-  }
   const stored = baReadStoredLang();
   baActiveLang = stored;
   baI18nReady = loadLocale(stored)

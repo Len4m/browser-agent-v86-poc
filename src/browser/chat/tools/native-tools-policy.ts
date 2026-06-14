@@ -1,6 +1,6 @@
 // Browser Agent v86 - native tools policy.
 // Per-model caps on how many AI SDK tools are registered. User picks subset in
-// the LLM panel; legacy modules receive this API through compat facades.
+// the LLM panel through direct ESM imports.
 
 import { state } from "../../app/state";
 import { getLlmState, llmEventsApi, llmModels, type LlmModelConfig } from "../state/chat-state";

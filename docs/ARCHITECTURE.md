@@ -1,6 +1,6 @@
 # Browser Agent v86 - Arquitectura
 
-La aplicación es un frontend **TypeScript + ESM + esbuild** servido desde `public/`. El navegador carga `public/index.html`, vendors globales mínimos, el bridge ESM del AI SDK y el bundle principal `public/assets/app.js`.
+La aplicación es un frontend **TypeScript + ESM + esbuild** servido desde `public/`. El navegador carga `public/index.html`, vendors globales mínimos, el bridge ESM del AI SDK y el bundle principal `public/assets/app.js` como módulo.
 
 La VM corre con **v86** y Alpine x86. La capa LLM usa **AI SDK v6** con backends Transformers.js y Ollama. Las tools del agente se ejecutan dentro de la VM por un canal serial separado de la consola visible.
 
@@ -75,7 +75,7 @@ flowchart LR
 - `public/index.html`: shell generado con hashes de caché.
 - `public/style.css` y `public/styles/`: CSS generado/copiado para desarrollo.
 - `public/assets/app.css`: CSS bundle minificado generado por `npm run build:prod`.
-- `public/assets/app.js`: bundle principal generado.
+- `public/assets/app.js`: bundle ESM principal generado.
 - `public/assets/ai-sdk-bridge.mjs`: bridge ESM generado.
 - `public/assets/chat/`: bundle AI SDK y worker LLM generados.
 - `public/vendor/`: librerías copiadas desde npm.
@@ -96,9 +96,9 @@ flowchart LR
 - `public/assets/app.css` cuando se ejecuta con `--minify` o `BA_MINIFY=1`
 - `public/locales/es.json` y `public/locales/en.json`
 
-El entry `src/browser/main.ts` instala `window.BA` desde `src/browser/compat/window-api.ts` y carga los módulos ya migrados a ESM. Mientras quede código legacy, `src/browser/compat/legacy-facades.ts` publica facades temporales para que las fuentes todavía concatenadas sigan encontrando sus símbolos históricos. Después el script concatena las fuentes TypeScript restantes en el orden `browserSourceOrder`.
+El entry `src/browser/main.ts` inicializa la aplicación desde módulos ESM y al final instala la API pública `window.BA` desde `src/browser/compat/window-api.ts`. `scripts/build/frontend.mjs` bundlea ese entry directamente con esbuild (`format: "esm"`); no hay concatenación manual de fuentes ni orden global de carga de módulos internos.
 
-Regla: los módulos ya migrados no vuelven a `browserSourceOrder`; el ratchet `scripts/check/browser-modernity.mjs` lo valida.
+Regla: el runtime de aplicación se conecta mediante imports ESM. Cualquier nueva exposición en `window` debe ser una API pública deliberada o una frontera técnica documentada.
 
 ## i18n
 
@@ -124,7 +124,7 @@ Salidas LLM:
 - `public/assets/chat/workers/llm-browser-ai.worker.mjs`, generado desde `src/browser/chat/provider/ai-sdk/llm-browser-ai.worker.ts`.
 - `public/assets/ai-sdk-bridge.mjs`, generado desde `src/browser/chat/provider/ai-sdk-bridge.ts`.
 
-El bridge importa el bundle generado con query versionada y expone `window.BA_AISDK`.
+El bridge importa el bundle generado `assets/chat/ai-sdk-browser.mjs` y expone `window.BA_AISDK` como frontera entre bundles.
 
 ## Assets de runtime
 
@@ -164,18 +164,15 @@ Dentro de `src/browser/`, el TypeScript se organiza por dominio:
 
 ## Globals y API pública
 
-La aplicación aún expone varios `window.BA_*` porque el bundle principal conserva dependencias globales ordenadas. El punto de compatibilidad público es `window.BA`, instalado por `src/browser/compat/window-api.ts`.
+La API pública estable del frontend es `window.BA`, instalada por `src/browser/compat/window-api.ts`. Expone versión, origen, eventos públicos y metadatos de build.
 
-Globals principales:
+Fronteras técnicas restantes:
 
-- `window.BA`: versión, origen y eventos públicos.
-- `window.BA_TEXT_UTILS`: helpers de texto y shell.
-- `window.BA_BG_TOOLS`: ejecución por `serial1`.
-- `window.BA_CONSOLE_CONTROL`: control xterm/PTY por `serial2`.
-- `window.BA_AISDK`: bridge/provider LLM.
-- `window.BA_LLM_*`: estado, UI, tools, artifacts, contexto y recursos del chat.
+- `window.BA_AISDK` y `window.BA_AISDK_READY`: puente entre el bundle ESM principal y el bundle AI SDK generado de forma separada.
+- `window.V86Starter` / `window.V86`: runtime v86 cargado como vendor.
+- `window.Terminal`: runtime xterm cargado como vendor.
 
-Regla: los módulos TypeScript nuevos deben vivir en `src/browser/` y exponer globals solo cuando haya consumidores reales.
+Regla: los módulos TypeScript nuevos deben vivir en `src/browser/` y comunicarse por imports ESM, eventos tipados o APIs de dominio. No se añaden `window.BA_*` internos.
 
 ## Seriales y ejecución VM
 
@@ -183,7 +180,7 @@ Regla: los módulos TypeScript nuevos deben vivir en `src/browser/` y exponer gl
 Usuario / LLM
   -> execVm() [src/browser/vm/operations.ts]
     -> targetTools=true (por defecto)
-      -> window.BA_BG_TOOLS.execVm()
+      -> backgroundToolsApi.execVm()
       -> serial1 / ttyS1
       -> ba-serial1-runner
     -> targetTools=false
@@ -227,14 +224,14 @@ Flujo de un turno:
 
 ```txt
 sendChat()
-  -> window.BA_LLM_AGENT.handleUserMessage()
-  -> window.BA_buildAiSdkTools()
-  -> window.BA_AISDK.runAgentStreamTurn()
+  -> llmAgent.handleUserMessage()
+  -> buildAiSdkTools()
+  -> getAiSdk().runAgentStreamTurn()
     -> streamText()
     -> stopWhen(stepCountIs(maxSteps))
     -> prepareStep()
   -> tool.execute()
-  -> window.BA_LLM_TOOL_EXECUTOR.runTool()
+  -> llmToolExecutor.runTool()
   -> execVm()
   -> serial1 / ba-serial1-runner
   -> artifacts + respuesta de chat
@@ -253,7 +250,7 @@ Archivos clave:
 
 | Archivo | Responsabilidad |
 | --- | --- |
-| `src/browser/chat/provider/ai-sdk-bridge.ts` | Crea/carga modelos, fallback WebGPU->WASM, Ollama y `window.BA_AISDK` |
+| `src/browser/chat/provider/ai-sdk-bridge.ts` | Crea/carga modelos, fallback WebGPU->WASM, Ollama y puente `window.BA_AISDK` |
 | `src/browser/chat/provider/ai-sdk/browser-agent-runner.ts` | Turno AI SDK, steps, streaming y síntesis de respaldo |
 | `src/browser/chat/provider/ai-sdk/ollama-browser-model.ts` | Provider Ollama HTTP browser |
 | `src/browser/chat/provider/ai-sdk/llm-browser-ai.worker.ts` | Worker Transformers.js |
@@ -285,7 +282,7 @@ Archivos clave:
 
 `check-server` arranca `server.mjs` en `127.0.0.1:5199` y valida COOP, COEP, CORP y `Range`.
 
-`npm run lint` usa ESLint flat config (`eslint.config.js`). Los módulos migrados se validan con reglas TypeScript type-aware; los ficheros legacy conservan un override temporal para permitir la migración por dominios sin bloquear todo el repositorio.
+`npm run lint` usa ESLint flat config (`eslint.config.js`). El código TypeScript de navegador se valida con reglas TypeScript type-aware en los módulos modernizados, y `scripts/check/browser-modernity.mjs` bloquea regresiones de `@ts-nocheck`, scripts inline, nombres de compatibilidad retirados y nuevas asignaciones internas `window.BA_*`.
 
 `npm test` compila `tests/**/*.test.ts` con esbuild hacia `build/test/` y ejecuta `node --test`. Los primeros tests cubren helpers puros migrados; cada nuevo módulo puro debe añadir pruebas enfocadas.
 
@@ -300,7 +297,7 @@ Archivos clave:
 ## Reglas de mantenimiento
 
 1. Código nuevo de aplicación en `src/browser/` con TypeScript.
-2. El código migrado debe importarse desde `src/browser/main.ts` o desde módulos importados por este, no volver a `browserSourceOrder`.
+2. El código de aplicación debe importarse desde `src/browser/main.ts` o desde módulos importados por este.
 3. Nuevo CSS en `src/web/styles/` y `@import` desde `src/web/styles/style.css`.
 4. Nuevas librerías browser vía `package.json` + script de copia/bundle, no copiadas a mano en `public/vendor/`.
 5. Nuevo modelo en `data/llm-models.json` y regeneración con `npm run build`.
@@ -310,4 +307,4 @@ Archivos clave:
 9. `npm run build:prod` usa `https://browseragent.icu/` como `BA_PUBLIC_SITE_URL` por defecto; otros dominios deben sobrescribir esa variable para generar canonical y Open Graph/Twitter con URLs absolutas del dominio correcto.
 10. Mantener límites explícitos para logs, artifacts, historial y salidas de tools.
 11. Probar consolas xterm, cierre, refresco, programas de pantalla completa y tools tras tocar seriales o geometría de consola.
-12. Bajar los límites de `scripts/check/browser-modernity.mjs` cada vez que se elimine `@ts-nocheck`, un global interno, un script inline o una entrada legacy de `browserSourceOrder`.
+12. Mantener los límites de `scripts/check/browser-modernity.mjs` en cero para `@ts-nocheck`, scripts inline y nombres de compatibilidad retirados; cualquier excepción debe estar documentada como frontera técnica.

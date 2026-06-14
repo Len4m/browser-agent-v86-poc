@@ -426,7 +426,7 @@ function reset(reason = "reset"): void {
     try {
       pending.resolve({ code: 130, stdout: "", stderr: t("console.ctl.cancelledBy", { reason }) });
     } catch {
-      // Pending resolvers are third-party callbacks from legacy console code.
+      // Pending resolvers are external callbacks from console clients.
     }
     ctl.pending.delete(id);
   }

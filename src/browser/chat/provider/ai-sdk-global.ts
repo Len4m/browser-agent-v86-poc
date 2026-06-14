@@ -58,10 +58,27 @@ declare global {
   }
 }
 
+let bridgeReady: Promise<unknown> | null = null;
+
 export function getAiSdk(): AiSdkGlobalApi | null {
   return window.BA_AISDK || null;
 }
 
 export function getAiSdkReady(): Promise<unknown> {
-  return window.BA_AISDK_READY || Promise.resolve(false);
+  if (window.BA_AISDK_READY) return window.BA_AISDK_READY;
+  if (window.BA_AISDK) return Promise.resolve(true);
+  bridgeReady ||= new Promise<boolean>((resolve) => {
+    let settled = false;
+    let timeout = 0;
+    const done = (): void => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      window.removeEventListener("ba-aisdk:ready", done);
+      resolve(Boolean(window.BA_AISDK));
+    };
+    timeout = window.setTimeout(done, 5000);
+    window.addEventListener("ba-aisdk:ready", done, { once: true });
+  });
+  return bridgeReady;
 }

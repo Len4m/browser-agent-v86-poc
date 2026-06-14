@@ -561,7 +561,7 @@ function reset(reason = "reset"): void {
     try {
       pending.resolve({ code: 130, stdout: "", stderr: t("bgtools.cancelledBy", { reason }) });
     } catch {
-      // Pending resolvers belong to callers across the legacy boundary.
+      // Pending resolvers belong to callers outside this serial runner.
     }
   }
   bg.pending = null;
