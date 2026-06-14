@@ -21,6 +21,7 @@ import {
 } from "../app/i18n";
 import { initLangSelector } from "../app/lang-selector";
 import { initOriginAwareness, originApi } from "../app/origin-awareness";
+import { installLlmState } from "../chat/state/chat-state";
 import * as xtermConsoles from "../console/xterm-consoles";
 import { runChecks } from "../ui/checks-panel";
 import { confirmVmShutdown, showBaModal, showBaModalPanel } from "../ui/modal";
@@ -168,6 +169,7 @@ export function installLegacyFacades(): void {
   legacyWindow.BA_CONSOLE_CONTROL = consoleControlApi;
 
   void initI18n();
+  installLlmState();
   initBackgroundToolsSerial1();
   xtermConsoles.initXtermConsoles();
   initOriginAwareness();

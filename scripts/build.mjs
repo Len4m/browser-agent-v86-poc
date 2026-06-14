@@ -14,7 +14,6 @@ const requiredSetupAssets = [
 ];
 
 const steps = [
-  [process.execPath, ["scripts/build/llm-model-catalog.mjs"]],
   [process.execPath, ["scripts/build/llm-browser-bundles.mjs", ...forwardedArgs]],
   [process.execPath, ["scripts/build/frontend.mjs", ...forwardedArgs]],
 ];

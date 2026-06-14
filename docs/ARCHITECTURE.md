@@ -112,15 +112,14 @@ Toda la copy de UI vive en catálogos JSON (`src/web/locales/*.json`) y el códi
 
 `scripts/build.mjs` ejecuta, en orden:
 
-1. `scripts/build/llm-model-catalog.mjs`
-2. `scripts/build/llm-browser-bundles.mjs`
-3. `scripts/build/frontend.mjs`
+1. `scripts/build/llm-browser-bundles.mjs`
+2. `scripts/build/frontend.mjs`
 
 `npm run build` presupone que `npm run setup` ya ha preparado los assets base de runtime que el HTML versiona, como xterm y el perfil Alpine base.
 
 Salidas LLM:
 
-- `build/browser/generated/10a-llm-models-catalog.js`, generado desde `data/llm-models.json`.
+- `data/llm-models.json`, importado directamente por `src/browser/chat/state/chat-state.ts`.
 - `public/assets/chat/ai-sdk-browser.mjs`, generado desde `src/browser/chat/provider/ai-sdk/entry.ts`.
 - `public/assets/chat/workers/llm-browser-ai.worker.mjs`, generado desde `src/browser/chat/provider/ai-sdk/llm-browser-ai.worker.ts`.
 - `public/assets/ai-sdk-bridge.mjs`, generado desde `src/browser/chat/provider/ai-sdk-bridge.ts`.

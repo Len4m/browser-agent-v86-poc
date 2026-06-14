@@ -1,159 +1,250 @@
-// @ts-nocheck
-// Browser Agent v86 - 10 LLM state
-// v9.37.16: local LLM state with WebGPU check triggered by LLM panel opening.
-//
-// Important: this is not WebLLM/MLC. The current local engine is
-// Transformers.js v4 running ONNX models in a Web Worker with WebGPU.
-// q4 is the default because q4f16 requires the WebGPU "shader-f16" feature.
-// All state is namespaced under window.BA_LLM so future providers
-// (OpenAI/Anthropic/WebLLM/etc.) can be added without touching VM/console code.
+// Browser Agent v86 - LLM state.
+// The model catalog is imported as typed data; legacy modules receive the
+// temporary BA_LLM globals from installLlmState().
 
-(function initBrowserAgentLLMState() {
-  if (window.BA_LLM) return;
+import { t } from "../../app/i18n";
+import llmModelsRaw from "../../../../data/llm-models.json";
 
-  function defaultAgentMeta(model) {
-    const id = model.id || "";
-    // Orden canónico de tools por defecto. Cada modelo activa solo las primeras
-    // según su maxNativeTools (getDefaultToolNames recorta a ese límite).
-    const defaultTools = [
-      "vm.python.exec",
-      "vm.sh.exec",
-      "vm.fs.list",
-      "vm.fs.read",
-      "vm.fs.write",
-      "vm.cmd.which",
-      "web.curl.head",
-    ];
-    if (model.engine === "ollama") {
-      return {
-        maxSteps: 4,
-        maxNativeTools: 10,
-        toolCalling: "good",
-        defaultNativeTools: defaultTools,
-      };
-    }
-    if (model.toolProfile === "tiny-fallback" || id.includes("270m")) {
-      return {
-        maxSteps: 1,
-        maxNativeTools: 1,
-        toolCalling: "weak",
-        defaultNativeTools: defaultTools,
-      };
-    }
-    if (id.includes("0.5b") || (id.includes("qwen3") && id.includes("0.6"))) {
-      return {
-        maxSteps: 2,
-        maxNativeTools: 2,
-        toolCalling: "weak",
-        defaultNativeTools: defaultTools,
-      };
-    }
-    if (id.includes("3b")) {
-      return {
-        maxSteps: 3,
-        maxNativeTools: 8,
-        toolCalling: "fair",
-        defaultNativeTools: defaultTools,
-      };
-    }
-    if (id.includes("llama") && (id.includes("1b-instruct") || id.includes("1b-instruct-onnx"))) {
-      return {
-        maxSteps: 2,
-        maxNativeTools: 2,
-        toolCalling: "weak",
-        defaultNativeTools: defaultTools,
-      };
-    }
-    if (id.includes("1.5b") || id.includes("1b") || id.includes("1.7b")) {
-      return {
-        maxSteps: 3,
-        maxNativeTools: 5,
-        toolCalling: "fair",
-        defaultNativeTools: defaultTools,
-      };
-    }
-    if (model.toolProfile === "reasoning-light" || id.includes("qwen3")) {
-      return {
-        maxSteps: 3,
-        maxNativeTools: 4,
-        toolCalling: "good",
-        defaultNativeTools: defaultTools,
-      };
-    }
-    if (model.toolProfile === "middle-tools" || model.toolProfile === "strong-json") {
-      return {
-        maxSteps: 3,
-        maxNativeTools: 6,
-        toolCalling: "good",
-        defaultNativeTools: defaultTools,
-      };
-    }
+export interface LlmAgentMeta {
+  maxSteps: number;
+  maxNativeTools: number;
+  toolCalling: "weak" | "fair" | "good";
+  defaultNativeTools: string[];
+}
+
+export interface LlmThinkingMeta {
+  enabled: boolean;
+  tagName: string;
+  startWithReasoning: boolean;
+  [key: string]: unknown;
+}
+
+export interface LlmContextPolicy {
+  contextWindowTokens?: number;
+  safeInputTokens?: number;
+  provider?: string;
+  reservedOutputTokens?: number;
+  maxSystemChars?: number;
+  maxRuntimeChars?: number;
+  maxHistoryMessages?: number;
+  maxHistoryChars?: number;
+  maxToolResultChars?: number;
+  maxToolResultCharsForSynthesis?: number;
+  maxArtifacts?: number;
+  [key: string]: unknown;
+}
+
+export interface LlmModelConfig {
+  id: string;
+  label?: string;
+  shortLabel?: string;
+  engine: string;
+  engineLabel?: string;
+  model?: string;
+  task?: string;
+  device?: string;
+  dtype?: string;
+  custom?: boolean;
+  requiresShaderF16?: boolean;
+  requiresWebGPU?: boolean;
+  toolProfile?: string;
+  temperature?: number;
+  topP?: number;
+  contextWindowTokens?: number;
+  maxNewTokens?: number;
+  contextPolicy?: LlmContextPolicy;
+  agent?: LlmAgentMeta;
+  thinking?: Partial<LlmThinkingMeta>;
+  [key: string]: unknown;
+}
+
+export interface LlmState {
+  version: string;
+  providerName: string;
+  providerLabel: string;
+  available: boolean;
+  loaded: boolean;
+  loading: boolean;
+  generating: boolean;
+  selectedModelId: string;
+  activeModel: LlmModelConfig | null;
+  capabilities: unknown;
+  capabilitiesChecked: boolean;
+  capabilitiesChecking: Promise<unknown> | null;
+  provider: unknown;
+  aiModelReady: boolean;
+  messages: Array<{ role: string; content: string; [key: string]: unknown }>;
+  artifacts: unknown[];
+  lastArtifactId: string | null;
+  contextArtifactId: string | null;
+  lastError: string;
+  settings: {
+    toolAutonomyMaxLevel: number;
+    maxToolStepsPerTurn: number;
+    nativeToolNames: string[];
+    showThinking: boolean;
+    systemPrompt: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+export interface LlmEventsApi {
+  emit: (type: string, detail?: Record<string, unknown>) => void;
+}
+
+type LlmLegacyWindow = Window & typeof globalThis & {
+  BA_LLM?: LlmState;
+  BA_LLM_MODELS?: LlmModelConfig[];
+  BA_LLM_EVENTS?: LlmEventsApi;
+};
+
+const DEFAULT_TOOLS = [
+  "vm.python.exec",
+  "vm.sh.exec",
+  "vm.fs.list",
+  "vm.fs.read",
+  "vm.fs.write",
+  "vm.cmd.which",
+  "web.curl.head",
+];
+
+const rawModels = llmModelsRaw as unknown as LlmModelConfig[];
+
+function legacyWindow(): LlmLegacyWindow {
+  return window;
+}
+
+function defaultAgentMeta(model: LlmModelConfig): LlmAgentMeta {
+  const id = model.id || "";
+  if (model.engine === "ollama") {
+    return {
+      maxSteps: 4,
+      maxNativeTools: 10,
+      toolCalling: "good",
+      defaultNativeTools: DEFAULT_TOOLS,
+    };
+  }
+  if (model.toolProfile === "tiny-fallback" || id.includes("270m")) {
+    return {
+      maxSteps: 1,
+      maxNativeTools: 1,
+      toolCalling: "weak",
+      defaultNativeTools: DEFAULT_TOOLS,
+    };
+  }
+  if (id.includes("0.5b") || (id.includes("qwen3") && id.includes("0.6"))) {
+    return {
+      maxSteps: 2,
+      maxNativeTools: 2,
+      toolCalling: "weak",
+      defaultNativeTools: DEFAULT_TOOLS,
+    };
+  }
+  if (id.includes("3b")) {
+    return {
+      maxSteps: 3,
+      maxNativeTools: 8,
+      toolCalling: "fair",
+      defaultNativeTools: DEFAULT_TOOLS,
+    };
+  }
+  if (id.includes("llama") && (id.includes("1b-instruct") || id.includes("1b-instruct-onnx"))) {
+    return {
+      maxSteps: 2,
+      maxNativeTools: 2,
+      toolCalling: "weak",
+      defaultNativeTools: DEFAULT_TOOLS,
+    };
+  }
+  if (id.includes("1.5b") || id.includes("1b") || id.includes("1.7b")) {
     return {
       maxSteps: 3,
       maxNativeTools: 5,
       toolCalling: "fair",
-      defaultNativeTools: defaultTools,
+      defaultNativeTools: DEFAULT_TOOLS,
     };
   }
-
-  function mergeThinkingMeta(model) {
+  if (model.toolProfile === "reasoning-light" || id.includes("qwen3")) {
     return {
-      enabled: false,
-      tagName: "think",
-      startWithReasoning: false,
-      ...(model.thinking || {}),
+      maxSteps: 3,
+      maxNativeTools: 4,
+      toolCalling: "good",
+      defaultNativeTools: DEFAULT_TOOLS,
     };
   }
+  if (model.toolProfile === "middle-tools" || model.toolProfile === "strong-json") {
+    return {
+      maxSteps: 3,
+      maxNativeTools: 6,
+      toolCalling: "good",
+      defaultNativeTools: DEFAULT_TOOLS,
+    };
+  }
+  return {
+    maxSteps: 3,
+    maxNativeTools: 5,
+    toolCalling: "fair",
+    defaultNativeTools: DEFAULT_TOOLS,
+  };
+}
 
-  function defaultContextMeta(model) {
-    const id = model.id || "";
-    const contextWindowTokens = Number(model.contextWindowTokens) || (model.engine === "ollama" ? 8192 : 4096);
-    if (model.engine === "ollama") {
-      return {
-        contextWindowTokens,
-        maxNewTokens: model.maxNewTokens,
-        contextPolicy: {
-          provider: "ollama",
-          contextWindowTokens,
-          safeInputTokens: Math.min(6000, Math.max(2400, contextWindowTokens - 2200)),
-          reservedOutputTokens: 2048,
-          maxSystemChars: 2600,
-          maxRuntimeChars: 1200,
-          maxHistoryMessages: 8,
-          maxHistoryChars: 12000,
-          maxToolResultChars: 20000,
-          maxToolResultCharsForSynthesis: 8000,
-          maxArtifacts: 4,
-        },
-      };
-    }
-    let safeInputTokens = 1800;
-    if (id.includes("3b")) safeInputTokens = 1400;
-    else if (id.includes("0.5b") || (id.includes("qwen3") && id.includes("0.6")) || id.includes("270m")) {
-      safeInputTokens = 1100;
-    }
+function mergeThinkingMeta(model: LlmModelConfig): LlmThinkingMeta {
+  return {
+    enabled: false,
+    tagName: "think",
+    startWithReasoning: false,
+    ...(model.thinking || {}),
+  };
+}
+
+function defaultContextMeta(model: LlmModelConfig): Pick<LlmModelConfig, "contextWindowTokens" | "maxNewTokens" | "contextPolicy"> {
+  const id = model.id || "";
+  const contextWindowTokens = Number(model.contextWindowTokens) || (model.engine === "ollama" ? 8192 : 4096);
+  if (model.engine === "ollama") {
     return {
       contextWindowTokens,
-      contextPolicy: { contextWindowTokens, safeInputTokens },
+      maxNewTokens: model.maxNewTokens,
+      contextPolicy: {
+        provider: "ollama",
+        contextWindowTokens,
+        safeInputTokens: Math.min(6000, Math.max(2400, contextWindowTokens - 2200)),
+        reservedOutputTokens: 2048,
+        maxSystemChars: 2600,
+        maxRuntimeChars: 1200,
+        maxHistoryMessages: 8,
+        maxHistoryChars: 12000,
+        maxToolResultChars: 20000,
+        maxToolResultCharsForSynthesis: 8000,
+        maxArtifacts: 4,
+      },
     };
   }
-
-  function withModelCapabilities(model) {
-    const ctx = defaultContextMeta(model);
-    return {
-      ...model,
-      contextWindowTokens: model.contextWindowTokens ?? ctx.contextWindowTokens,
-      maxNewTokens: model.maxNewTokens ?? ctx.maxNewTokens,
-      contextPolicy: { ...ctx.contextPolicy, ...(model.contextPolicy || {}) },
-      agent: model.agent || defaultAgentMeta(model),
-      thinking: mergeThinkingMeta(model),
-    };
+  let safeInputTokens = 1800;
+  if (id.includes("3b")) safeInputTokens = 1400;
+  else if (id.includes("0.5b") || (id.includes("qwen3") && id.includes("0.6")) || id.includes("270m")) {
+    safeInputTokens = 1100;
   }
+  return {
+    contextWindowTokens,
+    contextPolicy: { contextWindowTokens, safeInputTokens },
+  };
+}
 
-  const models = (window.BA_LLM_MODELS_RAW || []).map(withModelCapabilities);
+function withModelCapabilities(model: LlmModelConfig): LlmModelConfig {
+  const ctx = defaultContextMeta(model);
+  return {
+    ...model,
+    contextWindowTokens: model.contextWindowTokens ?? ctx.contextWindowTokens,
+    maxNewTokens: model.maxNewTokens ?? ctx.maxNewTokens,
+    contextPolicy: { ...(ctx.contextPolicy || {}), ...(model.contextPolicy || {}) },
+    agent: model.agent || defaultAgentMeta(model),
+    thinking: mergeThinkingMeta(model),
+  };
+}
 
-  window.BA_LLM_MODELS = models;
-  window.BA_LLM = {
+function createInitialLlmState(models: LlmModelConfig[]): LlmState {
+  return {
     version: "v9.38.0-ai-sdk-browser",
     providerName: "transformersjs",
     providerLabel: "AI SDK + Transformers.js",
@@ -161,7 +252,7 @@
     loaded: false,
     loading: false,
     generating: false,
-    selectedModelId: models.find((model) => model.engine === "transformersjs")?.id || models[0].id,
+    selectedModelId: models.find((model) => model.engine === "transformersjs")?.id || models[0]?.id || "",
     activeModel: null,
     capabilities: null,
     capabilitiesChecked: false,
@@ -174,10 +265,9 @@
     contextArtifactId: null,
     lastError: "",
     settings: {
-      // Nivel máximo de seguridad que el agente puede ejecutar sin pedir
-      // confirmación. 1 = lectura segura dentro de la VM; niveles superiores
-      // quedan preparados para tools futuras más intrusivas.
-      toolAutonomyMaxLevel: Number(localStorage.getItem("ba.llm.toolAutonomyMaxLevel") || "1"),
+      // Maximum security level the agent may run without confirmation.
+      // 1 = safe reads inside the VM; higher levels are reserved for future tools.
+      toolAutonomyMaxLevel: Number(window.localStorage.getItem("ba.llm.toolAutonomyMaxLevel") || "1"),
       maxToolStepsPerTurn: 4,
       nativeToolNames: [],
       showThinking: false,
@@ -190,10 +280,20 @@
       ].join(" "),
     },
   };
+}
 
-  window.BA_LLM_EVENTS = {
-    emit(type, detail = {}) {
-      window.dispatchEvent(new CustomEvent(`ba-llm:${type}`, { detail }));
-    },
-  };
-})();
+export const llmModels: LlmModelConfig[] = rawModels.map(withModelCapabilities);
+
+export const llmEventsApi: LlmEventsApi = {
+  emit(type, detail = {}) {
+    window.dispatchEvent(new CustomEvent(`ba-llm:${type}`, { detail }));
+  },
+};
+
+export function installLlmState(): void {
+  const legacy = legacyWindow();
+  if (legacy.BA_LLM) return;
+  legacy.BA_LLM_MODELS = llmModels;
+  legacy.BA_LLM = createInitialLlmState(llmModels);
+  legacy.BA_LLM_EVENTS = llmEventsApi;
+}
