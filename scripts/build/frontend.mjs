@@ -37,7 +37,6 @@ const browserSourceOrder = [
   "src/browser/chat/runtime/artifact-store.ts",
   "src/browser/chat/runtime/context-budget.ts",
   "src/browser/chat/runtime/tool-result-policy.ts",
-  "src/browser/chat/runtime/resource-governor.ts",
   "src/browser/chat/runtime/agent-debug.ts",
   "src/browser/chat/runtime/agent-routing.ts",
   "src/browser/chat/runtime/chat-ui.ts",
