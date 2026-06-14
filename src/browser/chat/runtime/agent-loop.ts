@@ -317,8 +317,7 @@ async function ensureCapabilities(): Promise<LlmCapabilities> {
 }
 
 async function ensureAiSdk(): Promise<AiSdkBridgeApi> {
-  await getAiSdkReady();
-  const sdk = getAiSdk();
+  const sdk = await getAiSdkReady();
   if (!sdk) throw new Error(t("chat.error.aiSdkNotLoaded"));
   return sdk;
 }

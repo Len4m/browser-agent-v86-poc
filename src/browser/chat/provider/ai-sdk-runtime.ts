@@ -24,38 +24,49 @@ export interface AiSdkToolConfig {
 }
 
 export interface AiSdkRunAgentStreamTurnOptions {
-  [key: string]: unknown;
+  model: unknown;
+  modelConfig?: LlmModelConfig | null;
+  system?: string;
+  messages: unknown[];
+  tools?: Record<string, unknown>;
+  maxSteps?: number;
+  maxTokens?: number;
+  synthesisMaxTokens?: number;
+  temperature?: number;
+  topP?: number;
+  needsVm?: boolean;
+  enableThinking?: boolean;
+  toolCalling?: "weak" | "fair" | "good";
+  activeToolNames?: string[] | null;
+  abortSignal?: AbortSignal;
   onStreamPart?: (part: unknown) => void;
   onStepFinish?: (event: unknown) => PromiseLike<void> | void;
 }
 
 export interface AiSdkRunAgentStreamTurnResult {
-  [key: string]: unknown;
-  text?: string;
+  text: string;
   finishReason?: unknown;
-  hadToolWork?: boolean;
+  hadToolWork: boolean;
 }
 
 export interface AiSdkBridgeApi {
   z: AiSdkZodLike;
   tool: (config: AiSdkToolConfig) => unknown;
-  abortActive?: () => void;
+  abortActive: () => void;
   unloadModel: () => void;
   loadModel: (modelConfig: LlmModelConfig, options?: { onProgress?: (detail: Record<string, unknown>) => void }) => Promise<void>;
   getActiveModel: () => unknown;
-  getActiveModelConfig?: () => LlmModelConfig | null;
-  isModelReady?: () => boolean;
+  getActiveModelConfig: () => LlmModelConfig | null;
+  isModelReady: () => boolean;
   runAgentStreamTurn: (options: AiSdkRunAgentStreamTurnOptions) => Promise<AiSdkRunAgentStreamTurnResult>;
   textChunkFromStreamPart: (part: unknown) => string;
   reasoningChunkFromStreamPart: (part: unknown) => string;
-  [key: string]: unknown;
 }
 
 declare const __BA_AI_SDK_BRIDGE_URL__: string;
 
 interface AiSdkBridgeModule {
-  aiSdkApi?: AiSdkBridgeApi;
-  default?: AiSdkBridgeApi;
+  aiSdkApi: AiSdkBridgeApi;
 }
 
 let aiSdkApi: AiSdkBridgeApi | null = null;
@@ -65,8 +76,9 @@ async function importAiSdkBridge(): Promise<AiSdkBridgeApi | null> {
   if (aiSdkApi) return aiSdkApi;
   try {
     const bridgeUrl = new URL(__BA_AI_SDK_BRIDGE_URL__, import.meta.url).href;
-    const module = await import(bridgeUrl) as AiSdkBridgeModule;
-    aiSdkApi = module.aiSdkApi || module.default || null;
+    const module = await import(bridgeUrl) as Partial<AiSdkBridgeModule>;
+    if (!module.aiSdkApi) throw new Error("AI SDK bridge module did not export aiSdkApi");
+    aiSdkApi = module.aiSdkApi;
     return aiSdkApi;
   } catch (error) {
     console.error("[llm] AI SDK bridge import failed", error);
@@ -78,7 +90,7 @@ export function getAiSdk(): AiSdkBridgeApi | null {
   return aiSdkApi;
 }
 
-export async function getAiSdkReady(): Promise<unknown> {
+export async function getAiSdkReady(): Promise<AiSdkBridgeApi | null> {
   if (aiSdkApi) return aiSdkApi;
   bridgeReady ||= importAiSdkBridge();
   const api = await bridgeReady;

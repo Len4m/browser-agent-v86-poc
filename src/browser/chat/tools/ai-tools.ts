@@ -1,6 +1,5 @@
 // Browser Agent v86 - AI SDK tool bridge.
-// Builds ai.tool() definitions from the typed LLM tool registry for streamText /
-// ToolLoopAgent.
+// Builds ai.tool() definitions from the typed LLM tool registry for the agent runner.
 
 import { state } from "../../app/state";
 import { t } from "../../app/i18n";

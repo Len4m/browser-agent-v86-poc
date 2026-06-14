@@ -5,17 +5,12 @@
 import type { LanguageModel } from "ai";
 import { initI18n, t } from "../../app/i18n";
 import type { LlmModelConfig } from "../state/chat-state";
-import type { AiSdkBridgeApi } from "./ai-sdk-runtime";
+import type { AiSdkBridgeApi, AiSdkRunAgentStreamTurnOptions, AiSdkRunAgentStreamTurnResult, AiSdkToolConfig } from "./ai-sdk-runtime";
 import {
-  streamText,
   tool,
-  stepCountIs,
-  ToolLoopAgent,
-  convertToModelMessages,
   wrapLanguageModel,
   extractReasoningMiddleware,
   transformersJS,
-  doesBrowserSupportTransformersJS,
   ollamaBrowser,
   z,
   runAgentStreamTurn,
@@ -281,45 +276,6 @@ function isModelReady(): boolean {
   return Boolean(activeModelHandle?.model);
 }
 
-/** Core messages { role, content } from the agent context budget, not UIMessage parts. */
-function toCoreMessages(messages: unknown): Array<{ role: "user" | "assistant" | "system"; content: string }> {
-  if (!Array.isArray(messages)) return [];
-  return (messages as unknown[])
-    .filter((msg): msg is { role?: unknown; content: string } => typeof msg === "object" && msg !== null && "content" in msg && typeof msg.content === "string")
-    .map((msg) => ({
-      role: msg.role === "assistant" || msg.role === "system" ? msg.role : "user",
-      content: String(msg.content),
-    }));
-}
-
-/** AI SDK v6: system vía opción `system`, no role:system en messages. */
-function splitPromptForStream(
-  messages: unknown,
-  explicitSystem?: unknown,
-): { system?: string; messages: Array<{ role: "user" | "assistant"; content: string }> } {
-  const explicitSystemText = messageText(explicitSystem).trim();
-  if (explicitSystemText) {
-    return {
-      system: explicitSystemText,
-      messages: toCoreMessages(messages).filter((msg): msg is { role: "user" | "assistant"; content: string } => msg.role !== "system"),
-    };
-  }
-  const core = toCoreMessages(messages);
-  const systemParts: string[] = [];
-  const chatMessages: Array<{ role: "user" | "assistant"; content: string }> = [];
-  for (const msg of core) {
-    if (msg.role === "system") systemParts.push(msg.content);
-    else chatMessages.push({
-      role: msg.role === "assistant" ? "assistant" : "user",
-      content: msg.content,
-    });
-  }
-  return {
-    system: systemParts.length ? systemParts.join("\n\n") : undefined,
-    messages: chatMessages,
-  };
-}
-
 function isNonFallbackLoadFailure(message: unknown): boolean {
   return /fetch|network|timeout|abort(ed)?|404|403|failed to fetch|download|indexeddb|quota|enotfound|connection refused|unexpected token|json\.parse|modelo no configurado|unavailable/i.test(messageText(message));
 }
@@ -336,30 +292,33 @@ function abortActive(): void {
   activeAbortController = null;
 }
 
+function createAiSdkTool(config: AiSdkToolConfig): unknown {
+  return tool(config as unknown as Parameters<typeof tool>[0]);
+}
+
+async function loadBridgeModel(modelConfig: LlmModelConfig, options?: LoadModelOptions): Promise<void> {
+  await loadModel(modelConfig, options);
+}
+
+async function runBridgeAgentStreamTurn(options: AiSdkRunAgentStreamTurnOptions): Promise<AiSdkRunAgentStreamTurnResult> {
+  const output = await runAgentStreamTurn(options as unknown as Parameters<typeof runAgentStreamTurn>[0]);
+  return {
+    text: output.text,
+    finishReason: output.finishReason,
+    hadToolWork: output.hadToolWork,
+  };
+}
+
 export const aiSdkApi = {
-  streamText,
-  tool,
-  stepCountIs,
-  ToolLoopAgent,
-  toCoreMessages,
-  splitPromptForStream,
-  convertToModelMessages,
-  wrapLanguageModel,
-  extractReasoningMiddleware,
-  transformersJS,
-  doesBrowserSupportTransformersJS,
-  ollamaBrowser,
-  z,
-  createModel,
-  loadModel,
+  tool: createAiSdkTool,
+  z: z as unknown as AiSdkBridgeApi["z"],
+  loadModel: loadBridgeModel,
   unloadModel,
   getActiveModel,
   getActiveModelConfig,
   isModelReady,
-  runAgentStreamTurn,
+  runAgentStreamTurn: runBridgeAgentStreamTurn,
   textChunkFromStreamPart,
   reasoningChunkFromStreamPart,
   abortActive,
-} as unknown as AiSdkBridgeApi;
-
-export default aiSdkApi;
+} satisfies AiSdkBridgeApi;
