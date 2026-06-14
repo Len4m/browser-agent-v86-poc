@@ -15,6 +15,7 @@ import {
   type TextStreamPart,
   type ToolSet,
 } from "ai";
+import { initI18n, t } from "../../../app/i18n";
 import { looksLikeTextToolPlan } from "./text-tool-parser";
 
 type StreamPhase = "main" | "synthesis";
@@ -22,7 +23,8 @@ type AgentStep = StepResult<ToolSet>;
 type AgentStreamResult = ReturnType<typeof streamText<ToolSet>>;
 type AgentStreamPart = TextStreamPart<ToolSet> & { phase: StreamPhase };
 type AgentProviderOptions = NonNullable<Parameters<typeof streamText<ToolSet>>[0]["providerOptions"]>;
-type I18nVars = Record<string, string | number>;
+
+void initI18n();
 
 interface LlmModelConfig {
   engine?: string;
@@ -86,14 +88,6 @@ function errorMessage(error: unknown): string {
 
 function isAbortError(error: unknown): boolean {
   return isRecord(error) && error.name === "AbortError";
-}
-
-// This module ships in a separate bundle, so the global t() from the app bundle
-// is not in scope; bridge through window.BA_I18N when available.
-function t(key: string, vars?: I18nVars): string {
-  const legacyWindow = typeof window !== "undefined" ? window : null;
-  const fn = legacyWindow?.BA_I18N?.t;
-  return fn ? fn(key, vars) : key;
 }
 
 export function textChunkFromStreamPart(part: unknown): string {

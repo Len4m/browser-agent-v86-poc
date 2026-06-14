@@ -1,12 +1,41 @@
-// @ts-nocheck
 /**
  * Middleware AI SDK: convierte JSON de tools en texto → eventos tool-call del provider.
  */
 
-import { parseTextToolCalls, looksLikeTextToolPlan } from "./text-tool-parser";
+import type { LanguageModelMiddleware } from "ai";
+import { parseTextToolCalls, looksLikeTextToolPlan, type ParsedTextToolCall } from "./text-tool-parser";
+
+type WrapGenerateInput = Parameters<NonNullable<LanguageModelMiddleware["wrapGenerate"]>>[0];
+type WrapStreamInput = Parameters<NonNullable<LanguageModelMiddleware["wrapStream"]>>[0];
+type GenerateResult = Awaited<ReturnType<WrapGenerateInput["doGenerate"]>>;
+type GenerateContent = GenerateResult["content"][number];
+type StreamResult = Awaited<ReturnType<WrapStreamInput["doStream"]>>;
+type StreamChunk = StreamResult["stream"] extends ReadableStream<infer Chunk> ? Chunk : never;
+type FinishChunk = Extract<StreamChunk, { type: "finish" }>;
+type ProviderUsage = FinishChunk["usage"];
+type ProviderMetadata = FinishChunk extends { providerMetadata?: infer Metadata } ? Metadata : never;
+type CallParams = WrapStreamInput["params"];
+
+interface NamedToolLike {
+  name?: unknown;
+  toolName?: unknown;
+  function?: {
+    name?: unknown;
+  };
+}
+
+interface TextDeltaLike {
+  delta?: unknown;
+  text?: unknown;
+  textDelta?: unknown;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 
 /** Formato LanguageModelV3 que espera el AI SDK (asLanguageModelUsage). */
-function defaultProviderUsage() {
+function defaultProviderUsage(): ProviderUsage {
   return {
     inputTokens: {
       total: undefined,
@@ -22,37 +51,41 @@ function defaultProviderUsage() {
   };
 }
 
-function normalizeProviderUsage(usage) {
-  const input = usage?.inputTokens;
-  const output = usage?.outputTokens;
+function normalizeProviderUsage(usage: unknown): ProviderUsage {
+  if (!isRecord(usage)) return defaultProviderUsage();
+  const input = usage.inputTokens;
+  const output = usage.outputTokens;
   if (input != null && output != null && typeof input === "object" && typeof output === "object") {
+    const inputRecord = input as Record<string, unknown>;
+    const outputRecord = output as Record<string, unknown>;
     return {
       inputTokens: {
-        total: input.total,
-        noCache: input.noCache,
-        cacheRead: input.cacheRead,
-        cacheWrite: input.cacheWrite,
+        total: typeof inputRecord.total === "number" ? inputRecord.total : undefined,
+        noCache: typeof inputRecord.noCache === "number" ? inputRecord.noCache : undefined,
+        cacheRead: typeof inputRecord.cacheRead === "number" ? inputRecord.cacheRead : undefined,
+        cacheWrite: typeof inputRecord.cacheWrite === "number" ? inputRecord.cacheWrite : undefined,
       },
       outputTokens: {
-        total: output.total,
-        text: output.text,
-        reasoning: output.reasoning,
+        total: typeof outputRecord.total === "number" ? outputRecord.total : undefined,
+        text: typeof outputRecord.text === "number" ? outputRecord.text : undefined,
+        reasoning: typeof outputRecord.reasoning === "number" ? outputRecord.reasoning : undefined,
       },
     };
   }
   return defaultProviderUsage();
 }
 
-function getAllowedToolNames(params) {
+function getAllowedToolNames(params: CallParams): string[] {
   const tools = params?.tools;
   if (!tools) return [];
   if (Array.isArray(tools)) {
     return tools
-      .map((t) => {
-        if (typeof t === "string") return t;
-        return t?.name ?? t?.toolName ?? t?.function?.name;
+      .map((toolItem: unknown) => {
+        if (typeof toolItem === "string") return toolItem;
+        const item = toolItem as NamedToolLike | null;
+        return item?.name ?? item?.toolName ?? item?.function?.name;
       })
-      .filter((name) => typeof name === "string" && name.length > 0);
+      .filter((name): name is string => typeof name === "string" && name.length > 0);
   }
   if (typeof tools === "object") {
     return Object.keys(tools);
@@ -60,26 +93,40 @@ function getAllowedToolNames(params) {
   return [];
 }
 
-function streamTextDelta(chunk) {
-  return chunk?.delta ?? chunk?.text ?? chunk?.textDelta ?? "";
+function streamTextDelta(chunk: unknown): string {
+  const value = chunk as TextDeltaLike | null;
+  const text = value?.delta ?? value?.text ?? value?.textDelta ?? "";
+  return typeof text === "string" ? text : "";
 }
 
-function emitTextToolCall(controller, call, usage, providerMetadata) {
+function enqueueProviderChunk(
+  controller: TransformStreamDefaultController<StreamChunk>,
+  chunk: Record<string, unknown>,
+): void {
+  controller.enqueue(chunk as StreamChunk);
+}
+
+function emitTextToolCall(
+  controller: TransformStreamDefaultController<StreamChunk>,
+  call: ParsedTextToolCall,
+  usage: ProviderUsage | undefined,
+  providerMetadata: ProviderMetadata | undefined,
+): void {
   const argsJson = JSON.stringify(call.args ?? {});
   const { toolCallId, toolName } = call;
-  controller.enqueue({ type: "tool-input-start", id: toolCallId, toolName });
+  enqueueProviderChunk(controller, { type: "tool-input-start", id: toolCallId, toolName });
   if (argsJson.length > 0) {
-    controller.enqueue({ type: "tool-input-delta", id: toolCallId, delta: argsJson });
+    enqueueProviderChunk(controller, { type: "tool-input-delta", id: toolCallId, delta: argsJson });
   }
-  controller.enqueue({ type: "tool-input-end", id: toolCallId });
-  controller.enqueue({
+  enqueueProviderChunk(controller, { type: "tool-input-end", id: toolCallId });
+  enqueueProviderChunk(controller, {
     type: "tool-call",
     toolCallId,
     toolName,
     input: argsJson,
     providerExecuted: false,
   });
-  controller.enqueue({
+  enqueueProviderChunk(controller, {
     type: "finish",
     finishReason: { unified: "tool-calls", raw: "tool-calls" },
     usage: normalizeProviderUsage(usage),
@@ -93,7 +140,13 @@ function tryInjectToolCallsFromText({
   controller,
   usage,
   providerMetadata,
-}) {
+}: {
+  text: string;
+  allowedToolNames: string[];
+  controller: TransformStreamDefaultController<StreamChunk>;
+  usage?: ProviderUsage;
+  providerMetadata?: ProviderMetadata;
+}): boolean {
   if (!text?.trim() || !allowedToolNames.length) return false;
   const { toolCalls } = parseTextToolCalls(text, { allowedToolNames });
   if (!toolCalls.length) return false;
@@ -102,16 +155,19 @@ function tryInjectToolCallsFromText({
 }
 
 /**
- * @returns {import('ai').LanguageModelV3Middleware}
  */
-function withoutToolChoice(params) {
+function withoutToolChoice(params: CallParams): CallParams {
   if (!params || params.toolChoice == null) return params;
   const { toolChoice: _toolChoice, ...rest } = params;
   return rest;
 }
 
-export function transformersTextToolMiddleware({ stripToolChoice = false, parseTextTools = true } = {}) {
+export function transformersTextToolMiddleware({
+  stripToolChoice = false,
+  parseTextTools = true,
+}: { stripToolChoice?: boolean; parseTextTools?: boolean } = {}): LanguageModelMiddleware {
   return {
+    specificationVersion: "v3",
     wrapGenerate: async ({ doGenerate, params, model }) => {
       const generate = () => stripToolChoice ? model.doGenerate(withoutToolChoice(params)) : doGenerate();
       const allowedToolNames = getAllowedToolNames(params);
@@ -140,7 +196,7 @@ export function transformersTextToolMiddleware({ stripToolChoice = false, parseT
       });
       return {
         ...result,
-        content,
+        content: content as GenerateContent[],
         finishReason: { unified: "tool-calls", raw: "tool-calls" },
       };
     },
@@ -154,10 +210,10 @@ export function transformersTextToolMiddleware({ stripToolChoice = false, parseT
       let accumulated = "";
       let toolCallEmitted = false;
       let suppressText = false;
-      let pendingFinish = null;
+      let pendingFinish: FinishChunk | null = null;
 
       const transformed = baseStream.pipeThrough(
-        new TransformStream({
+        new TransformStream<StreamChunk, StreamChunk>({
           transform(chunk, controller) {
             if (
               chunk.type === "reasoning-start"
@@ -225,7 +281,7 @@ export function transformersTextToolMiddleware({ stripToolChoice = false, parseT
               }
               if (suppressText && accumulated.trim()) {
                 // No parseable tool: devolver texto acumulado una vez
-                controller.enqueue({
+                enqueueProviderChunk(controller, {
                   type: "text-delta",
                   id: "text-recovered",
                   delta: accumulated,

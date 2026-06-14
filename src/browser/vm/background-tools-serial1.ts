@@ -4,6 +4,7 @@
 import { state } from "../app/state";
 import { t } from "../app/i18n";
 import { clampInt, stripAnsi, trimLinesSimple, utf8ToBase64 } from "../app/text-utils";
+import { appEvents } from "../core/events";
 import {
   formatLoggedCommand,
   logTool,
@@ -90,24 +91,7 @@ interface VmSerial1Api {
   serial1_send?: (text: string) => void;
 }
 
-type LegacyWindow = Window & typeof globalThis & {
-  renderConsoleTabs?: () => void;
-  BA_LLM_AGENT?: {
-    updateChatAvailability?: () => void;
-  };
-  BA_LLM_EVENTS?: {
-    emit?: (name: string, payload: unknown) => void;
-  };
-  BA_LLM_RESOURCE_GOVERNOR?: {
-    getSnapshot?: () => unknown;
-  };
-};
-
 let initialized = false;
-
-function legacyWindow(): LegacyWindow {
-  return window;
-}
 
 function safeText(value: unknown): string {
   if (value == null) return "";
@@ -241,23 +225,8 @@ function refreshDependentUi(): void {
   syncDiskCheckButton();
   syncSnapshotButtons();
   syncChecksButton();
-
-  const legacy = legacyWindow();
-  try {
-    legacy.renderConsoleTabs?.();
-  } catch {
-    // Legacy console rendering is best-effort during migration.
-  }
-  try {
-    legacy.BA_LLM_AGENT?.updateChatAvailability?.();
-  } catch {
-    // The LLM panel may not be mounted yet.
-  }
-  try {
-    legacy.BA_LLM_EVENTS?.emit?.("resource", legacy.BA_LLM_RESOURCE_GOVERNOR?.getSnapshot?.() || {});
-  } catch {
-    // Resource telemetry is auxiliary.
-  }
+  appEvents.emit("console:state-changed", { source: "background-tools" });
+  appEvents.emit("llm:availability-refresh-requested", { source: "background-tools" });
 }
 
 function syncUi(): void {

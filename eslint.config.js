@@ -8,16 +8,20 @@ const tsconfigRootDir = dirname(fileURLToPath(import.meta.url));
 
 const modernBrowserTs = [
   "src/browser/app/bootstrap.ts",
+  "src/browser/app/init.ts",
   "src/browser/app/i18n.ts",
   "src/browser/app/lang-selector.ts",
   "src/browser/app/origin-awareness.ts",
   "src/browser/app/state.ts",
   "src/browser/app/text-utils.ts",
   "src/browser/compat/**/*.ts",
+  "src/browser/chat/provider/ai-sdk-bridge.ts",
   "src/browser/chat/provider/ai-sdk/browser-agent-runner.ts",
   "src/browser/chat/provider/ai-sdk/entry.ts",
   "src/browser/chat/provider/ai-sdk/llm-browser-ai.worker.ts",
+  "src/browser/chat/provider/ai-sdk/ollama-browser-model.ts",
   "src/browser/chat/provider/ai-sdk/text-tool-parser.ts",
+  "src/browser/chat/provider/ai-sdk/transformers-text-tool-middleware.ts",
   "src/browser/chat/provider/ai-sdk-global.ts",
   "src/browser/chat/panel/capabilities-view.ts",
   "src/browser/chat/panel/panel.ts",
@@ -27,6 +31,7 @@ const modernBrowserTs = [
   "src/browser/chat/runtime/agent-loop.ts",
   "src/browser/chat/runtime/agent-routing.ts",
   "src/browser/chat/runtime/chat-ui.ts",
+  "src/browser/chat/runtime/chat-submit.ts",
   "src/browser/chat/runtime/artifact-store.ts",
   "src/browser/chat/runtime/context-budget.ts",
   "src/browser/chat/runtime/resource-governor.ts",
@@ -57,6 +62,7 @@ const modernBrowserTs = [
 
 const noInternalWindowGlobalsTs = [
   "src/browser/app/bootstrap.ts",
+  "src/browser/app/init.ts",
   "src/browser/app/i18n.ts",
   "src/browser/app/lang-selector.ts",
   "src/browser/app/origin-awareness.ts",
@@ -64,7 +70,9 @@ const noInternalWindowGlobalsTs = [
   "src/browser/app/text-utils.ts",
   "src/browser/chat/provider/ai-sdk/entry.ts",
   "src/browser/chat/provider/ai-sdk/llm-browser-ai.worker.ts",
+  "src/browser/chat/provider/ai-sdk/ollama-browser-model.ts",
   "src/browser/chat/provider/ai-sdk/text-tool-parser.ts",
+  "src/browser/chat/provider/ai-sdk/transformers-text-tool-middleware.ts",
   "src/browser/chat/panel/capabilities-view.ts",
   "src/browser/chat/panel/panel.ts",
   "src/browser/chat/panel/template.ts",
@@ -73,6 +81,7 @@ const noInternalWindowGlobalsTs = [
   "src/browser/chat/runtime/agent-loop.ts",
   "src/browser/chat/runtime/agent-routing.ts",
   "src/browser/chat/runtime/chat-ui.ts",
+  "src/browser/chat/runtime/chat-submit.ts",
   "src/browser/chat/runtime/artifact-store.ts",
   "src/browser/chat/runtime/context-budget.ts",
   "src/browser/chat/runtime/resource-governor.ts",
@@ -182,7 +191,7 @@ export default tseslint.config(
     rules: {
       "no-restricted-syntax": ["error", {
         selector: "MemberExpression[object.name='window'][property.name=/^BA_/]",
-        message: "Internal BA_* globals are only allowed in compat facades while migration is in progress.",
+        message: "Internal BA_* globals are not allowed; use ESM imports instead.",
       }],
     },
   },

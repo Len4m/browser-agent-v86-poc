@@ -1,6 +1,4 @@
-// Browser Agent v86 - VM profile config
-// Modern modules import these helpers directly. Legacy ordered sources receive
-// global aliases through compat/legacy-facades.ts.
+// Browser Agent v86 - VM profile config.
 
 import { $, state } from "../app/state";
 import { t, tn } from "../app/i18n";

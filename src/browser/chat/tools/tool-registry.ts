@@ -658,7 +658,7 @@ export const llmToolRegistry: LlmToolRegistryApi = (() => {
     if (!ctx.vmPresent) throw new Error(t("tools.error.vmNotBooted"));
     if (!ctx.vmReady) throw new Error(t("tools.error.vmShellNotReady"));
     if (!ctx.toolsConsoleAvailable) throw new Error(t("tools.error.toolsConsoleMissing"));
-    // Las tools del agente LLM van por serial1 (BA_BG_TOOLS), no por serial0/consola visible.
+    // Las tools del agente LLM van por serial1, no por serial0/consola visible.
     // state.agentBusy solo marca bloqueo de la consola principal (snapshot, comandos manuales, etc.)
     // y no debe impedir vm.fs.* mientras el modelo planifica en GPU.
     if (ctx.backgroundToolBusy) throw new Error(t("tools.error.serial1Busy"));

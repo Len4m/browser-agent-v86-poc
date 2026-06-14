@@ -13,56 +13,13 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../..", import.meta.url));
 
 const limits = {
-  tsNocheckFiles: 3,
-  browserSourceOrderEntries: 0,
+  tsNocheckFiles: 0,
   inlineScriptBlocks: 2,
-  internalWindowAssignments: 3,
+  internalWindowAssignments: 2,
+  legacyCompatibilityNames: 0,
 };
 
 const tsNocheckPattern = /^\s*\/\/\s*@ts-nocheck\b/m;
-
-const migratedModules = [
-  "src/browser/app/bootstrap.ts",
-  "src/browser/app/state.ts",
-  "src/browser/app/i18n.ts",
-  "src/browser/app/text-utils.ts",
-  "src/browser/app/origin-awareness.ts",
-  "src/browser/app/lang-selector.ts",
-  "src/browser/chat/rendering/markdown-renderer.ts",
-  "src/browser/chat/state/capabilities.ts",
-  "src/browser/chat/state/chat-state.ts",
-  "src/browser/chat/runtime/artifact-store.ts",
-  "src/browser/chat/runtime/agent-debug.ts",
-  "src/browser/chat/runtime/agent-loop.ts",
-  "src/browser/chat/runtime/agent-routing.ts",
-  "src/browser/chat/runtime/chat-ui.ts",
-  "src/browser/chat/runtime/context-budget.ts",
-  "src/browser/chat/runtime/tool-result-policy.ts",
-  "src/browser/chat/tools/ai-tools.ts",
-  "src/browser/chat/panel/capabilities-view.ts",
-  "src/browser/chat/panel/template.ts",
-  "src/browser/chat/tools/native-tools-policy.ts",
-  "src/browser/chat/tools/tool-executor.ts",
-  "src/browser/chat/tools/tool-registry.ts",
-  "src/browser/chat/runtime/resource-governor.ts",
-  "src/browser/console/xterm-consoles.ts",
-  "src/browser/ui/checks-panel.ts",
-  "src/browser/ui/modal.ts",
-  "src/browser/ui/status-controls.ts",
-  "src/browser/ui/tooltips.ts",
-  "src/browser/vm/background-tools-serial1.ts",
-  "src/browser/vm/console-control-serial2.ts",
-  "src/browser/vm/operations.ts",
-  "src/browser/vm/profile-config.ts",
-  "src/browser/vm/runtime-assets.ts",
-  "src/browser/vm/serial-vm.ts",
-  "src/browser/vm/terminal-markers.ts",
-  "src/browser/chat/provider/ai-sdk/browser-agent-runner.ts",
-  "src/browser/chat/provider/ai-sdk/entry.ts",
-  "src/browser/chat/provider/ai-sdk/llm-browser-ai.worker.ts",
-  "src/browser/chat/provider/ai-sdk/text-tool-parser.ts",
-  "src/browser/chat/panel/panel.ts",
-];
 
 function walk(dir, out = []) {
   for (const entry of readdirSync(join(root, dir))) {
@@ -82,26 +39,22 @@ function countMatches(text, pattern) {
   return [...text.matchAll(pattern)].length;
 }
 
-function browserSourceOrderEntries() {
-  const text = read("scripts/build/frontend.mjs");
-  const body = text.match(/const browserSourceOrder = \[([\s\S]*?)\];/)?.[1] || "";
-  return [...body.matchAll(/"([^"]+)"/g)].map((match) => match[1]);
-}
-
 const browserTsFiles = walk("src/browser").filter((file) => file.endsWith(".ts"));
 const sourceFiles = [
   ...browserTsFiles,
   ...walk("scripts/build").filter((file) => file.endsWith(".mjs")),
 ];
 const indexHtml = read("src/web/index.html");
-const sourceOrder = browserSourceOrderEntries();
 
 const metrics = {
   tsNocheckFiles: browserTsFiles.filter((file) => tsNocheckPattern.test(read(file))).length,
-  browserSourceOrderEntries: sourceOrder.length,
   inlineScriptBlocks: countMatches(indexHtml, /<script\b(?![^>]*\bsrc=)[^>]*>/g),
   internalWindowAssignments: sourceFiles.reduce(
     (sum, file) => sum + countMatches(read(file), /\bwindow\.BA_[A-Za-z0-9_$]+\s*=/g),
+    0,
+  ),
+  legacyCompatibilityNames: browserTsFiles.reduce(
+    (sum, file) => sum + countMatches(read(file), /\b(?:LegacyWindow|legacyWindow|installLegacyFacades)\b/g),
     0,
   ),
 };
@@ -116,19 +69,12 @@ for (const [name, value] of Object.entries(metrics)) {
   }
 }
 
-const migratedStillOrdered = migratedModules.filter((entry) => sourceOrder.includes(entry));
-if (migratedStillOrdered.length) {
-  failed = true;
-  console.error("browser-modernity: módulos migrados siguen en browserSourceOrder:");
-  migratedStillOrdered.forEach((entry) => console.error(`  - ${entry}`));
-}
-
 if (failed) process.exit(1);
 
 console.log([
   "OK browser modernity:",
   `@ts-nocheck ${metrics.tsNocheckFiles}/${limits.tsNocheckFiles}`,
-  `sourceOrder ${metrics.browserSourceOrderEntries}/${limits.browserSourceOrderEntries}`,
   `inline scripts ${metrics.inlineScriptBlocks}/${limits.inlineScriptBlocks}`,
   `window.BA_* assignments ${metrics.internalWindowAssignments}/${limits.internalWindowAssignments}`,
+  `legacy names ${metrics.legacyCompatibilityNames}/${limits.legacyCompatibilityNames}`,
 ].join(" "));

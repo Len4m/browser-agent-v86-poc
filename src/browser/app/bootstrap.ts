@@ -12,6 +12,7 @@ import {
   renderConsoleTabs,
   showConsoleHelpModal,
 } from "../console/xterm-consoles";
+import { sendChat } from "../chat/runtime/chat-submit";
 import { ensureLLMCapabilities, syncLLMCapabilityBadges } from "../chat/state/capabilities";
 import { originApi } from "./origin-awareness";
 import { addMessage, setLoading } from "../vm/runtime-assets";
@@ -23,7 +24,6 @@ import {
   restoreSnapshotFromFile,
   runCommandFromInput,
   saveSnapshot,
-  sendChat,
   toggleDiskInVm,
 } from "../vm/operations";
 import { loadProfiles, updateDiskHint, updateProfileHint } from "../vm/profile-config";

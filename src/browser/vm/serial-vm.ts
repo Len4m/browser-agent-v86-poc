@@ -1,8 +1,6 @@
 // Browser Agent v86 - serial VM lifecycle and serial0 console helpers.
-// Modern modules import these helpers directly. Legacy ordered sources receive
-// global aliases through compat/legacy-facades.ts.
 
-import { $, CR, NL, state, type ConsoleTab } from "../app/state";
+import { $, CR, NL, state } from "../app/state";
 import { t } from "../app/i18n";
 import { trimLines } from "../app/text-utils";
 import { confirmVmShutdown } from "../ui/modal";
@@ -34,6 +32,14 @@ import {
 } from "./profile-config";
 import { backgroundToolsApi } from "./background-tools-serial1";
 import { consoleControlApi } from "./console-control-serial2";
+import {
+  finalizeConsoleTabsReady,
+  getActiveConsoleTab,
+  initConsoleTabsAfterBoot,
+  renderConsoleTabs,
+  resetConsoleTabs,
+  syncConsoleTabsFromDaemon,
+} from "../console/xterm-consoles";
 import {
   escapeRegExp,
   extractBetweenLast,
@@ -107,19 +113,13 @@ interface PendingCommand {
   maxRawChars: number;
 }
 
-type LegacyWindow = Window & typeof globalThis & {
+type VmRuntimeWindow = Window & typeof globalThis & {
   V86Starter?: unknown;
   V86?: unknown;
   Terminal?: unknown;
-  getActiveConsoleTab?: () => ConsoleTab | null;
-  finalizeConsoleTabsReady?: (options?: { extraReady?: boolean }) => unknown;
-  syncConsoleTabsFromDaemon?: (options?: { repaint?: boolean; createMissing?: boolean }) => unknown;
-  renderConsoleTabs?: () => void;
-  resetConsoleTabs?: () => void;
-  initConsoleTabsAfterBoot?: () => unknown;
 };
 
-function legacyWindow(): LegacyWindow {
+function vmRuntimeWindow(): VmRuntimeWindow {
   return window;
 }
 
@@ -153,33 +153,6 @@ function isPendingCommand(value: unknown): value is PendingCommand {
     && typeof value.timer === "number"
     && Array.isArray(value.resolveOnTokens)
     && Array.isArray(value.rejectOnTokens);
-}
-
-function getActiveConsoleTab(): ConsoleTab | null {
-  const tab: unknown = legacyWindow().getActiveConsoleTab?.();
-  return isRecord(tab) ? tab as unknown as ConsoleTab : null;
-}
-
-async function finalizeConsoleTabsReady(options: { extraReady?: boolean }): Promise<void> {
-  await legacyWindow().finalizeConsoleTabsReady?.(options);
-}
-
-async function syncConsoleTabsFromDaemon(options: { repaint?: boolean; createMissing?: boolean }): Promise<boolean> {
-  const fn = legacyWindow().syncConsoleTabsFromDaemon;
-  if (!fn) return false;
-  return Boolean(await fn(options));
-}
-
-function renderConsoleTabs(): void {
-  legacyWindow().renderConsoleTabs?.();
-}
-
-function resetConsoleTabs(): void {
-  legacyWindow().resetConsoleTabs?.();
-}
-
-async function initConsoleTabsAfterBoot(): Promise<void> {
-  await legacyWindow().initConsoleTabsAfterBoot?.();
 }
 
 function setDisabled(el: Element | null, disabled: boolean): void {
@@ -547,10 +520,10 @@ export async function startVm(options: StartVmOptions = {}): Promise<void> {
     });
     throwIfAborted(startAbortController.signal);
 
-    const legacy = legacyWindow();
-    const Starter = legacy.V86Starter || legacy.V86;
+    const vmRuntime = vmRuntimeWindow();
+    const Starter = vmRuntime.V86Starter || vmRuntime.V86;
     if (!isV86Constructor(Starter)) throw new Error("window.V86Starter no existe");
-    if (!legacy.Terminal) throw new Error("xterm.js no cargado");
+    if (!vmRuntime.Terminal) throw new Error("xterm.js no cargado");
 
     resetSerialConsoleDom();
     backgroundToolsApi.reset("vm-starting");
@@ -594,7 +567,7 @@ export async function startVm(options: StartVmOptions = {}): Promise<void> {
       autostart: !restoreStateBuffer,
       disable_keyboard: true,
       screen_container: $("screen-container"),
-      serial_console: { type: "xtermjs", container: $("serial-console"), xterm_lib: legacy.Terminal },
+      serial_console: { type: "xtermjs", container: $("serial-console"), xterm_lib: vmRuntime.Terminal },
     });
     state.vm = vm;
     setupSerialTerminalHelpers();

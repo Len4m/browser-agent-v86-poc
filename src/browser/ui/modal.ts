@@ -1,6 +1,4 @@
-// Browser Agent v86 - 02 modal
-// Modern modules import these helpers directly. Legacy ordered sources receive
-// global aliases through compat/legacy-facades.ts.
+// Browser Agent v86 - modal helpers.
 
 import { $ } from "../app/state";
 import { t } from "../app/i18n";

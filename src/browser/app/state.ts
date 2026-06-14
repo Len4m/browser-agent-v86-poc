@@ -1,6 +1,4 @@
-// Browser Agent v86 - 00 state constants
-// Transitional app state. Modern modules import this file directly; legacy
-// ordered sources receive the same values through compat/legacy-facades.ts.
+// Browser Agent v86 - shared app state and constants.
 
 export const NL = String.fromCharCode(10);
 export const CR = String.fromCharCode(13);

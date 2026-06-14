@@ -1,12 +1,6 @@
 #!/usr/bin/env node
 /**
  * Builds the browser application shell.
- *
- * Some browser sources still use classic global lexical dependencies. This
- * build keeps that behavior by bundling the
- * TypeScript entry first and then appending the transitional domain sources in
- * the old runtime order. Those files now live under domain folders so they can
- * be typed/refactored incrementally without exposing load order in public/.
  */
 import * as esbuild from "esbuild";
 import { createHash } from "node:crypto";
@@ -32,8 +26,6 @@ const tempFile = join(root, "build/browser/app-entry.js");
 const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const appVersion = packageJson.version || "0.0.0";
 
-const browserSourceOrder = [];
-
 const minify = process.env.BA_MINIFY === "1" || process.argv.includes("--minify");
 const sourcemap = process.env.BA_SOURCEMAP === "1" || process.argv.includes("--sourcemap");
 
@@ -47,20 +39,6 @@ function formatBytes(bytes) {
 function sizeSummary(file) {
   const content = readFileSync(file);
   return `${formatBytes(statSync(file).size)} / gzip ${formatBytes(gzipSync(content).length)}`;
-}
-
-async function legacySourceForBundle(file) {
-  const source = readFileSync(file, "utf8");
-  if (!minify) return source;
-  const result = await esbuild.transform(source, {
-    loader: file.endsWith(".ts") ? "ts" : "js",
-    target: ["es2022"],
-    minifyWhitespace: true,
-    minifySyntax: true,
-    minifyIdentifiers: false,
-    sourcemap: false,
-  });
-  return result.code.trim();
 }
 
 function cacheKeyForContent(content) {
@@ -185,9 +163,6 @@ await esbuild.build({
   target: ["es2022"],
   sourcemap,
   minify,
-  define: {
-    __BA_BROWSER_SOURCE_ORDER__: JSON.stringify(browserSourceOrder),
-  },
   logLevel: "silent",
 });
 
@@ -209,20 +184,13 @@ const chunks = [
   readFileSync(tempFile, "utf8"),
 ];
 
-for (const script of browserSourceOrder) {
-  const abs = join(root, script);
-  chunks.push(`\n/* ---- ${script} ---- */\n`);
-  chunks.push(await legacySourceForBundle(abs));
-  chunks.push("\n");
-}
-
 writeFileSync(outFile, chunks.join("\n"), "utf8");
 writeFileSync(indexFile, renderIndexHtml({
   cssHref,
   bridgeHref: publicHref("assets/ai-sdk-bridge.mjs"),
   appHref: publicHref("assets/app.js"),
 }), "utf8");
-console.log(`OK frontend bundle: public/assets/app.js (${browserSourceOrder.length} ordered sources, ${sizeSummary(outFile)})`);
+console.log(`OK frontend bundle: public/assets/app.js (${sizeSummary(outFile)})`);
 console.log(`OK AI SDK bridge: public/assets/ai-sdk-bridge.mjs (${sizeSummary(bridgeOutFile)})`);
 if (localeFiles.length) console.log(`OK i18n locales: public/locales/ (${localeFiles.join(", ")})`);
 if (minify) console.log(`OK CSS bundle: public/assets/app.css (${sizeSummary(cssBundleFile)})`);

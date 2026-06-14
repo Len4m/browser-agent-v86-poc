@@ -1,6 +1,4 @@
-// Browser Agent v86 - VM runtime assets and UI helpers
-// Modern modules import these helpers directly. Legacy ordered sources receive
-// global aliases through compat/legacy-facades.ts.
+// Browser Agent v86 - VM runtime assets and UI helpers.
 
 import { $, state } from "../app/state";
 import { t } from "../app/i18n";
@@ -48,7 +46,7 @@ interface AssetSpec {
   mode: "script" | "cache" | "buffer";
 }
 
-type LegacyWindow = Window & typeof globalThis & {
+type V86RuntimeWindow = Window & typeof globalThis & {
   V86Starter?: unknown;
   V86?: unknown;
 };
@@ -85,8 +83,8 @@ function abortReasonMessage(signal: AbortSignal | null | undefined): string {
 }
 
 function hasV86Runtime(): boolean {
-  const legacyWindow = window as LegacyWindow;
-  return Boolean(legacyWindow.V86Starter || legacyWindow.V86);
+  const runtimeWindow = window as V86RuntimeWindow;
+  return Boolean(runtimeWindow.V86Starter || runtimeWindow.V86);
 }
 
 function vmStateApi(): V86StateApi | null {

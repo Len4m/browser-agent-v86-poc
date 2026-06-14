@@ -6,22 +6,22 @@ export type I18nVars = Record<string, string | number>;
 export type I18nCatalog = Record<string, string>;
 export type SupportedLang = "es" | "en";
 
-export const BA_I18N_BASE_LANG: SupportedLang = "es";
-export const BA_I18N_SUPPORTED = ["es", "en"] as const;
-export const BA_I18N_STORAGE_KEY = "ba.lang";
+export const I18N_BASE_LANG: SupportedLang = "es";
+export const I18N_SUPPORTED = ["es", "en"] as const;
+export const I18N_STORAGE_KEY = "ba.lang";
 
-let baActiveLang: SupportedLang = BA_I18N_BASE_LANG;
+let baActiveLang: SupportedLang = I18N_BASE_LANG;
 let baActiveCatalog: I18nCatalog | null = null;
 let baI18nReady: Promise<unknown> = Promise.resolve();
 let baI18nStarted = false;
 
 function isSupportedLang(lang: string): lang is SupportedLang {
-  return (BA_I18N_SUPPORTED as readonly string[]).includes(lang);
+  return (I18N_SUPPORTED as readonly string[]).includes(lang);
 }
 
 function baReadStoredLang(): SupportedLang {
   try {
-    const value = window.localStorage?.getItem(BA_I18N_STORAGE_KEY);
+    const value = window.localStorage?.getItem(I18N_STORAGE_KEY);
     if (value && isSupportedLang(value)) return value;
   } catch {}
   try {
@@ -29,7 +29,7 @@ function baReadStoredLang(): SupportedLang {
       .filter(Boolean)
       .map((lang) => String(lang).toLowerCase());
     if (languages.some((lang) => lang === "es" || lang.startsWith("es-"))) {
-      return BA_I18N_BASE_LANG;
+      return I18N_BASE_LANG;
     }
   } catch {}
   return "en";
@@ -65,7 +65,7 @@ export function tn(key: string, count: number, vars?: I18nVars): string {
 }
 
 export async function loadLocale(lang: string): Promise<I18nCatalog> {
-  const next = isSupportedLang(lang) ? lang : BA_I18N_BASE_LANG;
+  const next = isSupportedLang(lang) ? lang : I18N_BASE_LANG;
   const response = await fetch(`./locales/${next}.json`, { cache: "no-store" });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   baActiveCatalog = await response.json() as I18nCatalog;
@@ -95,7 +95,7 @@ export async function setLang(
   lang: string,
   { persist = true, apply = true }: { persist?: boolean; apply?: boolean } = {},
 ): Promise<SupportedLang> {
-  const next = isSupportedLang(lang) ? lang : BA_I18N_BASE_LANG;
+  const next = isSupportedLang(lang) ? lang : I18N_BASE_LANG;
   if (next === baActiveLang && baActiveCatalog) return baActiveLang;
   try {
     await loadLocale(next);
@@ -104,7 +104,7 @@ export async function setLang(
   }
   baActiveLang = next;
   try {
-    if (persist) window.localStorage?.setItem(BA_I18N_STORAGE_KEY, next);
+    if (persist) window.localStorage?.setItem(I18N_STORAGE_KEY, next);
   } catch {}
   try {
     document.documentElement.lang = next;
@@ -117,7 +117,7 @@ export async function setLang(
 }
 
 export function getSupportedLangs(): SupportedLang[] {
-  return BA_I18N_SUPPORTED.slice();
+  return I18N_SUPPORTED.slice();
 }
 
 export function initI18n(): Promise<unknown> {
@@ -125,7 +125,7 @@ export function initI18n(): Promise<unknown> {
   baI18nStarted = true;
   const pre = window.__BA_I18N__;
   if (pre?.lang && pre.catalog) {
-    baActiveLang = isSupportedLang(pre.lang) ? pre.lang : BA_I18N_BASE_LANG;
+    baActiveLang = isSupportedLang(pre.lang) ? pre.lang : I18N_BASE_LANG;
     baActiveCatalog = pre.catalog;
     const run = () => {
       try {
@@ -163,7 +163,7 @@ export function initI18n(): Promise<unknown> {
       }
     })
     .catch(() => {
-      baActiveLang = BA_I18N_BASE_LANG;
+      baActiveLang = I18N_BASE_LANG;
       baActiveCatalog = null;
       const run = () => applyDomTranslations();
       if (document.readyState === "loading") {

@@ -1,6 +1,6 @@
 // Browser Agent v86 - LLM state.
-// The model catalog is imported as typed data; legacy modules receive the
-// temporary BA_LLM globals from installLlmState().
+// The model catalog is imported as typed data and runtime state is owned by
+// this module.
 
 import { t } from "../../app/i18n";
 import llmModelsRaw from "../../../../data/llm-models.json";
@@ -109,12 +109,6 @@ export interface LlmEventsApi {
   emit: (type: string, detail?: Record<string, unknown>) => void;
 }
 
-type LlmLegacyWindow = Window & typeof globalThis & {
-  BA_LLM?: LlmState;
-  BA_LLM_MODELS?: LlmModelConfig[];
-  BA_LLM_EVENTS?: LlmEventsApi;
-};
-
 const DEFAULT_TOOLS = [
   "vm.python.exec",
   "vm.sh.exec",
@@ -126,10 +120,7 @@ const DEFAULT_TOOLS = [
 ];
 
 const rawModels = llmModelsRaw as unknown as LlmModelConfig[];
-
-function legacyWindow(): LlmLegacyWindow {
-  return window;
-}
+let llmState: LlmState | null = null;
 
 function defaultAgentMeta(model: LlmModelConfig): LlmAgentMeta {
   const id = model.id || "";
@@ -307,13 +298,10 @@ export const llmEventsApi: LlmEventsApi = {
 };
 
 export function getLlmState(): LlmState | null {
-  return legacyWindow().BA_LLM || null;
+  return llmState;
 }
 
 export function installLlmState(): void {
-  const legacy = legacyWindow();
-  if (legacy.BA_LLM) return;
-  legacy.BA_LLM_MODELS = llmModels;
-  legacy.BA_LLM = createInitialLlmState(llmModels);
-  legacy.BA_LLM_EVENTS = llmEventsApi;
+  if (llmState) return;
+  llmState = createInitialLlmState(llmModels);
 }

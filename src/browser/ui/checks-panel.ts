@@ -1,12 +1,12 @@
-// Browser Agent v86 - checks panel
-// Modern modules import runChecks directly. Legacy ordered sources receive a
-// global alias through compat/legacy-facades.ts.
+// Browser Agent v86 - checks panel.
 
 import { $, NL, state } from "../app/state";
 import { t, tn } from "../app/i18n";
 import { shellQuote } from "../app/text-utils";
 import { getConfig, getSelectedProfile, getVmRuntimeConfig, getWsRelayUrl, type VmProfile } from "../vm/profile-config";
 import { checkAsset, checkWsRelayEndpoint, loadScript } from "../vm/runtime-assets";
+import { backgroundToolsApi, type BackgroundToolDiagnostics } from "../vm/background-tools-serial1";
+import { execVm, type ExecVmOptions, type ExecVmResult } from "../vm/operations";
 import {
   firstMatchingVmCheckLine,
   lastNonEmptyLine,
@@ -18,41 +18,13 @@ interface RunChecksOptions {
   probeWsRelay?: boolean;
 }
 
-interface ExecVmOptions {
-  lock?: boolean;
-  label?: string;
-  timeoutMs?: number;
-  log?: boolean;
-  targetTools?: boolean;
-  maxOutputBytes?: number;
-}
-
-interface ExecVmResult {
-  code: number;
-  stdout: string;
-  stderr: string;
-}
-
-interface BackgroundToolsDiagnostics {
-  serial1Available?: boolean;
-  runnerReady?: boolean;
-  lastError?: string;
-}
-
-interface BackgroundToolsApi {
-  diagnostics?: () => BackgroundToolsDiagnostics | null;
-  waitForRunnerReady?: (timeoutMs: number) => Promise<unknown>;
-}
-
 interface VmApi {
   serial0_send?: unknown;
   save_state?: unknown;
   restore_state?: unknown;
 }
 
-type LegacyWindow = Window & typeof globalThis & {
-  execVm?: (command: string, options?: ExecVmOptions) => Promise<unknown>;
-  BA_BG_TOOLS?: BackgroundToolsApi;
+type V86RuntimeWindow = Window & typeof globalThis & {
   V86Starter?: unknown;
   V86?: unknown;
 };
@@ -62,7 +34,7 @@ interface ToolCheck {
   test: string;
 }
 
-function legacyWindow(): LegacyWindow {
+function v86RuntimeWindow(): V86RuntimeWindow {
   return window;
 }
 
@@ -147,7 +119,7 @@ function getVmCommandCheckSkipReason(): string {
   if (state.pending) return t("checks.skip.serial0Busy");
   if (state.bgTools.pending) return t("checks.skip.bgToolBusy");
   if (state.agentBusy) return t("checks.skip.vmBusy");
-  const diag = legacyWindow().BA_BG_TOOLS?.diagnostics?.();
+  const diag = backgroundToolsApi.diagnostics();
   if (diag && !diag.serial1Available) return t("common.serialUnavailable", { port: "1" });
   if (diag && !diag.runnerReady) return t("checks.skip.runnerNotReady");
   return "";
@@ -204,8 +176,6 @@ function normalizeExecVmResult(result: unknown): ExecVmResult {
 }
 
 async function runVmCheck(command: string, { label = t("checks.label.vmCheck"), timeoutMs = 12000 }: ExecVmOptions = {}): Promise<ExecVmResult> {
-  const execVm = legacyWindow().execVm;
-  if (!execVm) return { code: 1, stdout: "", stderr: "execVm unavailable" };
   const result: unknown = await execVm(command, {
     lock: true,
     label,
@@ -296,10 +266,10 @@ export async function runChecks({ probeWsRelay = true }: RunChecksOptions = {}):
       add(name, result.ok, result.ok ? url : `${url} · ${result.detail}`);
     }
 
-    const legacy = legacyWindow();
+    const v86Runtime = v86RuntimeWindow();
     try {
-      if (!legacy.V86Starter && !legacy.V86) await loadScript(cfg.libv86);
-      add(t("checks.item.v86starter"), Boolean(legacy.V86Starter || legacy.V86), t("checks.detail.notLoaded"));
+      if (!v86Runtime.V86Starter && !v86Runtime.V86) await loadScript(cfg.libv86);
+      add(t("checks.item.v86starter"), Boolean(v86Runtime.V86Starter || v86Runtime.V86), t("checks.detail.notLoaded"));
     } catch (error) {
       add(t("checks.item.v86starter"), false, errorMessage(error));
     }
@@ -307,12 +277,12 @@ export async function runChecks({ probeWsRelay = true }: RunChecksOptions = {}):
     const vm = vmApi();
     add(t("checks.item.vmStarted"), Boolean(state.vm), state.vm ? t("checks.badge.ok") : t("common.pending"));
     add(t("checks.item.serial0Api"), typeof vm?.serial0_send === "function", typeof vm?.serial0_send === "function" ? t("checks.badge.ok") : t("common.pending"));
-    const bgDiagBeforeWait = legacy.BA_BG_TOOLS?.diagnostics?.() || null;
+    const bgDiagBeforeWait: BackgroundToolDiagnostics | null = backgroundToolsApi.diagnostics();
     add(t("checks.item.serial1Api"), Boolean(bgDiagBeforeWait?.serial1Available), bgDiagBeforeWait?.serial1Available ? t("checks.badge.ok") : t("common.pending"));
     if (state.vm && state.vmReady && bgDiagBeforeWait?.serial1Available && !bgDiagBeforeWait?.runnerReady) {
-      await legacy.BA_BG_TOOLS?.waitForRunnerReady?.(1500);
+      await backgroundToolsApi.waitForRunnerReady(1500);
     }
-    const bgDiag = legacy.BA_BG_TOOLS?.diagnostics?.() || null;
+    const bgDiag: BackgroundToolDiagnostics | null = backgroundToolsApi.diagnostics();
     add(t("checks.item.runnerSerial1"), Boolean(bgDiag?.runnerReady), bgDiag?.runnerReady ? t("checks.detail.runnerReady") : (bgDiag?.lastError || t("common.notReady")));
     add(t("checks.item.snapshotApi"), Boolean(typeof vm?.save_state === "function" && typeof vm?.restore_state === "function"), state.vm ? "save_state/restore_state" : t("common.pending"));
 

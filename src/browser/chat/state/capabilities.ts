@@ -4,7 +4,7 @@
 
 import { t } from "../../app/i18n";
 import { setBadge } from "../../ui/status-controls";
-import type { LlmState } from "./chat-state";
+import { getLlmState } from "./chat-state";
 
 export interface LlmCapabilities {
   secureContext: boolean;
@@ -51,18 +51,7 @@ type GpuNavigator = Navigator & {
   };
 };
 
-type LlmCapabilitiesWindow = Window & typeof globalThis & {
-  BA_LLM?: LlmState;
-  BA_detectLLMCapabilities?: typeof detectLLMCapabilities;
-  BA_ensureLLMCapabilities?: typeof ensureLLMCapabilities;
-  BA_syncLLMCapabilityBadges?: typeof syncLLMCapabilityBadges;
-};
-
 let initialized = false;
-
-function legacyWindow(): LlmCapabilitiesWindow {
-  return window;
-}
 
 function baseResult(): LlmCapabilities {
   return {
@@ -93,7 +82,7 @@ function isCapabilitiesResult(value: unknown): value is LlmCapabilities {
 }
 
 function currentCapabilities(): LlmCapabilities | null {
-  const capabilities = legacyWindow().BA_LLM?.capabilities;
+  const capabilities = getLlmState()?.capabilities;
   return isCapabilitiesResult(capabilities) ? capabilities : null;
 }
 
@@ -191,7 +180,7 @@ function emitCapabilities(result: LlmCapabilities, source = "unknown"): void {
 
 export async function ensureLLMCapabilities(options: EnsureCapabilitiesOptions = {}): Promise<LlmCapabilities> {
   const { force = false, source = "unknown" } = options;
-  const llm = legacyWindow().BA_LLM;
+  const llm = getLlmState();
   const existing = currentCapabilities();
 
   if (llm?.capabilitiesChecked && existing && !force) {
@@ -208,7 +197,7 @@ export async function ensureLLMCapabilities(options: EnsureCapabilitiesOptions =
 
   const promise = (async (): Promise<LlmCapabilities> => {
     const result = await detectLLMCapabilities();
-    const currentLlm = legacyWindow().BA_LLM;
+    const currentLlm = getLlmState();
     if (currentLlm) {
       currentLlm.capabilities = result;
       currentLlm.capabilitiesChecked = true;
@@ -223,7 +212,7 @@ export async function ensureLLMCapabilities(options: EnsureCapabilitiesOptions =
   try {
     return await promise;
   } finally {
-    const currentLlm = legacyWindow().BA_LLM;
+    const currentLlm = getLlmState();
     if (currentLlm?.capabilitiesChecking === promise) {
       currentLlm.capabilitiesChecking = null;
     }

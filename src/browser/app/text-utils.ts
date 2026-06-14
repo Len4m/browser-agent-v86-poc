@@ -1,6 +1,4 @@
-// Browser Agent v86 - shared text/shell helpers
-// Modern modules import these helpers directly. Legacy ordered sources receive
-// global aliases through compat/legacy-facades.ts.
+// Browser Agent v86 - shared text/shell helpers.
 
 import { CR, NL } from "./state";
 
@@ -77,7 +75,7 @@ export function utf8ToBase64(str: string): string {
   return btoa(bin);
 }
 
-export const BA_TEXT_UTILS = {
+export const textUtilsApi = {
   stripAnsi,
   normalizeNewlines,
   stripAnsiAndControls,
@@ -89,4 +87,4 @@ export const BA_TEXT_UTILS = {
   utf8ToBase64,
 };
 
-export type TextUtilsApi = typeof BA_TEXT_UTILS;
+export type TextUtilsApi = typeof textUtilsApi;

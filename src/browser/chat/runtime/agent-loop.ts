@@ -5,6 +5,7 @@
 import { state } from "../../app/state";
 import { t } from "../../app/i18n";
 import { originApi } from "../../app/origin-awareness";
+import { appEvents } from "../../core/events";
 import { addMessage } from "../../vm/runtime-assets";
 import { backgroundToolsApi } from "../../vm/background-tools-serial1";
 import { detectLLMCapabilities, type LlmCapabilities } from "../state/capabilities";
@@ -955,6 +956,11 @@ function updateChatAvailability(): void {
   }
 }
 
+function refreshChatAvailabilityWithResourceTelemetry(): void {
+  updateChatAvailability();
+  llmEventsApi.emit("resource", llmResourceGovernor.getSnapshot());
+}
+
 export const llmAgent: LlmAgentApi = {
   getSelectedModelConfig,
   loadSelectedModel,
@@ -970,6 +976,7 @@ export const llmAgent: LlmAgentApi = {
 export function initLlmAgentLoop(): void {
   if (initialized) return;
   initialized = true;
+  appEvents.on("llm:availability-refresh-requested", refreshChatAvailabilityWithResourceTelemetry);
   window.addEventListener("ba-llm:resource", () => updateChatAvailability());
   window.addEventListener("ba:langchange", () => updateChatAvailability());
   bindChatSubmitButton();

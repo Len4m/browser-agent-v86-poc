@@ -5,6 +5,7 @@
 import { $, NL, state, type ConsoleTab } from "../app/state";
 import { t } from "../app/i18n";
 import { trimLines } from "../app/text-utils";
+import { appEvents } from "../core/events";
 import { showBaModal, showBaModalPanel } from "../ui/modal";
 import { blurSerialConsole, logTool, setBadge } from "../ui/status-controls";
 import { backgroundToolsApi } from "../vm/background-tools-serial1";
@@ -57,14 +58,14 @@ interface VmSerial0Api {
   serial0_send: (text: string) => void;
 }
 
-type LegacyWindow = Window & typeof globalThis & {
+type XtermRuntimeWindow = Window & typeof globalThis & {
   Terminal?: unknown;
 };
 
 let initialized = false;
 const decoder = new TextDecoder();
 
-function legacyWindow(): LegacyWindow {
+function xtermRuntimeWindow(): XtermRuntimeWindow {
   return window;
 }
 
@@ -408,7 +409,7 @@ function createBrowserTerminal(tab: ManagedConsoleTab): XtermTerminal | null {
   if (isSerialConsoleTab(tab)) return asXtermTerminal(getSerialTerm());
   if (tab.term) return tab.term;
   const host = ensureDirectConsoleHost();
-  const Terminal = legacyWindow().Terminal;
+  const Terminal = xtermRuntimeWindow().Terminal;
   if (!host || !isXtermConstructor(Terminal)) return null;
 
   const container = document.createElement("div");
@@ -734,7 +735,7 @@ export async function initConsoleTabsAfterBoot(): Promise<void> {
     }, 500);
     return;
   }
-  if (!isXtermConstructor(legacyWindow().Terminal)) {
+  if (!isXtermConstructor(xtermRuntimeWindow().Terminal)) {
     failConsoleTabsInit(t("console.error.xtermNotLoaded"));
     return;
   }
@@ -988,6 +989,14 @@ export function showConsoleHelpModal(): void {
 export function initXtermConsoles(): void {
   if (initialized) return;
   initialized = true;
+  appEvents.on("console:state-changed", () => {
+    try {
+      renderConsoleTabs();
+      syncConsoleInputLock();
+    } catch {
+      // Rendering during shared UI changes is best-effort.
+    }
+  });
   window.addEventListener("ba:langchange", () => {
     try {
       renderConsoleTabs();

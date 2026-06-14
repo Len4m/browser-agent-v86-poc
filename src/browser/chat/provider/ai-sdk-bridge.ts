@@ -1,8 +1,11 @@
-// @ts-nocheck
 // Browser Agent v86 - AI SDK bridge (ESM)
 // Carga el bundle generado de chat y expone window.BA_AISDK.
 // El loop de agente (tools + multi-step) vive en runAgentStreamTurn (AI SDK).
 
+import type { LanguageModel } from "ai";
+import { initI18n, t } from "../../app/i18n";
+import type { LlmModelConfig } from "../state/chat-state";
+import type { AiSdkGlobalApi } from "./ai-sdk-global";
 import {
   streamText,
   tool,
@@ -19,20 +22,56 @@ import {
   textChunkFromStreamPart,
   reasoningChunkFromStreamPart,
   transformersTextToolMiddleware,
-} from "./chat/ai-sdk-browser.mjs?v=0.2.2-tools-ui3";
+} from "./chat/ai-sdk-browser.mjs";
 
-let workerUrl = null;
-let activeWorker = null;
-let activeModelHandle = null;
-let activeAbortController = null;
+type LanguageModelV3 = Extract<LanguageModel, { specificationVersion: "v3" }>;
 
-function mapDtype(dtype) {
-  const value = String(dtype || "q4").toLowerCase();
+type BrowserSessionLanguageModel = LanguageModelV3 & {
+  availability?: () => Promise<string>;
+  createSessionWithProgress?: (onProgress?: (progress: unknown) => void) => Promise<unknown>;
+};
+
+interface ActiveModelHandle {
+  base: BrowserSessionLanguageModel;
+  model: LanguageModelV3;
+  modelConfig: LlmModelConfig;
+}
+
+interface LoadModelOptions {
+  onProgress?: (detail: Record<string, unknown>) => void;
+}
+
+void initI18n();
+
+let workerUrl: URL | null = null;
+let activeWorker: Worker | null = null;
+let activeModelHandle: ActiveModelHandle | null = null;
+let activeAbortController: AbortController | null = null;
+
+function textValue(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") return String(value);
+  return "";
+}
+
+function messageText(value: unknown): string {
+  if (value instanceof Error) return value.message;
+  return textValue(value);
+}
+
+function mapDtype(dtype: unknown): string {
+  const value = (textValue(dtype) || "q4").toLowerCase();
   if (["auto", "fp32", "fp16", "q8", "q4", "q4f16"].includes(value)) return value;
   return "q4";
 }
 
-function terminateActiveWorker() {
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  return "Error";
+}
+
+function terminateActiveWorker(): void {
   if (!activeWorker) return;
   try {
     activeWorker.terminate();
@@ -42,7 +81,7 @@ function terminateActiveWorker() {
   activeWorker = null;
 }
 
-function createWorker() {
+function createWorker(): Worker {
   terminateActiveWorker();
   if (!workerUrl) {
     workerUrl = new URL("./chat/workers/llm-browser-ai.worker.mjs", import.meta.url);
@@ -51,7 +90,7 @@ function createWorker() {
   return activeWorker;
 }
 
-function shouldUseReasoningMiddleware(modelConfig) {
+function shouldUseReasoningMiddleware(modelConfig: LlmModelConfig): boolean {
   const thinking = modelConfig?.thinking;
   if (!thinking?.enabled || !thinking?.tagName) return false;
   // Ollama expone message.thinking como reasoning-delta cuando el modelo lo devuelve.
@@ -60,13 +99,13 @@ function shouldUseReasoningMiddleware(modelConfig) {
   return true;
 }
 
-function wrapAgentModel(baseModel, modelConfig) {
+function wrapAgentModel(baseModel: LanguageModelV3, modelConfig: LlmModelConfig): LanguageModelV3 {
   const engine = modelConfig?.engine || "transformersjs";
   const toolCalling = modelConfig?.agent?.toolCalling || "fair";
   const parseTextTools = engine === "transformersjs" && (toolCalling === "weak" || toolCalling === "fair");
   const thinking = modelConfig?.thinking;
   let model = baseModel;
-  if (shouldUseReasoningMiddleware(modelConfig)) {
+  if (shouldUseReasoningMiddleware(modelConfig) && thinking?.tagName) {
     model = wrapLanguageModel({
       model,
       middleware: extractReasoningMiddleware({
@@ -85,29 +124,29 @@ function wrapAgentModel(baseModel, modelConfig) {
   return model;
 }
 
-function resolveOllamaEndpoint(modelConfig) {
+function resolveOllamaEndpoint(): string {
   return String(
     window.localStorage?.getItem("ba.llm.ollama.endpoint")
       || "http://127.0.0.1:11434",
   ).replace(/\/+$/g, "");
 }
 
-async function createModel(modelConfig) {
+function createModel(modelConfig: LlmModelConfig): LanguageModelV3 {
   if (!modelConfig?.model) throw new Error("Modelo no configurado.");
 
-  let base;
-  let runtime;
+  let base: BrowserSessionLanguageModel;
+  let runtime: NonNullable<LlmModelConfig["runtime"]>;
   if (modelConfig.engine === "ollama") {
     terminateActiveWorker();
     base = ollamaBrowser(modelConfig.model, {
-      endpoint: resolveOllamaEndpoint(modelConfig),
-      think: modelConfig.ollamaThink,
+      endpoint: resolveOllamaEndpoint(),
+      think: typeof modelConfig.ollamaThink === "boolean" ? modelConfig.ollamaThink : undefined,
     });
     runtime = {
       provider: "ollama",
       device: "remote",
       dtype: "host",
-      endpoint: resolveOllamaEndpoint(modelConfig),
+      endpoint: resolveOllamaEndpoint(),
       worker: false,
     };
   } else {
@@ -127,7 +166,7 @@ async function createModel(modelConfig) {
     };
   }
 
-  const activeConfig = {
+  const activeConfig: LlmModelConfig = {
     ...modelConfig,
     runtime,
   };
@@ -136,14 +175,14 @@ async function createModel(modelConfig) {
   return model;
 }
 
-function buildWasmFallbackConfig(modelConfig) {
+function buildWasmFallbackConfig(modelConfig: LlmModelConfig): LlmModelConfig | null {
   if ((modelConfig?.engine || "transformersjs") !== "transformersjs") return null;
   if ((modelConfig.device || "webgpu") !== "webgpu") return null;
   return {
     ...modelConfig,
     id: `${modelConfig.id || "custom-transformersjs"}-wasm-fallback`,
     device: "wasm",
-    dtype: modelConfig.wasmDtype || "auto",
+    dtype: typeof modelConfig.wasmDtype === "string" ? modelConfig.wasmDtype : "auto",
     fallbackFrom: modelConfig.id || modelConfig.model,
     fallbackReason: "webgpu-runtime-failure",
     shortLabel: modelConfig.shortLabel || modelConfig.label || modelConfig.model,
@@ -151,12 +190,12 @@ function buildWasmFallbackConfig(modelConfig) {
   };
 }
 
-async function loadModel(modelConfig, { onProgress } = {}) {
-  async function loadWithConfig(config) {
-    const model = await createModel(config);
+async function loadModel(modelConfig: LlmModelConfig, { onProgress }: LoadModelOptions = {}): Promise<LanguageModelV3> {
+  async function loadWithConfig(config: LlmModelConfig): Promise<LanguageModelV3> {
+    const model = createModel(config);
     // wrapLanguageModel solo envuelve doGenerate/doStream; sesión y descarga viven en el modelo base.
-    const sessionModel = activeModelHandle?.base || model;
-    const availability = await sessionModel.availability?.();
+    const sessionModel = activeModelHandle?.base;
+    const availability = await sessionModel?.availability?.();
 
     if (availability === "unavailable") {
       throw new Error(config.engine === "ollama"
@@ -165,7 +204,7 @@ async function loadModel(modelConfig, { onProgress } = {}) {
     }
 
     if (availability === "downloadable" || availability !== "available") {
-      await sessionModel.createSessionWithProgress((progress) => {
+      await sessionModel?.createSessionWithProgress?.((progress: unknown) => {
         onProgress?.({
           status: "progress",
           progress,
@@ -181,7 +220,7 @@ async function loadModel(modelConfig, { onProgress } = {}) {
   try {
     return await loadWithConfig(modelConfig);
   } catch (error) {
-    const msg = error?.message || String(error);
+    const msg = errorMessage(error);
     const fallbackConfig = isGpuInferenceFailure(msg) ? buildWasmFallbackConfig(modelConfig) : null;
     if (!fallbackConfig) {
       unloadModel();
@@ -203,7 +242,7 @@ async function loadModel(modelConfig, { onProgress } = {}) {
     try {
       const model = await loadWithConfig(fallbackConfig);
       if (typeof console !== "undefined" && console.info) {
-        console.info("[BA_LLM] WebGPU load failed; active session uses WASM fallback.", {
+        console.info("[llm] WebGPU load failed; active session uses WASM fallback.", {
           model: fallbackConfig.model,
           device: fallbackConfig.device,
           dtype: fallbackConfig.dtype,
@@ -217,36 +256,36 @@ async function loadModel(modelConfig, { onProgress } = {}) {
       throw new Error([
         `Transformers.js WebGPU falló y la alternativa WASM tampoco pudo cargar el modelo.`,
         `WebGPU: ${msg}`,
-        `WASM: ${fallbackError?.message || String(fallbackError)}`,
+        `WASM: ${errorMessage(fallbackError)}`,
       ].join("\n"));
     }
   }
 }
 
-function unloadModel() {
+function unloadModel(): void {
   activeAbortController?.abort();
   activeAbortController = null;
   activeModelHandle = null;
   terminateActiveWorker();
 }
 
-function getActiveModel() {
+function getActiveModel(): LanguageModelV3 | null {
   return activeModelHandle?.model || null;
 }
 
-function getActiveModelConfig() {
+function getActiveModelConfig(): LlmModelConfig | null {
   return activeModelHandle?.modelConfig || null;
 }
 
-function isModelReady() {
+function isModelReady(): boolean {
   return Boolean(activeModelHandle?.model);
 }
 
-/** Core messages { role, content } from BA_LLM_CONTEXT — not UIMessage parts. */
-function toCoreMessages(messages) {
+/** Core messages { role, content } from the agent context budget, not UIMessage parts. */
+function toCoreMessages(messages: unknown): Array<{ role: "user" | "assistant" | "system"; content: string }> {
   if (!Array.isArray(messages)) return [];
-  return messages
-    .filter((msg) => msg && typeof msg.content === "string")
+  return (messages as unknown[])
+    .filter((msg): msg is { role?: unknown; content: string } => typeof msg === "object" && msg !== null && "content" in msg && typeof msg.content === "string")
     .map((msg) => ({
       role: msg.role === "assistant" || msg.role === "system" ? msg.role : "user",
       content: String(msg.content),
@@ -254,19 +293,26 @@ function toCoreMessages(messages) {
 }
 
 /** AI SDK v6: system vía opción `system`, no role:system en messages. */
-function splitPromptForStream(messages, explicitSystem) {
-  if (explicitSystem != null && String(explicitSystem).trim()) {
+function splitPromptForStream(
+  messages: unknown,
+  explicitSystem?: unknown,
+): { system?: string; messages: Array<{ role: "user" | "assistant"; content: string }> } {
+  const explicitSystemText = messageText(explicitSystem).trim();
+  if (explicitSystemText) {
     return {
-      system: String(explicitSystem),
-      messages: toCoreMessages(messages).filter((msg) => msg.role !== "system"),
+      system: explicitSystemText,
+      messages: toCoreMessages(messages).filter((msg): msg is { role: "user" | "assistant"; content: string } => msg.role !== "system"),
     };
   }
   const core = toCoreMessages(messages);
-  const systemParts = [];
-  const chatMessages = [];
+  const systemParts: string[] = [];
+  const chatMessages: Array<{ role: "user" | "assistant"; content: string }> = [];
   for (const msg of core) {
     if (msg.role === "system") systemParts.push(msg.content);
-    else chatMessages.push(msg);
+    else chatMessages.push({
+      role: msg.role === "assistant" ? "assistant" : "user",
+      content: msg.content,
+    });
   }
   return {
     system: systemParts.length ? systemParts.join("\n\n") : undefined,
@@ -274,23 +320,23 @@ function splitPromptForStream(messages, explicitSystem) {
   };
 }
 
-function isNonFallbackLoadFailure(message) {
-  return /fetch|network|timeout|abort(ed)?|404|403|failed to fetch|download|indexeddb|quota|enotfound|connection refused|unexpected token|json\.parse|modelo no configurado|unavailable/i.test(String(message || ""));
+function isNonFallbackLoadFailure(message: unknown): boolean {
+  return /fetch|network|timeout|abort(ed)?|404|403|failed to fetch|download|indexeddb|quota|enotfound|connection refused|unexpected token|json\.parse|modelo no configurado|unavailable/i.test(messageText(message));
 }
 
-function isGpuInferenceFailure(message) {
-  const msg = String(message || "");
+function isGpuInferenceFailure(message: unknown): boolean {
+  const msg = messageText(message);
   if (isNonFallbackLoadFailure(msg)) return false;
   // No usar RuntimeError: genérico — provoca fallback WASM en fallos de descarga/init transitorios.
   return /out of device memory|VK_ERROR_OUT_OF_DEVICE_MEMORY|WebGPU validation failed|Invalid Buffer|Device lost|failed to call OrtRun|CreateBuffer|null function|function signature mismatch|unaligned accesses|Instance reference no longer exists|memoria GPU agotada|WebGPU inválido|shader[- ]?f16|f16 not supported/i.test(msg);
 }
 
-function abortActive() {
+function abortActive(): void {
   activeAbortController?.abort();
   activeAbortController = null;
 }
 
-window.BA_AISDK = {
+const aiSdkApi = {
   streamText,
   tool,
   stepCountIs,
@@ -314,6 +360,8 @@ window.BA_AISDK = {
   textChunkFromStreamPart,
   reasoningChunkFromStreamPart,
   abortActive,
-};
+} as unknown as AiSdkGlobalApi;
+
+window.BA_AISDK = aiSdkApi;
 
 window.BA_AISDK_READY = Promise.resolve(true);

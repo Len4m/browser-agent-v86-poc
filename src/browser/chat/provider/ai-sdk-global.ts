@@ -51,15 +51,17 @@ export interface AiSdkGlobalApi {
   [key: string]: unknown;
 }
 
-type AiSdkWindow = Window & typeof globalThis & {
-  BA_AISDK?: AiSdkGlobalApi;
-  BA_AISDK_READY?: Promise<unknown>;
-};
+declare global {
+  interface Window {
+    BA_AISDK?: AiSdkGlobalApi;
+    BA_AISDK_READY?: Promise<unknown>;
+  }
+}
 
 export function getAiSdk(): AiSdkGlobalApi | null {
-  return (window as AiSdkWindow).BA_AISDK || null;
+  return window.BA_AISDK || null;
 }
 
 export function getAiSdkReady(): Promise<unknown> {
-  return (window as AiSdkWindow).BA_AISDK_READY || Promise.resolve(false);
+  return window.BA_AISDK_READY || Promise.resolve(false);
 }

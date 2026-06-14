@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Minimal Ollama chat model for the AI SDK browser bundle.
  *
@@ -6,12 +5,101 @@
  * to allow the page origin through CORS, e.g. OLLAMA_ORIGINS=http://localhost:8080.
  */
 
-function normalizeEndpoint(endpoint) {
-  return String(endpoint || "http://127.0.0.1:11434").replace(/\/+$/g, "");
+import type { LanguageModel } from "ai";
+import { t } from "../../../app/i18n";
+
+type LanguageModelV3 = Extract<LanguageModel, { specificationVersion: "v3" }>;
+type CallOptions = Parameters<LanguageModelV3["doGenerate"]>[0];
+type GenerateResult = Awaited<ReturnType<LanguageModelV3["doGenerate"]>>;
+type StreamResult = Awaited<ReturnType<LanguageModelV3["doStream"]>>;
+type StreamChunk = StreamResult["stream"] extends ReadableStream<infer Chunk> ? Chunk : never;
+type ProviderUsage = GenerateResult["usage"];
+type ProviderContent = GenerateResult["content"][number];
+
+type LocalNetworkRequestInit = RequestInit & {
+  targetAddressSpace?: string;
+};
+
+export interface OllamaBrowserOptions {
+  endpoint?: string;
+  think?: boolean;
 }
 
-function endpointAddressSpace(endpoint) {
-  let url;
+export type OllamaBrowserModel = LanguageModelV3 & {
+  availability: () => Promise<"available">;
+  createSessionWithProgress: (
+    onProgress?: (event: { status: "ready"; model: string; progress: number }) => void,
+  ) => Promise<OllamaBrowserModel>;
+};
+
+interface OllamaFunctionTool {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: unknown;
+  };
+}
+
+interface OllamaToolCall {
+  toolCallId: string;
+  toolName: string;
+  input: string;
+}
+
+interface OllamaChatMessage {
+  role: "system" | "user" | "assistant" | "tool";
+  content: string;
+  tool_calls?: Array<{
+    id: string;
+    type: "function";
+    function: {
+      name: string;
+      arguments: unknown;
+    };
+  }>;
+  tool_call_id?: string;
+  name?: string;
+}
+
+interface OllamaChatResponse {
+  error?: unknown;
+  done?: boolean;
+  done_reason?: unknown;
+  prompt_eval_count?: unknown;
+  eval_count?: unknown;
+  message?: {
+    content?: unknown;
+    thinking?: unknown;
+    tool_calls?: unknown;
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function textValue(value: unknown): string {
+  if (value instanceof Error) return value.message;
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") return String(value);
+  return "";
+}
+
+function errorMessage(error: unknown): string {
+  return textValue(error) || "Error";
+}
+
+function numberValue(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function normalizeEndpoint(endpoint: unknown): string {
+  return (textValue(endpoint) || "http://127.0.0.1:11434").replace(/\/+$/g, "");
+}
+
+function endpointAddressSpace(endpoint: string): string {
+  let url: URL;
   try {
     url = new URL(endpoint);
   } catch {
@@ -27,52 +115,58 @@ function endpointAddressSpace(endpoint) {
   return "";
 }
 
-function localNetworkFetchOptions(endpoint) {
+function localNetworkFetchOptions(endpoint: string): LocalNetworkRequestInit {
   const addressSpace = endpointAddressSpace(endpoint);
   return addressSpace ? { targetAddressSpace: addressSpace } : {};
 }
 
-function asTextContent(content) {
+function asTextContent(content: unknown): string {
   if (typeof content === "string") return content;
   if (!Array.isArray(content)) return "";
   return content
     .map((part) => {
-      if (part?.type === "text") return part.text || "";
-      if (part?.type === "reasoning") return part.text || "";
+      if (!isRecord(part)) return "";
+      if (part.type === "text") return textValue(part.text);
+      if (part.type === "reasoning") return textValue(part.text);
       return "";
     })
     .filter(Boolean)
     .join("\n");
 }
 
-function parseJsonMaybe(value, fallback = {}) {
+function parseJsonMaybe(value: unknown, fallback: Record<string, unknown> = {}): unknown {
   if (value == null) return fallback;
   if (typeof value === "object") return value;
   if (typeof value !== "string") return fallback;
   try {
-    return JSON.parse(value);
+    return JSON.parse(value) as unknown;
   } catch {
     return fallback;
   }
 }
 
-function outputToText(output) {
+function outputToText(output: unknown): string {
   if (output == null) return "";
   if (typeof output === "string") return output;
-  if (output.type === "text") return String(output.value || "");
+  if (!isRecord(output)) return JSON.stringify(output);
+  if (output.type === "text") return textValue(output.value);
   if (output.type === "json") return JSON.stringify(output.value ?? {});
   if (output.type === "content") return JSON.stringify(output.value ?? []);
-  if (output.type === "error-text") return String(output.value || "");
+  if (output.type === "error-text") return textValue(output.value);
   if (output.type === "error-json") return JSON.stringify(output.value ?? {});
-  if (output.type === "execution-denied") return `execution denied: ${output.reason || ""}`.trim();
+  if (output.type === "execution-denied") return `execution denied: ${textValue(output.reason)}`.trim();
   return JSON.stringify(output);
 }
 
-function convertPromptToOllamaMessages(prompt = []) {
-  const messages = [];
-  for (const message of prompt || []) {
+function sanitizeToolName(name: unknown): string {
+  return textValue(name).replace(/[^A-Za-z0-9_-]/g, "__");
+}
+
+function convertPromptToOllamaMessages(prompt: CallOptions["prompt"] = []): OllamaChatMessage[] {
+  const messages: OllamaChatMessage[] = [];
+  for (const message of prompt) {
     if (message.role === "system") {
-      messages.push({ role: "system", content: String(message.content || "") });
+      messages.push({ role: "system", content: message.content });
       continue;
     }
     if (message.role === "user") {
@@ -81,12 +175,11 @@ function convertPromptToOllamaMessages(prompt = []) {
     }
     if (message.role === "assistant") {
       const toolCalls = [];
-      const contentParts = Array.isArray(message.content) ? message.content : [];
-      for (const part of contentParts) {
-        if (part?.type !== "tool-call") continue;
+      for (const part of message.content) {
+        if (part.type !== "tool-call") continue;
         toolCalls.push({
           id: part.toolCallId,
-          type: "function",
+          type: "function" as const,
           function: {
             name: sanitizeToolName(part.toolName),
             arguments: parseJsonMaybe(part.input),
@@ -101,10 +194,10 @@ function convertPromptToOllamaMessages(prompt = []) {
       continue;
     }
     if (message.role === "tool") {
-      const toolResults = (message.content || [])
-        .filter((part) => part?.type === "tool-result")
+      const toolResults = message.content
+        .filter((part) => part.type === "tool-result")
         .map((part) => ({
-          role: "tool",
+          role: "tool" as const,
           tool_call_id: part.toolCallId,
           name: sanitizeToolName(part.toolName),
           content: outputToText(part.output),
@@ -116,24 +209,22 @@ function convertPromptToOllamaMessages(prompt = []) {
   return messages.filter((message) => message.content || message.tool_calls?.length);
 }
 
-function sanitizeToolName(name) {
-  return String(name || "").replace(/[^A-Za-z0-9_-]/g, "__");
-}
-
-function convertToolsToOllama(tools = []) {
-  const nameMap = new Map();
-  const ollamaTools = [];
+function convertToolsToOllama(tools: CallOptions["tools"] = []): { tools: OllamaFunctionTool[]; nameMap: Map<string, string> } {
+  const nameMap = new Map<string, string>();
+  const ollamaTools: OllamaFunctionTool[] = [];
   for (const item of tools || []) {
-    if (item?.type !== "function") continue;
-    const safeName = sanitizeToolName(item.name);
-    nameMap.set(safeName, item.name);
+    if (!isRecord(item) || item.type !== "function") continue;
+    const name = textValue(item.name);
+    if (!name) continue;
+    const safeName = sanitizeToolName(name);
+    nameMap.set(safeName, name);
     ollamaTools.push({
       type: "function",
       function: {
         name: safeName,
         description: [
-          item.description || "",
-          item.name !== safeName ? `Original Browser Agent tool name: ${item.name}.` : "",
+          textValue(item.description),
+          name !== safeName ? `Original Browser Agent tool name: ${name}.` : "",
         ].filter(Boolean).join(" "),
         parameters: item.inputSchema || { type: "object", properties: {} },
       },
@@ -142,36 +233,38 @@ function convertToolsToOllama(tools = []) {
   return { tools: ollamaTools, nameMap };
 }
 
-function mapOllamaToolCall(call, nameMap) {
-  const fn = call?.function || call;
-  const rawName = fn?.name || call?.name || "";
+function mapOllamaToolCall(call: unknown, nameMap: Map<string, string>): OllamaToolCall {
+  const callRecord = isRecord(call) ? call : {};
+  const fn = isRecord(callRecord.function) ? callRecord.function : callRecord;
+  const rawName = textValue(fn.name) || textValue(callRecord.name);
   const toolName = nameMap.get(rawName) || rawName;
-  const args = parseJsonMaybe(fn?.arguments ?? call?.arguments);
+  const args = parseJsonMaybe(fn.arguments ?? callRecord.arguments);
   return {
-    toolCallId: call?.id || `call_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+    toolCallId: textValue(callRecord.id) || `call_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
     toolName,
     input: JSON.stringify(args || {}),
   };
 }
 
-function usageFromOllama(data) {
+function usageFromOllama(data: unknown): ProviderUsage {
+  const record = isRecord(data) ? data : {};
   return {
     inputTokens: {
-      total: data?.prompt_eval_count,
+      total: numberValue(record.prompt_eval_count),
       noCache: undefined,
       cacheRead: undefined,
       cacheWrite: undefined,
     },
     outputTokens: {
-      total: data?.eval_count,
+      total: numberValue(record.eval_count),
       text: undefined,
       reasoning: undefined,
     },
   };
 }
 
-async function fetchJson(endpoint, path, options = {}) {
-  let response;
+async function fetchJson<T>(endpoint: string, path: string, options: RequestInit = {}): Promise<T> {
+  let response: Response;
   try {
     response = await fetch(`${endpoint}${path}`, {
       ...options,
@@ -182,31 +275,73 @@ async function fetchJson(endpoint, path, options = {}) {
       },
     });
   } catch (error) {
-    throw new Error(`No se pudo conectar con Ollama en ${endpoint}. Revisa que esté arrancado y permita CORS para este origen. Detalle: ${error?.message || error}`);
+    throw new Error(`No se pudo conectar con Ollama en ${endpoint}. Revisa que esté arrancado y permita CORS para este origen. Detalle: ${errorMessage(error)}`);
   }
   if (!response.ok) {
     const text = await response.text().catch(() => "");
     throw new Error(`Ollama respondió HTTP ${response.status}: ${text || response.statusText}`);
   }
-  return response.json();
+  return await response.json() as T;
 }
 
-export function ollamaBrowser(modelId, options = {}) {
+interface CallChatOptions {
+  prompt: CallOptions["prompt"];
+  tools?: CallOptions["tools"];
+  maxOutputTokens?: CallOptions["maxOutputTokens"];
+  temperature?: CallOptions["temperature"];
+  topP?: CallOptions["topP"];
+  abortSignal?: CallOptions["abortSignal"];
+  stream: boolean;
+}
+
+interface CallChatResult {
+  response: Response;
+  nameMap: Map<string, string>;
+  requestBody: Record<string, unknown>;
+}
+
+function enqueueProviderChunk(
+  controller: ReadableStreamDefaultController<StreamChunk>,
+  chunk: StreamChunk,
+): void {
+  controller.enqueue(chunk);
+}
+
+function asOllamaChatResponse(value: unknown): OllamaChatResponse {
+  return isRecord(value) ? value : {};
+}
+
+function ollamaToolCalls(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+export function ollamaBrowser(modelId: string, options: OllamaBrowserOptions = {}): OllamaBrowserModel {
   const endpoint = normalizeEndpoint(options.endpoint);
   const think = typeof options.think === "boolean" ? options.think : undefined;
 
-  async function assertAvailable() {
-    const tags = await fetchJson(endpoint, "/api/tags", { method: "GET", headers: {} });
-    const models = Array.isArray(tags?.models) ? tags.models : [];
-    const exists = models.some((item) => item?.name === modelId || item?.model === modelId);
+  async function assertAvailable(): Promise<void> {
+    const tags = await fetchJson<{ models?: Array<{ name?: string; model?: string }> }>(endpoint, "/api/tags", {
+      method: "GET",
+      headers: {},
+    });
+    const models = Array.isArray(tags.models) ? tags.models : [];
+    const exists = models.some((item) => item.name === modelId || item.model === modelId);
     if (!exists) {
       throw new Error(`Ollama está activo, pero no tiene el modelo "${modelId}". Ejecuta en el host: ollama pull ${modelId}`);
     }
   }
 
-  async function callChat({ prompt, tools, maxOutputTokens, temperature, topP, abortSignal, stream }) {
+  async function callChat({
+    prompt,
+    tools,
+    maxOutputTokens,
+    temperature,
+    topP,
+    abortSignal,
+    stream,
+  }: CallChatOptions): Promise<CallChatResult> {
     const { tools: ollamaTools, nameMap } = convertToolsToOllama(tools);
-    const body = {
+    const requestBody: Record<string, unknown> = {
       model: modelId,
       messages: convertPromptToOllamaMessages(prompt),
       stream,
@@ -219,26 +354,26 @@ export function ollamaBrowser(modelId, options = {}) {
       ...(ollamaTools.length ? { tools: ollamaTools } : {}),
     };
 
-    let response;
+    let response: Response;
     try {
       response = await fetch(`${endpoint}/api/chat`, {
         method: "POST",
         ...localNetworkFetchOptions(endpoint),
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify(requestBody),
         signal: abortSignal,
       });
     } catch (error) {
-      throw new Error(`No se pudo llamar a Ollama en ${endpoint}. Si es CORS, arranca Ollama con OLLAMA_ORIGINS incluyendo este origen. Detalle: ${error?.message || error}`);
+      throw new Error(`No se pudo llamar a Ollama en ${endpoint}. Si es CORS, arranca Ollama con OLLAMA_ORIGINS incluyendo este origen. Detalle: ${errorMessage(error)}`);
     }
     if (!response.ok) {
       const text = await response.text().catch(() => "");
       throw new Error(`Ollama /api/chat HTTP ${response.status}: ${text || response.statusText}`);
     }
-    return { response, nameMap, requestBody: body };
+    return { response, nameMap, requestBody };
   }
 
-  return {
+  const model: OllamaBrowserModel = {
     specificationVersion: "v3",
     provider: "ollama-browser",
     modelId,
@@ -252,19 +387,21 @@ export function ollamaBrowser(modelId, options = {}) {
     async createSessionWithProgress(onProgress) {
       onProgress?.({ status: "ready", model: modelId, progress: 1 });
       await assertAvailable();
-      return this;
+      return model;
     },
 
-    async doGenerate(options2) {
+    async doGenerate(options2): Promise<GenerateResult> {
       const { response, nameMap, requestBody } = await callChat({ ...options2, stream: false });
-      const data = await response.json();
-      if (data?.error) throw new Error(String(data.error));
-      const content = [];
-      const thinking = data?.message?.thinking || "";
+      const data = asOllamaChatResponse(await response.json());
+      if (data.error) throw new Error(errorMessage(data.error));
+
+      const content: ProviderContent[] = [];
+      const thinking = textValue(data.message?.thinking);
       if (thinking) content.push({ type: "reasoning", text: thinking });
-      const text = data?.message?.content || "";
+      const text = textValue(data.message?.content);
       if (text) content.push({ type: "text", text });
-      const toolCalls = (data?.message?.tool_calls || []).map((call) => mapOllamaToolCall(call, nameMap));
+
+      const toolCalls = ollamaToolCalls(data.message?.tool_calls).map((call) => mapOllamaToolCall(call, nameMap));
       for (const call of toolCalls.slice(0, 1)) {
         content.push({
           type: "tool-call",
@@ -279,7 +416,7 @@ export function ollamaBrowser(modelId, options = {}) {
         content,
         finishReason: {
           unified: toolCalls.length ? "tool-calls" : "stop",
-          raw: data?.done_reason || (toolCalls.length ? "tool-calls" : "stop"),
+          raw: textValue(data.done_reason) || (toolCalls.length ? "tool-calls" : "stop"),
         },
         usage: usageFromOllama(data),
         request: { body: requestBody },
@@ -287,14 +424,14 @@ export function ollamaBrowser(modelId, options = {}) {
       };
     },
 
-    async doStream(options2) {
+    async doStream(options2): Promise<StreamResult> {
       const { response, nameMap, requestBody } = await callChat({ ...options2, stream: true });
-      const stream = new ReadableStream({
+      const stream = new ReadableStream<StreamChunk>({
         async start(controller) {
-          controller.enqueue({ type: "stream-start", warnings: [] });
+          enqueueProviderChunk(controller, { type: "stream-start", warnings: [] });
           const reader = response.body?.getReader();
           if (!reader) {
-            controller.enqueue({ type: "error", error: new Error(t("chat.error.ollamaNoStream")) });
+            enqueueProviderChunk(controller, { type: "error", error: new Error(t("chat.error.ollamaNoStream")) });
             controller.close();
             return;
           }
@@ -303,38 +440,38 @@ export function ollamaBrowser(modelId, options = {}) {
           let buffer = "";
           let textStarted = false;
           let reasoningStarted = false;
-          let lastDone = {};
+          let lastDone: unknown = {};
           const textId = "text-0";
           const reasoningId = "reasoning-0";
-          const toolCalls = [];
+          const toolCalls: OllamaToolCall[] = [];
 
-          const emitText = (delta) => {
+          const emitText = (delta: string): void => {
             if (!delta) return;
             if (!textStarted) {
-              controller.enqueue({ type: "text-start", id: textId });
+              enqueueProviderChunk(controller, { type: "text-start", id: textId });
               textStarted = true;
             }
-            controller.enqueue({ type: "text-delta", id: textId, delta });
+            enqueueProviderChunk(controller, { type: "text-delta", id: textId, delta });
           };
 
-          const emitReasoning = (delta) => {
+          const emitReasoning = (delta: string): void => {
             if (!delta) return;
             if (!reasoningStarted) {
-              controller.enqueue({ type: "reasoning-start", id: reasoningId });
+              enqueueProviderChunk(controller, { type: "reasoning-start", id: reasoningId });
               reasoningStarted = true;
             }
-            controller.enqueue({ type: "reasoning-delta", id: reasoningId, delta });
+            enqueueProviderChunk(controller, { type: "reasoning-delta", id: reasoningId, delta });
           };
 
-          const processLine = (line) => {
+          const processLine = (line: string): void => {
             if (!line.trim()) return;
-            const data = JSON.parse(line);
-            if (data.error) throw new Error(String(data.error));
-            const thinkingDelta = data?.message?.thinking || "";
+            const data = asOllamaChatResponse(JSON.parse(line) as unknown);
+            if (data.error) throw new Error(errorMessage(data.error));
+            const thinkingDelta = textValue(data.message?.thinking);
             if (thinkingDelta) emitReasoning(thinkingDelta);
-            const delta = data?.message?.content || "";
+            const delta = textValue(data.message?.content);
             if (delta) emitText(delta);
-            for (const call of data?.message?.tool_calls || []) {
+            for (const call of ollamaToolCalls(data.message?.tool_calls)) {
               toolCalls.push(mapOllamaToolCall(call, nameMap));
             }
             if (data.done) lastDone = data;
@@ -352,14 +489,14 @@ export function ollamaBrowser(modelId, options = {}) {
             buffer += decoder.decode();
             if (buffer.trim()) processLine(buffer);
 
-            if (reasoningStarted) controller.enqueue({ type: "reasoning-end", id: reasoningId });
-            if (textStarted) controller.enqueue({ type: "text-end", id: textId });
+            if (reasoningStarted) enqueueProviderChunk(controller, { type: "reasoning-end", id: reasoningId });
+            if (textStarted) enqueueProviderChunk(controller, { type: "text-end", id: textId });
             const firstToolCall = toolCalls[0];
             if (firstToolCall) {
-              controller.enqueue({ type: "tool-input-start", id: firstToolCall.toolCallId, toolName: firstToolCall.toolName });
-              controller.enqueue({ type: "tool-input-delta", id: firstToolCall.toolCallId, delta: firstToolCall.input });
-              controller.enqueue({ type: "tool-input-end", id: firstToolCall.toolCallId });
-              controller.enqueue({
+              enqueueProviderChunk(controller, { type: "tool-input-start", id: firstToolCall.toolCallId, toolName: firstToolCall.toolName });
+              enqueueProviderChunk(controller, { type: "tool-input-delta", id: firstToolCall.toolCallId, delta: firstToolCall.input });
+              enqueueProviderChunk(controller, { type: "tool-input-end", id: firstToolCall.toolCallId });
+              enqueueProviderChunk(controller, {
                 type: "tool-call",
                 toolCallId: firstToolCall.toolCallId,
                 toolName: firstToolCall.toolName,
@@ -367,17 +504,18 @@ export function ollamaBrowser(modelId, options = {}) {
                 providerExecuted: false,
               });
             }
-            controller.enqueue({
+            const doneRecord = asOllamaChatResponse(lastDone);
+            enqueueProviderChunk(controller, {
               type: "finish",
               finishReason: {
                 unified: firstToolCall ? "tool-calls" : "stop",
-                raw: lastDone?.done_reason || (firstToolCall ? "tool-calls" : "stop"),
+                raw: textValue(doneRecord.done_reason) || (firstToolCall ? "tool-calls" : "stop"),
               },
-              usage: usageFromOllama(lastDone),
+              usage: usageFromOllama(doneRecord),
             });
             controller.close();
           } catch (error) {
-            controller.enqueue({ type: "error", error });
+            enqueueProviderChunk(controller, { type: "error", error });
             controller.close();
           }
         },
@@ -385,4 +523,6 @@ export function ollamaBrowser(modelId, options = {}) {
       return { stream, request: { body: requestBody } };
     },
   };
+
+  return model;
 }

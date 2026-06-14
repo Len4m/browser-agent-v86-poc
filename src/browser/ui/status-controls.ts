@@ -1,24 +1,11 @@
-// Browser Agent v86 - 01 ui state
-// Modern modules import these helpers directly. Legacy ordered sources receive
-// global aliases through compat/legacy-facades.ts.
+// Browser Agent v86 - shared UI state controls.
 
 import { $, state } from "../app/state";
 import { t, tn } from "../app/i18n";
 import { stripAnsi } from "../app/text-utils";
+import { appEvents } from "../core/events";
 
 const TOOL_LOG_MAX_CHARS = 50000;
-
-type LegacyWindow = Window & typeof globalThis & {
-  BA_LLM_AGENT?: {
-    updateChatAvailability?: () => void;
-  };
-  renderConsoleTabs?: () => void;
-  syncConsoleInputLock?: () => void;
-};
-
-function legacyWindow(): LegacyWindow {
-  return window;
-}
 
 function setDisabled(el: Element | null, disabled: boolean): void {
   if (
@@ -174,9 +161,7 @@ export function setAgentBusy(value: boolean, detail = ""): void {
   syncWsButton();
   syncChecksButton();
 
-  const legacy = legacyWindow();
-  legacy.renderConsoleTabs?.();
-  legacy.syncConsoleInputLock?.();
+  appEvents.emit("console:state-changed", { source: "status-controls" });
 
   // v9.37.8: the chat is controlled by the local LLM state, not by the
   // VM/network buttons. setAgentBusy() is used by many VM operations and it
@@ -184,7 +169,7 @@ export function setAgentBusy(value: boolean, detail = ""): void {
   // final enabled/disabled state after VM UI synchronization. This prevents
   // unrelated actions such as WS connect/disconnect from being required to
   // re-enable the chat after a model load.
-  legacy.BA_LLM_AGENT?.updateChatAvailability?.();
+  appEvents.emit("llm:availability-refresh-requested", { source: "status-controls" });
 }
 
 export function initStatusControls(): void {

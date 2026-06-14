@@ -1,6 +1,4 @@
 // Browser Agent v86 - VM tools, network, disk and snapshot operations.
-// Modern modules import these helpers directly. Legacy ordered sources receive
-// global aliases through compat/legacy-facades.ts.
 
 import {
   $,
@@ -14,6 +12,7 @@ import {
 import { t } from "../app/i18n";
 import { isPublishedOrigin } from "../app/origin-awareness";
 import { clampExecVmOutputBytes } from "../app/text-utils";
+import { appEvents } from "../core/events";
 import { showBaModal } from "../ui/modal";
 import {
   formatLoggedCommand,
@@ -25,9 +24,9 @@ import {
   syncSnapshotButtons,
   syncWsButton,
 } from "../ui/status-controls";
+import { backgroundToolsApi } from "./background-tools-serial1";
 import { getVmRuntimeConfig, getWsRelayUrl, type VmRuntimeConfig } from "./profile-config";
 import {
-  addMessage,
   downloadArrayBuffer,
   formatBytes,
   nextPaint,
@@ -54,44 +53,6 @@ export interface ExecVmResult {
   stderr: string;
 }
 
-interface BackgroundExecVmOptions {
-  label: string;
-  timeoutMs: number;
-  maxOutputBytes: number;
-  log: boolean;
-}
-
-interface BackgroundToolsApi {
-  execVm?: (command: string, options: BackgroundExecVmOptions) => unknown;
-}
-
-interface LlmStateApi {
-  generating?: boolean;
-}
-
-interface LlmAgentApi {
-  isChatOperationActive?: () => boolean;
-  stopActiveTurn?: () => void;
-  handleUserMessage?: (text: string) => unknown;
-}
-
-interface StartVmOptions {
-  restoreStateBuffer?: ArrayBuffer | null;
-}
-
-interface StopVmOptions {
-  confirmShutdown?: boolean;
-}
-
-type LegacyWindow = Window & typeof globalThis & {
-  BA_BG_TOOLS?: BackgroundToolsApi;
-  BA_LLM?: LlmStateApi;
-  BA_LLM_AGENT?: LlmAgentApi;
-  renderConsoleTabs?: () => void;
-  startVm?: (options?: StartVmOptions) => unknown;
-  stopVm?: (options?: StopVmOptions) => unknown;
-};
-
 interface VmSerialApi {
   serial0_send?: (text: string) => void;
 }
@@ -105,10 +66,6 @@ interface ExecVmPending {
   rejectOnTokens: string[];
   bytesSinceParse: number;
   maxRawChars: number;
-}
-
-function legacyWindow(): LegacyWindow {
-  return window;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -134,8 +91,8 @@ function vmSerialApi(): VmSerialApi | null {
   return isRecord(state.vm) ? state.vm : null;
 }
 
-function renderConsoleTabs(): void {
-  legacyWindow().renderConsoleTabs?.();
+function requestConsoleRender(source: string): void {
+  appEvents.emit("console:state-changed", { source });
 }
 
 function isVmRuntimeConfig(value: unknown): value is VmRuntimeConfig {
@@ -202,21 +159,17 @@ export async function execVm(command: string, {
   // Internal tool commands use UART1/ttyS1 and do not touch the visible console.
   // There is no silent fallback to serial0 because that would interfere with the user.
   if (targetTools) {
-    const bgExecVm = legacyWindow().BA_BG_TOOLS?.execVm;
-    if (bgExecVm) {
-      try {
-        const raw = await bgExecVm(command, {
-          label,
-          timeoutMs,
-          maxOutputBytes: clampExecVmOutputBytes(maxOutputBytes),
-          log,
-        });
-        return normalizeExecVmResult(raw);
-      } catch (error) {
-        return { code: 1, stdout: "", stderr: errorMessage(error) };
-      }
+    try {
+      const raw = await backgroundToolsApi.execVm(command, {
+        label,
+        timeoutMs,
+        maxOutputBytes: clampExecVmOutputBytes(maxOutputBytes),
+        log,
+      });
+      return normalizeExecVmResult(raw);
+    } catch (error) {
+      return { code: 1, stdout: "", stderr: errorMessage(error) };
     }
-    return { code: 1, stdout: "", stderr: t("vm.error.serial1NotInit") };
   }
 
   if (state.pending || state.agentBusy || state.bgTools.pending) {
@@ -244,7 +197,7 @@ export async function execVm(command: string, {
 
     const timer = window.setTimeout(() => {
       state.pending = null;
-      renderConsoleTabs();
+      requestConsoleRender("vm-operations");
       finish({ code: 124, stdout: "", stderr: t("vm.error.timeoutSerial") });
     }, timeoutMs);
 
@@ -261,13 +214,13 @@ export async function execVm(command: string, {
       maxRawChars: outputLimit + 96 * 1024,
     };
     state.pending = pending;
-    renderConsoleTabs();
+    requestConsoleRender("vm-operations");
     try {
       sendSerial0(wrapped);
     } catch (error) {
       window.clearTimeout(timer);
       state.pending = null;
-      renderConsoleTabs();
+      requestConsoleRender("vm-operations");
       finish({ code: 1, stdout: "", stderr: errorMessage(error) });
     }
   });
@@ -280,31 +233,6 @@ export async function runCommandFromInput(event: Event): Promise<void> {
   const result = await execVm(command, { lock: true, label: t("vm.exec.manualLabel") });
   if (result.stdout) logTool(`${NL}${result.stdout}${NL}`);
   if (result.stderr) logTool(`${NL}[stderr] ${result.stderr}${NL}`);
-}
-
-export async function sendChat(event: Event): Promise<void> {
-  event.preventDefault();
-  const legacy = legacyWindow();
-  const agent = legacy.BA_LLM_AGENT;
-  if (agent?.isChatOperationActive?.()) {
-    agent.stopActiveTurn?.();
-    return;
-  }
-
-  const input = $<HTMLTextAreaElement>("chat-input");
-  const text = input?.value.trim() || "";
-  if (!input || !text || state.agentBusy || legacy.BA_LLM?.generating) return;
-  input.value = "";
-  addMessage("user", text);
-
-  // v9.37.2: the chat is now real-LLM only. The old mock command mapper is
-  // intentionally disabled while autonomous tools are validated against the VM.
-  if (agent?.handleUserMessage) {
-    await agent.handleUserMessage(text);
-    return;
-  }
-
-  addMessage("agent", t("chat.agentTransformersNotReady"));
 }
 
 export async function configureNetworkInVm(): Promise<void> {
@@ -570,14 +498,12 @@ async function confirmRestoreSnapshot(): Promise<boolean> {
 }
 
 async function stopVmForRestore(): Promise<void> {
-  const stopVm = legacyWindow().stopVm;
-  if (!stopVm) throw new Error("stopVm unavailable");
+  const { stopVm } = await import("./serial-vm");
   await stopVm({ confirmShutdown: false });
 }
 
 async function startVmForRestore(buffer: ArrayBuffer): Promise<void> {
-  const startVm = legacyWindow().startVm;
-  if (!startVm) throw new Error("startVm unavailable");
+  const { startVm } = await import("./serial-vm");
   await startVm({ restoreStateBuffer: buffer });
 }
 
