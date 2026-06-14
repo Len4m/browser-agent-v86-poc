@@ -26,6 +26,7 @@ import { llmPanelCapabilities } from "../chat/panel/capabilities-view";
 import { createMarkdownStreamRenderer } from "../chat/rendering/markdown-renderer";
 import { llmAgentRouting } from "../chat/runtime/agent-routing";
 import { llmArtifacts } from "../chat/runtime/artifact-store";
+import { llmContextBudget } from "../chat/runtime/context-budget";
 import { llmResourceGovernor } from "../chat/runtime/resource-governor";
 import { llmToolResultPolicy } from "../chat/runtime/tool-result-policy";
 import { installLlmState } from "../chat/state/chat-state";
@@ -105,6 +106,7 @@ type LegacyWindow = Window & typeof globalThis & typeof xtermConsoles & typeof v
   BA_LLM_PANEL_TEMPLATE: typeof llmPanelTemplate;
   BA_LLM_ROUTING: typeof llmAgentRouting;
   BA_LLM_ARTIFACTS: typeof llmArtifacts;
+  BA_LLM_CONTEXT: typeof llmContextBudget;
   BA_LLM_RESOURCE_GOVERNOR: typeof llmResourceGovernor;
   BA_LLM_TOOL_RESULT_POLICY: typeof llmToolResultPolicy;
   BA_LLM_NATIVE_TOOLS: typeof llmNativeToolsPolicy;
@@ -203,6 +205,7 @@ export function installLegacyFacades(): void {
   legacyWindow.BA_LLM_PANEL_TEMPLATE = llmPanelTemplate;
   legacyWindow.BA_LLM_ROUTING = llmAgentRouting;
   legacyWindow.BA_LLM_ARTIFACTS = llmArtifacts;
+  legacyWindow.BA_LLM_CONTEXT = llmContextBudget;
   legacyWindow.BA_LLM_RESOURCE_GOVERNOR = llmResourceGovernor;
   legacyWindow.BA_LLM_TOOL_RESULT_POLICY = llmToolResultPolicy;
   legacyWindow.BA_LLM_NATIVE_TOOLS = llmNativeToolsPolicy;
