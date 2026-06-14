@@ -166,7 +166,7 @@ Flujo recomendado:
 | `npm run setup` | Descarga/copia assets base, genera initramfs, perfiles y discos |
 | `npm run build` | Genera catálogo LLM, worker/bridge LLM y bundle frontend; requiere haber ejecutado `setup` al menos una vez |
 | `npm run build:prod` | Genera el runtime minificado para producción: JS/CSS minificados y hashes de caché |
-| `npm run check` | Valida TypeScript, modelos LLM, perfiles VM, manifest frontend, sintaxis JS y servidor |
+| `npm run check` | Ejecuta TypeScript, lint, tests unitarios y checks de integridad del repo/assets |
 | `npm run clean` | Borra `build/` y las salidas generadas por el build en `public/` |
 | `npm run clean:runtime` | Borra runtime pesado generado por `setup`: `public/vendor/` y `public/v86/` |
 | `npm run clean:all` | Ejecuta la limpieza de build y runtime |

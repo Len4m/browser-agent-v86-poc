@@ -282,7 +282,7 @@ Archivos clave:
 
 `npm run lint` usa ESLint flat config (`eslint.config.js`). El código TypeScript de navegador se valida con reglas TypeScript type-aware en los módulos modernizados, y `scripts/check/browser-modernity.mjs` bloquea regresiones de `@ts-nocheck`, scripts inline, nombres de compatibilidad retirados y nuevas asignaciones `window.BA`/`window.BA_*`.
 
-`npm test` compila `tests/**/*.test.ts` con esbuild hacia `build/test/` y ejecuta `node --test`. Los primeros tests cubren helpers puros migrados; cada nuevo módulo puro debe añadir pruebas enfocadas.
+`npm test` compila `tests/**/*.test.ts` con esbuild hacia `build/test/` y ejecuta `node --test`. Los tests en `tests/browser/` cubren comportamiento de módulos puros de `src/browser/`; no son tests end-to-end en navegador. `scripts/check/` queda reservado para validaciones de integridad del repo, assets generados y reglas de arquitectura.
 
 ## Limpieza
 
