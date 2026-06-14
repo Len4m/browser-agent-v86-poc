@@ -13,10 +13,10 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../..", import.meta.url));
 
 const limits = {
-  tsNocheckFiles: 6,
-  browserSourceOrderEntries: 2,
+  tsNocheckFiles: 5,
+  browserSourceOrderEntries: 1,
   inlineScriptBlocks: 2,
-  internalWindowAssignments: 5,
+  internalWindowAssignments: 4,
 };
 
 const migratedModules = [
@@ -31,6 +31,7 @@ const migratedModules = [
   "src/browser/chat/state/chat-state.ts",
   "src/browser/chat/runtime/artifact-store.ts",
   "src/browser/chat/runtime/agent-debug.ts",
+  "src/browser/chat/runtime/agent-loop.ts",
   "src/browser/chat/runtime/agent-routing.ts",
   "src/browser/chat/runtime/chat-ui.ts",
   "src/browser/chat/runtime/context-budget.ts",

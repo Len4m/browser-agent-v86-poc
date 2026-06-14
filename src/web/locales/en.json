@@ -502,7 +502,6 @@
   "panel.llm.toolPolicy.aiLoopDirect": "The final answer is produced by the AI loop (streamText + maxSteps) in the same turn.",
   "panel.llm.toolPolicy.defaultDetail": "Set when the agent should ask permission before running a tool.",
   "panel.llm.toolPolicy.failedShowError": "The tool failed; showing the actual error.",
-  "panel.llm.toolPolicy.policyUnavailable": "Policy unavailable.",
   "panel.llm.toolPolicy.rawOutputRequested": "The user requested raw tool output only.",
   "panel.llm.toolPolicy.toolCancelled": "The tool was cancelled.",
   "panel.llm.tools.available": "Available tools:",
