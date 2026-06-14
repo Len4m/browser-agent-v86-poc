@@ -19,6 +19,10 @@ function nowId(prefix = "tool"): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function activeToolSet(names: string[] | null | undefined): Set<string> | null {
+  return Array.isArray(names) ? new Set(names.filter(Boolean)) : null;
+}
+
 function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
@@ -64,8 +68,22 @@ async function confirmToolCall(toolCall: NormalizedToolCall, toolDef: ToolDefini
   return decision === "run";
 }
 
-async function runTool(toolCall: unknown, { source = "agent" }: RunToolOptions = {}): Promise<ToolExecutionResult> {
+async function runTool(toolCall: unknown, { source = "agent", allowedToolNames = null }: RunToolOptions = {}): Promise<ToolExecutionResult> {
   const normalized = llmToolRegistry.normalizeToolCall(toolCall);
+  const allowed = activeToolSet(allowedToolNames);
+  if (allowed && !allowed.has(normalized.tool)) {
+    const message = t("tools.error.toolNotActive", { name: normalized.tool });
+    return {
+      id: nowId("tool-not-active"),
+      ok: false,
+      code: 126,
+      stdout: "",
+      stderr: message,
+      summary: message,
+      toolCall: normalized,
+    };
+  }
+
   const toolDef = llmToolRegistry.getTool(normalized.tool);
   if (!toolDef) throw new Error(t("tools.error.toolNotAvailable", { name: normalized.tool }));
 
@@ -85,8 +103,8 @@ async function runTool(toolCall: unknown, { source = "agent" }: RunToolOptions =
     }
   }
 
-  const allowed = await confirmToolCall(normalized, toolDef);
-  if (!allowed) {
+  const confirmed = await confirmToolCall(normalized, toolDef);
+  if (!confirmed) {
     return {
       id: nowId("tool-cancelled"),
       ok: false,

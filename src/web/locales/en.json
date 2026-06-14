@@ -627,6 +627,7 @@
   "tools.error.serial0Pending": "The VM's main console has a pending command. Wait for it to finish.",
   "tools.error.serial1Busy": "Another tool is using serial1/ttyS1. Wait for it to finish.",
   "tools.error.shellEmpty": "The sh command cannot be empty.",
+  "tools.error.toolNotActive": "Tool is not enabled for this turn: {name}",
   "tools.error.toolNotAvailable": "Tool not available: {name}",
   "tools.error.toolNotEnabled": "Tool {tool} is not enabled for the active profile {profile}.",
   "tools.error.toolsConsoleMissing": "Tools need serial1/ttyS1 active. Rebuild profiles and wait for the runner to be ready.",

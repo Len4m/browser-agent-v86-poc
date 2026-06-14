@@ -81,12 +81,12 @@ export interface NormalizedToolCall {
   riskLevel: number;
 }
 
-export interface ListToolsOptions {
+interface ListToolsOptions {
   profileId?: string;
   includeUnavailable?: boolean;
 }
 
-export interface PromptRuntimeContextCompactOptions {
+interface PromptRuntimeContextCompactOptions {
   toolNames?: string[] | null;
 }
 
@@ -103,6 +103,7 @@ export interface LlmToolRegistryApi {
 
 export interface RunToolOptions {
   source?: string;
+  allowedToolNames?: string[] | null;
 }
 
 export interface ToolExecutorApi {

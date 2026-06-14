@@ -215,7 +215,8 @@ export function buildAiSdkTools({
   const schemas = buildZodSchemas(z);
   const outputSchema = buildToolOutputSchema(z);
   const toolList = llmToolRegistry.listTools({ profileId });
-  const allow = toolNames ? new Set(toolNames) : null;
+  const allowedToolNames = Array.isArray(toolNames) ? [...new Set(toolNames.filter(Boolean))] : null;
+  const allow = allowedToolNames ? new Set(allowedToolNames) : null;
   const tools: Record<string, unknown> = {};
 
   for (const meta of toolList) {
@@ -251,7 +252,7 @@ export function buildAiSdkTools({
         llmResourceGovernor.start("tool", meta.name);
         let toolResult: ToolExecutionResult;
         try {
-          toolResult = await llmToolExecutor.runTool(toolCall, { source });
+          toolResult = await llmToolExecutor.runTool(toolCall, { source, allowedToolNames });
         } finally {
           llmResourceGovernor.finish("tool");
         }

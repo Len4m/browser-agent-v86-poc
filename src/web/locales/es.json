@@ -627,6 +627,7 @@
   "tools.error.serial0Pending": "La consola principal de la VM tiene un comando pendiente. Espera a que termine.",
   "tools.error.serial1Busy": "Hay otra tool en serial1/ttyS1. Espera a que termine.",
   "tools.error.shellEmpty": "El comando sh no puede estar vacío.",
+  "tools.error.toolNotActive": "La tool no está activada para este turno: {name}",
   "tools.error.toolNotAvailable": "Herramienta no disponible: {name}",
   "tools.error.toolNotEnabled": "La tool {tool} no está habilitada para el perfil activo {profile}.",
   "tools.error.toolsConsoleMissing": "Las tools necesitan serial1/ttyS1 activo. Reconstruye perfiles y espera a que el runner esté listo.",
