@@ -30,6 +30,7 @@ import { llmToolResultPolicy } from "../chat/runtime/tool-result-policy";
 import { installLlmState } from "../chat/state/chat-state";
 import * as llmCapabilities from "../chat/state/capabilities";
 import { buildAiSdkTools } from "../chat/tools/ai-tools";
+import { llmPanelTemplate } from "../chat/panel/template";
 import { llmToolExecutor } from "../chat/tools/tool-executor";
 import { llmNativeToolsPolicy } from "../chat/tools/native-tools-policy";
 import { llmToolRegistry } from "../chat/tools/tool-registry";
@@ -99,6 +100,7 @@ type LegacyWindow = Window & typeof globalThis & typeof xtermConsoles & typeof v
   BA_syncLLMCapabilityBadges: typeof llmCapabilities.syncLLMCapabilityBadges;
   BA_createMarkdownStreamRenderer: typeof createMarkdownStreamRenderer;
   BA_buildAiSdkTools: typeof buildAiSdkTools;
+  BA_LLM_PANEL_TEMPLATE: typeof llmPanelTemplate;
   BA_LLM_ROUTING: typeof llmAgentRouting;
   BA_LLM_ARTIFACTS: typeof llmArtifacts;
   BA_LLM_RESOURCE_GOVERNOR: typeof llmResourceGovernor;
@@ -195,6 +197,7 @@ export function installLegacyFacades(): void {
   legacyWindow.BA_syncLLMCapabilityBadges = llmCapabilities.syncLLMCapabilityBadges;
   legacyWindow.BA_createMarkdownStreamRenderer = createMarkdownStreamRenderer;
   legacyWindow.BA_buildAiSdkTools = buildAiSdkTools;
+  legacyWindow.BA_LLM_PANEL_TEMPLATE = llmPanelTemplate;
   legacyWindow.BA_LLM_ROUTING = llmAgentRouting;
   legacyWindow.BA_LLM_ARTIFACTS = llmArtifacts;
   legacyWindow.BA_LLM_RESOURCE_GOVERNOR = llmResourceGovernor;

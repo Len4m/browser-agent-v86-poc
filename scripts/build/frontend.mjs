@@ -37,7 +37,6 @@ const browserSourceOrder = [
   "src/browser/chat/runtime/agent-debug.ts",
   "src/browser/chat/runtime/chat-ui.ts",
   "src/browser/chat/runtime/agent-loop.ts",
-  "src/browser/chat/panel/template.ts",
   "src/browser/chat/panel/capabilities-view.ts",
   "src/browser/chat/panel/panel.ts",
 ];

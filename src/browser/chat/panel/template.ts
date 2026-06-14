@@ -1,63 +1,79 @@
-// @ts-nocheck
-// Browser Agent v86 - 15a LLM panel HTML template
-// Template builders extracted from 15-llm-ui-panel.js.
+// Browser Agent v86 - LLM panel HTML template.
 // Static labels use data-i18n so applyDomTranslations() handles initial render
-// and live language switching. Dynamic values are translated by panel.ts via t().
+// and live language switching. Dynamic values are translated by panel.ts.
 
-(function initLLMPanelTemplate() {
-  function escapeHtml(value) {
-    return String(value ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
+import { t } from "../../app/i18n";
+import { llmModels, type LlmModelConfig } from "../state/chat-state";
+import { llmToolRegistry } from "../tools/tool-registry";
+
+export interface LlmPanelTemplateApi {
+  escapeHtml: (value: unknown) => string;
+  modelOptionsHtml: () => string;
+  toolPolicyOptionsHtml: () => string;
+  buildLLMPanelHtml: () => string;
+}
+
+function textValue(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return "";
+}
+
+function escapeHtml(value: unknown): string {
+  return textValue(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function modelOptionsHtml(): string {
+  const groups = [
+    {
+      label: t("panel.llm.optgroup.ollama"),
+      matches: (model: LlmModelConfig) => model.engine === "ollama",
+    },
+    {
+      label: t("panel.llm.optgroup.transformers"),
+      matches: (model: LlmModelConfig) => (model.engine || "transformersjs") === "transformersjs",
+    },
+  ];
+
+  const optionHtml = (model: LlmModelConfig): string => {
+    const sizeLabel = textValue(model.sizeLabel);
+    const size = sizeLabel ? ` · ${sizeLabel}` : "";
+    const dtype = model.dtype ? ` · ${model.dtype}` : "";
+    const compat = model.requiresShaderF16
+      ? ` · ${t("common.requiresShaderF16")}`
+      : "";
+    return `<option value="${escapeHtml(model.id)}">${escapeHtml(model.label)}${escapeHtml(size)}${escapeHtml(dtype)}${escapeHtml(compat)}</option>`;
+  };
+
+  const used = new Set<string>();
+  const grouped = groups.map((group) => {
+    const options = llmModels.filter((model) => group.matches(model));
+    options.forEach((model) => used.add(model.id));
+    if (!options.length) return "";
+    return `<optgroup label="${escapeHtml(group.label)}">${options.map(optionHtml).join("")}</optgroup>`;
+  });
+
+  const remaining = llmModels.filter((model) => !used.has(model.id));
+  if (remaining.length) {
+    grouped.push(`<optgroup label="${escapeHtml(t("panel.llm.optgroup.others"))}">${remaining.map(optionHtml).join("")}</optgroup>`);
   }
 
-  function modelOptionsHtml() {
-    const groups = [
-      {
-        label: t("panel.llm.optgroup.ollama"),
-        matches: (model) => model.engine === "ollama",
-      },
-      {
-        label: t("panel.llm.optgroup.transformers"),
-        matches: (model) => (model.engine || "transformersjs") === "transformersjs",
-      },
-    ];
+  return grouped.join("");
+}
 
-    const optionHtml = (model) => {
-      const size = model.sizeLabel ? ` · ${model.sizeLabel}` : "";
-      const dtype = model.dtype ? ` · ${model.dtype}` : "";
-      const compat = model.requiresShaderF16
-        ? ` · ${t("common.requiresShaderF16")}`
-        : "";
-      return `<option value="${escapeHtml(model.id)}">${escapeHtml(model.label)}${escapeHtml(size)}${escapeHtml(dtype)}${escapeHtml(compat)}</option>`;
-    };
+function toolPolicyOptionsHtml(): string {
+  return llmToolRegistry.SECURITY_LEVELS
+    .map((item) => `<option value="${escapeHtml(item.level)}">${escapeHtml(item.label)}</option>`)
+    .join("");
+}
 
-    const used = new Set();
-    const grouped = groups.map((group) => {
-      const options = window.BA_LLM_MODELS.filter((model) => group.matches(model));
-      options.forEach((model) => used.add(model.id));
-      if (!options.length) return "";
-      return `<optgroup label="${escapeHtml(group.label)}">${options.map(optionHtml).join("")}</optgroup>`;
-    });
-
-    const remaining = window.BA_LLM_MODELS.filter((model) => !used.has(model.id));
-    if (remaining.length) {
-      grouped.push(`<optgroup label="${escapeHtml(t("panel.llm.optgroup.others"))}">${remaining.map(optionHtml).join("")}</optgroup>`);
-    }
-
-    return grouped.join("");
-  }
-
-  function toolPolicyOptionsHtml() {
-    const levels = window.BA_LLM_TOOL_REGISTRY?.SECURITY_LEVELS || [];
-    return levels.map((item) => `<option value="${escapeHtml(item.level)}">${escapeHtml(item.label)}</option>`).join("");
-  }
-
-  function buildLLMPanelHtml() {
-    return `
+function buildLLMPanelHtml(): string {
+  return `
       <div id="ba-llm-panel" class="ba-llm-panel">
         <div class="ba-llm-hero">
           <div class="ba-llm-mark" aria-hidden="true">LLM</div>
@@ -148,12 +164,11 @@
         <div id="ba-llm-capabilities" class="ba-llm-note" data-i18n="common.inferencePending">common.inferencePending</div>
       </div>
     `;
-  }
+}
 
-  window.BA_LLM_PANEL_TEMPLATE = {
-    escapeHtml,
-    modelOptionsHtml,
-    toolPolicyOptionsHtml,
-    buildLLMPanelHtml,
-  };
-})();
+export const llmPanelTemplate: LlmPanelTemplateApi = {
+  escapeHtml,
+  modelOptionsHtml,
+  toolPolicyOptionsHtml,
+  buildLLMPanelHtml,
+};
