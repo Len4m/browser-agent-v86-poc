@@ -28,6 +28,7 @@ import { consoleControlApi } from "../vm/console-control-serial2";
 import * as vmOperations from "../vm/operations";
 import * as profileConfig from "../vm/profile-config";
 import * as runtimeAssets from "../vm/runtime-assets";
+import * as serialVm from "../vm/serial-vm";
 import * as terminalMarkers from "../vm/terminal-markers";
 import {
   appendBoundedText,
@@ -59,7 +60,7 @@ import {
   utf8ToBase64,
 } from "../app/text-utils";
 
-type LegacyWindow = Window & typeof globalThis & typeof vmOperations & typeof profileConfig & typeof runtimeAssets & typeof terminalMarkers & {
+type LegacyWindow = Window & typeof globalThis & typeof vmOperations & typeof profileConfig & typeof runtimeAssets & typeof serialVm & typeof terminalMarkers & {
   $: typeof $;
   CR: typeof CR;
   DOCKER_WSNIC_COMMAND: typeof DOCKER_WSNIC_COMMAND;
@@ -115,7 +116,7 @@ export function installLegacyFacades(): void {
   installed = true;
 
   const legacyWindow = window as LegacyWindow;
-  Object.assign(legacyWindow, vmOperations, profileConfig, runtimeAssets, terminalMarkers, {
+  Object.assign(legacyWindow, vmOperations, profileConfig, runtimeAssets, serialVm, terminalMarkers, {
     $,
     CR,
     DOCKER_WSNIC_COMMAND,

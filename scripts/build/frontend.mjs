@@ -34,7 +34,6 @@ const appVersion = packageJson.version || "0.0.0";
 
 const browserSourceOrder = [
   "src/browser/console/xterm-consoles.ts",
-  "src/browser/vm/serial-vm.ts",
   "build/browser/generated/10a-llm-models-catalog.js",
   "src/browser/chat/state/chat-state.ts",
   "src/browser/chat/state/capabilities.ts",
