@@ -290,6 +290,10 @@ export const llmEventsApi: LlmEventsApi = {
   },
 };
 
+export function getLlmState(): LlmState | null {
+  return legacyWindow().BA_LLM || null;
+}
+
 export function installLlmState(): void {
   const legacy = legacyWindow();
   if (legacy.BA_LLM) return;

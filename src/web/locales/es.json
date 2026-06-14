@@ -650,7 +650,6 @@
   "tools.exec.preconditionsFailed": "No se cumplen las precondiciones para ejecutar la herramienta.",
   "tools.exec.reasonDefault": "El modelo solicita ejecutar una herramienta.",
   "tools.exec.reasonModelRequest": "El modelo solicita {name}.",
-  "tools.exec.registryNotInit": "Registro de herramientas no inicializado.",
   "tools.exec.runningLabel": "Agente ejecutando {label}…",
   "tools.level.active.desc": "Permite comandos activos/acotados, como nmap rápido, ffuf ligero o sh controlado.",
   "tools.level.active.label": "Libre nivel 3 · acciones activas",

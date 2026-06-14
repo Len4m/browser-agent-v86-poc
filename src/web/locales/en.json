@@ -650,7 +650,6 @@
   "tools.exec.preconditionsFailed": "The preconditions to run the tool are not met.",
   "tools.exec.reasonDefault": "The model requests to run a tool.",
   "tools.exec.reasonModelRequest": "The model requests {name}.",
-  "tools.exec.registryNotInit": "Tool registry not initialized.",
   "tools.exec.runningLabel": "Agent running {label}…",
   "tools.level.active.desc": "Allows active/bounded commands, such as a quick nmap, light ffuf or controlled sh.",
   "tools.level.active.label": "Free level 3 · active actions",

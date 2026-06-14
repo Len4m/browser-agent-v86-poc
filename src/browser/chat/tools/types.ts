@@ -109,3 +109,13 @@ export interface LlmToolRegistryApi {
   buildPromptRuntimeContextCompact: (options?: PromptRuntimeContextCompactOptions) => string;
   assertVmToolPreconditions: () => RuntimeToolContext;
 }
+
+export interface RunToolOptions {
+  source?: string;
+}
+
+export interface ToolExecutorApi {
+  getAutonomyMaxLevel: () => number;
+  setAutonomyMaxLevel: (level: unknown) => number;
+  runTool: (toolCall: unknown, options?: RunToolOptions) => Promise<ToolExecutionResult>;
+}
