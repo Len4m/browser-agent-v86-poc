@@ -4,7 +4,7 @@ import { t } from "./i18n";
 
 let originAwarenessInitialized = false;
 
-export function localHostname(hostname: string): boolean {
+function localHostname(hostname: string): boolean {
   const value = String(hostname || "").toLowerCase();
   return value === "localhost"
     || value === "127.0.0.1"
@@ -13,7 +13,7 @@ export function localHostname(hostname: string): boolean {
     || value.endsWith(".localhost");
 }
 
-export function isLocalOrigin(): boolean {
+function isLocalOrigin(): boolean {
   const loc = window.location;
   if (!loc) return false;
   if (loc.protocol === "file:") return true;
@@ -27,7 +27,7 @@ export function isPublishedOrigin(): boolean {
   return !isLocalOrigin();
 }
 
-export function localServiceWarningText(kind = "servicios locales"): string {
+function localServiceWarningText(kind = "servicios locales"): string {
   const origin = window.location?.origin || t("origin.thisOrigin");
   if (kind === "ollama") return t("origin.ollama", { origin });
   if (kind === "wsnic") return t("origin.wsnic");
@@ -42,7 +42,7 @@ function applyNotice(id: string, kind: string): void {
   if (show) el.textContent = localServiceWarningText(kind);
 }
 
-export function syncWarnings(): void {
+function syncWarnings(): void {
   applyNotice("ws-origin-notice", "wsnic");
   applyNotice("ba-llm-ollama-origin-notice", "ollama");
 }
@@ -53,8 +53,6 @@ export const originApi = {
   localServiceWarningText,
   syncWarnings,
 };
-
-export type OriginApi = typeof originApi;
 
 export function initOriginAwareness(): void {
   if (originAwarenessInitialized) return;

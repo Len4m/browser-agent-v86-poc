@@ -64,12 +64,6 @@ interface NativeToolsPickerState {
   policy: NativeToolsPolicyApi | null;
 }
 
-export interface LlmPanelUiApi {
-  updateNativeToolsPickerUi: () => void;
-  updateChatToolsButton: () => void;
-  openChatToolsModal: () => void;
-}
-
 const fmt = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 1 });
 let initialized = false;
 
@@ -1120,12 +1114,6 @@ function bindEvents(): void {
     updateCapabilityDetails(isLlmCapabilities(capabilities) ? capabilities : null);
   });
 }
-
-export const llmPanelUi: LlmPanelUiApi = {
-  updateNativeToolsPickerUi,
-  updateChatToolsButton,
-  openChatToolsModal,
-};
 
 export function initLlmPanel(): void {
   if (initialized) return;

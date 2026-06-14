@@ -6,9 +6,9 @@ export type I18nVars = Record<string, string | number>;
 export type I18nCatalog = Record<string, string>;
 export type SupportedLang = "es" | "en";
 
-export const I18N_BASE_LANG: SupportedLang = "es";
-export const I18N_SUPPORTED = ["es", "en"] as const;
-export const I18N_STORAGE_KEY = "ba.lang";
+const I18N_BASE_LANG: SupportedLang = "es";
+const I18N_SUPPORTED = ["es", "en"] as const;
+const I18N_STORAGE_KEY = "ba.lang";
 
 let baActiveLang: SupportedLang = I18N_BASE_LANG;
 let baActiveCatalog: I18nCatalog | null = null;
@@ -64,7 +64,7 @@ export function tn(key: string, count: number, vars?: I18nVars): string {
   return t(`${key}.${plural}`, Object.assign({ count }, vars || {}));
 }
 
-export async function loadLocale(lang: string): Promise<I18nCatalog> {
+async function loadLocale(lang: string): Promise<I18nCatalog> {
   const next = isSupportedLang(lang) ? lang : I18N_BASE_LANG;
   const response = await fetch(`./locales/${next}.json`, { cache: "no-store" });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -154,7 +154,3 @@ export function initI18n(): Promise<unknown> {
     });
   return baI18nReady;
 }
-
-export const i18nApi = { t, tn, getLang, setLang, loadLocale, applyDomTranslations, getSupportedLangs, ready: () => baI18nReady };
-
-export type I18nApi = typeof i18nApi;

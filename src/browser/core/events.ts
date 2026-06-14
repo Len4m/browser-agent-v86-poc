@@ -5,9 +5,7 @@ export type AppEventMap = {
   "llm:availability-refresh-requested": { source: string };
 };
 
-export type AppEventName = keyof AppEventMap;
-
-export class TypedEventBus<Events extends Record<string, unknown>> {
+class TypedEventBus<Events extends Record<string, unknown>> {
   private readonly target = new EventTarget();
 
   on<Name extends keyof Events & string>(

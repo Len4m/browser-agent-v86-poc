@@ -74,17 +74,3 @@ export function utf8ToBase64(str: string): string {
   for (let i = 0; i < bytes.length; i += 1) bin += String.fromCharCode(bytes[i]);
   return btoa(bin);
 }
-
-export const textUtilsApi = {
-  stripAnsi,
-  normalizeNewlines,
-  stripAnsiAndControls,
-  trimLines,
-  trimLinesSimple,
-  shellQuote,
-  clampInt,
-  clampExecVmOutputBytes,
-  utf8ToBase64,
-};
-
-export type TextUtilsApi = typeof textUtilsApi;

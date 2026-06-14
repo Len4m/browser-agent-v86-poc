@@ -73,15 +73,6 @@ export interface RuntimeToolContext {
   diskMounted: boolean;
 }
 
-export interface ToolCall {
-  type?: string;
-  tool?: string;
-  name?: string;
-  arguments?: ToolArgs;
-  reason?: string;
-  riskLevel?: number;
-}
-
 export interface NormalizedToolCall {
   type: "tool_call";
   tool: string;
