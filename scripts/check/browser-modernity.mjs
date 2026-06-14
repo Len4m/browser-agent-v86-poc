@@ -51,7 +51,7 @@ const metrics = {
   tsNocheckFiles: browserTsFiles.filter((file) => tsNocheckPattern.test(read(file))).length,
   inlineScriptBlocks: countMatches(indexHtml, /<script\b(?![^>]*\bsrc=)[^>]*>/g),
   internalWindowAssignments: sourceFiles.reduce(
-    (sum, file) => sum + countMatches(read(file), /\bwindow\.BA_[A-Za-z0-9_$]+\s*=/g),
+    (sum, file) => sum + countMatches(read(file), /\bwindow\.BA(?:_[A-Za-z0-9_$]+)?\s*=/g),
     0,
   ),
   removedCompatibilityNames: browserTsFiles.reduce(
@@ -76,6 +76,6 @@ console.log([
   "OK browser modernity:",
   `@ts-nocheck ${metrics.tsNocheckFiles}/${limits.tsNocheckFiles}`,
   `inline scripts ${metrics.inlineScriptBlocks}/${limits.inlineScriptBlocks}`,
-  `window.BA_* assignments ${metrics.internalWindowAssignments}/${limits.internalWindowAssignments}`,
+  `window.BA assignments ${metrics.internalWindowAssignments}/${limits.internalWindowAssignments}`,
   `removed compat names ${metrics.removedCompatibilityNames}/${limits.removedCompatibilityNames}`,
 ].join(" "));

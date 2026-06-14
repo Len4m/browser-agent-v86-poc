@@ -1,6 +1,4 @@
 export type AppEventMap = {
-  "app:ready": { version: string; source: string };
-  "app:error": { message: string; error?: unknown };
   "console:state-changed": { source: string };
   "llm:availability-refresh-requested": { source: string };
 };

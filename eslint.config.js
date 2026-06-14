@@ -14,7 +14,6 @@ const modernBrowserTs = [
   "src/browser/app/origin-awareness.ts",
   "src/browser/app/state.ts",
   "src/browser/app/text-utils.ts",
-  "src/browser/compat/**/*.ts",
   "src/browser/chat/provider/ai-sdk-bridge.ts",
   "src/browser/chat/provider/ai-sdk/browser-agent-runner.ts",
   "src/browser/chat/provider/ai-sdk/entry.ts",
@@ -192,8 +191,8 @@ export default tseslint.config(
     files: noInternalWindowGlobalsTs,
     rules: {
       "no-restricted-syntax": ["error", {
-        selector: "MemberExpression[object.name='window'][property.name=/^BA_/]",
-        message: "Internal BA_* globals are not allowed; use ESM imports instead.",
+        selector: "MemberExpression[object.name='window'][property.name=/^BA(?:_|$)/]",
+        message: "BA globals are not allowed; use ESM imports instead.",
       }],
     },
   },

@@ -96,7 +96,7 @@ flowchart LR
 - `public/assets/app.css` cuando se ejecuta con `--minify` o `BA_MINIFY=1`
 - `public/locales/es.json` y `public/locales/en.json`
 
-El entry `src/browser/main.ts` inicializa la aplicación desde módulos ESM y al final instala la API pública `window.BA` desde `src/browser/compat/window-api.ts`. `scripts/build/frontend.mjs` bundlea ese entry directamente con esbuild (`format: "esm"`); no hay concatenación manual de fuentes ni orden global de carga de módulos internos.
+El entry `src/browser/main.ts` inicializa la aplicación desde módulos ESM. `scripts/build/frontend.mjs` bundlea ese entry directamente con esbuild (`format: "esm"`); no hay concatenación manual de fuentes, orden global de carga de módulos internos ni API global propia en `window`.
 
 Regla: el runtime de aplicación se conecta mediante imports ESM. Cualquier nueva exposición en `window` debe ser una API pública deliberada o una frontera técnica documentada.
 
@@ -159,19 +159,18 @@ Dentro de `src/browser/`, el TypeScript se organiza por dominio:
 | `src/browser/chat/runtime/` | Agent loop, UI de chat, routing, artifacts, contexto y recursos |
 | `src/browser/chat/tools/` | Registry de tools, políticas y ejecutor |
 | `src/browser/chat/provider/` | Bridge AI SDK, provider Ollama, Transformers.js worker y parser/middleware de tool calls |
-| `src/browser/compat/` | API pública `window.BA` |
 | `src/browser/core/` | Eventos compartidos |
 
-## Globals y API pública
+## Globals
 
-La API pública estable del frontend es `window.BA`, instalada por `src/browser/compat/window-api.ts`. Expone versión, origen, eventos públicos y metadatos de build.
+El frontend no publica una API propia en `window`; los módulos internos se comunican mediante imports ESM, eventos tipados o APIs de dominio.
 
 Fronteras técnicas restantes:
 
 - `window.V86Starter` / `window.V86`: runtime v86 cargado como vendor.
 - `window.Terminal`: runtime xterm cargado como vendor.
 
-Regla: los módulos TypeScript nuevos deben vivir en `src/browser/` y comunicarse por imports ESM, eventos tipados o APIs de dominio. No se añaden `window.BA_*` internos.
+Regla: los módulos TypeScript nuevos deben vivir en `src/browser/` y comunicarse por imports ESM, eventos tipados o APIs de dominio. No se añaden globals propios `window.BA` ni `window.BA_*`.
 
 ## Seriales y ejecución VM
 
@@ -281,7 +280,7 @@ Archivos clave:
 
 `check-server` arranca `server.mjs` en `127.0.0.1:5199` y valida COOP, COEP, CORP y `Range`.
 
-`npm run lint` usa ESLint flat config (`eslint.config.js`). El código TypeScript de navegador se valida con reglas TypeScript type-aware en los módulos modernizados, y `scripts/check/browser-modernity.mjs` bloquea regresiones de `@ts-nocheck`, scripts inline, nombres de compatibilidad retirados y nuevas asignaciones internas `window.BA_*`.
+`npm run lint` usa ESLint flat config (`eslint.config.js`). El código TypeScript de navegador se valida con reglas TypeScript type-aware en los módulos modernizados, y `scripts/check/browser-modernity.mjs` bloquea regresiones de `@ts-nocheck`, scripts inline, nombres de compatibilidad retirados y nuevas asignaciones `window.BA`/`window.BA_*`.
 
 `npm test` compila `tests/**/*.test.ts` con esbuild hacia `build/test/` y ejecuta `node --test`. Los primeros tests cubren helpers puros migrados; cada nuevo módulo puro debe añadir pruebas enfocadas.
 
