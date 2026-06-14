@@ -40,6 +40,11 @@ export interface LlmModelConfig {
   shortLabel?: string;
   engine: string;
   engineLabel?: string;
+  description?: string;
+  sizeLabel?: string;
+  minMemoryLabel?: string;
+  compatibilityLabel?: string;
+  languageLabel?: string;
   model?: string;
   task?: string;
   device?: string;
@@ -55,6 +60,17 @@ export interface LlmModelConfig {
   contextPolicy?: LlmContextPolicy;
   agent?: LlmAgentMeta;
   thinking?: Partial<LlmThinkingMeta>;
+  runtime?: {
+    provider?: string;
+    endpoint?: string;
+    device?: string;
+    dtype?: string;
+    fallback?: boolean;
+    worker?: unknown;
+    [key: string]: unknown;
+  };
+  fallbackFrom?: string;
+  fallbackReason?: unknown;
   [key: string]: unknown;
 }
 

@@ -414,7 +414,6 @@
   "panel.llm.capabilities.noWebgpu": "{reason} · Experimental WASM available only for compatible models.",
   "panel.llm.capabilities.noWebgpuReason": "WebGPU unavailable.",
   "panel.llm.capabilities.webgpu": "WebGPU available · shader-f16: {shaderF16} · recommended dtype: {dtype} · maxBuffer: {maxBuffer}",
-  "panel.llm.clearChat.confirmFallback": "Clear visible chat, internal history and artifacts?\n\nThis action does not affect the VM.",
   "panel.llm.clearChat.detail": "This action does not affect the VM, the WS network, the disks or the snapshots.",
   "panel.llm.clearChat.message": "The visible chat, the LLM internal history and the tool artifacts will be deleted.",
   "panel.llm.custom.ollamaLabel": "Ollama model",

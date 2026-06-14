@@ -22,6 +22,7 @@ import {
 } from "../app/i18n";
 import { initLangSelector } from "../app/lang-selector";
 import { initOriginAwareness, originApi } from "../app/origin-awareness";
+import { initLlmPanel, llmPanelUi } from "../chat/panel/panel";
 import { llmPanelCapabilities } from "../chat/panel/capabilities-view";
 import { createMarkdownStreamRenderer } from "../chat/rendering/markdown-renderer";
 import { llmAgentRouting } from "../chat/runtime/agent-routing";
@@ -107,6 +108,7 @@ type LegacyWindow = Window & typeof globalThis & typeof xtermConsoles & typeof v
   BA_buildAiSdkTools: typeof buildAiSdkTools;
   BA_LLM_PANEL_CAPS: typeof llmPanelCapabilities;
   BA_LLM_PANEL_TEMPLATE: typeof llmPanelTemplate;
+  BA_LLM_UI: typeof llmPanelUi;
   BA_LLM_AGENT: typeof llmAgent;
   BA_LLM_AGENT_DEBUG: typeof llmAgentDebug;
   BA_LLM_CHAT_UI: typeof llmChatUi;
@@ -209,6 +211,7 @@ export function installLegacyFacades(): void {
   legacyWindow.BA_buildAiSdkTools = buildAiSdkTools;
   legacyWindow.BA_LLM_PANEL_CAPS = llmPanelCapabilities;
   legacyWindow.BA_LLM_PANEL_TEMPLATE = llmPanelTemplate;
+  legacyWindow.BA_LLM_UI = llmPanelUi;
   legacyWindow.BA_LLM_AGENT = llmAgent;
   legacyWindow.BA_LLM_AGENT_DEBUG = llmAgentDebug;
   legacyWindow.BA_LLM_CHAT_UI = llmChatUi;
@@ -234,4 +237,5 @@ export function installLegacyFacades(): void {
   initTooltips();
   initBootstrap();
   initLlmAgentLoop();
+  initLlmPanel();
 }

@@ -32,9 +32,7 @@ const tempFile = join(root, "build/browser/app-entry.js");
 const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const appVersion = packageJson.version || "0.0.0";
 
-const browserSourceOrder = [
-  "src/browser/chat/panel/panel.ts",
-];
+const browserSourceOrder = [];
 
 const minify = process.env.BA_MINIFY === "1" || process.argv.includes("--minify");
 const sourcemap = process.env.BA_SOURCEMAP === "1" || process.argv.includes("--sourcemap");
