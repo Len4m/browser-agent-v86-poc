@@ -26,6 +26,7 @@ import { createMarkdownStreamRenderer } from "../chat/rendering/markdown-rendere
 import { installLlmState } from "../chat/state/chat-state";
 import * as llmCapabilities from "../chat/state/capabilities";
 import { llmToolExecutor } from "../chat/tools/tool-executor";
+import { llmNativeToolsPolicy } from "../chat/tools/native-tools-policy";
 import { llmToolRegistry } from "../chat/tools/tool-registry";
 import * as xtermConsoles from "../console/xterm-consoles";
 import { runChecks } from "../ui/checks-panel";
@@ -92,6 +93,7 @@ type LegacyWindow = Window & typeof globalThis & typeof xtermConsoles & typeof v
   BA_ensureLLMCapabilities: typeof llmCapabilities.ensureLLMCapabilities;
   BA_syncLLMCapabilityBadges: typeof llmCapabilities.syncLLMCapabilityBadges;
   BA_createMarkdownStreamRenderer: typeof createMarkdownStreamRenderer;
+  BA_LLM_NATIVE_TOOLS: typeof llmNativeToolsPolicy;
   BA_LLM_TOOL_EXECUTOR: typeof llmToolExecutor;
   BA_LLM_TOOL_REGISTRY: typeof llmToolRegistry;
   clampExecVmOutputBytes: typeof clampExecVmOutputBytes;
@@ -182,6 +184,7 @@ export function installLegacyFacades(): void {
   legacyWindow.BA_ensureLLMCapabilities = llmCapabilities.ensureLLMCapabilities;
   legacyWindow.BA_syncLLMCapabilityBadges = llmCapabilities.syncLLMCapabilityBadges;
   legacyWindow.BA_createMarkdownStreamRenderer = createMarkdownStreamRenderer;
+  legacyWindow.BA_LLM_NATIVE_TOOLS = llmNativeToolsPolicy;
   legacyWindow.BA_LLM_TOOL_EXECUTOR = llmToolExecutor;
   legacyWindow.BA_LLM_TOOL_REGISTRY = llmToolRegistry;
 

@@ -1,115 +1,164 @@
-// @ts-nocheck
-// Browser Agent v86 - 17b native tools policy
-// Per-model caps on how many AI SDK tools are registered (VRAM). User picks subset in panel.
+// Browser Agent v86 - native tools policy.
+// Per-model caps on how many AI SDK tools are registered. User picks subset in
+// the LLM panel; legacy modules receive this API through compat facades.
 
-(function initLLMNativeToolsPolicy() {
-  const STORAGE_PREFIX = "ba.llm.nativeTools.";
+import { state } from "../../app/state";
+import { getLlmState, llmEventsApi, llmModels, type LlmModelConfig } from "../state/chat-state";
+import { llmToolRegistry } from "./tool-registry";
 
-  function getProfileId() {
-    const stateProfile = window.state?.activeRuntime?.profile?.id;
-    if (stateProfile && stateProfile !== "manual") return stateProfile;
-    return document.getElementById("vm-profile")?.value || "manual";
+const STORAGE_PREFIX = "ba.llm.nativeTools.";
+
+const FALLBACK_MODEL: LlmModelConfig = {
+  id: "custom-transformersjs",
+  engine: "transformersjs",
+  agent: {
+    maxSteps: 3,
+    maxNativeTools: 4,
+    toolCalling: "fair",
+    defaultNativeTools: [],
+  },
+};
+
+const FALLBACK_TOOL_NAMES = [
+  "vm.python.exec",
+  "vm.sh.exec",
+  "vm.fs.list",
+  "vm.fs.read",
+  "vm.fs.write",
+  "vm.cmd.which",
+  "web.curl.head",
+];
+
+export interface NativeToolsPolicyApi {
+  getMaxNativeTools: (modelConfig?: LlmModelConfig | null) => number;
+  getDefaultToolNames: (modelConfig?: LlmModelConfig | null, profileId?: string) => string[];
+  resolveActiveToolNames: (modelConfig?: LlmModelConfig | null, profileId?: string) => string[];
+  setActiveToolNames: (modelConfig: LlmModelConfig | null | undefined, names: string[], profileId?: string) => string[];
+  toggleToolName: (modelConfig: LlmModelConfig | null | undefined, name: string, enabled: boolean, profileId?: string) => string[];
+  listAvailableToolNames: (modelConfig?: LlmModelConfig | null, profileId?: string) => string[];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function textValue(value: unknown, fallback = ""): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return fallback;
+}
+
+function activeRuntimeProfileId(): string {
+  if (isRecord(state.activeRuntime) && isRecord(state.activeRuntime.profile)) {
+    return textValue(state.activeRuntime.profile.id);
   }
+  return "";
+}
 
-  function getModelConfig(modelConfig) {
-    return modelConfig
-      || window.BA_LLM?.activeModel
-      || window.BA_LLM_MODELS?.find((m) => m.id === window.BA_LLM?.selectedModelId)
-      || window.BA_LLM_MODELS?.[0]
-      || { id: "custom-transformersjs", agent: { maxNativeTools: 4 } };
+function getProfileId(): string {
+  const stateProfile = activeRuntimeProfileId();
+  if (stateProfile && stateProfile !== "manual") return stateProfile;
+  const profileSelect = document.getElementById("vm-profile");
+  return profileSelect instanceof HTMLSelectElement ? profileSelect.value : "manual";
+}
+
+function getModelConfig(modelConfig?: LlmModelConfig | null): LlmModelConfig {
+  const llmState = getLlmState();
+  return modelConfig
+    || llmState?.activeModel
+    || llmModels.find((model) => model.id === llmState?.selectedModelId)
+    || llmModels[0]
+    || FALLBACK_MODEL;
+}
+
+function getMaxNativeTools(modelConfig?: LlmModelConfig | null): number {
+  const agent = getModelConfig(modelConfig).agent;
+  const max = Number(agent?.maxNativeTools);
+  if (Number.isFinite(max) && max > 0) return Math.min(12, Math.floor(max));
+  return 4;
+}
+
+function listAvailableToolNames(_modelConfig?: LlmModelConfig | null, profileId = getProfileId()): string[] {
+  return llmToolRegistry.listTools({ profileId }).map((tool) => tool.name);
+}
+
+function getDefaultToolNames(modelConfig?: LlmModelConfig | null, profileId = getProfileId()): string[] {
+  const agent = getModelConfig(modelConfig).agent;
+  const available = new Set(listAvailableToolNames(modelConfig, profileId));
+  const fromModel = Array.isArray(agent?.defaultNativeTools) ? agent.defaultNativeTools : [];
+  const picked = fromModel.filter((name) => available.has(name));
+  if (picked.length) return picked.slice(0, getMaxNativeTools(modelConfig));
+
+  return FALLBACK_TOOL_NAMES
+    .filter((name) => available.has(name))
+    .slice(0, getMaxNativeTools(modelConfig));
+}
+
+function loadStored(modelId: string): string[] | null {
+  try {
+    const raw = localStorage.getItem(`${STORAGE_PREFIX}${modelId}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed.map((item) => textValue(item)).filter(Boolean) : null;
+  } catch {
+    return null;
   }
+}
 
-  function getMaxNativeTools(modelConfig) {
-    const agent = getModelConfig(modelConfig)?.agent || {};
-    const max = Number(agent.maxNativeTools);
-    if (Number.isFinite(max) && max > 0) return Math.min(12, Math.floor(max));
-    return 4;
+function saveStored(modelId: string, names: string[]): void {
+  localStorage.setItem(`${STORAGE_PREFIX}${modelId}`, JSON.stringify(names));
+}
+
+function syncStateNativeTools(names: string[]): void {
+  const llmState = getLlmState();
+  if (llmState?.settings) llmState.settings.nativeToolNames = names;
+}
+
+function resolveActiveToolNames(modelConfig?: LlmModelConfig | null, profileId = getProfileId()): string[] {
+  const cfg = getModelConfig(modelConfig);
+  const max = getMaxNativeTools(cfg);
+  const available = new Set(listAvailableToolNames(cfg, profileId));
+  const stored = loadStored(cfg.id);
+  const defaults = getDefaultToolNames(cfg, profileId);
+  const source = stored !== null ? stored : defaults;
+  let chosen = source.filter((name) => available.has(name));
+  if (!chosen.length && stored === null) chosen = defaults.filter((name) => available.has(name));
+  const out = chosen.slice(0, max);
+  syncStateNativeTools(out);
+  return out;
+}
+
+function setActiveToolNames(modelConfig: LlmModelConfig | null | undefined, names: string[], profileId = getProfileId()): string[] {
+  const cfg = getModelConfig(modelConfig);
+  const max = getMaxNativeTools(cfg);
+  const available = new Set(listAvailableToolNames(cfg, profileId));
+  const clean = [...new Set(names.filter((name) => available.has(name)))].slice(0, max);
+  saveStored(cfg.id, clean);
+  syncStateNativeTools(clean);
+  llmEventsApi.emit("native-tools", { names: clean, max, modelId: cfg.id });
+  return clean;
+}
+
+function toggleToolName(modelConfig: LlmModelConfig | null | undefined, name: string, enabled: boolean, profileId = getProfileId()): string[] {
+  const cfg = getModelConfig(modelConfig);
+  const max = getMaxNativeTools(cfg);
+  const current = resolveActiveToolNames(cfg, profileId);
+  let next: string[];
+  if (enabled) {
+    if (current.includes(name)) return current;
+    if (current.length >= max) return current;
+    next = [...current, name];
+  } else {
+    next = current.filter((item) => item !== name);
   }
+  return setActiveToolNames(cfg, next, profileId);
+}
 
-  function listAvailableToolNames(modelConfig, profileId = getProfileId()) {
-    return (window.BA_LLM_TOOL_REGISTRY?.listTools?.({ profileId }) || []).map((t) => t.name);
-  }
-
-  function getDefaultToolNames(modelConfig, profileId = getProfileId()) {
-    const agent = getModelConfig(modelConfig)?.agent || {};
-    const available = new Set(listAvailableToolNames(modelConfig, profileId));
-    const fromModel = Array.isArray(agent.defaultNativeTools) ? agent.defaultNativeTools : [];
-    const picked = fromModel.filter((n) => available.has(n));
-    if (picked.length) return picked.slice(0, getMaxNativeTools(modelConfig));
-
-    const fallback = [
-      "vm.python.exec",
-      "vm.sh.exec",
-      "vm.fs.list",
-      "vm.fs.read",
-      "vm.fs.write",
-      "vm.cmd.which",
-      "web.curl.head",
-    ];
-    return fallback.filter((n) => available.has(n)).slice(0, getMaxNativeTools(modelConfig));
-  }
-
-  function loadStored(modelId) {
-    try {
-      const raw = localStorage.getItem(`${STORAGE_PREFIX}${modelId}`);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : null;
-    } catch {
-      return null;
-    }
-  }
-
-  function saveStored(modelId, names) {
-    localStorage.setItem(`${STORAGE_PREFIX}${modelId}`, JSON.stringify(names));
-  }
-
-  function resolveActiveToolNames(modelConfig, profileId = getProfileId()) {
-    const cfg = getModelConfig(modelConfig);
-    const max = getMaxNativeTools(cfg);
-    const available = new Set(listAvailableToolNames(cfg, profileId));
-    const stored = loadStored(cfg.id);
-    const defaults = getDefaultToolNames(cfg, profileId);
-    const source = stored !== null ? stored : defaults;
-    let chosen = source.filter((n) => available.has(n));
-    if (!chosen.length && stored === null) chosen = defaults.filter((n) => available.has(n));
-    const out = chosen.slice(0, max);
-    if (window.BA_LLM?.settings) window.BA_LLM.settings.nativeToolNames = out;
-    return out;
-  }
-
-  function setActiveToolNames(modelConfig, names, profileId = getProfileId()) {
-    const cfg = getModelConfig(modelConfig);
-    const max = getMaxNativeTools(cfg);
-    const available = new Set(listAvailableToolNames(cfg, profileId));
-    const clean = [...new Set((names || []).filter((n) => available.has(n)))].slice(0, max);
-    saveStored(cfg.id, clean);
-    if (window.BA_LLM?.settings) window.BA_LLM.settings.nativeToolNames = clean;
-    window.BA_LLM_EVENTS?.emit("native-tools", { names: clean, max, modelId: cfg.id });
-    return clean;
-  }
-
-  function toggleToolName(modelConfig, name, enabled, profileId = getProfileId()) {
-    const cfg = getModelConfig(modelConfig);
-    const max = getMaxNativeTools(cfg);
-    const current = resolveActiveToolNames(cfg, profileId);
-    let next;
-    if (enabled) {
-      if (current.includes(name)) return current;
-      if (current.length >= max) return current;
-      next = [...current, name];
-    } else {
-      next = current.filter((n) => n !== name);
-    }
-    return setActiveToolNames(cfg, next, profileId);
-  }
-
-  window.BA_LLM_NATIVE_TOOLS = {
-    getMaxNativeTools,
-    getDefaultToolNames,
-    resolveActiveToolNames,
-    setActiveToolNames,
-    toggleToolName,
-    listAvailableToolNames,
-  };
-})();
+export const llmNativeToolsPolicy: NativeToolsPolicyApi = {
+  getMaxNativeTools,
+  getDefaultToolNames,
+  resolveActiveToolNames,
+  setActiveToolNames,
+  toggleToolName,
+  listAvailableToolNames,
+};

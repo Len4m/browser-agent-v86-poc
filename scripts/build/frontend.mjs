@@ -34,7 +34,6 @@ const appVersion = packageJson.version || "0.0.0";
 
 const browserSourceOrder = [
   "src/browser/chat/tools/ai-tools.ts",
-  "src/browser/chat/tools/native-tools-policy.ts",
   "src/browser/chat/runtime/artifact-store.ts",
   "src/browser/chat/runtime/context-budget.ts",
   "src/browser/chat/runtime/tool-result-policy.ts",
