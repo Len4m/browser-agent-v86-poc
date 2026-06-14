@@ -34,6 +34,7 @@ import * as llmCapabilities from "../chat/state/capabilities";
 import { buildAiSdkTools } from "../chat/tools/ai-tools";
 import { llmPanelTemplate } from "../chat/panel/template";
 import { initLlmAgentDebug, llmAgentDebug } from "../chat/runtime/agent-debug";
+import { llmChatUi } from "../chat/runtime/chat-ui";
 import { llmToolExecutor } from "../chat/tools/tool-executor";
 import { llmNativeToolsPolicy } from "../chat/tools/native-tools-policy";
 import { llmToolRegistry } from "../chat/tools/tool-registry";
@@ -106,6 +107,7 @@ type LegacyWindow = Window & typeof globalThis & typeof xtermConsoles & typeof v
   BA_LLM_PANEL_CAPS: typeof llmPanelCapabilities;
   BA_LLM_PANEL_TEMPLATE: typeof llmPanelTemplate;
   BA_LLM_AGENT_DEBUG: typeof llmAgentDebug;
+  BA_LLM_CHAT_UI: typeof llmChatUi;
   BA_LLM_ROUTING: typeof llmAgentRouting;
   BA_LLM_ARTIFACTS: typeof llmArtifacts;
   BA_LLM_CONTEXT: typeof llmContextBudget;
@@ -206,6 +208,7 @@ export function installLegacyFacades(): void {
   legacyWindow.BA_LLM_PANEL_CAPS = llmPanelCapabilities;
   legacyWindow.BA_LLM_PANEL_TEMPLATE = llmPanelTemplate;
   legacyWindow.BA_LLM_AGENT_DEBUG = llmAgentDebug;
+  legacyWindow.BA_LLM_CHAT_UI = llmChatUi;
   legacyWindow.BA_LLM_ROUTING = llmAgentRouting;
   legacyWindow.BA_LLM_ARTIFACTS = llmArtifacts;
   legacyWindow.BA_LLM_CONTEXT = llmContextBudget;
