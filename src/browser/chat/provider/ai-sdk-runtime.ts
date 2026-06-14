@@ -36,7 +36,7 @@ export interface AiSdkRunAgentStreamTurnResult {
   hadToolWork?: boolean;
 }
 
-export interface AiSdkGlobalApi {
+export interface AiSdkBridgeApi {
   z: AiSdkZodLike;
   tool: (config: AiSdkToolConfig) => unknown;
   abortActive?: () => void;
@@ -51,34 +51,37 @@ export interface AiSdkGlobalApi {
   [key: string]: unknown;
 }
 
-declare global {
-  interface Window {
-    BA_AISDK?: AiSdkGlobalApi;
-    BA_AISDK_READY?: Promise<unknown>;
+declare const __BA_AI_SDK_BRIDGE_URL__: string;
+
+interface AiSdkBridgeModule {
+  aiSdkApi?: AiSdkBridgeApi;
+  default?: AiSdkBridgeApi;
+}
+
+let aiSdkApi: AiSdkBridgeApi | null = null;
+let bridgeReady: Promise<AiSdkBridgeApi | null> | null = null;
+
+async function importAiSdkBridge(): Promise<AiSdkBridgeApi | null> {
+  if (aiSdkApi) return aiSdkApi;
+  try {
+    const bridgeUrl = new URL(__BA_AI_SDK_BRIDGE_URL__, import.meta.url).href;
+    const module = await import(bridgeUrl) as AiSdkBridgeModule;
+    aiSdkApi = module.aiSdkApi || module.default || null;
+    return aiSdkApi;
+  } catch (error) {
+    console.error("[llm] AI SDK bridge import failed", error);
+    return null;
   }
 }
 
-let bridgeReady: Promise<unknown> | null = null;
-
-export function getAiSdk(): AiSdkGlobalApi | null {
-  return window.BA_AISDK || null;
+export function getAiSdk(): AiSdkBridgeApi | null {
+  return aiSdkApi;
 }
 
-export function getAiSdkReady(): Promise<unknown> {
-  if (window.BA_AISDK_READY) return window.BA_AISDK_READY;
-  if (window.BA_AISDK) return Promise.resolve(true);
-  bridgeReady ||= new Promise<boolean>((resolve) => {
-    let settled = false;
-    let timeout = 0;
-    const done = (): void => {
-      if (settled) return;
-      settled = true;
-      window.clearTimeout(timeout);
-      window.removeEventListener("ba-aisdk:ready", done);
-      resolve(Boolean(window.BA_AISDK));
-    };
-    timeout = window.setTimeout(done, 5000);
-    window.addEventListener("ba-aisdk:ready", done, { once: true });
-  });
-  return bridgeReady;
+export async function getAiSdkReady(): Promise<unknown> {
+  if (aiSdkApi) return aiSdkApi;
+  bridgeReady ||= importAiSdkBridge();
+  const api = await bridgeReady;
+  if (!api) bridgeReady = null;
+  return api;
 }

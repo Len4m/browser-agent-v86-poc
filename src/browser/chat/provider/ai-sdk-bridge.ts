@@ -1,11 +1,11 @@
 // Browser Agent v86 - AI SDK bridge (ESM)
-// Carga el bundle generado de chat y expone window.BA_AISDK.
+// Carga el bundle generado de chat y exporta una API ESM para el runtime LLM.
 // El loop de agente (tools + multi-step) vive en runAgentStreamTurn (AI SDK).
 
 import type { LanguageModel } from "ai";
 import { initI18n, t } from "../../app/i18n";
 import type { LlmModelConfig } from "../state/chat-state";
-import type { AiSdkGlobalApi } from "./ai-sdk-global";
+import type { AiSdkBridgeApi } from "./ai-sdk-runtime";
 import {
   streamText,
   tool,
@@ -336,7 +336,7 @@ function abortActive(): void {
   activeAbortController = null;
 }
 
-const aiSdkApi = {
+export const aiSdkApi = {
   streamText,
   tool,
   stepCountIs,
@@ -360,9 +360,6 @@ const aiSdkApi = {
   textChunkFromStreamPart,
   reasoningChunkFromStreamPart,
   abortActive,
-} as unknown as AiSdkGlobalApi;
+} as unknown as AiSdkBridgeApi;
 
-window.BA_AISDK = aiSdkApi;
-
-window.BA_AISDK_READY = Promise.resolve(true);
-window.dispatchEvent(new CustomEvent("ba-aisdk:ready", { detail: { ready: true } }));
+export default aiSdkApi;

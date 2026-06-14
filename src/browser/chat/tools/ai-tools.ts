@@ -4,7 +4,7 @@
 
 import { state } from "../../app/state";
 import { t } from "../../app/i18n";
-import { getAiSdk, type AiSdkSchemaLike, type AiSdkZodLike } from "../provider/ai-sdk-global";
+import { getAiSdk, type AiSdkSchemaLike, type AiSdkZodLike } from "../provider/ai-sdk-runtime";
 import { llmArtifacts, type LlmArtifact } from "../runtime/artifact-store";
 import { llmResourceGovernor } from "../runtime/resource-governor";
 import { llmToolExecutor } from "./tool-executor";

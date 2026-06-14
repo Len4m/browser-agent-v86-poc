@@ -1,6 +1,6 @@
 # Browser Agent v86 - Arquitectura
 
-La aplicación es un frontend **TypeScript + ESM + esbuild** servido desde `public/`. El navegador carga `public/index.html`, vendors globales mínimos, el bridge ESM del AI SDK y el bundle principal `public/assets/app.js` como módulo.
+La aplicación es un frontend **TypeScript + ESM + esbuild** servido desde `public/`. El navegador carga `public/index.html`, vendors globales mínimos y el bundle principal `public/assets/app.js` como módulo; ese bundle importa bajo demanda el bridge ESM del AI SDK.
 
 La VM corre con **v86** y Alpine x86. La capa LLM usa **AI SDK v6** con backends Transformers.js y Ollama. Las tools del agente se ejecutan dentro de la VM por un canal serial separado de la consola visible.
 
@@ -76,7 +76,7 @@ flowchart LR
 - `public/style.css` y `public/styles/`: CSS generado/copiado para desarrollo.
 - `public/assets/app.css`: CSS bundle minificado generado por `npm run build:prod`.
 - `public/assets/app.js`: bundle ESM principal generado.
-- `public/assets/ai-sdk-bridge.mjs`: bridge ESM generado.
+- `public/assets/ai-sdk-bridge.mjs`: bridge ESM generado e importado dinámicamente por `app.js`.
 - `public/assets/chat/`: bundle AI SDK y worker LLM generados.
 - `public/vendor/`: librerías copiadas desde npm.
 - `public/v86/`: runtime v86, BIOS, kernel, initramfs, perfiles y discos.
@@ -124,7 +124,7 @@ Salidas LLM:
 - `public/assets/chat/workers/llm-browser-ai.worker.mjs`, generado desde `src/browser/chat/provider/ai-sdk/llm-browser-ai.worker.ts`.
 - `public/assets/ai-sdk-bridge.mjs`, generado desde `src/browser/chat/provider/ai-sdk-bridge.ts`.
 
-El bridge importa el bundle generado `assets/chat/ai-sdk-browser.mjs` y expone `window.BA_AISDK` como frontera entre bundles.
+El bridge importa el bundle generado `assets/chat/ai-sdk-browser.mjs` y exporta una API ESM consumida por `src/browser/chat/provider/ai-sdk-runtime.ts`. No publica globals internos en `window`.
 
 ## Assets de runtime
 
@@ -168,7 +168,6 @@ La API pública estable del frontend es `window.BA`, instalada por `src/browser/
 
 Fronteras técnicas restantes:
 
-- `window.BA_AISDK` y `window.BA_AISDK_READY`: puente entre el bundle ESM principal y el bundle AI SDK generado de forma separada.
 - `window.V86Starter` / `window.V86`: runtime v86 cargado como vendor.
 - `window.Terminal`: runtime xterm cargado como vendor.
 
@@ -250,7 +249,7 @@ Archivos clave:
 
 | Archivo | Responsabilidad |
 | --- | --- |
-| `src/browser/chat/provider/ai-sdk-bridge.ts` | Crea/carga modelos, fallback WebGPU->WASM, Ollama y puente `window.BA_AISDK` |
+| `src/browser/chat/provider/ai-sdk-bridge.ts` | Crea/carga modelos, fallback WebGPU->WASM, Ollama y API ESM del bridge AI SDK |
 | `src/browser/chat/provider/ai-sdk/browser-agent-runner.ts` | Turno AI SDK, steps, streaming y síntesis de respaldo |
 | `src/browser/chat/provider/ai-sdk/ollama-browser-model.ts` | Provider Ollama HTTP browser |
 | `src/browser/chat/provider/ai-sdk/llm-browser-ai.worker.ts` | Worker Transformers.js |

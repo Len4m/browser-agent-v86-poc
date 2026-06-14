@@ -10,7 +10,7 @@ import { addMessage } from "../../vm/runtime-assets";
 import { backgroundToolsApi } from "../../vm/background-tools-serial1";
 import { detectLLMCapabilities, type LlmCapabilities } from "../state/capabilities";
 import { getLlmState, llmEventsApi, llmModels, type LlmModelConfig, type LlmState } from "../state/chat-state";
-import { getAiSdk, getAiSdkReady, type AiSdkGlobalApi, type AiSdkRunAgentStreamTurnResult } from "../provider/ai-sdk-global";
+import { getAiSdk, getAiSdkReady, type AiSdkBridgeApi, type AiSdkRunAgentStreamTurnResult } from "../provider/ai-sdk-runtime";
 import { buildAiSdkTools } from "../tools/ai-tools";
 import { llmToolResultPolicy } from "./tool-result-policy";
 import { llmArtifacts, type LlmArtifact } from "./artifact-store";
@@ -316,7 +316,7 @@ async function ensureCapabilities(): Promise<LlmCapabilities> {
   return capabilities;
 }
 
-async function ensureAiSdk(): Promise<AiSdkGlobalApi> {
+async function ensureAiSdk(): Promise<AiSdkBridgeApi> {
   await getAiSdkReady();
   const sdk = getAiSdk();
   if (!sdk) throw new Error(t("chat.error.aiSdkNotLoaded"));

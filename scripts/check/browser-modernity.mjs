@@ -15,7 +15,7 @@ const root = fileURLToPath(new URL("../..", import.meta.url));
 const limits = {
   tsNocheckFiles: 0,
   inlineScriptBlocks: 0,
-  internalWindowAssignments: 2,
+  internalWindowAssignments: 0,
   removedCompatibilityNames: 0,
 };
 

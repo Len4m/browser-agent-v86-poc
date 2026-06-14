@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Verifica el shell frontend generado:
- * - public/index.html generado carga el bundle principal y el bridge ESM externo.
+ * - public/index.html generado carga el bundle principal.
+ * - public/assets/app.js importa dinámicamente el bridge ESM versionado.
  * - public/style.css generado sigue importando todas las hojas públicas.
  * - los bundles/assets mínimos existen.
  */
@@ -68,16 +69,15 @@ function isPublicAssetUrl(value, expectedPath) {
 
 const indexHtml = readFileSync(join(publicRoot, "index.html"), "utf8");
 const styleCss = readFileSync(join(publicRoot, "style.css"), "utf8");
+const appJs = readFileSync(join(publicRoot, "assets/app.js"), "utf8");
 
 const loadedJs = extract(/src="\.\/(js\/[^"?]+\.(?:js|mjs))(?:\?[^"]*)?"/g, indexHtml);
 const loadedAssets = extract(/src="\.\/(assets\/[^"?]+\.(?:js|mjs))(?:\?[^"]*)?"/g, indexHtml);
 const indexCss = extract(/href="\.\/((?:style|assets\/app)\.css)(?:\?v=[^"]*)?"/g, indexHtml);
 const loadedCss = extract(/@import url\("\.\/(styles\/[^"?]+\.css)(?:\?v=[^"]*)?"\)/g, styleCss);
 const appScript = findScriptAttributes("assets/app.js");
-const bridgeScript = findScriptAttributes("assets/ai-sdk-bridge.mjs");
 const hashedRuntimeRefs = [
   ["vendor/xterm/xterm.js", /src="\.\/vendor\/xterm\/xterm\.js\?v=[a-f0-9]{12}"/],
-  ["assets/ai-sdk-bridge.mjs", /src="\.\/assets\/ai-sdk-bridge\.mjs\?v=[a-f0-9]{12}"/],
   ["assets/app.js", /src="\.\/assets\/app\.js\?v=[a-f0-9]{12}"/],
 ];
 
@@ -130,14 +130,14 @@ if (appScript?.type !== "module") {
   console.error("index.html debe cargar ./assets/app.js con type=\"module\"");
 }
 
-if (!loadedAssets.includes("assets/ai-sdk-bridge.mjs")) {
+if (loadedAssets.includes("assets/ai-sdk-bridge.mjs")) {
   failed = true;
-  console.error("index.html debe cargar ./assets/ai-sdk-bridge.mjs como bridge ESM");
+  console.error("index.html no debe cargar ./assets/ai-sdk-bridge.mjs; app.js debe importarlo dinámicamente");
 }
 
-if (bridgeScript?.type !== "module") {
+if (!/"\.\/ai-sdk-bridge\.mjs\?v=[a-f0-9]{12}"/.test(appJs)) {
   failed = true;
-  console.error("index.html debe cargar ./assets/ai-sdk-bridge.mjs con type=\"module\"");
+  console.error("assets/app.js debe importar ./ai-sdk-bridge.mjs con hash de contenido ?v=");
 }
 
 if (!indexCss.includes("style.css") && !indexCss.includes("assets/app.css")) {
