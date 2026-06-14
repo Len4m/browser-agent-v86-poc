@@ -33,7 +33,6 @@ const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"))
 const appVersion = packageJson.version || "0.0.0";
 
 const browserSourceOrder = [
-  "src/browser/console/xterm-consoles.ts",
   "build/browser/generated/10a-llm-models-catalog.js",
   "src/browser/chat/state/chat-state.ts",
   "src/browser/chat/state/capabilities.ts",

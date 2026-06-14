@@ -1,42 +1,168 @@
-// @ts-nocheck
-// Browser Agent v86 - direct xterm console sessions
-// Tab 1 uses the real boot serial0 xterm. Extra tabs use PTYs inside
-// the VM through the serial2 daemon.
+// Browser Agent v86 - direct xterm console sessions.
+// Tab 1 uses the real boot serial0 xterm. Extra tabs use PTYs inside the VM
+// through the serial2 daemon.
 
-function getConsoleTab(id) {
-  return state.consoleTabs.tabs.find((tab) => tab.id === id) || null;
+import { $, NL, state, type ConsoleTab } from "../app/state";
+import { t } from "../app/i18n";
+import { trimLines } from "../app/text-utils";
+import { showBaModal, showBaModalPanel } from "../ui/modal";
+import { blurSerialConsole, logTool, setBadge } from "../ui/status-controls";
+import { backgroundToolsApi } from "../vm/background-tools-serial1";
+import {
+  getSerialTerm,
+  focusSerialConsole,
+  scheduleSerialFit,
+} from "../vm/serial-vm";
+import {
+  consoleControlApi,
+  type ConsoleControlResult,
+  type ConsoleControlSession,
+} from "../vm/console-control-serial2";
+
+interface Disposable {
+  dispose?: () => void;
 }
 
-function getActiveConsoleTab() {
-  return getConsoleTab(state.consoleTabs.activeId)
-    || state.consoleTabs.tabs.find((tab) => tab.owner === "human")
-    || null;
+interface XtermTerminal {
+  write?: (data: string | Uint8Array) => void;
+  clear?: () => void;
+  dispose?: () => void;
+  open?: (container: HTMLElement) => void;
+  focus?: () => void;
+  scrollToBottom?: () => void;
+  hasSelection?: () => boolean;
+  attachCustomKeyEventHandler?: (handler: (event: KeyboardEvent) => boolean) => void;
+  onData?: (handler: (data: string) => void) => Disposable;
 }
 
-function isConsoleControlBusy() {
-  return Boolean(state.pending || state.agentBusy || state.consoleTabs.controlBusy);
+interface XtermConstructor {
+  new (options: Record<string, unknown>): XtermTerminal;
 }
 
-function isSerialConsoleTab(tab) {
-  return tab?.transport === "serial0" || tab?.id === "human-1";
+type ManagedConsoleTab = ConsoleTab & {
+  inputDisposable?: Disposable | null;
+  term?: XtermTerminal | null;
+  container?: HTMLElement | null;
+  restarting?: boolean;
+  restored?: boolean;
+};
+
+interface PendingCommand {
+  raw: string;
+  timer: number;
+  resolve: (result: { code: number; stdout: string; stderr: string }) => void;
 }
 
-function rawSerialSend(text) {
-  const active = getActiveConsoleTab();
-  if (active?.sessionId && !isSerialConsoleTab(active) && window.BA_CONSOLE_CONTROL?.sendInput) {
-    return window.BA_CONSOLE_CONTROL.sendInput(active.sessionId, text);
-  }
-  if (!state.vm?.serial0_send) return false;
+interface VmSerial0Api {
+  serial0_send: (text: string) => void;
+}
+
+type LegacyWindow = Window & typeof globalThis & {
+  Terminal?: unknown;
+};
+
+let initialized = false;
+const decoder = new TextDecoder();
+
+function legacyWindow(): LegacyWindow {
+  return window;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  return "Error";
+}
+
+function safeText(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") return `${value}`;
+  if (typeof value === "symbol") return value.description ? `Symbol(${value.description})` : "Symbol()";
+  if (typeof value === "function") return value.name ? `[function ${value.name}]` : "[function]";
   try {
-    state.vm.serial0_send(text);
+    const json = JSON.stringify(value);
+    if (typeof json === "string") return json;
+  } catch {
+    // Fall through to a stable object tag.
+  }
+  return Object.prototype.toString.call(value);
+}
+
+function asManagedTab(tab: ConsoleTab): ManagedConsoleTab {
+  return tab as ManagedConsoleTab;
+}
+
+function tabs(): ManagedConsoleTab[] {
+  return state.consoleTabs.tabs.map(asManagedTab);
+}
+
+function asXtermTerminal(value: unknown): XtermTerminal | null {
+  return isRecord(value) ? value : null;
+}
+
+function isXtermConstructor(value: unknown): value is XtermConstructor {
+  return typeof value === "function";
+}
+
+function hasSerial0Send(value: unknown): value is VmSerial0Api {
+  return isRecord(value) && typeof value.serial0_send === "function";
+}
+
+function vmSerial0Send(text: string): boolean {
+  const vm = state.vm;
+  if (!hasSerial0Send(vm)) return false;
+  try {
+    vm.serial0_send(text);
     return true;
   } catch (error) {
-    logTool(`${NL}[consola] ${t("console.inputError", { error: error.message })}${NL}`);
+    logTool(`${NL}[consola] ${t("console.inputError", { error: errorMessage(error) })}${NL}`);
     return false;
   }
 }
 
-function ensureDirectConsoleHost() {
+function isPendingCommand(value: unknown): value is PendingCommand {
+  return isRecord(value)
+    && typeof value.raw === "string"
+    && typeof value.timer === "number"
+    && typeof value.resolve === "function";
+}
+
+function successResult(): ConsoleControlResult {
+  return { code: 0, stdout: "", stderr: "" };
+}
+
+export function getConsoleTab(id: string): ManagedConsoleTab | null {
+  return tabs().find((tab) => tab.id === id) || null;
+}
+
+export function getActiveConsoleTab(): ManagedConsoleTab | null {
+  return getConsoleTab(state.consoleTabs.activeId)
+    || tabs().find((tab) => tab.owner === "human")
+    || null;
+}
+
+function isConsoleControlBusy(): boolean {
+  return Boolean(state.pending || state.agentBusy || state.consoleTabs.controlBusy);
+}
+
+function isSerialConsoleTab(tab: ManagedConsoleTab | null | undefined): boolean {
+  return tab?.transport === "serial0" || tab?.id === "human-1";
+}
+
+function rawSerialSend(text: string): boolean {
+  const active = getActiveConsoleTab();
+  if (active?.sessionId && !isSerialConsoleTab(active)) {
+    return consoleControlApi.sendInput(active.sessionId, text);
+  }
+  return vmSerial0Send(text);
+}
+
+function ensureDirectConsoleHost(): HTMLElement | null {
   let host = $("xterm-console-host");
   if (host) return host;
   const shell = $("vm-console-shell");
@@ -48,128 +174,144 @@ function ensureDirectConsoleHost() {
   return host;
 }
 
-function directConsoleCols() {
+function directConsoleCols(): number {
   return state.consoleTabs.fixedCols || 100;
 }
 
-function directConsoleRows() {
+function directConsoleRows(): number {
   return state.consoleTabs.fixedRows || 24;
 }
 
-function getNextHumanConsoleNumber() {
-  const used = new Set(state.consoleTabs.tabs.map((tab) => Number(tab.humanNumber || 0)));
+function getNextHumanConsoleNumber(): number {
+  const used = new Set(tabs().map((tab) => Number(tab.humanNumber || 0)));
   for (let i = 1; i <= state.consoleTabs.maxHumanConsoles; i += 1) {
     if (!used.has(i)) return i;
   }
   return 0;
 }
 
-function disposeConsoleTab(tab) {
+function disposeConsoleTab(tab: ManagedConsoleTab | null): void {
   if (!tab) return;
   if (tab.inputDisposable?.dispose) {
-    try { tab.inputDisposable.dispose(); } catch {}
+    try {
+      tab.inputDisposable.dispose();
+    } catch {
+      // xterm disposable cleanup is best-effort.
+    }
   }
   tab.inputDisposable = null;
   if (tab.term?.dispose) {
-    try { tab.term.dispose(); } catch {}
+    try {
+      tab.term.dispose();
+    } catch {
+      // Terminal disposal is best-effort.
+    }
   }
   tab.term = null;
   if (tab.container?.remove) {
-    try { tab.container.remove(); } catch {}
+    try {
+      tab.container.remove();
+    } catch {
+      // DOM cleanup is best-effort.
+    }
   }
   tab.container = null;
 }
 
-function writeToConsoleTab(tab, bytes) {
+function writeToConsoleTab(tab: ManagedConsoleTab | null, bytes: Uint8Array): void {
   if (!tab?.term) return;
   try {
-    tab.term.write(bytes);
+    tab.term.write?.(bytes);
   } catch {
-    try { tab.term.write(new TextDecoder().decode(bytes)); } catch {}
+    try {
+      tab.term.write?.(decoder.decode(bytes));
+    } catch {
+      // Broken terminal writes are ignored.
+    }
   }
-  try { tab.term.scrollToBottom?.(); } catch {}
+  try {
+    tab.term.scrollToBottom?.();
+  } catch {
+    // Scrolling is best-effort.
+  }
 }
 
-function findConsoleTabBySession(sessionId) {
-  return state.consoleTabs.tabs.find((item) => item.sessionId === String(sessionId)) || null;
+function findConsoleTabBySession(sessionId: unknown): ManagedConsoleTab | null {
+  return tabs().find((item) => item.sessionId === String(sessionId)) || null;
 }
 
-function shouldConfirmConsoleClose(tab) {
+function shouldConfirmConsoleClose(tab: ManagedConsoleTab | null): boolean {
   return Boolean(tab?.userInputSeen && tab.status !== "closed" && !isSerialConsoleTab(tab));
 }
 
-function defaultConsoleTitle(tab) {
+function defaultConsoleTitle(tab: ManagedConsoleTab | null): string {
   return String(tab?.humanNumber || 1);
 }
 
-function displayConsoleTitle(tab) {
-  return String(tab?.title || defaultConsoleTitle(tab));
+function displayConsoleTitle(tab: ManagedConsoleTab): string {
+  return String(tab.title || defaultConsoleTitle(tab));
 }
 
-function shortConsoleLabel(tab) {
+function shortConsoleLabel(tab: ManagedConsoleTab): string {
   const title = displayConsoleTitle(tab).trim();
   const fallback = defaultConsoleTitle(tab);
   return title || fallback;
 }
 
-async function renameConsoleTab(id) {
+async function renameConsoleTab(id: string): Promise<void> {
   const tab = getConsoleTab(id);
   if (!tab || tab.owner !== "human" || isConsoleControlBusy()) return;
   if (state.consoleTabs.renameOpen) return;
 
   const currentTitle = displayConsoleTitle(tab);
-  let next = null;
+  let next: string | null = null;
 
   state.consoleTabs.renameOpen = true;
   try {
-    if (typeof showBaModalPanel === "function") {
-      const inputId = "ba-console-rename-input";
-      let modalValue = currentTitle;
-      const result = await showBaModalPanel({
-        title: t("console.rename.title", { title: currentTitle }),
-        closeOnBackdrop: false,
-        buttons: [
-          { id: "cancel", label: t("common.cancel"), variant: "secondary", cancel: true },
-          { id: "save", label: t("common.save"), variant: "primary" },
-        ],
-        onMount(bodyEl) {
-          const wrap = document.createElement("label");
-          wrap.className = "ba-console-rename-field";
-          wrap.textContent = t("console.rename.fieldLabel");
+    let modalValue = currentTitle;
+    const result = await showBaModalPanel({
+      title: t("console.rename.title", { title: currentTitle }),
+      closeOnBackdrop: false,
+      buttons: [
+        { id: "cancel", label: t("common.cancel"), variant: "secondary", cancel: true },
+        { id: "save", label: t("common.save"), variant: "primary" },
+      ],
+      onMount(bodyEl) {
+        const wrap = document.createElement("label");
+        wrap.className = "ba-console-rename-field";
+        wrap.textContent = t("console.rename.fieldLabel");
 
-          const input = document.createElement("input");
-          input.id = inputId;
-          input.type = "text";
-          input.maxLength = 32;
-          input.value = currentTitle;
-          input.autocomplete = "off";
-          input.spellcheck = false;
-          input.addEventListener("input", () => {
-            modalValue = input.value;
-          });
-          input.addEventListener("keydown", (event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              $("ba-modal-actions")?.querySelector(".ba-modal-button.primary")?.click?.();
-            }
-          });
+        const input = document.createElement("input");
+        input.id = "ba-console-rename-input";
+        input.type = "text";
+        input.maxLength = 32;
+        input.value = currentTitle;
+        input.autocomplete = "off";
+        input.spellcheck = false;
+        input.addEventListener("input", () => {
+          modalValue = input.value;
+        });
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            $("ba-modal-actions")?.querySelector<HTMLButtonElement>(".ba-modal-button.primary")?.click();
+          }
+        });
 
-          wrap.appendChild(input);
-          bodyEl.appendChild(wrap);
-          window.setTimeout(() => {
-            try {
-              input.focus();
-              input.select();
-            } catch {}
-          }, 0);
-        },
-      });
-      if (result !== "save") return;
-      next = modalValue;
-    } else {
-      next = window.prompt(t("console.rename.fieldLabel"), currentTitle);
-      if (next === null) return;
-    }
+        wrap.appendChild(input);
+        bodyEl.appendChild(wrap);
+        window.setTimeout(() => {
+          try {
+            input.focus();
+            input.select();
+          } catch {
+            // Focus is best-effort.
+          }
+        }, 0);
+      },
+    });
+    if (result !== "save") return;
+    next = modalValue;
   } finally {
     state.consoleTabs.renameOpen = false;
   }
@@ -179,7 +321,7 @@ async function renameConsoleTab(id) {
   renderConsoleTabs();
 }
 
-function handleConsoleTabClick(event, tab) {
+function handleConsoleTabClick(event: MouseEvent, tab: ManagedConsoleTab): void {
   event.preventDefault();
   event.stopPropagation();
 
@@ -189,7 +331,7 @@ function handleConsoleTabClick(event, tab) {
   }
 
   if (event.detail >= 2) {
-    renameConsoleTab(tab.id);
+    void renameConsoleTab(tab.id);
     return;
   }
 
@@ -199,15 +341,15 @@ function handleConsoleTabClick(event, tab) {
   }, 180);
 }
 
-async function ensureConsoleSession(tab) {
+async function ensureConsoleSession(tab: ManagedConsoleTab): Promise<ConsoleControlResult> {
   if (isSerialConsoleTab(tab)) {
     tab.status = state.vmReady ? "ready" : "pending";
-    return { code: 0, stdout: "", stderr: "" };
+    return successResult();
   }
-  if (!tab?.sessionId || !window.BA_CONSOLE_CONTROL?.createSession) return { code: 1, stderr: t("console.controlUnavailable") };
+  if (!tab.sessionId) return { code: 1, stdout: "", stderr: t("console.controlUnavailable") };
   tab.status = "connecting";
   renderConsoleTabs();
-  const result = await window.BA_CONSOLE_CONTROL.createSession(tab.sessionId, {
+  const result = await consoleControlApi.createSession(tab.sessionId, {
     cols: directConsoleCols(),
     rows: directConsoleRows(),
   });
@@ -216,7 +358,7 @@ async function ensureConsoleSession(tab) {
   return result;
 }
 
-async function restartConsoleTab(tab, { announce = true } = {}) {
+async function restartConsoleTab(tab: ManagedConsoleTab | null, { announce = true }: { announce?: boolean } = {}): Promise<boolean> {
   if (!tab || tab.restarting) return false;
   tab.restarting = true;
   try {
@@ -224,7 +366,9 @@ async function restartConsoleTab(tab, { announce = true } = {}) {
       tab.term?.clear?.();
       tab.term?.write?.("\x1b[3J\x1b[H\x1b[2J");
       if (announce) tab.term?.write?.(`[${t("console.restarting")}]\r\n`);
-    } catch {}
+    } catch {
+      // Terminal repaint is best-effort.
+    }
     const result = await ensureConsoleSession(tab);
     if (result.code !== 0) {
       tab.term?.write?.(`\r\n[${t("console.ptyRestartError", { error: result.stderr || result.stdout || result.code })}]\r\n`);
@@ -238,7 +382,7 @@ async function restartConsoleTab(tab, { announce = true } = {}) {
   }
 }
 
-function handleConsoleClosedEvent(sessionId) {
+function handleConsoleClosedEvent(sessionId: string): void {
   const tab = findConsoleTabBySession(sessionId);
   if (!tab) return;
   tab.status = "closed";
@@ -247,24 +391,25 @@ function handleConsoleClosedEvent(sessionId) {
   tab.term?.write?.(`\r\n[${t("console.shellEnded")}]\r\n`);
 }
 
-function ensureConsoleOutputSubscription() {
-  if (state.consoleTabs.outputDisposable || !window.BA_CONSOLE_CONTROL?.onOutput) return;
-  state.consoleTabs.outputDisposable = window.BA_CONSOLE_CONTROL.onOutput((sessionId, bytes) => {
+function ensureConsoleOutputSubscription(): void {
+  if (state.consoleTabs.outputDisposable) return;
+  state.consoleTabs.outputDisposable = consoleControlApi.onOutput((sessionId, bytes) => {
     const tab = findConsoleTabBySession(sessionId);
     if (tab) writeToConsoleTab(tab, bytes);
   });
-  state.consoleTabs.eventDisposable = window.BA_CONSOLE_CONTROL.onEvent?.((event) => {
-    if (event?.type === "closed") {
+  state.consoleTabs.eventDisposable = consoleControlApi.onEvent((event) => {
+    if (event.type === "closed") {
       handleConsoleClosedEvent(event.sessionId);
     }
   });
 }
 
-function createBrowserTerminal(tab) {
-  if (isSerialConsoleTab(tab)) return getSerialTerm();
+function createBrowserTerminal(tab: ManagedConsoleTab): XtermTerminal | null {
+  if (isSerialConsoleTab(tab)) return asXtermTerminal(getSerialTerm());
   if (tab.term) return tab.term;
   const host = ensureDirectConsoleHost();
-  if (!host || !window.Terminal) return null;
+  const Terminal = legacyWindow().Terminal;
+  if (!host || !isXtermConstructor(Terminal)) return null;
 
   const container = document.createElement("div");
   container.className = "xterm-console-pane";
@@ -272,7 +417,7 @@ function createBrowserTerminal(tab) {
   container.hidden = tab.id !== state.consoleTabs.activeId;
   host.appendChild(container);
 
-  const term = new window.Terminal({
+  const term = new Terminal({
     cols: directConsoleCols(),
     rows: directConsoleRows(),
     cursorBlink: true,
@@ -286,45 +431,49 @@ function createBrowserTerminal(tab) {
     },
   });
 
-  term.open(container);
+  term.open?.(container);
   tab.container = container;
   tab.term = term;
   if (typeof term.attachCustomKeyEventHandler === "function") {
-    term.attachCustomKeyEventHandler((event) => {
+    term.attachCustomKeyEventHandler((event: KeyboardEvent) => {
       if (event.type !== "keydown") return true;
       if (!event.ctrlKey || event.shiftKey || event.altKey || event.metaKey) return true;
       if (String(event.key || "").toLowerCase() !== "c") return true;
       if (typeof term.hasSelection === "function" && term.hasSelection()) return true;
       if (tab.status !== "closed" && tab.sessionId) {
         tab.userInputSeen = true;
-        window.BA_CONSOLE_CONTROL?.sendInput?.(tab.sessionId, "\x03");
+        consoleControlApi.sendInput(tab.sessionId, "\x03");
       }
       return false;
     });
   }
-  tab.inputDisposable = term.onData((data) => {
+  tab.inputDisposable = term.onData?.((data) => {
     if (!tab.sessionId) return;
     if (tab.status === "closed") return;
     if (data) tab.userInputSeen = true;
-    window.BA_CONSOLE_CONTROL?.sendInput?.(tab.sessionId, data);
-  });
+    consoleControlApi.sendInput(tab.sessionId, data);
+  }) || null;
 
-  try { term.focus(); } catch {}
+  try {
+    term.focus?.();
+  } catch {
+    // Initial terminal focus is best-effort.
+  }
   return term;
 }
 
-function setActiveConsolePane(id) {
+function setActiveConsolePane(id: string): void {
   const active = getConsoleTab(id);
   const serialActive = isSerialConsoleTab(active);
   document.body.classList.toggle("console-serial-active", serialActive);
   document.body.classList.toggle("console-extra-active", Boolean(active && !serialActive));
-  for (const tab of state.consoleTabs.tabs) {
+  for (const tab of tabs()) {
     if (tab.container) tab.container.hidden = tab.id !== id;
   }
   if (serialActive) scheduleSerialFit({ focus: false });
 }
 
-async function finalizeConsoleTabsReady({ extraReady = true } = {}) {
+export async function finalizeConsoleTabsReady({ extraReady = true }: { extraReady?: boolean } = {}): Promise<void> {
   if (!state.consoleTabs.initializing && state.consoleTabs.ready) return;
   if (state.consoleTabs.initTimer) {
     window.clearTimeout(state.consoleTabs.initTimer);
@@ -355,13 +504,13 @@ async function finalizeConsoleTabsReady({ extraReady = true } = {}) {
   }
   state.consoleTabs.activeId = state.consoleTabs.activeId || "human-1";
 
-  for (const tab of state.consoleTabs.tabs) {
+  for (const tab of tabs()) {
     createBrowserTerminal(tab);
   }
   setActiveConsolePane(state.consoleTabs.activeId);
   renderConsoleTabs();
 
-  for (const tab of state.consoleTabs.tabs) {
+  for (const tab of tabs()) {
     if (isSerialConsoleTab(tab)) {
       tab.status = state.vmReady ? "ready" : "pending";
       continue;
@@ -371,7 +520,9 @@ async function finalizeConsoleTabsReady({ extraReady = true } = {}) {
       continue;
     }
     const result = await ensureConsoleSession(tab);
-    if (result.code !== 0 && tab.term) tab.term.write(`\r\n[${t("console.ptyCreateError", { error: result.stderr || result.stdout || result.code })}]\r\n`);
+    if (result.code !== 0 && tab.term) {
+      tab.term.write?.(`\r\n[${t("console.ptyCreateError", { error: result.stderr || result.stdout || result.code })}]\r\n`);
+    }
   }
 
   renderConsoleTabs();
@@ -381,7 +532,7 @@ async function finalizeConsoleTabsReady({ extraReady = true } = {}) {
   logTool(`[consola] ${t("console.tabsInfo")}${NL}`);
 }
 
-function failConsoleTabsInit(message = t("console.unavailable")) {
+function failConsoleTabsInit(message = t("console.unavailable")): void {
   if (state.consoleTabs.initTimer) {
     window.clearTimeout(state.consoleTabs.initTimer);
     state.consoleTabs.initTimer = 0;
@@ -393,36 +544,45 @@ function failConsoleTabsInit(message = t("console.unavailable")) {
   logTool(`${NL}[consola] ${t("console.rebuildHint", { message })}${NL}`);
 }
 
-function setConsoleTabsStatus(text, tone = "") {
+function setConsoleTabsStatus(text: string, tone = ""): void {
   const status = $("console-tabs-status");
   if (status) setBadge(status, text, tone);
 }
 
-function humanConsoleNumberForRestoredSession(sessionId) {
-  const value = Number.parseInt(String(sessionId || ""), 10);
-  const used = new Set(state.consoleTabs.tabs.map((tab) => Number(tab.humanNumber || 0)));
+function humanConsoleNumberForRestoredSession(sessionId: unknown): number {
+  const value = Number.parseInt(safeText(sessionId), 10);
+  const used = new Set(tabs().map((tab) => Number(tab.humanNumber || 0)));
   if (Number.isInteger(value) && value > 1 && value <= state.consoleTabs.maxHumanConsoles && !used.has(value)) {
     return value;
   }
   return getNextHumanConsoleNumber();
 }
 
-function ensureConsoleTabForDaemonSession(session) {
-  const sessionId = String(session?.id || "");
+function sessionIdFrom(session: ConsoleControlSession): string {
+  return safeText(session.id);
+}
+
+function sessionAlive(session: ConsoleControlSession): boolean {
+  return Boolean(session.alive);
+}
+
+function ensureConsoleTabForDaemonSession(session: ConsoleControlSession): ManagedConsoleTab | null {
+  const sessionId = sessionIdFrom(session);
   if (!sessionId || findConsoleTabBySession(sessionId)) return null;
-  if (state.consoleTabs.tabs.filter((tab) => tab.owner === "human").length >= state.consoleTabs.maxHumanConsoles) return null;
+  if (tabs().filter((tab) => tab.owner === "human").length >= state.consoleTabs.maxHumanConsoles) return null;
 
   const humanNumber = humanConsoleNumberForRestoredSession(sessionId);
   if (!humanNumber) return null;
 
-  const tab = {
+  const tab: ManagedConsoleTab = {
     id: `human-${humanNumber}`,
     owner: "human",
     title: String(humanNumber),
     sessionId,
     humanNumber,
     closable: true,
-    status: session?.alive ? "ready" : "closed",
+    transport: "serial2",
+    status: sessionAlive(session) ? "ready" : "closed",
     userInputSeen: false,
     restored: true,
   };
@@ -431,20 +591,21 @@ function ensureConsoleTabForDaemonSession(session) {
   return tab;
 }
 
-async function syncConsoleTabsFromDaemon({ repaint = true, createMissing = false } = {}) {
-  if (!state.vm || !state.vmReady || !window.BA_CONSOLE_CONTROL?.listSessions) return false;
-  const sessions = await window.BA_CONSOLE_CONTROL.listSessions().catch(() => []);
+export async function syncConsoleTabsFromDaemon({ repaint = true, createMissing = false }: { repaint?: boolean; createMissing?: boolean } = {}): Promise<boolean> {
+  if (!state.vm || !state.vmReady) return false;
+  const sessions = await consoleControlApi.listSessions().catch(() => []);
   if (!Array.isArray(sessions)) return false;
   state.consoleTabs.extraReady = true;
   ensureConsoleOutputSubscription();
-  const seen = new Set();
+  const seen = new Set<string>();
   for (const session of sessions) {
-    seen.add(String(session.id));
-    const tab = findConsoleTabBySession(session.id)
-      || (createMissing && session?.alive ? ensureConsoleTabForDaemonSession(session) : null);
-    if (tab) tab.status = session.alive ? "ready" : "closed";
+    const sessionId = sessionIdFrom(session);
+    seen.add(sessionId);
+    const tab = findConsoleTabBySession(sessionId)
+      || (createMissing && sessionAlive(session) ? ensureConsoleTabForDaemonSession(session) : null);
+    if (tab) tab.status = sessionAlive(session) ? "ready" : "closed";
   }
-  for (const tab of state.consoleTabs.tabs) {
+  for (const tab of tabs()) {
     if (!isSerialConsoleTab(tab) && tab.owner === "human" && tab.sessionId && tab.status === "ready" && !seen.has(String(tab.sessionId))) {
       tab.status = "closed";
     }
@@ -454,7 +615,7 @@ async function syncConsoleTabsFromDaemon({ repaint = true, createMissing = false
   return true;
 }
 
-function syncConsoleInputLock() {
+export function syncConsoleInputLock(): void {
   document.body.classList.remove("console-readonly");
   const overlay = $("vm-lock-overlay");
   if (!overlay) return;
@@ -463,7 +624,7 @@ function syncConsoleInputLock() {
   overlay.textContent = "";
 }
 
-function renderConsoleTabs() {
+export function renderConsoleTabs(): void {
   const list = $("console-tabs-list");
   const cancelButton = $("cancel-tool");
   const newButton = $("new-console");
@@ -473,12 +634,12 @@ function renderConsoleTabs() {
 
   const active = getActiveConsoleTab();
   const busy = isConsoleControlBusy();
-  const humanCount = state.consoleTabs.tabs.filter((tab) => tab.owner === "human").length;
+  const humanCount = tabs().filter((tab) => tab.owner === "human").length;
   const ready = Boolean(state.consoleTabs.ready);
   const extraReady = Boolean(state.consoleTabs.extraReady);
 
   list.replaceChildren();
-  for (const tab of state.consoleTabs.tabs) {
+  for (const tab of tabs()) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `console-tab ${tab.owner}`;
@@ -491,8 +652,8 @@ function renderConsoleTabs() {
     button.setAttribute("aria-label", displayConsoleTitle(tab));
     button.title = `${displayConsoleTitle(tab)} · ${t("console.tab.dblClickRename")} · ${
       isSerialConsoleTab(tab)
-      ? t("console.tab.serialTooltip")
-      : t("console.tab.ptyTooltip")
+        ? t("console.tab.serialTooltip")
+        : t("console.tab.ptyTooltip")
     }`;
     button.addEventListener("click", (event) => handleConsoleTabClick(event, tab));
 
@@ -503,7 +664,7 @@ function renderConsoleTabs() {
       close.title = t("common.closeConsole");
       close.addEventListener("click", (event) => {
         event.stopPropagation();
-        closeHumanConsoleTab(tab.id);
+        void closeHumanConsoleTab(tab.id);
       });
       button.appendChild(close);
     }
@@ -511,10 +672,10 @@ function renderConsoleTabs() {
     list.appendChild(button);
   }
 
-  if (cancelButton) cancelButton.disabled = !state.bgTools?.pending;
-  if (newButton) newButton.disabled = !ready || !extraReady || busy || humanCount >= state.consoleTabs.maxHumanConsoles;
-  if (redrawButton) redrawButton.disabled = !ready || busy || !active;
-  if (closeConsoleButton) closeConsoleButton.disabled = !ready || busy || !active || !active.closable;
+  if (cancelButton instanceof HTMLButtonElement) cancelButton.disabled = !state.bgTools.pending;
+  if (newButton instanceof HTMLButtonElement) newButton.disabled = !ready || !extraReady || busy || humanCount >= state.consoleTabs.maxHumanConsoles;
+  if (redrawButton instanceof HTMLButtonElement) redrawButton.disabled = !ready || busy || !active;
+  if (closeConsoleButton instanceof HTMLButtonElement) closeConsoleButton.disabled = !ready || busy || !active || !active.closable;
 
   if (state.consoleTabs.controlBusy) setConsoleTabsStatus(t("console.status.updating"), "warn");
   else if (state.consoleTabs.ready) setConsoleTabsStatus(extraReady ? t("console.status.count", { count: humanCount }) : t("console.status.serialOnly"), extraReady ? "good" : "warn");
@@ -524,14 +685,22 @@ function renderConsoleTabs() {
   syncConsoleInputLock();
 }
 
-function resetConsoleTabs() {
+export function resetConsoleTabs(): void {
   if (state.consoleTabs.outputDisposable?.dispose) {
-    try { state.consoleTabs.outputDisposable.dispose(); } catch {}
+    try {
+      state.consoleTabs.outputDisposable.dispose();
+    } catch {
+      // Subscription cleanup is best-effort.
+    }
   }
   if (state.consoleTabs.eventDisposable?.dispose) {
-    try { state.consoleTabs.eventDisposable.dispose(); } catch {}
+    try {
+      state.consoleTabs.eventDisposable.dispose();
+    } catch {
+      // Subscription cleanup is best-effort.
+    }
   }
-  for (const tab of state.consoleTabs.tabs || []) disposeConsoleTab(tab);
+  for (const tab of tabs()) disposeConsoleTab(tab);
   state.consoleTabs.outputDisposable = null;
   state.consoleTabs.eventDisposable = null;
   if (state.consoleTabs.clickTimer) {
@@ -557,13 +726,15 @@ function resetConsoleTabs() {
   renderConsoleTabs();
 }
 
-async function initConsoleTabsAfterBoot() {
+export async function initConsoleTabsAfterBoot(): Promise<void> {
   if (!state.vm || !state.vmReady || state.consoleTabs.ready || state.consoleTabs.initializing) return;
   if (state.pending || state.agentBusy) {
-    window.setTimeout(() => initConsoleTabsAfterBoot(), 500);
+    window.setTimeout(() => {
+      void initConsoleTabsAfterBoot();
+    }, 500);
     return;
   }
-  if (!window.Terminal) {
+  if (!isXtermConstructor(legacyWindow().Terminal)) {
     failConsoleTabsInit(t("console.error.xtermNotLoaded"));
     return;
   }
@@ -572,7 +743,7 @@ async function initConsoleTabsAfterBoot() {
   renderConsoleTabs();
   logTool(`${NL}[consola] ${t("console.waitingDaemon")}${NL}`);
 
-  const ready = await window.BA_CONSOLE_CONTROL?.probeRunnerReady?.({ timeoutMs: 3500 }).catch(() => false);
+  const ready = await consoleControlApi.probeRunnerReady({ timeoutMs: 3500 }).catch(() => false);
   if (!ready) {
     logTool(`${NL}[consola] ${t("console.daemonUnavailable")}${NL}`);
     await finalizeConsoleTabsReady({ extraReady: false });
@@ -581,7 +752,7 @@ async function initConsoleTabsAfterBoot() {
   await finalizeConsoleTabsReady({ extraReady: true });
 }
 
-async function selectConsoleTab(id, { force = false } = {}) {
+function selectConsoleTab(id: string, { force = false }: { force?: boolean } = {}): boolean {
   const tab = getConsoleTab(id);
   if (!tab) return false;
   if (!state.consoleTabs.ready && id !== state.consoleTabs.activeId) return false;
@@ -593,28 +764,33 @@ async function selectConsoleTab(id, { force = false } = {}) {
   if (isSerialConsoleTab(tab)) {
     focusSerialConsole();
   } else if (tab.owner === "human") {
-    try { tab.term?.focus?.(); } catch {}
+    try {
+      tab.term?.focus?.();
+    } catch {
+      // Focus is best-effort.
+    }
   } else {
     blurSerialConsole();
   }
   return true;
 }
 
-async function createHumanConsoleTab() {
+export async function createHumanConsoleTab(): Promise<void> {
   if (!state.consoleTabs.ready || isConsoleControlBusy()) return;
   if (!state.consoleTabs.extraReady) return;
-  const humanCount = state.consoleTabs.tabs.filter((tab) => tab.owner === "human").length;
+  const humanCount = tabs().filter((tab) => tab.owner === "human").length;
   if (humanCount >= state.consoleTabs.maxHumanConsoles) return;
   const number = getNextHumanConsoleNumber();
   if (!number) return;
 
-  const tab = {
+  const tab: ManagedConsoleTab = {
     id: `human-${number}`,
     owner: "human",
     title: String(number),
     sessionId: String(number),
     humanNumber: number,
     closable: true,
+    transport: "serial2",
     status: "connecting",
     userInputSeen: false,
   };
@@ -637,15 +813,17 @@ async function createHumanConsoleTab() {
   }
 }
 
-async function redrawConsoleScreen(tab, { sync = true } = {}) {
+async function redrawConsoleScreen(tab: ManagedConsoleTab | null, { sync = true }: { sync?: boolean } = {}): Promise<boolean> {
   if (!tab) return false;
   if (isSerialConsoleTab(tab)) {
     try {
-      const term = getSerialTerm();
+      const term = asXtermTerminal(getSerialTerm());
       term?.clear?.();
       term?.write?.("\x1b[3J\x1b[H\x1b[2J");
-    } catch {}
-    state.vm?.serial0_send?.("\x0c");
+    } catch {
+      // Serial redraw is best-effort.
+    }
+    vmSerial0Send("\x0c");
     window.setTimeout(() => focusSerialConsole(), 100);
     return true;
   }
@@ -656,13 +834,15 @@ async function redrawConsoleScreen(tab, { sync = true } = {}) {
   try {
     tab.term?.clear?.();
     tab.term?.write?.("\x1b[3J\x1b[H\x1b[2J");
-  } catch {}
-  window.BA_CONSOLE_CONTROL?.sendInput?.(tab.sessionId, "\x0c");
+  } catch {
+    // Terminal redraw is best-effort.
+  }
+  if (tab.sessionId) consoleControlApi.sendInput(tab.sessionId, "\x0c");
   window.setTimeout(() => tab.term?.focus?.(), 100);
   return true;
 }
 
-async function redrawActiveConsoleScreen() {
+export async function redrawActiveConsoleScreen(): Promise<void> {
   if (!state.consoleTabs.ready || isConsoleControlBusy()) return;
   const tab = getActiveConsoleTab();
   if (!tab) return;
@@ -670,8 +850,8 @@ async function redrawActiveConsoleScreen() {
   renderConsoleTabs();
 }
 
-async function closeHumanConsoleTab(id) {
-  if (!state.consoleTabs.ready || isConsoleControlBusy()) return;
+export async function closeHumanConsoleTab(id: string | undefined): Promise<void> {
+  if (!id || !state.consoleTabs.ready || isConsoleControlBusy()) return;
   const tab = getConsoleTab(id);
   if (!tab || tab.owner !== "human" || !tab.closable) return;
 
@@ -690,14 +870,14 @@ async function closeHumanConsoleTab(id) {
 
   state.consoleTabs.controlBusy = true;
   try {
-    const result = tab.status === "closed"
-      ? { code: 0 }
-      : await window.BA_CONSOLE_CONTROL.closeSession(tab.sessionId);
+    const result = tab.status === "closed" || !tab.sessionId
+      ? successResult()
+      : await consoleControlApi.closeSession(tab.sessionId);
     if (result.code !== 0) {
       logTool(`${NL}[consola] ${t("console.closeFailed", { title: tab.title, error: result.stderr || `exit ${result.code}` })}${NL}`);
       return;
     }
-    state.consoleTabs.tabs = state.consoleTabs.tabs.filter((item) => item.id !== tab.id);
+    state.consoleTabs.tabs = tabs().filter((item) => item.id !== tab.id);
     disposeConsoleTab(tab);
     if (state.consoleTabs.activeId === tab.id) {
       state.consoleTabs.activeId = state.consoleTabs.tabs[0]?.id || "human-1";
@@ -710,12 +890,9 @@ async function closeHumanConsoleTab(id) {
   }
 }
 
-function cancelCurrentTool() {
-  if (window.BA_BG_TOOLS?.cancelCurrent) {
-    window.BA_BG_TOOLS.cancelCurrent();
-    return;
-  }
-  if (!state.pending) return;
+export function cancelCurrentTool(): void {
+  if (backgroundToolsApi.cancelPending(t("bgtools.reason.user"))) return;
+  if (!isPendingCommand(state.pending)) return;
   const pending = state.pending;
   logTool(`${NL}[tool] ${t("console.cancelTool.log")}${NL}`);
   rawSerialSend("\x03");
@@ -728,19 +905,19 @@ function cancelCurrentTool() {
   }, 1800);
 }
 
-function escapeConsoleHelpHtml(value) {
-  return String(value ?? "")
+function escapeConsoleHelpHtml(value: unknown): string {
+  return safeText(value)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
 }
 
-function consoleHelpKbd(parts) {
+function consoleHelpKbd(parts: string[]): string {
   return parts.map((part) => `<kbd>${escapeConsoleHelpHtml(part)}</kbd>`).join('<span class="ba-console-help-plus">+</span>');
 }
 
-function buildConsoleHelpHtml() {
+function buildConsoleHelpHtml(): string {
   return `
     <div class="ba-console-help">
       <p class="ba-console-help-lead">
@@ -774,7 +951,7 @@ function buildConsoleHelpHtml() {
   `;
 }
 
-function buildConsoleHelpPlainText() {
+function buildConsoleHelpPlainText(): string {
   return [
     t("console.helpText.title"),
     "",
@@ -790,32 +967,32 @@ function buildConsoleHelpPlainText() {
   ].join("\n");
 }
 
-function showConsoleHelpModal() {
-  if (typeof showBaModalPanel === "function") {
-    showBaModalPanel({
-      title: t("console.help.modalTitle"),
-      onMount(bodyEl) {
-        bodyEl.innerHTML = buildConsoleHelpHtml();
-      },
-      buttons: [{ id: "close", label: t("console.help.gotIt"), variant: "primary", cancel: true }],
-    });
-    return;
-  }
-
-  const detail = buildConsoleHelpPlainText();
-  if (typeof showBaModal === "function") {
-    showBaModal({
+export function showConsoleHelpModal(): void {
+  void showBaModalPanel({
+    title: t("console.help.modalTitle"),
+    onMount(bodyEl) {
+      bodyEl.innerHTML = buildConsoleHelpHtml();
+    },
+    buttons: [{ id: "close", label: t("console.help.gotIt"), variant: "primary", cancel: true }],
+  }).catch(() => {
+    const detail = buildConsoleHelpPlainText();
+    void showBaModal({
       title: t("console.help.modalTitle"),
       message: t("console.help.modalMessage"),
       detail,
       buttons: [{ id: "ok", label: t("console.help.gotIt"), variant: "primary", cancel: true }],
     });
-    return;
-  }
-
-  alert(detail);
+  });
 }
 
-window.addEventListener("ba:langchange", () => {
-  try { renderConsoleTabs(); } catch {}
-});
+export function initXtermConsoles(): void {
+  if (initialized) return;
+  initialized = true;
+  window.addEventListener("ba:langchange", () => {
+    try {
+      renderConsoleTabs();
+    } catch {
+      // Rendering during language changes is best-effort.
+    }
+  });
+}

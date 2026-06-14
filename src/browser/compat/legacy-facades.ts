@@ -21,6 +21,7 @@ import {
 } from "../app/i18n";
 import { initLangSelector } from "../app/lang-selector";
 import { initOriginAwareness, originApi } from "../app/origin-awareness";
+import * as xtermConsoles from "../console/xterm-consoles";
 import { runChecks } from "../ui/checks-panel";
 import { confirmVmShutdown, showBaModal, showBaModalPanel } from "../ui/modal";
 import { backgroundToolsApi, initBackgroundToolsSerial1 } from "../vm/background-tools-serial1";
@@ -60,7 +61,7 @@ import {
   utf8ToBase64,
 } from "../app/text-utils";
 
-type LegacyWindow = Window & typeof globalThis & typeof vmOperations & typeof profileConfig & typeof runtimeAssets & typeof serialVm & typeof terminalMarkers & {
+type LegacyWindow = Window & typeof globalThis & typeof xtermConsoles & typeof vmOperations & typeof profileConfig & typeof runtimeAssets & typeof serialVm & typeof terminalMarkers & {
   $: typeof $;
   CR: typeof CR;
   DOCKER_WSNIC_COMMAND: typeof DOCKER_WSNIC_COMMAND;
@@ -116,7 +117,7 @@ export function installLegacyFacades(): void {
   installed = true;
 
   const legacyWindow = window as LegacyWindow;
-  Object.assign(legacyWindow, vmOperations, profileConfig, runtimeAssets, serialVm, terminalMarkers, {
+  Object.assign(legacyWindow, xtermConsoles, vmOperations, profileConfig, runtimeAssets, serialVm, terminalMarkers, {
     $,
     CR,
     DOCKER_WSNIC_COMMAND,
@@ -168,6 +169,7 @@ export function installLegacyFacades(): void {
 
   void initI18n();
   initBackgroundToolsSerial1();
+  xtermConsoles.initXtermConsoles();
   initOriginAwareness();
   initStatusControls();
   profileConfig.initProfileConfig();
