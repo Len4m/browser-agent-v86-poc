@@ -33,7 +33,6 @@ const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"))
 const appVersion = packageJson.version || "0.0.0";
 
 const browserSourceOrder = [
-  "src/browser/chat/runtime/agent-debug.ts",
   "src/browser/chat/runtime/chat-ui.ts",
   "src/browser/chat/runtime/agent-loop.ts",
   "src/browser/chat/panel/panel.ts",
