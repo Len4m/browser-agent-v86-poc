@@ -96,9 +96,9 @@ flowchart LR
 - `public/assets/app.css` cuando se ejecuta con `--minify` o `BA_MINIFY=1`
 - `public/locales/es.json` y `public/locales/en.json`
 
-El entry `src/browser/main.ts` inicializa la aplicación desde módulos ESM. `scripts/build/frontend.mjs` bundlea ese entry directamente con esbuild (`format: "esm"`); no hay concatenación manual de fuentes, orden global de carga de módulos internos ni API global propia en `window`.
+El entry `src/browser/main.ts` inicializa la aplicación desde módulos ESM. `scripts/build/frontend.mjs` bundlea ese entry con esbuild (`format: "esm"`).
 
-Regla: el runtime de aplicación se conecta mediante imports ESM. Cualquier nueva exposición en `window` debe ser una API pública deliberada o una frontera técnica documentada.
+Regla: el runtime de aplicación se conecta mediante imports ESM, eventos tipados o APIs de dominio. Se evita exponer globals propios en `window`; cualquier excepción debe justificarse como frontera técnica inevitable y quedar documentada.
 
 ## i18n
 
