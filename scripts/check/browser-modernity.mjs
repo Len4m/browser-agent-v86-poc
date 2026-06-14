@@ -13,11 +13,13 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../..", import.meta.url));
 
 const limits = {
-  tsNocheckFiles: 4,
+  tsNocheckFiles: 3,
   browserSourceOrderEntries: 0,
   inlineScriptBlocks: 2,
   internalWindowAssignments: 3,
 };
+
+const tsNocheckPattern = /^\s*\/\/\s*@ts-nocheck\b/m;
 
 const migratedModules = [
   "src/browser/app/bootstrap.ts",
@@ -95,7 +97,7 @@ const indexHtml = read("src/web/index.html");
 const sourceOrder = browserSourceOrderEntries();
 
 const metrics = {
-  tsNocheckFiles: browserTsFiles.filter((file) => read(file).includes("@ts-nocheck")).length,
+  tsNocheckFiles: browserTsFiles.filter((file) => tsNocheckPattern.test(read(file))).length,
   browserSourceOrderEntries: sourceOrder.length,
   inlineScriptBlocks: countMatches(indexHtml, /<script\b(?![^>]*\bsrc=)[^>]*>/g),
   internalWindowAssignments: sourceFiles.reduce(
