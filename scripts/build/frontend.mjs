@@ -35,7 +35,6 @@ const appVersion = packageJson.version || "0.0.0";
 const browserSourceOrder = [
   "src/browser/chat/runtime/context-budget.ts",
   "src/browser/chat/runtime/agent-debug.ts",
-  "src/browser/chat/runtime/agent-routing.ts",
   "src/browser/chat/runtime/chat-ui.ts",
   "src/browser/chat/runtime/agent-loop.ts",
   "src/browser/chat/panel/template.ts",
