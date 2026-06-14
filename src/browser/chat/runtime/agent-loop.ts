@@ -62,7 +62,7 @@ interface RunAgentTurnOptions {
   turnGeneration?: number;
 }
 
-export interface LlmAgentApi {
+interface LlmAgentApi {
   getSelectedModelConfig: () => LlmModelConfig;
   loadSelectedModel: () => Promise<void>;
   handleUserMessage: (userText: string) => Promise<void>;
@@ -976,8 +976,8 @@ export function initLlmAgentLoop(): void {
   if (initialized) return;
   initialized = true;
   appEvents.on("llm:availability-refresh-requested", refreshChatAvailabilityWithResourceTelemetry);
-  window.addEventListener("ba-llm:resource", () => updateChatAvailability());
-  window.addEventListener("ba:langchange", () => updateChatAvailability());
+  llmEventsApi.on("resource", () => updateChatAvailability());
+  appEvents.on("app:language-changed", () => updateChatAvailability());
   bindChatSubmitButton();
   window.requestAnimationFrame(updateChatAvailability);
 }

@@ -3,6 +3,7 @@
 // so a running VM is never lost when changing language.
 
 import { getLang, getSupportedLangs, setLang, t, type SupportedLang } from "./i18n";
+import { appEvents } from "../core/events";
 
 const LANG_LABELS: Record<SupportedLang, () => string> = {
   es: () => t("lang.name.es"),
@@ -13,14 +14,6 @@ let langSelectorInitialized = false;
 
 function labelForLang(lang: string): string {
   return (lang === "es" || lang === "en" ? LANG_LABELS[lang]() : "") || lang.toUpperCase();
-}
-
-function langFromEvent(event: Event): string {
-  if (!(event instanceof CustomEvent)) return "";
-  const detail: unknown = event.detail;
-  if (!detail || typeof detail !== "object" || !("lang" in detail)) return "";
-  const lang = (detail as { lang?: unknown }).lang;
-  return typeof lang === "string" ? lang : "";
 }
 
 function setupLangSelector(): void {
@@ -45,8 +38,7 @@ function setupLangSelector(): void {
     })();
   });
 
-  window.addEventListener("ba:langchange", (event) => {
-    const lang = langFromEvent(event);
+  appEvents.on("app:language-changed", ({ lang }) => {
     if (typeof lang === "string" && lang && select.value !== lang) select.value = lang;
     for (const option of select.options) {
       const code = option.value;

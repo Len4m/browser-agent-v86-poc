@@ -1,6 +1,7 @@
 // Browser Agent v86 - local service origin awareness
 
 import { t } from "./i18n";
+import { appEvents } from "../core/events";
 
 let originAwarenessInitialized = false;
 
@@ -57,5 +58,5 @@ export const originApi = {
 export function initOriginAwareness(): void {
   if (originAwarenessInitialized) return;
   originAwarenessInitialized = true;
-  window.addEventListener("ba:langchange", () => syncWarnings());
+  appEvents.on("app:language-changed", () => syncWarnings());
 }

@@ -29,6 +29,7 @@ import {
 import { loadProfiles, updateDiskHint, updateProfileHint } from "../vm/profile-config";
 import { runChecks } from "../ui/checks-panel";
 import { scheduleSerialFit, toggleVmPower } from "../vm/serial-vm";
+import { appEvents } from "../core/events";
 import {
   syncChecksButton,
   syncDiskCheckButton,
@@ -151,7 +152,7 @@ export function initBootstrap(): void {
   enhanceInterface();
   applyDockerCopyLabels();
   initChatLayoutToggle();
-  window.addEventListener("ba:langchange", () => {
+  appEvents.on("app:language-changed", () => {
     setChatExpanded(document.body.classList.contains("chat-expanded"), { persist: false });
     applyDockerCopyLabels();
   });

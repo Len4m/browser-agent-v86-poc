@@ -20,7 +20,7 @@ const limits = {
 };
 
 const tsNocheckPattern = /^\s*\/\/\s*@ts-nocheck\b/m;
-const removedCompatibilityNamesPattern = /\b(?:[Ll]egacyWindow|install[Ll]egacyFacades)\b/g;
+const removedCompatibilityNamesPattern = /\b(?:[Ll]egacyWindow|install[Ll]egacyFacades|ba:langchange|ba-llm:)/g;
 
 function walk(dir, out = []) {
   for (const entry of readdirSync(join(root, dir))) {

@@ -3,14 +3,14 @@
 import { $ } from "../app/state";
 import { t } from "../app/i18n";
 
-export interface ModalButton {
+interface ModalButton {
   id: string;
   label?: string;
   variant?: string;
   cancel?: boolean;
 }
 
-export interface ShowModalOptions {
+interface ShowModalOptions {
   title?: string;
   message?: string;
   detail?: string;
@@ -18,7 +18,7 @@ export interface ShowModalOptions {
   closeOnBackdrop?: boolean;
 }
 
-export interface ShowModalPanelOptions {
+interface ShowModalPanelOptions {
   title?: string;
   onMount?: (bodyEl: HTMLElement) => void;
   buttons?: ModalButton[];

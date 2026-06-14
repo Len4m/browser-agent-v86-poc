@@ -1,14 +1,15 @@
 // Browser Agent v86 - LLM panel GPU capability badges.
 
 import { t } from "../../app/i18n";
+import { appEvents } from "../../core/events";
 import { getLlmState } from "../state/chat-state";
 
-export interface CapabilityRecheckOptions {
+interface CapabilityRecheckOptions {
   checkCapabilities?: (options?: { force?: boolean }) => unknown;
   setStatus?: (text: string, tone: string) => void;
 }
 
-export interface LlmPanelCapabilitiesApi {
+interface LlmPanelCapabilitiesApi {
   capabilityRecheckTitle: (currentTitle: unknown) => string;
   decorateCapabilityRecheckBadge: (target: HTMLElement | null) => void;
   decorateCapabilityRecheckBadges: () => void;
@@ -122,7 +123,7 @@ async function ensureCapabilitiesWhenPanelOpens(
   }
 }
 
-window.addEventListener("ba:langchange", () => {
+appEvents.on("app:language-changed", () => {
   decorateCapabilityRecheckBadges();
 });
 

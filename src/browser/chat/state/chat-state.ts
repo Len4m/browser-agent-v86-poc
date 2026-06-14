@@ -3,16 +3,17 @@
 // this module.
 
 import { t } from "../../app/i18n";
+import { appEvents } from "../../core/events";
 import llmModelsRaw from "../../../../data/llm-models.json";
 
-export interface LlmAgentMeta {
+interface LlmAgentMeta {
   maxSteps: number;
   maxNativeTools: number;
   toolCalling: "weak" | "fair" | "good";
   defaultNativeTools: string[];
 }
 
-export interface LlmThinkingMeta {
+interface LlmThinkingMeta {
   enabled: boolean;
   tagName: string;
   startWithReasoning: boolean;
@@ -105,8 +106,25 @@ export interface LlmState {
   [key: string]: unknown;
 }
 
-export interface LlmEventsApi {
-  emit: (type: string, detail?: Record<string, unknown>) => void;
+type LlmEventType =
+  | "artifact"
+  | "artifact-clear"
+  | "artifact-context"
+  | "artifact-remove"
+  | "capabilities"
+  | "context"
+  | "native-tools"
+  | "progress"
+  | "resource"
+  | "status"
+  | "tool-done"
+  | "tool-error"
+  | "tool-policy"
+  | "tool-start";
+
+interface LlmEventsApi {
+  emit: (type: LlmEventType, detail?: Record<string, unknown>) => void;
+  on: (type: LlmEventType, listener: (detail: Record<string, unknown>) => void) => () => void;
 }
 
 const DEFAULT_TOOLS = [
@@ -291,9 +309,16 @@ function createInitialLlmState(models: LlmModelConfig[]): LlmState {
 
 export const llmModels: LlmModelConfig[] = rawModels.map(withModelCapabilities);
 
+function appLlmEventName(type: LlmEventType): `llm:${LlmEventType}` {
+  return `llm:${type}`;
+}
+
 export const llmEventsApi: LlmEventsApi = {
   emit(type, detail = {}) {
-    window.dispatchEvent(new CustomEvent(`ba-llm:${type}`, { detail }));
+    appEvents.emit(appLlmEventName(type), detail);
+  },
+  on(type, listener) {
+    return appEvents.on(appLlmEventName(type), listener);
   },
 };
 

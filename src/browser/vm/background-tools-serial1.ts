@@ -22,7 +22,7 @@ const DEFAULT_TIMEOUT_MS = 25000;
 const DEFAULT_MAX_OUTPUT_BYTES = 65536;
 const encoder = new TextEncoder();
 
-export interface BackgroundToolResult {
+interface BackgroundToolResult {
   code: number;
   stdout: string;
   stderr: string;
@@ -38,7 +38,7 @@ export interface BackgroundToolDiagnostics {
   diagnosticText: string;
 }
 
-export interface BackgroundExecVmOptions {
+interface BackgroundExecVmOptions {
   label?: string;
   timeoutMs?: number;
   maxOutputBytes?: number;
@@ -47,7 +47,7 @@ export interface BackgroundExecVmOptions {
   skipReadyCheck?: boolean;
 }
 
-export interface BackgroundToolsApi {
+interface BackgroundToolsApi {
   enabled: () => boolean;
   mountUi: () => void;
   onSerial1Byte: (byte: number) => void;
@@ -579,7 +579,7 @@ function reset(reason = "reset"): void {
 export function initBackgroundToolsSerial1(): void {
   if (initialized) return;
   initialized = true;
-  window.addEventListener("ba:langchange", () => {
+  appEvents.on("app:language-changed", () => {
     try {
       const note = document.querySelector("#bg-tool-details .bg-tool-note");
       if (note) note.textContent = t("bgtools.note");

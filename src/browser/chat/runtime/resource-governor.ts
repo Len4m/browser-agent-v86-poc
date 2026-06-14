@@ -19,7 +19,7 @@ export interface ResourceSnapshot {
   lastArtifactId: string | null;
 }
 
-export interface LlmResourceGovernorApi {
+interface LlmResourceGovernorApi {
   getSnapshot: () => ResourceSnapshot;
   canStart: (kind: string) => boolean;
   start: (kind: string, label?: string) => void;

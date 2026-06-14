@@ -10,14 +10,14 @@ const MAX_LINES = 250;
 const MAX_MESSAGE_CHARS = 500;
 const MAX_DATA_CHARS = 1200;
 
-export interface AgentDebugEntry extends Record<string, unknown> {
+interface AgentDebugEntry extends Record<string, unknown> {
   time: string;
   category: string;
   message: string;
   data: string | null;
 }
 
-export interface LlmAgentDebugApi {
+interface LlmAgentDebugApi {
   enabled: boolean;
   log: (category: unknown, message: unknown, data?: unknown) => void;
   clear: () => void;
@@ -88,10 +88,6 @@ function boundedData(value: unknown): string | null {
   return preview(value, MAX_DATA_CHARS);
 }
 
-function eventDetail(event: Event): unknown {
-  return event instanceof CustomEvent ? event.detail : {};
-}
-
 function recordValue(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null ? value as Record<string, unknown> : null;
 }
@@ -129,11 +125,6 @@ function log(category: unknown, message: unknown, data: unknown = null): void {
   entries.push(entry);
   while (entries.length > MAX_LINES) entries.shift();
   render();
-  try {
-    llmEventsApi.emit("agent-debug", entry);
-  } catch {
-    // Debug logging must never affect the main agent loop.
-  }
 }
 
 function clear(): void {
@@ -329,13 +320,13 @@ function mountPanel(): void {
       .catch(() => log("ui", t("debug.log.copyFailed")));
   });
 
-  ["tool-start", "tool-done", "tool-error"].forEach((type) => {
-    window.addEventListener(`ba-llm:${type}`, (event) => {
-      log("tool-exec", type, eventDetail(event) || {});
+  (["tool-start", "tool-done", "tool-error"] as const).forEach((type) => {
+    llmEventsApi.on(type, (detail) => {
+      log("tool-exec", type, detail);
     });
   });
-  window.addEventListener("ba-llm:resource", (event) => {
-    log("governor", "resource", eventDetail(event) || {});
+  llmEventsApi.on("resource", (detail) => {
+    log("governor", "resource", detail);
   });
 
   log("ui", t("debug.log.ready"));

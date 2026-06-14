@@ -3,18 +3,18 @@
 import { $, state } from "../app/state";
 import { t } from "../app/i18n";
 
-export interface AssetCheckResult {
+interface AssetCheckResult {
   ok: boolean;
   detail: string;
 }
 
-export interface AbortableOptions {
+interface AbortableOptions {
   signal?: AbortSignal | null;
 }
 
-export type LoadScriptOptions = AbortableOptions;
+type LoadScriptOptions = AbortableOptions;
 
-export interface LoadingOptions {
+interface LoadingOptions {
   title?: string;
   detail?: string;
   percent?: number | null;
@@ -24,11 +24,11 @@ export interface LoadingOptions {
   onCancel?: (() => void) | null;
 }
 
-export interface PreloadVmAssetsOptions extends AbortableOptions {
+interface PreloadVmAssetsOptions extends AbortableOptions {
   onCancel?: (() => void) | null;
 }
 
-export interface PreloadVmAssetsConfig {
+interface PreloadVmAssetsConfig {
   libv86: string;
   wasm: string;
   bios: string;
@@ -37,7 +37,7 @@ export interface PreloadVmAssetsConfig {
   initrd?: string;
 }
 
-export type VmAssetBuffers = Record<string, ArrayBuffer>;
+type VmAssetBuffers = Record<string, ArrayBuffer>;
 
 interface AssetSpec {
   key: string;
@@ -423,7 +423,7 @@ export function nextPaint(): Promise<void> {
   });
 }
 
-export async function getAssetSize(url: string, { signal = null }: AbortableOptions = {}): Promise<number> {
+async function getAssetSize(url: string, { signal = null }: AbortableOptions = {}): Promise<number> {
   throwIfAborted(signal);
   try {
     const res = await fetch(url, { method: "HEAD", cache: "no-store", signal });
@@ -435,7 +435,7 @@ export async function getAssetSize(url: string, { signal = null }: AbortableOpti
   }
 }
 
-export async function fetchAssetBufferWithProgress(
+async function fetchAssetBufferWithProgress(
   url: string,
   onProgress?: (loaded: number, total: number) => void,
   { signal = null }: AbortableOptions = {},

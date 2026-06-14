@@ -2,6 +2,7 @@
 
 import { $, state } from "../app/state";
 import { t, tn } from "../app/i18n";
+import { appEvents } from "../core/events";
 import { formatBytes } from "./runtime-assets";
 
 export interface VmProfile {
@@ -17,7 +18,7 @@ export interface VmProfile {
   packages?: string[];
 }
 
-export interface VmConfig {
+interface VmConfig {
   libv86: string;
   wasm: string;
   bios: string;
@@ -103,7 +104,7 @@ function setSelectValueIfExists(id: string, value: string | number | null | unde
   }
 }
 
-export function syncProfileControls({ applyDefaults = false }: ProfileOptions = {}): void {
+function syncProfileControls({ applyDefaults = false }: ProfileOptions = {}): void {
   const profile = getSelectedProfile();
   const isManual = !profile;
   const vmRunning = Boolean(state.vm || state.vmStarting);
@@ -236,7 +237,7 @@ export function updateDiskHint(): void {
 export function initProfileConfig(): void {
   if (initialized) return;
   initialized = true;
-  window.addEventListener("ba:langchange", () => {
+  appEvents.on("app:language-changed", () => {
     updateProfileHint({ applyDefaults: false });
     updateDiskHint();
   });

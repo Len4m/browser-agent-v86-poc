@@ -6,7 +6,7 @@ import { t } from "../../app/i18n";
 import { llmModels, type LlmModelConfig } from "../state/chat-state";
 import { llmToolRegistry } from "../tools/tool-registry";
 
-export interface LlmPanelTemplateApi {
+interface LlmPanelTemplateApi {
   escapeHtml: (value: unknown) => string;
   modelOptionsHtml: () => string;
   toolPolicyOptionsHtml: () => string;

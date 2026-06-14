@@ -2,8 +2,10 @@
 // All UI copy lives in src/web/locales/*.json; code only references keys.
 // At most one locale catalog is kept in heap at a time.
 
-export type I18nVars = Record<string, string | number>;
-export type I18nCatalog = Record<string, string>;
+import { appEvents } from "../core/events";
+
+type I18nVars = Record<string, string | number>;
+type I18nCatalog = Record<string, string>;
 export type SupportedLang = "es" | "en";
 
 const I18N_BASE_LANG: SupportedLang = "es";
@@ -110,9 +112,7 @@ export async function setLang(
     document.documentElement.lang = next;
   } catch {}
   if (apply) applyDomTranslations();
-  try {
-    window.dispatchEvent(new CustomEvent("ba:langchange", { detail: { lang: next } }));
-  } catch {}
+  appEvents.emit("app:language-changed", { lang: next });
   return next;
 }
 
@@ -132,9 +132,7 @@ export function initI18n(): Promise<unknown> {
       } catch {}
       const run = () => {
         applyDomTranslations();
-        try {
-          window.dispatchEvent(new CustomEvent("ba:langchange", { detail: { lang: stored } }));
-        } catch {}
+        appEvents.emit("app:language-changed", { lang: stored });
       };
       if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", run, { once: true });

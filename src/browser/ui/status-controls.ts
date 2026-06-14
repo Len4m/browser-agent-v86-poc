@@ -34,7 +34,7 @@ export function safeTrim(text: string, max = TOOL_LOG_MAX_CHARS): string {
   return text.length > max ? text.slice(text.length - max) : text;
 }
 
-export function appendBoundedText(current: string, addition: string, max = TOOL_LOG_MAX_CHARS): string {
+function appendBoundedText(current: string, addition: string, max = TOOL_LOG_MAX_CHARS): string {
   const next = addition;
   if (next.length >= max) return next.slice(next.length - max);
   const keepCurrent = Math.max(0, max - next.length);
@@ -173,7 +173,7 @@ export function setAgentBusy(value: boolean, detail = ""): void {
 }
 
 export function initStatusControls(): void {
-  window.addEventListener("ba:langchange", () => {
+  appEvents.on("app:language-changed", () => {
     syncDiskCheckButton();
     syncSnapshotButtons();
     syncPowerButtons();

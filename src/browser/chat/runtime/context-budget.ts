@@ -12,13 +12,13 @@ import { llmToolRegistry } from "../tools/tool-registry";
 type OutputKind = "chat" | "synthesis" | "plan";
 type SystemMode = "chat" | "synthesis";
 
-export interface ChatMessage {
+interface ChatMessage {
   role: string;
   content: string;
   [key: string]: unknown;
 }
 
-export interface ContextBudgetPolicy extends LlmContextPolicy {
+interface ContextBudgetPolicy extends LlmContextPolicy {
   provider: string;
   contextWindowTokens: number;
   safeInputTokens: number;
@@ -36,7 +36,7 @@ export interface ContextBudgetPolicy extends LlmContextPolicy {
   maxNewTokensForPlan?: number;
 }
 
-export interface TruncatedText {
+interface TruncatedText {
   text: string;
   truncated: boolean;
 }
@@ -48,7 +48,7 @@ export interface AgentTurnPrompt {
   nativeTools?: boolean;
 }
 
-export interface ContextInspection {
+interface ContextInspection {
   chars: number;
   estimatedTokens: number;
   safeInputTokens: number;
@@ -56,7 +56,7 @@ export interface ContextInspection {
   messages: number;
 }
 
-export interface LlmContextBudgetApi {
+interface LlmContextBudgetApi {
   MODEL_POLICIES: Record<string, Partial<ContextBudgetPolicy>>;
   getRawPolicy: (modelConfig?: LlmModelConfig | null) => ContextBudgetPolicy;
   getPolicy: (modelConfig?: LlmModelConfig | null) => ContextBudgetPolicy;

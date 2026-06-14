@@ -235,7 +235,7 @@ export async function runCommandFromInput(event: Event): Promise<void> {
   if (result.stderr) logTool(`${NL}[stderr] ${result.stderr}${NL}`);
 }
 
-export async function configureNetworkInVm(): Promise<void> {
+async function configureNetworkInVm(): Promise<void> {
   if (state.networkConfiguring || state.networkConfigured) return;
 
   if (!state.vm || !state.vmReady) {
@@ -333,7 +333,7 @@ async function confirmWsDisconnect(): Promise<boolean> {
   return result === "disconnect";
 }
 
-export async function disconnectWs({ confirmDisconnect = true }: { confirmDisconnect?: boolean } = {}): Promise<void> {
+async function disconnectWs({ confirmDisconnect = true }: { confirmDisconnect?: boolean } = {}): Promise<void> {
   if (!state.wsSocket && !state.wsConnecting) {
     state.networkAutoRequested = false;
     state.networkConfigured = false;

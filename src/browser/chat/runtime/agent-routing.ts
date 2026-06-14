@@ -3,7 +3,7 @@
 import { getLlmState, type LlmModelConfig } from "../state/chat-state";
 import { llmNativeToolsPolicy } from "../tools/native-tools-policy";
 
-export interface AgentRoutingApi {
+interface AgentRoutingApi {
   flattenErrorMessage: (error: unknown) => string;
   isRecoverableGpuMemoryError: (message: unknown) => boolean;
   shouldEnableNativeTools: (options?: { referencedArtifact?: unknown }) => boolean;

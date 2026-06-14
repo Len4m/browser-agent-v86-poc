@@ -137,7 +137,7 @@ function successResult(): ConsoleControlResult {
   return { code: 0, stdout: "", stderr: "" };
 }
 
-export function getConsoleTab(id: string): ManagedConsoleTab | null {
+function getConsoleTab(id: string): ManagedConsoleTab | null {
   return tabs().find((tab) => tab.id === id) || null;
 }
 
@@ -616,7 +616,7 @@ export async function syncConsoleTabsFromDaemon({ repaint = true, createMissing 
   return true;
 }
 
-export function syncConsoleInputLock(): void {
+function syncConsoleInputLock(): void {
   document.body.classList.remove("console-readonly");
   const overlay = $("vm-lock-overlay");
   if (!overlay) return;
@@ -997,7 +997,7 @@ export function initXtermConsoles(): void {
       // Rendering during shared UI changes is best-effort.
     }
   });
-  window.addEventListener("ba:langchange", () => {
+  appEvents.on("app:language-changed", () => {
     try {
       renderConsoleTabs();
     } catch {

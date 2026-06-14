@@ -87,14 +87,14 @@ export interface LlmArtifactSummary {
   contextAttached: boolean;
 }
 
-export interface ArtifactUsage {
+interface ArtifactUsage {
   artifacts: number;
   maxArtifacts: number;
   storedBytes: number;
   maxStoredBytes: number;
 }
 
-export interface LlmArtifactsApi {
+interface LlmArtifactsApi {
   storeToolResult: (toolCall: ArtifactToolCall | NormalizedToolCall | null | undefined, result: ToolExecutionResult | null | undefined, meta?: StoreToolResultMeta) => LlmArtifact;
   summarizeArtifact: (artifact: LlmArtifact | null | undefined) => LlmArtifactSummary | null;
   listSummaries: (options?: { limit?: unknown }) => Array<LlmArtifactSummary | null>;

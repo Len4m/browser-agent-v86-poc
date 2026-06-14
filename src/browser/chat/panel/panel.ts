@@ -5,10 +5,11 @@
 import { state } from "../../app/state";
 import { applyDomTranslations, t, tn } from "../../app/i18n";
 import { originApi } from "../../app/origin-awareness";
+import { appEvents } from "../../core/events";
 import { showBaModal, showBaModalPanel } from "../../ui/modal";
 import { getSelectedProfile, type VmProfile } from "../../vm/profile-config";
 import { ensureLLMCapabilities, syncLLMCapabilityBadges, type LlmCapabilities } from "../state/capabilities";
-import { getLlmState, llmModels, type LlmModelConfig } from "../state/chat-state";
+import { getLlmState, llmEventsApi, llmModels, type LlmModelConfig } from "../state/chat-state";
 import { llmAgent } from "../runtime/agent-loop";
 import { llmArtifacts, type LlmArtifactSummary } from "../runtime/artifact-store";
 import { llmContextBudget } from "../runtime/context-budget";
@@ -124,10 +125,6 @@ function inputById(id: string): HTMLInputElement | null {
 
 function eventTargetElement(event: Event): Element | null {
   return event.target instanceof Element ? event.target : null;
-}
-
-function customDetail(event: Event): Record<string, unknown> {
-  return event instanceof CustomEvent && isRecord(event.detail) ? event.detail : {};
 }
 
 function resourceContext(value: unknown): ResourceContext | undefined {
@@ -644,9 +641,11 @@ function getActiveToolProfileLabel(profileId: string): string {
 }
 
 function getSelectedModelForTools(): LlmModelConfig {
+  const llm = getLlmState();
+  if (llm?.loaded && llm.activeModel) return llm.activeModel;
   const select = selectedModelSelect();
   return llmModels.find((item) => item.id === select?.value)
-    || getLlmState()?.activeModel
+    || llm?.activeModel
     || llmModels[0]
     || { id: "custom-transformersjs", engine: "transformersjs" };
 }
@@ -1041,7 +1040,7 @@ function mountPanel(): void {
     updateAvailableToolsUi();
     updateNativeToolsPickerUi();
   });
-  window.addEventListener("ba-llm:native-tools", () => {
+  llmEventsApi.on("native-tools", () => {
     updateNativeToolsPickerUi();
     updateChatToolsButton();
   });
@@ -1065,14 +1064,12 @@ function mountPanel(): void {
 }
 
 function bindEvents(): void {
-  window.addEventListener("ba-llm:status", (event) => {
-    const detail = customDetail(event);
+  llmEventsApi.on("status", (detail) => {
     setStatus(textValue(detail.text, "—"), textValue(detail.tone));
     updateSelectedModelCard();
   });
 
-  window.addEventListener("ba-llm:capabilities", (event) => {
-    const detail = customDetail(event);
+  llmEventsApi.on("capabilities", (detail) => {
     const currentCapabilities = getLlmState()?.capabilities;
     const capabilities = isLlmCapabilities(detail.capabilities)
       ? detail.capabilities
@@ -1080,30 +1077,30 @@ function bindEvents(): void {
     applyCapabilitiesToPanel(capabilities);
   });
 
-  window.addEventListener("ba-llm:tool-policy", () => {
+  llmEventsApi.on("tool-policy", () => {
     syncToolPolicyUi();
     updateAvailableToolsUi();
   });
 
-  window.addEventListener("ba-llm:progress", (event) => {
-    setProgress(customDetail(event), true);
+  llmEventsApi.on("progress", (detail) => {
+    setProgress(detail, true);
   });
 
-  window.addEventListener("ba-llm:context", (event) => {
-    updateResourceLines({ context: resourceContext(customDetail(event)) || {} });
+  llmEventsApi.on("context", (detail) => {
+    updateResourceLines({ context: resourceContext(detail) || {} });
   });
 
-  window.addEventListener("ba-llm:artifact", () => updateResourceLines());
-  window.addEventListener("ba-llm:artifact-context", () => updateResourceLines());
-  window.addEventListener("ba-llm:artifact-remove", () => updateResourceLines());
-  window.addEventListener("ba-llm:artifact-clear", () => updateResourceLines());
+  llmEventsApi.on("artifact", () => updateResourceLines());
+  llmEventsApi.on("artifact-context", () => updateResourceLines());
+  llmEventsApi.on("artifact-remove", () => updateResourceLines());
+  llmEventsApi.on("artifact-clear", () => updateResourceLines());
 
-  window.addEventListener("ba-llm:resource", () => {
+  llmEventsApi.on("resource", () => {
     updateResourceLines();
     updateAvailableToolsUi();
   });
 
-  window.addEventListener("ba:langchange", () => {
+  appEvents.on("app:language-changed", () => {
     updateSelectedModelCard();
     updateResourceLines();
     updateAvailableToolsUi();

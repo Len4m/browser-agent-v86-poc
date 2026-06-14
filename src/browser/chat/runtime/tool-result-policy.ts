@@ -7,19 +7,19 @@ import { t } from "../../app/i18n";
 import { llmArtifacts, type LlmArtifact } from "./artifact-store";
 import type { NormalizedToolCall, ToolExecutionResult } from "../tools/types";
 
-export interface ToolResultDecision {
+interface ToolResultDecision {
   mode: "direct" | "synthesize" | "artifact";
   reason: string;
 }
 
-export interface DecideAfterToolOptions {
+interface DecideAfterToolOptions {
   userText?: unknown;
   toolCall?: NormalizedToolCall | null;
   result?: ToolExecutionResult | null;
   artifact?: LlmArtifact | null;
 }
 
-export interface ToolResultPolicyApi {
+interface ToolResultPolicyApi {
   decideAfterTool: (options?: DecideAfterToolOptions) => ToolResultDecision;
   selectArtifactForUserText: (userText: unknown) => LlmArtifact | null;
 }

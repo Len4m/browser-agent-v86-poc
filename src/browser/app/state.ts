@@ -19,7 +19,7 @@ export interface ConsoleTab {
   [key: string]: unknown;
 }
 
-export interface AppState {
+interface AppState {
   vm: unknown;
   vmReady: boolean;
   pending: unknown;

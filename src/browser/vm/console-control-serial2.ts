@@ -20,13 +20,13 @@ export interface ConsoleControlResult {
 
 export type ConsoleControlSession = Record<string, unknown>;
 
-export interface ConsoleControlEvent {
+interface ConsoleControlEvent {
   type: string;
   sessionId: string;
   detail: string;
 }
 
-export interface ConsoleControlDiagnostics {
+interface ConsoleControlDiagnostics {
   serial2Available: boolean;
   serial2Seen: boolean;
   runnerReady: boolean;
@@ -35,11 +35,11 @@ export interface ConsoleControlDiagnostics {
   diagnosticText: string;
 }
 
-export interface ConsoleControlDisposable {
+interface ConsoleControlDisposable {
   dispose: () => void;
 }
 
-export interface ConsoleControlApi {
+interface ConsoleControlApi {
   exec: (action: string, args?: Array<string | number>, options?: ConsoleControlExecOptions) => Promise<ConsoleControlResult>;
   createSession: (sessionId: string, options?: ConsoleControlSessionOptions) => Promise<ConsoleControlResult>;
   closeSession: (sessionId: string) => Promise<ConsoleControlResult>;

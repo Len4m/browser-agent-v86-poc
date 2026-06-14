@@ -3,8 +3,9 @@
 // features such as shader-f16 are exposed. It does not create a GPUDevice.
 
 import { t } from "../../app/i18n";
+import { appEvents } from "../../core/events";
 import { setBadge } from "../../ui/status-controls";
-import { getLlmState } from "./chat-state";
+import { getLlmState, llmEventsApi } from "./chat-state";
 
 export interface LlmCapabilities {
   secureContext: boolean;
@@ -23,13 +24,13 @@ export interface LlmCapabilities {
   checkedAt: number;
 }
 
-export interface CapabilityBadge {
+interface CapabilityBadge {
   text: string;
   tone: string;
   title: string;
 }
 
-export interface EnsureCapabilitiesOptions {
+interface EnsureCapabilitiesOptions {
   force?: boolean;
   source?: string;
 }
@@ -90,7 +91,7 @@ function navigatorGpu(): GpuNavigator["gpu"] | null {
   return (navigator as GpuNavigator).gpu || null;
 }
 
-export function capabilityBadgeFor(result: LlmCapabilities | null, state = "ready"): CapabilityBadge {
+function capabilityBadgeFor(result: LlmCapabilities | null, state = "ready"): CapabilityBadge {
   if (state === "checking") return { text: t("caps.badge.checking"), tone: "warn", title: t("caps.badge.checkingTitle") };
   if (!result) return { text: t("caps.badge.pending"), tone: "warn", title: t("common.inferencePending") };
   if (result.webgpu) {
@@ -173,9 +174,7 @@ export async function detectLLMCapabilities(): Promise<LlmCapabilities> {
 }
 
 function emitCapabilities(result: LlmCapabilities, source = "unknown"): void {
-  window.dispatchEvent(new CustomEvent("ba-llm:capabilities", {
-    detail: { capabilities: result, source },
-  }));
+  llmEventsApi.emit("capabilities", { capabilities: result, source });
 }
 
 export async function ensureLLMCapabilities(options: EnsureCapabilitiesOptions = {}): Promise<LlmCapabilities> {
@@ -222,5 +221,5 @@ export async function ensureLLMCapabilities(options: EnsureCapabilitiesOptions =
 export function initLlmCapabilities(): void {
   if (initialized) return;
   initialized = true;
-  window.addEventListener("ba:langchange", () => syncLLMCapabilityBadges(currentCapabilities(), "ready"));
+  appEvents.on("app:language-changed", () => syncLLMCapabilityBadges(currentCapabilities(), "ready"));
 }

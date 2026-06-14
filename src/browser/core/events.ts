@@ -1,6 +1,21 @@
 export type AppEventMap = {
+  "app:language-changed": { lang: string };
   "console:state-changed": { source: string };
   "llm:availability-refresh-requested": { source: string };
+  "llm:artifact": Record<string, unknown>;
+  "llm:artifact-clear": Record<string, unknown>;
+  "llm:artifact-context": Record<string, unknown>;
+  "llm:artifact-remove": Record<string, unknown>;
+  "llm:capabilities": Record<string, unknown>;
+  "llm:context": Record<string, unknown>;
+  "llm:native-tools": Record<string, unknown>;
+  "llm:progress": Record<string, unknown>;
+  "llm:resource": Record<string, unknown>;
+  "llm:status": Record<string, unknown>;
+  "llm:tool-done": Record<string, unknown>;
+  "llm:tool-error": Record<string, unknown>;
+  "llm:tool-policy": Record<string, unknown>;
+  "llm:tool-start": Record<string, unknown>;
 };
 
 class TypedEventBus<Events extends Record<string, unknown>> {
