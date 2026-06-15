@@ -39,18 +39,37 @@ const shared = {
   minify,
 };
 
+const transformersJsThinkingPatchPlugin = {
+  name: "transformers-js-explicit-thinking-flag",
+  setup(build) {
+    build.onLoad({ filter: /node_modules\/@browser-ai\/transformers-js\/dist\/index\.mjs$/ }, (args) => {
+      const source = readFileSync(args.path, "utf8");
+      const implicitThinkingFlag = "...enableThinking ? { enable_thinking: true } : {}";
+      if (!source.includes(implicitThinkingFlag)) {
+        throw new Error("@browser-ai/transformers-js thinking flag patch no longer matches upstream source.");
+      }
+      return {
+        contents: source.replace(implicitThinkingFlag, "enable_thinking: Boolean(enableThinking)"),
+        loader: "js",
+      };
+    });
+  },
+};
+
 async function main() {
   await esbuild.build({
     ...shared,
     entryPoints: [join(root, "src/browser/chat/provider/ai-sdk/entry.ts")],
     outfile: browserOutFile,
     external: [],
+    plugins: [transformersJsThinkingPatchPlugin],
   });
 
   await esbuild.build({
     ...shared,
     entryPoints: [join(root, "src/browser/chat/provider/ai-sdk/llm-browser-ai.worker.ts")],
     outfile: workerOutFile,
+    plugins: [transformersJsThinkingPatchPlugin],
   });
 
   console.log(`LLM AI SDK bundles written (${minify ? "minified" : "dev"}, sourcemap ${sourcemap ? "on" : "off"}).`);
