@@ -24,6 +24,8 @@ import type { NormalizedToolCall, ToolExecutionResult } from "../tools/types";
 
 type ToolCallingMode = "weak" | "fair" | "good";
 
+type LlmDiagnosticEvent = CustomEvent<Record<string, unknown>>;
+
 interface RuntimeModelInfo {
   provider?: string;
   device?: string;
@@ -179,6 +181,19 @@ function isLlmCapabilities(value: unknown): value is LlmCapabilities {
 
 function agentDebug(category: string, message: string, data: unknown = null): void {
   llmAgentDebug.log(category, message, data);
+}
+
+function diagnosticMessage(detail: Record<string, unknown>): string {
+  return textValue(detail.message)
+    || textValue(detail.event)
+    || textValue(detail.source)
+    || "llm diagnostic";
+}
+
+function handleLlmDiagnosticEvent(event: Event): void {
+  const detail = (event as LlmDiagnosticEvent).detail;
+  if (!isRecord(detail)) return;
+  agentDebug("diag", diagnosticMessage(detail), detail);
 }
 
 function agentDebugStreamPart(part: unknown, extra = ""): void {
@@ -655,6 +670,10 @@ async function runAgentTurn({
           toolCalls: arrayLength(entry.toolCalls),
           toolResults: arrayLength(entry.toolResults),
           textLen: textValue(entry.text).length,
+          warnings: arrayLength(entry.warnings),
+          error: entry.error ? flattenErrorMessage(entry.error) : undefined,
+          cause: isRecord(entry.error) && entry.error.cause ? flattenErrorMessage(entry.error.cause) : undefined,
+          keys: Object.keys(entry).slice(0, 16),
         });
       },
       onStreamPart(part) {
@@ -978,6 +997,7 @@ export function initLlmAgentLoop(): void {
   appEvents.on("llm:availability-refresh-requested", refreshChatAvailabilityWithResourceTelemetry);
   llmEventsApi.on("resource", () => updateChatAvailability());
   appEvents.on("app:language-changed", () => updateChatAvailability());
+  window.addEventListener("ba:llm-diagnostic", handleLlmDiagnosticEvent);
   bindChatSubmitButton();
   window.requestAnimationFrame(updateChatAvailability);
 }

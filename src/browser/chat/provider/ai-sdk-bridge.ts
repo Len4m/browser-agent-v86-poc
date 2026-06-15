@@ -66,6 +66,43 @@ function errorMessage(error: unknown): string {
   return "Error";
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function errorDetails(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: typeof error.stack === "string" ? error.stack.slice(0, 1600) : "",
+    };
+  }
+  return {
+    name: typeof error,
+    message: errorMessage(error),
+  };
+}
+
+function emitDiagnostic(message: string, data: Record<string, unknown> = {}): void {
+  const detail = {
+    source: "ai-sdk-bridge",
+    message,
+    ...data,
+  };
+  try {
+    window.dispatchEvent(new CustomEvent("ba:llm-diagnostic", { detail }));
+  } catch {
+    // Diagnostics are best-effort and must not affect inference.
+  }
+  try {
+    const log = message.includes("error") || message.includes("unhandled") ? console.warn : console.debug;
+    log.call(console, "[llm:diagnostic]", detail);
+  } catch {
+    // ignore
+  }
+}
+
 function terminateActiveWorker(): void {
   if (!activeWorker) return;
   try {
@@ -76,12 +113,41 @@ function terminateActiveWorker(): void {
   activeWorker = null;
 }
 
-function createWorker(): Worker {
+function forwardWorkerDiagnostic(value: unknown): void {
+  if (!isRecord(value) || value.status !== "diagnostic") return;
+  emitDiagnostic(textValue(value.event) || "worker diagnostic", {
+    source: textValue(value.source) || "llm-browser-ai.worker",
+    data: isRecord(value.data) ? value.data : undefined,
+  });
+}
+
+function createWorker({ disposeGenerationCacheBeforeGenerate = false }: { disposeGenerationCacheBeforeGenerate?: boolean } = {}): Worker {
   terminateActiveWorker();
   if (!workerUrl) {
     workerUrl = new URL("./chat/workers/llm-browser-ai.worker.mjs", import.meta.url);
   }
-  activeWorker = new Worker(workerUrl, { type: "module" });
+  const url = new URL(workerUrl.href);
+  if (disposeGenerationCacheBeforeGenerate) {
+    url.searchParams.set("disposeGenerationCacheBeforeGenerate", "1");
+  }
+  activeWorker = new Worker(url, { type: "module" });
+  activeWorker.addEventListener("message", (event) => {
+    forwardWorkerDiagnostic(event.data);
+  });
+  activeWorker.addEventListener("error", (event) => {
+    emitDiagnostic("worker error event", {
+      message: event.message,
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+      error: errorDetails(event.error),
+    });
+  });
+  activeWorker.addEventListener("messageerror", (event) => {
+    emitDiagnostic("worker messageerror", {
+      dataType: typeof event.data,
+    });
+  });
   return activeWorker;
 }
 
@@ -147,10 +213,11 @@ function createModel(modelConfig: LlmModelConfig): LanguageModelV3 {
   } else {
     const device = modelConfig.device || "webgpu";
     const dtype = mapDtype(modelConfig.dtype);
+    const disposeGenerationCacheBeforeGenerate = device === "webgpu" && modelConfig.reuseGenerationCache !== true;
     base = transformersJS(modelConfig.model, {
       device,
       dtype,
-      worker: createWorker(),
+      worker: createWorker({ disposeGenerationCacheBeforeGenerate }),
     });
     runtime = {
       provider: "transformersjs",
@@ -158,6 +225,7 @@ function createModel(modelConfig: LlmModelConfig): LanguageModelV3 {
       dtype,
       worker: true,
       fallback: Boolean(modelConfig.fallbackReason),
+      disposeGenerationCacheBeforeGenerate,
     };
   }
 

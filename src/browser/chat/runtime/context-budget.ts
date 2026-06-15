@@ -308,7 +308,11 @@ function resolveMaxOutputTokens(modelConfig: LlmModelConfig | null = getModelCon
   }
 
   if (kind === "plan") {
-    return Math.min(target, policy.provider === "ollama" ? 768 : 192);
+    const planCap = Number(policy.maxNewTokensForPlan);
+    if (Number.isFinite(planCap) && planCap > 0) {
+      return Math.min(target, planCap);
+    }
+    return Math.min(target, policy.provider === "ollama" ? 768 : 384);
   }
   return target;
 }

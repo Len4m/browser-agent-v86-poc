@@ -86,6 +86,45 @@ function errorMessage(error: unknown): string {
   return text || "Error";
 }
 
+function errorDetails(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: typeof error.stack === "string" ? error.stack.slice(0, 1600) : "",
+      cause: error.cause instanceof Error
+        ? { name: error.cause.name, message: error.cause.message, stack: error.cause.stack?.slice(0, 1200) }
+        : undefined,
+    };
+  }
+  return {
+    name: typeof error,
+    message: errorMessage(error),
+    value: jsonStringify(error).slice(0, 1200),
+  };
+}
+
+function emitDiagnostic(message: string, data: Record<string, unknown> = {}): void {
+  const detail = {
+    source: "browser-agent-runner",
+    message,
+    ...data,
+  };
+  try {
+    if (typeof globalThis.dispatchEvent === "function" && typeof CustomEvent === "function") {
+      globalThis.dispatchEvent(new CustomEvent("ba:llm-diagnostic", { detail }));
+    }
+  } catch {
+    // Diagnostics are best-effort and must not affect inference.
+  }
+  try {
+    const log = message.includes("error") ? console.warn : console.debug;
+    log.call(console, "[llm:diagnostic]", detail);
+  } catch {
+    // ignore
+  }
+}
+
 function isAbortError(error: unknown): boolean {
   return isRecord(error) && error.name === "AbortError";
 }
@@ -182,16 +221,36 @@ async function consumeTextStream(
   { onStreamPart, phase = "main" }: { onStreamPart?: (part: AgentStreamPart) => void; phase?: StreamPhase } = {},
 ): Promise<string> {
   let text = "";
-  for await (const part of result.fullStream) {
-    onStreamPart?.({ ...part, phase });
-    const chunk = textChunkFromStreamPart(part);
-    if (chunk) text += chunk;
+  try {
+    for await (const part of result.fullStream) {
+      if (isRecord(part) && part.type === "error") {
+        emitDiagnostic("stream error part", {
+          phase,
+          error: errorDetails(part.error),
+          keys: Object.keys(part).slice(0, 12),
+        });
+      }
+      onStreamPart?.({ ...part, phase });
+      const chunk = textChunkFromStreamPart(part);
+      if (chunk) text += chunk;
+    }
+  } catch (error) {
+    emitDiagnostic("fullStream threw", {
+      phase,
+      error: errorDetails(error),
+      textLenBeforeError: text.length,
+    });
+    throw error;
   }
   if (!text.trim()) {
     try {
       const resolved = await result.text;
       if (resolved) text = String(resolved);
-    } catch {
+    } catch (error) {
+      emitDiagnostic("result.text fallback failed", {
+        phase,
+        error: errorDetails(error),
+      });
       // The stream itself is the primary source; text is a fallback.
     }
   }
@@ -300,8 +359,22 @@ export async function runAgentStreamTurn({
     fullText = await consumeTextStream(result, { onStreamPart, phase: "main" });
     try {
       steps = await result.steps;
-    } catch {
+    } catch (error) {
+      emitDiagnostic("result.steps failed", {
+        error: errorDetails(error),
+        fullTextLen: fullText.length,
+      });
       steps = [];
+    }
+    const lastStep = steps[steps.length - 1];
+    if (lastStep?.finishReason === "error") {
+      emitDiagnostic("step finished with error", {
+        stepCount: steps.length,
+        lastStepKeys: Object.keys(lastStep as unknown as Record<string, unknown>).slice(0, 20),
+        toolCalls: lastStep.toolCalls.length,
+        toolResults: lastStep.toolResults.length,
+        textLen: textFromUnknown((lastStep as unknown as Record<string, unknown>).text).length,
+      });
     }
 
     const hadToolWork = steps.some(
@@ -344,13 +417,22 @@ export async function runAgentStreamTurn({
         if (synthText.trim() && !looksLikeTextToolPlan(synthText)) {
           fullText = synthText.trim();
         }
-      } catch {
+      } catch (error) {
+        emitDiagnostic("explicit synthesis failed", {
+          error: errorDetails(error),
+          steps: steps.length,
+          toolResultTextLen: toolResultText.length,
+        });
         // La UI puede mostrar respuesta determinista de la tool.
       }
     }
   } catch (error) {
     if (isAbortError(error)) throw error;
     const msg = errorMessage(error);
+    emitDiagnostic("runAgentStreamTurn failed", {
+      error: errorDetails(error),
+      message: msg,
+    });
     if (isGpuInferenceFailure(msg)) {
       throw new Error(`Inferencia local fallo (memoria GPU agotada o WebGPU invalido): ${msg}`);
     }
