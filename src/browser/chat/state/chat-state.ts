@@ -32,6 +32,9 @@ export interface LlmContextPolicy {
   maxToolResultChars?: number;
   maxToolResultCharsForSynthesis?: number;
   maxArtifacts?: number;
+  maxOutputTokens?: number;
+  maxNewTokensForPlan?: number;
+  maxNewTokensForSynthesis?: number;
   [key: string]: unknown;
 }
 
@@ -58,6 +61,7 @@ export interface LlmModelConfig {
   topP?: number;
   contextWindowTokens?: number;
   maxNewTokens?: number;
+  reuseGenerationCache?: boolean;
   contextPolicy?: LlmContextPolicy;
   agent?: LlmAgentMeta;
   thinking?: Partial<LlmThinkingMeta>;
