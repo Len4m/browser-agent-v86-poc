@@ -157,8 +157,80 @@
       },
       "contextPolicy": {
         "type": "object",
-        "additionalProperties": true,
-        "description": "Optional advanced budget overrides for a specific model. Use sparingly to avoid duplicating context-budget.ts logic."
+        "additionalProperties": false,
+        "description": "Optional per-model budget overrides merged by context-budget.ts and chat-state.ts. The whole object is optional; every field inside is also optional because runtime defaults (DEFAULT_LOCAL_POLICY, DEFAULT_OLLAMA_POLICY, defaultContextMeta) fill missing values. In this catalog, Transformers.js entries that define contextPolicy usually specify provider plus the prompt/history/tool limits as a complete block; maxNewTokensForPlan is the only commonly omitted override.",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": ["ollama", "transformersjs"],
+            "description": "Budget profile family. Catalog Transformers.js entries set transformersjs; Ollama models usually omit contextPolicy and receive ollama defaults at runtime."
+          },
+          "contextWindowTokens": {
+            "type": "integer",
+            "minimum": 256,
+            "description": "Override for the model context window used when deriving input/output budgets."
+          },
+          "safeInputTokens": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Input token budget reserved for system, runtime, history and tool results before output is computed."
+          },
+          "reservedOutputTokens": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Optional static output reservation. Usually omitted; getPolicy() derives output limits dynamically."
+          },
+          "maxSystemChars": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Character cap for the system prompt block."
+          },
+          "maxRuntimeChars": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Character cap for runtime/context injected into the system prompt."
+          },
+          "maxHistoryMessages": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Maximum prior chat turns kept in the prompt."
+          },
+          "maxHistoryChars": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Character cap across retained history messages."
+          },
+          "maxToolResultChars": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Character cap for tool results included in agent turns."
+          },
+          "maxToolResultCharsForSynthesis": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Character cap for tool results during synthesis/final answer steps."
+          },
+          "maxArtifacts": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Maximum artifacts attached to a prompt. Rarely set in the catalog; defaults come from provider policy."
+          },
+          "maxOutputTokens": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Optional hard cap on generated output tokens for chat/synthesis before kind-specific limits apply."
+          },
+          "maxNewTokensForPlan": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Optional cap for plan-generation steps. If omitted, resolveMaxOutputTokens() uses 768 for Ollama and 384 for local Transformers.js."
+          },
+          "maxNewTokensForSynthesis": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Optional cap for synthesis output. Usually omitted because getPolicy() derives it from resolveMaxOutputTokens()."
+          }
+        }
       },
       "custom": {
         "type": "boolean",
