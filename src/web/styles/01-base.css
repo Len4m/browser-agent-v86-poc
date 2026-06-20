@@ -124,6 +124,33 @@ p { margin: 6px 0; color: var(--ba-color-subtle); font-size: 14px; }
 .badge.bad { background: #fff1f2; color: #be123c; border-color: #fecdd3; }
 .badge.blue { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
 .app-version-badge { background: var(--ba-color-canvas); color: var(--ba-color-subtle); border-color: var(--ba-color-border-strong); }
+.user-manual-link {
+  gap: 5px;
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #fff;
+  text-decoration: none;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, .24);
+  transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.user-manual-link::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  background: currentColor;
+  -webkit-mask: url("/assets/icons/lucide/circle-help.svg") center / contain no-repeat;
+  mask: url("/assets/icons/lucide/circle-help.svg") center / contain no-repeat;
+}
+.user-manual-link:hover {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+  color: #fff;
+  box-shadow: 0 3px 9px rgba(37, 99, 235, .32);
+}
+.user-manual-link:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 3px;
+}
 .github-repo-link {
   width: 28px;
   height: 28px;
