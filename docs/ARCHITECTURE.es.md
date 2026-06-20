@@ -173,7 +173,7 @@ Fronteras técnicas restantes:
 - `window.V86Starter` / `window.V86`: runtime v86 cargado como vendor.
 - `window.Terminal`: runtime xterm cargado como vendor.
 
-Regla: los módulos TypeScript nuevos deben vivir en `src/browser/` y comunicarse por imports ESM, eventos tipados o APIs de dominio. No se añaden globals propios `window.BA` ni `window.BA_*`.
+Los módulos TypeScript nuevos deben vivir en `src/browser/` y comunicarse mediante imports ESM, eventos tipados o APIs de dominio.
 
 ## Seriales y ejecución VM
 

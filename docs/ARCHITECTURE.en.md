@@ -173,7 +173,7 @@ Remaining technical boundaries:
 - `window.V86Starter` / `window.V86`: v86 runtime loaded as a vendor.
 - `window.Terminal`: xterm runtime loaded as a vendor.
 
-Rule: new TypeScript modules must live in `src/browser/` and communicate through ESM imports, typed events, or domain APIs. Do not add project-specific `window.BA` or `window.BA_*` globals.
+New TypeScript modules must live in `src/browser/` and communicate through ESM imports, typed events, or domain APIs.
 
 ## Serial channels and VM execution
 
