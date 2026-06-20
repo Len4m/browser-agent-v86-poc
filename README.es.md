@@ -29,7 +29,9 @@ La forma más rápida de probar el proyecto es abrir:
 
 [https://browseragent.icu/](https://browseragent.icu/)
 
-La demo no requiere clonar el repo. Los modelos Transformers.js se descargan y ejecutan desde tu navegador, y los servicios opcionales como Ollama o wsnic siguen siendo locales a tu equipo.
+Antes de probar la demo, se recomienda leer el [manual de usuario en español](docs/USER_MANUAL.es.md).
+
+La demo no requiere clonar el repo. Los modelos Transformers.js se descargan y ejecutan desde tu navegador. Ollama y wsnic son opcionales y, si los usas, se ejecutan localmente en tu equipo.
 
 ## Ejecutar desde el repo
 

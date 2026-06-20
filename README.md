@@ -29,7 +29,9 @@ The fastest way to try the project is to open:
 
 [https://browseragent.icu/](https://browseragent.icu/)
 
-You do not need to clone the repository. Transformers.js models are downloaded and run in your browser, while optional services such as Ollama or wsnic remain local to your computer.
+Before trying the demo, we recommend reading the [English user manual](docs/USER_MANUAL.en.md).
+
+You do not need to clone the repository. Transformers.js models are downloaded and run in your browser. Ollama and wsnic are optional; when used, they run locally on your computer.
 
 ## Run from the repository
 
