@@ -1,6 +1,6 @@
 # Manual de uso de Browser Agent v86 POC
 
-> English version: [USER_MANUAL.en.md](USER_MANUAL.en.md)
+> [English](USER_MANUAL.en.md) | **Español**
 
 Este manual explica como usar la aplicacion ya abierta. No cubre instalacion, desarrollo, generacion de perfiles ni scripts del repositorio.
 
@@ -39,7 +39,7 @@ Puedes pulsar **Comprobar** en cualquier momento para revisar si la aplicación,
 El panel de chat esta a la izquierda en escritorio y arriba en movil.
 
 - **Expandir chat** cambia entre vista dividida y chat a ancho completo.
-- **Limpiar chat** borra el historial visible, la memoria interna del LLM y los artifacts del turno.
+- **Limpiar chat** borra el historial visible, el historial interno del LLM y todos los artifacts de tools guardados.
 - **Botón de tools** abre el selector de herramientas que el agente puede usar. Las tools disponibles varían según el perfil de VM seleccionado.
 - **Campo de mensaje** queda deshabilitado hasta que haya un modelo listo; consulta el apartado **Panel LLM**.
 - **Enviar / detener** envía el mensaje; durante una generación puede detener el turno activo.
@@ -100,7 +100,7 @@ Este formulario es util para comandos cortos de comprobacion. Para trabajo inter
 
 - **Guardar snapshot** descarga un fichero `.v86state` con el estado actual de la VM.
 - **Restaurar snapshot** pide un fichero de estado y reinicia/restaura la VM.
-- Restaura con configuracion compatible: RAM, disco y perfil deben coincidir razonablemente con el estado guardado.
+- Restaura el snapshot con la misma configuración de RAM, disco y perfil con la que se creó.
 - Los snapshots pueden no incluir datos escritos en discos HDA; revisa los avisos del log.
 
 Antes de apagar la VM, guarda snapshot si quieres conservar el estado de RAM/procesos.
@@ -111,11 +111,11 @@ El panel **LLM** permite elegir y cargar el motor de inferencia:
 
 - **Modelo**: lista modelos Transformers.js para navegador y opciones Ollama.
 - **Ollama endpoint**: aparece al elegir un modelo Ollama; usa normalmente `http://127.0.0.1:11434`.
-- **Cargar modelo** descarga/cachea el modelo y prepara el worker.
-- **Mostrar razonamiento** aparece en modelos compatibles con thinking.
+- **Cargar modelo** inicializa el backend seleccionado. En Transformers.js descarga o reutiliza el modelo cacheado y arranca un worker; en Ollama comprueba el endpoint configurado y el modelo local.
+- **Mostrar razonamiento del modelo (thinking)** aparece en modelos que exponen razonamiento.
 - **Recursos y contexto** muestra presupuesto de contexto, artifacts y operacion activa.
-- **Autonomia de tools** define hasta que nivel de riesgo puede actuar el agente sin pedir permiso.
-- **Descargar worker** libera el worker/modelo cargado.
+- **Autonomia de tools** define el nivel de riesgo máximo que el agente puede ejecutar sin pedir permiso.
+- **Descargar worker** detiene la generación y libera el worker y el modelo activos de Transformers.js. Está deshabilitado con modelos Ollama porque se ejecutan fuera del navegador.
 
 WebGPU es la ruta recomendada para modelos locales. Si WebGPU falla y el modelo lo permite, la aplicacion puede intentar fallback WASM experimental.
 
@@ -165,7 +165,7 @@ Los artifacts son resultados reales de tools guardados por el panel **LLM** para
 
 `wsnic` emula la NIC de la VM sobre WebSockets y la enlaza a una red virtual en tu equipo (servicio local en Docker).
 
-El panel **WS** conecta el navegador con ese servicio. La UI lo llama proxy local por simplicidad, pero se parece mas a un punto de acceso/bridge para la red de la VM.
+El panel **Red WS** conecta el navegador con ese servicio. La UI lo llama proxy local por simplicidad, pero se parece más a un punto de acceso o bridge para la red de la VM.
 
 Cuando esta conectado, wsnic da salida de red a la VM hacia Internet y hacia las redes que pueda alcanzar el host donde ejecutes el contenedor Docker. Esto implica que la VM puede acceder a recursos de la red local del host si la configuracion de red del host lo permite.
 
@@ -176,7 +176,7 @@ Con red disponible, tambien puedes instalar paquetes Alpine dentro de la VM con 
 - Al conectar, la app intenta configurar la red dentro de la VM cuando esta lista.
 - Los badges de cabecera y panel indican si wsnic esta desconectado, conectando, conectado o con error.
 
-Con el contenedor wsnic en marcha, **Conectar** en el panel y la red configurada en la VM, ya tienes salida a Internet y a la red desde **dentro de la VM** (`curl`, `apk`, herramientas del chat, etc.). No necesitas nada mas para ese uso habitual.
+Con el contenedor wsnic en marcha, el panel conectado y la red configurada en la VM, ya tienes salida a Internet y a la red desde **dentro de la VM** (`curl`, `apk`, herramientas del chat, etc.). Este uso habitual no requiere añadir una ruta en el host.
 
 Google Chrome y otros navegadores basados en Chromium pueden mostrar un permiso de acceso a red local al conectar con wsnic en `127.0.0.1`. Debes permitirlo para que la pagina pueda abrir el WebSocket local.
 
@@ -238,7 +238,7 @@ Si una comprobacion falla, revisa el detalle y el log de tools antes de arrancar
 | **serial1 no preparado**   | El runner de tools aun no responde dentro de la VM.        | Espera al arranque completo y ejecuta **Comprobar**.                  |
 | **tool en ejecucion**      | Hay una operacion background activa.                       | Espera o pulsa **Cancelar tool** si procede.                          |
 | **modelo no cargado**      | El chat no puede generar aun.                              | Abre **LLM**, elige backend/modelo y pulsa **Cargar modelo**.   |
-| **wsnic no conecta**       | El proxy WebSocket local no esta disponible o no responde. | Revisa la URL del panel **WS** y el servicio wsnic local.             |
+| **wsnic no conecta**       | El proxy WebSocket local no esta disponible o no responde. | Revisa la URL del panel **Red WS** y el servicio wsnic local.         |
 | **snapshot error**         | No se pudo guardar o restaurar estado.                     | Comprueba memoria, fichero seleccionado y compatibilidad de configuracion. |
 | **disco no montado**       | Hay HDA seleccionado, pero no esta montado en la VM.       | Pulsa **Montar disco** cuando la shell este lista.                    |
 

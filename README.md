@@ -1,39 +1,39 @@
 # Browser Agent v86 POC
 
-[![Versión beta](https://img.shields.io/badge/version-0.9.7--beta.0-orange)](https://github.com/Len4m/browser-agent-v86-poc)
+> **English** | [Español](README.es.md)
 
-Browser Agent v86 POC ejecuta una **VM Linux x86 con v86**, un **chat con LLM desde el navegador** y herramientas de agente que pueden lanzar comandos dentro de la VM. El objetivo es experimentar con IA local, Linux, automatización y red desde una aplicación web servida como archivos estáticos.
+[![Beta version](https://img.shields.io/badge/version-0.9.7--beta.0-orange)](https://github.com/Len4m/browser-agent-v86-poc)
 
-Estado actual: **beta `0.9.7-beta.0`**. La versión `1.0.0` queda reservada para la primera publicación estable.
+Browser Agent v86 POC runs an **x86 Linux VM with v86**, an **in-browser LLM chat**, and agent tools that can execute commands inside the VM. Its purpose is to experiment with local AI, Linux, automation, and networking from a web application served entirely as static files.
+
+Current status: **beta `0.9.7-beta.0`**. Version `1.0.0` is reserved for the first stable release.
 
 - Demo: [https://browseragent.icu/](https://browseragent.icu/)
-- Repositorio: [https://github.com/Len4m/browser-agent-v86-poc](https://github.com/Len4m/browser-agent-v86-poc)
-- Autor: Lenam [lenamgenx@protonmail.com](mailto:lenamgenx@protonmail.com) ([https://Len4m.github.io](https://Len4m.github.io))
+- Repository: [https://github.com/Len4m/browser-agent-v86-poc](https://github.com/Len4m/browser-agent-v86-poc)
+- Author: Lenam [lenamgenx@protonmail.com](mailto:lenamgenx@protonmail.com) ([https://Len4m.github.io](https://Len4m.github.io))
 
-> **English**: the web UI is available in English (auto-selected for non-Spanish browsers; switch anytime from the header). For end-user help, see [docs/USER_MANUAL.en.md](docs/USER_MANUAL.en.md). Developer and repo docs (`USAGE`, `ARCHITECTURE`, this README) are in Spanish only for now — see [Documentation](#documentación) below.
+## Features
 
-## Qué incluye
+- **In-browser Alpine x86 VM**: initramfs boot, generated profiles, and optional HDA data disks.
+- **Direct xterm consoles**: up to 4 user tabs; tab 1 uses the real `serial0`, while tabs 2-4 use dedicated PTYs inside the VM.
+- **Background agent tools**: chat commands and checks run through `serial1` / `/dev/ttyS1`, separately from the visible console.
+- **Dedicated console transport**: multiplexed xterm/PTY traffic for tabs 2-4 through `serial2` / `/dev/ttyS2`.
+- **Python 3 guest runners**: VM profiles include `python3` as a base dependency of the serial overlay.
+- **Browser-based LLM or local Ollama**: Transformers.js with WebGPU/WASM and an optional Ollama HTTP provider, including optional per-model reasoning (thinking) display.
+- **Optional networking through wsnic**: a local WebSocket proxy that gives the VM network access.
+- **Bilingual ES/EN UI**: switch languages instantly from the header without reloading or losing the VM; when there is no saved choice, the app selects Spanish if the browser reports a Spanish language and English otherwise.
 
-- **VM Alpine x86 en el navegador**: arranque por initramfs, perfiles generados y discos HDA opcionales como discos de datos.
-- **Consolas xterm directas**: hasta 4 pestañas de usuario; la pestaña 1 usa `serial0` real y las pestañas 2-4 usan PTY propia dentro de la VM.
-- **Tools de agente en background**: comandos del chat y checks por `serial1` / `/dev/ttyS1`, separados de la consola visible.
-- **Transporte de consola dedicado**: multiplexado xterm/PTY por `serial2` / `/dev/ttyS2` para las pestañas 2-4.
-- **Runners guest en Python 3**: los perfiles VM incluyen `python3` como dependencia base del overlay serial.
-- **LLM en navegador u Ollama local**: Transformers.js con WebGPU/WASM y provider Ollama HTTP opcional, con visualización opcional del razonamiento (thinking) configurable por modelo.
-- **Red opcional vía wsnic**: proxy WebSocket local para dar salida de red a la VM.
-- **UI bilingüe ES/EN**: selector de idioma en la cabecera con cambio en caliente (sin recargar ni perder la VM); por defecto español, e inglés automático en navegadores no españoles.
+## Try the online demo
 
-## Probar la demo online
-
-La forma más rápida de probar el proyecto es abrir:
+The fastest way to try the project is to open:
 
 [https://browseragent.icu/](https://browseragent.icu/)
 
-La demo no requiere clonar el repo. Los modelos locales se descargan y ejecutan desde tu navegador, y los servicios opcionales como Ollama o wsnic siguen siendo locales a tu equipo.
+You do not need to clone the repository. Transformers.js models are downloaded and run in your browser, while optional services such as Ollama or wsnic remain local to your computer.
 
-## Ejecutar desde el repo
+## Run from the repository
 
-Requisitos principales: Node.js 18+, Linux/macOS, Docker, herramientas de sistema para generar initramfs/discos y conexión a Internet para descargar assets base, paquetes Alpine y modelos.
+Main requirements: Node.js 18+, Linux (or macOS with GNU-compatible build tools), Docker, system tools for generating initramfs/disk images, and an Internet connection to download base assets, Alpine packages, and browser models when first loaded.
 
 ```bash
 git clone https://github.com/Len4m/browser-agent-v86-poc.git
@@ -43,66 +43,71 @@ npm run prepare:local
 npm start
 ```
 
-Abre `http://127.0.0.1:5173/`.
+Open `http://127.0.0.1:5173/`.
 
-Primer uso recomendado:
+Recommended first run:
 
-1. Selecciona el perfil de VM.
-2. Pulsa **Arrancar VM** y espera a que aparezca la shell; la primera vez puede descargar assets grandes.
-3. Si el navegador acepta WebGPU, carga un modelo Transformers.js u Ollama desde el panel **LLM**. Con solo WASM, para agente/tools suele ser mejor usar Ollama o probar otro navegador/equipo con WebGPU.
-4. Usa el chat para pedir acciones dentro de la VM, o las consolas para comprobar y ejecutar manualmente.
-5. Si necesitas red en la VM, configura wsnic desde **Red WS**.
+1. Select a VM profile.
+2. Press **Start VM** and wait for the shell to appear; the first run may download large assets.
+3. If the browser supports WebGPU, load a Transformers.js or Ollama model from the **LLM** panel. With WASM only, Ollama or another browser/device with WebGPU is generally a better choice for agent/tool use.
+4. Use the chat to request actions inside the VM, or use the consoles to inspect and run commands manually.
+5. If the VM needs network access, configure wsnic from **WS network**.
 
-Puedes pulsar **Comprobar** en cualquier momento para revisar el estado de la app, VM, assets, red y tools.
+Press **Run checks** at any time to inspect the app, VM, assets, network, and tool status.
 
-El detalle de requisitos, scripts, empaquetado y solución de problemas está en [docs/USAGE.md](docs/USAGE.md).
+For detailed requirements, scripts, packaging, and troubleshooting, see [docs/USAGE.en.md](docs/USAGE.en.md).
 
-## Ejecutar un runtime ya generado
+## Run a prebuilt runtime
 
-Si ya tienes un zip de `public/` con los assets generados, no necesitas Node.js ni Docker para usar la aplicación. Sirve esa carpeta con un servidor HTTP que envíe:
+If you already have a zip of `public/` containing the generated assets, you do not need Node.js or Docker to use the application. Serve that directory with an HTTP server that provides:
 
-- COOP/COEP/CORP para `SharedArrayBuffer`.
-- MIME correcto para `.wasm`.
-- Soporte `Range` para assets grandes.
+- COOP/COEP/CORP headers for `SharedArrayBuffer`.
+- The correct MIME type for `.wasm`.
+- `Range` support for large assets.
 
-No abras `index.html` como `file://`. `npm start` ya sirve `public/` con las cabeceras necesarias.
+Do not open `index.html` through `file://`. `npm start` already serves `public/` with the required headers.
 
-## Estructura principal
+## Main structure
 
 ```txt
-public/             # raíz servida al navegador; contiene salidas generadas y assets estáticos
-src/browser/        # código TypeScript del frontend
-src/web/            # plantilla HTML y CSS fuente
-scripts/            # scripts principales y pasos internos de build/setup/check/clean
-vm/profiles/        # perfiles Alpine de VM
-vm/overlay/common/  # runners y ficheros incluidos en el initramfs
-docs/USER_MANUAL.es.md  # manual de uso (usuarios finales), español
-docs/USER_MANUAL.en.md  # user manual (end users), English
-docs/USAGE.md           # uso, desarrollo, distribución y troubleshooting (español)
-docs/ARCHITECTURE.md    # arquitectura y contratos internos (español)
+public/                    # browser-served root; generated outputs and static assets
+src/browser/               # frontend TypeScript source
+src/web/                   # source HTML template and CSS
+scripts/                   # main scripts and internal build/setup/check/clean steps
+vm/profiles/               # Alpine VM profiles
+vm/overlay/common/         # runners and files included in the initramfs
+docs/USER_MANUAL.es.md     # end-user manual, Spanish
+docs/USER_MANUAL.en.md     # end-user manual, English
+docs/USAGE.es.md           # usage, development, distribution, and troubleshooting, Spanish
+docs/USAGE.en.md           # usage, development, distribution, and troubleshooting, English
+docs/ARCHITECTURE.es.md    # architecture and internal contracts, Spanish
+docs/ARCHITECTURE.en.md    # architecture and internal contracts, English
 ```
 
-## Documentación
+## Documentation
 
-| Documento | Idioma | Contenido |
+| Document | Language | Contents |
 | --- | --- | --- |
-| [README.md](README.md) | ES | Entrada al repositorio (este fichero). |
-| [docs/USER_MANUAL.es.md](docs/USER_MANUAL.es.md) | ES | Manual de uso de la aplicación (VM, chat, paneles); sin instalación ni desarrollo. |
-| [docs/USER_MANUAL.en.md](docs/USER_MANUAL.en.md) | EN | User manual for application usage (VM, chat, panels); does not cover installation or development. |
-| [docs/USAGE.md](docs/USAGE.md) | ES | Instalación local, VM/LLM/wsnic, scripts, runtime zip y problemas habituales. |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | ES | Arquitectura frontend, build, VM, seriales, LLM y reglas de mantenimiento. |
+| [README.md](README.md) | EN | Repository entry point (this file). |
+| [README.es.md](README.es.md) | ES | Repository entry point in Spanish. |
+| [docs/USER_MANUAL.en.md](docs/USER_MANUAL.en.md) | EN | End-user guide to the VM, chat, and panels; does not cover installation or development. |
+| [docs/USER_MANUAL.es.md](docs/USER_MANUAL.es.md) | ES | Spanish end-user guide to the VM, chat, and panels; does not cover installation or development. |
+| [docs/USAGE.en.md](docs/USAGE.en.md) | EN | Local setup, VM/LLM/wsnic, scripts, runtime zip, and common issues. |
+| [docs/USAGE.es.md](docs/USAGE.es.md) | ES | Spanish guide to local setup, VM/LLM/wsnic, scripts, runtime zip, and common issues. |
+| [docs/ARCHITECTURE.en.md](docs/ARCHITECTURE.en.md) | EN | Frontend architecture, build, VM, serial channels, LLM, and maintenance rules. |
+| [docs/ARCHITECTURE.es.md](docs/ARCHITECTURE.es.md) | ES | Spanish guide to frontend architecture, build, VM, serial channels, LLM, and maintenance rules. |
 
-Los manuales de usuario enlazan entre sí por idioma. Para contribuir o desplegar el proyecto, usa `USAGE` y `ARCHITECTURE`.
+Each document links directly to its counterpart in the other language. Use `USAGE` and `ARCHITECTURE` when contributing to or deploying the project.
 
-## Licencia
+## License
 
-El código propio de Browser Agent v86 POC se publica bajo licencia MIT. Consulta [LICENSE](LICENSE).
+Browser Agent v86 POC's original code is released under the MIT License. See [LICENSE](LICENSE).
 
-El runtime incluye o descarga componentes de terceros con sus propias licencias. Hay un resumen en [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt).
+The runtime includes or downloads third-party components under their own licenses. See [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt) for a summary.
 
-Dependencias principales de terceros:
+Main third-party dependencies:
 
 - v86: BSD-2-Clause.
-- `@browser-ai/transformers-js`, `@huggingface/transformers` y AI SDK (`ai`): Apache-2.0.
-- Los perfiles Alpine generados pueden contener paquetes con licencias GPL, LGPL y otras licencias por paquete. Al redistribuir initramfs, imagenes o perfiles generados hay que conservar los avisos correspondientes y cumplir sus obligaciones.
-- Los modelos LLM descargados por el usuario desde Hugging Face, Ollama u otros origenes mantienen sus propias licencias y no pasan a estar cubiertos por la licencia MIT de este repositorio.
+- `@browser-ai/transformers-js`, `@huggingface/transformers`, and AI SDK (`ai`): Apache-2.0.
+- Generated Alpine profiles may contain packages under the GPL, LGPL, and other package-specific licenses. When redistributing generated initramfs files, images, or profiles, retain the corresponding notices and comply with their obligations.
+- LLM models downloaded by the user from Hugging Face, Ollama, or other sources retain their own licenses and are not covered by this repository's MIT License.
