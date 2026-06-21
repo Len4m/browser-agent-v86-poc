@@ -1,7 +1,7 @@
 {
   "name": "browser-agent-v86-poc",
   "description": "Browser Agent v86 POC",
-  "version": "0.9.7-beta.1",
+  "version": "0.9.7-beta.2",
   "author": "Lenam <lenamgenx@protonmail.com> (https://Len4m.github.io)",
   "license": "MIT",
   "private": true,
@@ -22,7 +22,7 @@
     "build:prod": "BA_PUBLIC_SITE_URL=${BA_PUBLIC_SITE_URL:-https://browseragent.icu/} BA_MINIFY=1 node scripts/build.mjs",
     "lint": "eslint .",
     "test": "node scripts/test.mjs",
-    "check": "tsc --noEmit && npm run lint && npm test && node scripts/check.mjs",
+    "check": "tsc && npm run lint && npm test && node scripts/check.mjs",
     "clean": "node scripts/clean.mjs",
     "clean:runtime": "node scripts/clean-runtime.mjs",
     "clean:all": "npm run clean && npm run clean:runtime"

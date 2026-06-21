@@ -152,7 +152,7 @@ export default tseslint.config(
       ...config.languageOptions,
       parserOptions: {
         ...config.languageOptions?.parserOptions,
-        project: "./tsconfig.eslint.json",
+        project: "./tsconfig.json",
         tsconfigRootDir,
       },
       globals: {
@@ -164,7 +164,7 @@ export default tseslint.config(
     files: modernBrowserTs,
     languageOptions: {
       parserOptions: {
-        project: "./tsconfig.eslint.json",
+        project: "./tsconfig.json",
         tsconfigRootDir,
       },
       globals: {

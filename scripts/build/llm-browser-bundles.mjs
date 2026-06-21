@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
+const tsconfigPath = join(root, "tsconfig.json");
 const minify = process.env.BA_MINIFY === "1" || process.argv.includes("--minify");
 const sourcemap = process.env.BA_SOURCEMAP === "1" || process.argv.includes("--sourcemap");
 const browserOutFile = join(root, "public/assets/chat/ai-sdk-browser.mjs");
@@ -30,10 +31,10 @@ function sizeSummary(file) {
 }
 
 const shared = {
+  tsconfig: tsconfigPath,
   bundle: true,
   platform: "browser",
   format: "esm",
-  target: ["es2022"],
   logLevel: "info",
   sourcemap,
   minify,

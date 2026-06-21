@@ -10,6 +10,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
+const tsconfigPath = join(root, "tsconfig.json");
 const publicRoot = join(root, "public");
 const outFile = join(root, "public/assets/app.js");
 const cssBundleFile = join(root, "public/assets/app.css");
@@ -152,12 +153,12 @@ if (minify) {
 }
 
 await esbuild.build({
+  tsconfig: tsconfigPath,
   entryPoints: [join(root, "src/browser/chat/provider/ai-sdk-bridge.ts")],
   outfile: bridgeOutFile,
   bundle: true,
   platform: "browser",
   format: "esm",
-  target: ["es2022"],
   sourcemap,
   minify,
   external: ["./chat/ai-sdk-browser.mjs*"],
@@ -167,12 +168,12 @@ await esbuild.build({
 const bridgeModuleHref = `./ai-sdk-bridge.mjs?v=${cacheKeyForPublicFile("assets/ai-sdk-bridge.mjs")}`;
 
 await esbuild.build({
+  tsconfig: tsconfigPath,
   entryPoints: [join(root, "src/browser/main.ts")],
   outfile: outFile,
   bundle: true,
   platform: "browser",
   format: "esm",
-  target: ["es2022"],
   sourcemap,
   minify,
   define: {
