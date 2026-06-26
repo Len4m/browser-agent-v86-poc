@@ -40,6 +40,12 @@ To prepare the project from the repository, you also need:
 - An Internet connection for the base runtime assets, Alpine packages, and profile wordlists downloaded by `npm run setup`.
 - 1-2 GB of free space for the v86 runtime, initramfs, profiles, and sparse disks.
 
+On Debian/Ubuntu:
+
+```bash
+sudo apt install -y cpio gzip tar curl zstd xz-utils coreutils e2fsprogs findutils gawk grep sed
+```
+
 ### Recommended Memory
 
 Memory depends on the selected LLM backend. **Transformers.js and Ollama do not have the same memory cost**:
@@ -58,12 +64,6 @@ Practical guide:
 | Ollama | Depends on the Ollama model | Add the Ollama model memory to the VM/app usage |
 
 For reference, `qwen3-tools-onnx-q4` (`onnx-community/Qwen3-0.6B-ONNX`, q4/WebGPU) downloaded/cached about 0.93 GB and Chrome reached roughly 5.3 GB RSS during generation in the local test. That cost applies only to the Transformers.js backend; with Ollama it is not used unless you also load a Transformers.js model.
-
-On Debian/Ubuntu:
-
-```bash
-sudo apt install -y cpio gzip tar curl zstd xz-utils coreutils e2fsprogs findutils gawk grep sed
-```
 
 ## Local setup
 
