@@ -40,6 +40,25 @@ Para preparar el proyecto desde el repo necesitas además:
 - Conexión a Internet para los assets base, los paquetes Alpine y las wordlists de perfiles que descarga `npm run setup`.
 - 1-2 GB libres para runtime v86, initramfs, perfiles y discos sparse.
 
+### Memoria recomendada
+
+La memoria depende del backend LLM elegido. **Transformers.js y Ollama no tienen el mismo coste de memoria**:
+
+- Si usas **Transformers.js**, el modelo se descarga/cachea en el navegador y la inferencia corre con WebGPU/WASM, dentro del worker LLM.
+- Si usas **Ollama**, no se carga el runtime ni el modelo Transformers.js en el navegador. El coste del modelo vive en el proceso de Ollama del host y depende del modelo que tengas cargado allí.
+- Si no cargas un modelo Transformers.js, no debes sumar la memoria medida para Transformers.js. Solo suma la app, la VM y, si usas Ollama, el modelo de Ollama.
+
+Guía práctica:
+
+| Escenario | Mínimo práctico | Recomendado |
+| --- | ---: | ---: |
+| UI + VM ligera, sin LLM local de navegador | 4 GB | 8 GB |
+| VM `alpine-base` + Transformers.js `qwen3-tools-onnx-q4` WebGPU | 8 GB | 12 GB |
+| VM pentest + Transformers.js `qwen3-tools-onnx-q4` WebGPU + tools | 12 GB | 16 GB |
+| Ollama | Depende del modelo Ollama | Suma la memoria del modelo Ollama al uso de la VM/app |
+
+Como referencia, `qwen3-tools-onnx-q4` (`onnx-community/Qwen3-0.6B-ONNX`, q4/WebGPU) descargó/cacheó unos 0.93 GB y Chrome alcanzó alrededor de 5.3 GB RSS durante generación en la prueba local. Ese coste solo aplica al backend Transformers.js; con Ollama no se usa salvo que también cargues un modelo Transformers.js.
+
 En Debian/Ubuntu:
 
 ```bash
