@@ -3,6 +3,7 @@ import type * as zod from "zod";
 import type * as ollama from "../ai-sdk/ollama-browser-model";
 import type * as runner from "../ai-sdk/browser-agent-runner";
 import type * as textToolMiddleware from "../ai-sdk/transformers-text-tool-middleware";
+import type * as transformersWorkerModel from "../ai-sdk/transformers-worker-model";
 
 type LanguageModelV3 = Extract<ai.LanguageModel, { specificationVersion: "v3" }>;
 type BrowserSessionLanguageModel = LanguageModelV3 & {
@@ -13,10 +14,7 @@ type BrowserSessionLanguageModel = LanguageModelV3 & {
 export declare const tool: typeof ai.tool;
 export declare const wrapLanguageModel: typeof ai.wrapLanguageModel;
 export declare const extractReasoningMiddleware: typeof ai.extractReasoningMiddleware;
-export declare const transformersJS: (
-  modelId: string,
-  settings?: Record<string, unknown>,
-) => BrowserSessionLanguageModel;
+export declare const transformersWorker: typeof transformersWorkerModel.transformersWorker;
 export declare const ollamaBrowser: typeof ollama.ollamaBrowser;
 export declare const z: typeof zod.z;
 export declare const runAgentStreamTurn: typeof runner.runAgentStreamTurn;

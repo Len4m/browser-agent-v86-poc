@@ -67,13 +67,14 @@ Lista de temas detectados para revisar antes de una publicación estable.
 - [X] Revisar configuración de esbuild para reducir tamaño: minify en runtime zip, sourcemaps opcionales, splitting si aporta valor, tree shaking real y separación de bundles pesados.
 - [X] Revisar qué assets se copian a`public/vendor/` y asegurar que solo se incluyen los necesarios para ejecución.
 - [X] Reorganizar `scripts/` con orquestadores simples en la raíz (`build.mjs`, `setup.mjs`, `check.mjs`, `clean.mjs`) y pasos internos en `build/`, `setup/`, `check/` y `clean/`.
-- [ ] Eliminar duplicación del runtime Transformers entre hilo principal y worker LLM. Hoy `public/assets/chat/ai-sdk-browser.mjs` (~1,1 MB minificado) y `public/assets/chat/workers/llm-browser-ai.worker.mjs` (~557 KB) empaquetan por separado `@huggingface/transformers`, `onnxruntime-web` y `@browser-ai/transformers-js` (~1,2 MB de código repetido en disco y, al activar inferencia local, dos copias parseadas en memoria). Elaborar un plan de refactor antes de tocar build:
+- [X] Eliminar duplicación del runtime Transformers entre hilo principal y worker LLM. Hoy `public/assets/chat/ai-sdk-browser.mjs` (~1,1 MB minificado) y `public/assets/chat/workers/llm-browser-ai.worker.mjs` (~557 KB) empaquetan por separado `@huggingface/transformers`, `onnxruntime-web` y `@browser-ai/transformers-js` (~1,2 MB de código repetido en disco y, al activar inferencia local, dos copias parseadas en memoria). Elaborar un plan de refactor antes de tocar build:
   - Auditar qué usa realmente el bundle principal frente al worker (`entry.ts` vs `llm-browser-ai.worker.ts`, imports desde `ai-sdk-bridge.ts` y middlewares AI SDK).
   - Objetivo: una sola copia del stack de inferencia; el hilo principal solo expone API del AI SDK (Ollama, orquestación, tools) sin cargar Transformers.js salvo que sea estrictamente necesario.
   - Opciones a comparar: (a) mover toda inferencia Transformers.js al worker y comunicar por `postMessage`/`Comlink`; (b) worker único con cola de peticiones y main sin imports de `@huggingface/transformers`; (c) chunk compartido servido una vez (import map o bundle externo cacheable) si el worker puede reutilizarlo sin reparsear.
   - Validar compatibilidad con WebGPU/WASM, fallback tras fallo GPU, recarga del worker (`disposeGenerationCacheBeforeGenerate`) y modelos Ollama (no deben verse afectados).
   - Medir antes/después con metafile esbuild y gzip: tamaño total LLM, tiempo de primera inferencia y pico de memoria en DevTools (main + worker).
   - Documentar la arquitectura elegida en comentarios del build (`llm-browser-bundles.mjs`) y criterio de aceptación: reducción clara del peso combinado y una sola instancia del runtime ONNX/Transformers en runtime local.
+  - Resuelto en `refactor/single-transformers-runtime`: main usa adapter AI SDK ligero + cola `postMessage`; el runtime Transformers/ONNX queda solo en el worker.
 
 ## Calidad y tests
 

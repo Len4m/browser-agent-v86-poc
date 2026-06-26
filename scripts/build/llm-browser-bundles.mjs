@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 /**
- * Browser bundles for AI SDK + @browser-ai/transformers-js.
+ * Browser bundles for AI SDK + local LLM inference.
+ *
+ * Architecture note: the main-thread bundle must expose only the AI SDK API,
+ * Ollama HTTP model, orchestration and tools. The Transformers.js/ONNX runtime
+ * is owned by llm-browser-ai.worker.mjs so local inference parses one runtime
+ * instance, in the worker realm, instead of duplicating it in main + worker.
  * Outputs:
  *   public/assets/chat/ai-sdk-browser.mjs
  *   public/assets/chat/workers/llm-browser-ai.worker.mjs

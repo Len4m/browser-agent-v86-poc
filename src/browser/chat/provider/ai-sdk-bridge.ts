@@ -10,7 +10,7 @@ import {
   tool,
   wrapLanguageModel,
   extractReasoningMiddleware,
-  transformersJS,
+  transformersWorker,
   ollamaBrowser,
   z,
   runAgentStreamTurn,
@@ -214,7 +214,7 @@ function createModel(modelConfig: LlmModelConfig): LanguageModelV3 {
     const device = modelConfig.device || "webgpu";
     const dtype = mapDtype(modelConfig.dtype);
     const disposeGenerationCacheBeforeGenerate = device === "webgpu" && modelConfig.reuseGenerationCache !== true;
-    base = transformersJS(modelConfig.model, {
+    base = transformersWorker(modelConfig.model, {
       device,
       dtype,
       worker: createWorker({ disposeGenerationCacheBeforeGenerate }),

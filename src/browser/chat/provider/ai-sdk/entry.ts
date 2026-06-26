@@ -4,7 +4,7 @@ export {
   wrapLanguageModel,
   extractReasoningMiddleware,
 } from "ai";
-export { transformersJS } from "@browser-ai/transformers-js";
+export { transformersWorker } from "./transformers-worker-model";
 export { z } from "zod";
 export { ollamaBrowser } from "./ollama-browser-model";
 export {

@@ -69,6 +69,41 @@ function pushCall(calls: ParsedTextToolCall[], call: unknown): void {
   });
 }
 
+function parseScalarArg(raw: string): unknown {
+  const value = raw.trim();
+  if (!value) return "";
+  if (value === "true") return true;
+  if (value === "false") return false;
+  if (value === "null") return null;
+  if ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("'") && value.endsWith("'"))) {
+    return value.slice(1, -1);
+  }
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : value;
+}
+
+function parseInlineArgs(text: string, separator: ":" | "="): ToolArguments {
+  const args: ToolArguments = {};
+  for (const pair of text.split(",")) {
+    const idx = pair.indexOf(separator);
+    if (idx <= 0) continue;
+    const key = pair.slice(0, idx).trim();
+    if (!key) continue;
+    args[key] = parseScalarArg(pair.slice(idx + 1));
+  }
+  return args;
+}
+
+function pushNamedCall(calls: ParsedTextToolCall[], toolName: string, args: ToolArguments): void {
+  const finalized = finalizeArgs(toolName, args);
+  if (!finalized) return;
+  calls.push({
+    toolCallId: generateToolCallId(),
+    toolName,
+    args: finalized,
+  });
+}
+
 function findMatchingBrace(text: string, openIndex: number): number {
   if (text[openIndex] !== "{") return -1;
   let depth = 0;
@@ -101,27 +136,50 @@ function findMatchingBrace(text: string, openIndex: number): number {
   return -1;
 }
 
+function parseJsonPayload(payload: string, calls: ParsedTextToolCall[]): void {
+  const inner = payload.trim();
+  if (!inner) return;
+  try {
+    const parsed: unknown = JSON.parse(inner);
+    const items = Array.isArray(parsed) ? parsed : [parsed];
+    for (const call of items) pushCall(calls, call);
+  } catch {
+    for (const line of inner.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      try {
+        const parsedLine: unknown = JSON.parse(trimmed);
+        pushCall(calls, parsedLine);
+      } catch {
+        // Ignore malformed line-level JSON.
+      }
+    }
+  }
+}
+
 function parseFencedBlocks(text: string, calls: ParsedTextToolCall[]): void {
   const fenceRe = /```(?:tool[_-]?call|json)\s*([\s\S]*?)```/gi;
   for (const match of text.matchAll(fenceRe)) {
-    const inner = (match[1] || "").trim();
-    if (!inner) continue;
-    try {
-      const parsed: unknown = JSON.parse(inner);
-      const items = Array.isArray(parsed) ? parsed : [parsed];
-      for (const call of items) pushCall(calls, call);
-    } catch {
-      for (const line of inner.split("\n")) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-        try {
-          const parsedLine: unknown = JSON.parse(trimmed);
-          pushCall(calls, parsedLine);
-        } catch {
-          // Ignore malformed line-level JSON.
-        }
-      }
-    }
+    parseJsonPayload(match[1] || "", calls);
+  }
+}
+
+function parseTaggedBlocks(text: string, calls: ParsedTextToolCall[]): void {
+  const tagRe = /<tool_call>\s*([\s\S]*?)\s*<\/tool_call>|<\|tool_call>\s*([\s\S]*?)\s*<tool_call\|>/gi;
+  for (const match of text.matchAll(tagRe)) {
+    parseJsonPayload(match[1] || match[2] || "", calls);
+  }
+}
+
+function parseInlineCalls(text: string, calls: ParsedTextToolCall[]): void {
+  const pythonRe = /\[([\w.-]+)\(([^)]*)\)\]/g;
+  for (const match of text.matchAll(pythonRe)) {
+    pushNamedCall(calls, match[1] || "", parseInlineArgs(match[2] || "", "="));
+  }
+
+  const callColonRe = /call:([\w.-]+)\{([^}]*)\}/g;
+  for (const match of text.matchAll(callColonRe)) {
+    pushNamedCall(calls, match[1] || "", parseInlineArgs(match[2] || "", ":"));
   }
 }
 
@@ -156,6 +214,8 @@ export function parseTextToolCalls(text: string, options: ParseTextToolCallsOpti
   const raw = String(text || "");
   const calls: ParsedTextToolCall[] = [];
   parseFencedBlocks(raw, calls);
+  parseTaggedBlocks(raw, calls);
+  parseInlineCalls(raw, calls);
   parseLooseToolObjects(raw, calls);
 
   const seen = new Set<string>();
@@ -174,7 +234,12 @@ export function parseTextToolCalls(text: string, options: ParseTextToolCallsOpti
     ? deduped.filter((call) => allowed.has(call.toolName))
     : deduped;
 
-  let textContent = raw.replace(/```(?:tool[_-]?call|json)\s*[\s\S]*?```/gi, "");
+  let textContent = raw
+    .replace(/```(?:tool[_-]?call|json)\s*[\s\S]*?```/gi, "")
+    .replace(/<tool_call>\s*[\s\S]*?\s*<\/tool_call>/gi, "")
+    .replace(/<\|tool_call>\s*[\s\S]*?\s*<tool_call\|>/gi, "")
+    .replace(/\[[\w.-]+\([^)]*\)\]/g, "")
+    .replace(/call:[\w.-]+\{[^}]*\}/g, "");
   let searchFrom = 0;
   while (searchFrom < textContent.length) {
     const nameIdx = textContent.indexOf('"name"', searchFrom);
@@ -212,6 +277,10 @@ export function parseTextToolCalls(text: string, options: ParseTextToolCallsOpti
 export function looksLikeTextToolPlan(text: string): boolean {
   const s = String(text || "");
   return /```(?:tool[_-]?call|json)\b/i.test(s)
+    || /<tool_call>/i.test(s)
+    || /<\|tool_call>/i.test(s)
+    || /\[[\w.-]+\([^)]*$/i.test(s)
+    || /call:[\w.-]+\{[^}]*$/i.test(s)
     || /^\s*\{\s*"name"\s*:\s*"(vm|web|net|tls)\./m.test(s)
     || /^\s*\{\s*"(?:name|tool)"\s*:\s*"(?:vm|web|net|tls)(?:\.|$)/m.test(s)
     || /"(?:name|tool)"\s*:\s*"(?:vm|web|net|tls)\.[^"]*/i.test(s)
