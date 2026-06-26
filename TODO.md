@@ -22,6 +22,7 @@ Lista de temas detectados para revisar antes de una publicación estable.
 - [X] Crear repositorio público`https://github.com/Len4m/browser-agent-v86-poc` cuando se decida publicar.
 - [X] Metadatos básicos para la demo pública (`https://browseragent.icu/`): favicon real, `apple-touch-icon`, `meta description`, Open Graph/Twitter Card con imagen de preview, `canonical` configurable por `BA_PUBLIC_SITE_URL` y `robots.txt` estático en `public/`. No se añade `sitemap.xml` mientras la SPA pública no exponga rutas indexables diferenciadas.
 - [ ] SEO multilingüe por URL (mejora opcional para publicación): hoy el idioma es solo en cliente (misma URL + selector ES/EN), insuficiente para indexar ES y EN por separado. Valorar rutas distintas (p. ej. `/` y `/en/`) con `lang`, meta y `hreflang` por idioma; valorar `sitemap.xml` solo si se crean rutas estáticas indexables. Preferir generación estática en build (sin lógica extra en servidor más allá de servir `public/`). Complementa el punto anterior; puede aplazarse si basta meta en inglés con mención a la UI en español.
+- [ ] Publicar **assets descargables en GitHub Releases** (zip listo para ejecutar sin clonar ni `npm install`). Al crear una release sobre la tag de versión, adjuntar un archivo comprimido con el build de producción ya generado. Contenido mínimo propuesto: `public/` (tras `npm run setup` + `npm run build:prod`), `server.mjs`, `LICENSE` e instrucciones breves (descomprimir → `node server.mjs` → abrir `http://127.0.0.1:5173/`). Valorar script en `scripts/` (p. ej. empaquetar y nombrar `browser-agent-v86-poc-<version>.zip`) e integración en CI al publicar tag/release. Documentar en release notes: requisito Node 18+, tamaño aproximado del zip (WASM v86, imágenes VM, bundles LLM), que los modelos Transformers.js siguen descargándose en el navegador salvo que se decida incluirlos, y que wsnic/Ollama siguen siendo opcionales locales. Criterio de aceptación: un usuario sin repo puede descargar el zip de una release, arrancarlo y usar la demo local con el mismo comportamiento que servir `public/` desde el repositorio.
 
 ## Consola y xterm.js
 
@@ -53,7 +54,7 @@ Lista de temas detectados para revisar antes de una publicación estable.
 
 - [X] Mantener `README.md` y la documentación de `docs/` en español e inglés, con estructura equivalente y enlaces claros entre idiomas.
 - [X] Crear un manual de uso de la aplicación separado de la documentación del repositorio: debe explicar el funcionamiento para usuarios finales sin centrarse en instalación, desarrollo ni scripts.
-- [ ] Enlazar el manual de usuario desde la GUI, respetando el idioma activo cuando existan versiones ES/EN.
+- [X] Enlazar el manual de usuario desde la GUI, respetando el idioma activo cuando existan versiones ES/EN.
 - [X] Documentar en el manual las pantallas principales, botones, controles, perfiles VM, consolas, chat LLM, tools, carga de modelos, snapshots, discos y estados/errores habituales.
 - [X] Añadir capturas definitivas al manual: vista principal con VM encendida, consola visible y paneles inferiores abiertos; capturas de detalle para selector de tools, artifacts, recursos/contexto del LLM y ejemplos de ejecución del agente.
 
