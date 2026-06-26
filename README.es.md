@@ -37,6 +37,8 @@ La demo no requiere clonar el repo. Los modelos Transformers.js se descargan y e
 
 Requisitos principales: Node.js 18+, Linux (o macOS con herramientas de build compatibles con GNU), Docker, herramientas de sistema para generar initramfs/discos y conexión a Internet para descargar assets base, paquetes Alpine y los modelos de navegador cuando se cargan por primera vez.
 
+Memoria/GPU orientativa: mínimo 4 GB RAM; 8 GB RAM y GPU WebGPU con ~2 GB VRAM/memoria compartida para LLM local en navegador; más RAM/VRAM mejora la estabilidad. Detalles en [docs/USAGE.es.md](docs/USAGE.es.md).
+
 ```bash
 git clone https://github.com/Len4m/browser-agent-v86-poc.git
 cd browser-agent-v86-poc
