@@ -13,8 +13,9 @@ const states = new WeakMap<HTMLElement, ChatScrollState>();
 let followButtonLanguageListenerRegistered = false;
 
 function applyFollowButtonLabels(button: HTMLButtonElement): void {
-  button.title = t("chat.follow.title");
-  button.setAttribute("aria-label", t("chat.follow.aria"));
+  const label = t("chat.follow.label");
+  button.title = label;
+  button.setAttribute("aria-label", label);
 }
 
 function ensureFollowButtonLanguageListener(): void {
