@@ -287,8 +287,7 @@ ROOT_MODDIR="$WORK/rootfs/lib/modules/$KVER"
 mkdir -p "$ROOT_MODDIR"
 cp "$MODDIR"/modules.* "$ROOT_MODDIR/" 2>/dev/null || true
 
-# Prefer NE2000 because v86 exposes PCI 10ec:8029 and the Buildroot image already worked with eth0.
-# Include VirtIO candidates only for diagnostics/future use.
+# Prefer virtio-net for modern Alpine; keep NE2000 modules available as a compatibility fallback.
 find_module_rel() {
   local name="$1"
   # modules.dep can use either "module.ko.gz:" or "module.ko.gz: dep1 dep2".
@@ -409,8 +408,18 @@ if [ ! -s "$MODULES_LIST" ]; then
   exit 1
 fi
 
+if ! grep -q 'virtio_net\.ko' "$MODULES_LIST"; then
+  echo "ERROR: no se ha incluido virtio_net.ko; v86 usa virtio-net por defecto." >&2
+  exit 1
+fi
+
+if ! grep -q 'virtio_pci\.ko' "$MODULES_LIST"; then
+  echo "ERROR: no se ha incluido virtio_pci.ko; v86 expone virtio-net por PCI." >&2
+  exit 1
+fi
+
 if ! grep -q 'ne2k-pci\.ko' "$MODULES_LIST"; then
-  echo "AVISO: no se ha incluido ne2k-pci.ko. El log de runtime indicará los candidatos." >&2
+  echo "AVISO: no se ha incluido ne2k-pci.ko; NE2000 no estará disponible como fallback." >&2
 fi
 
 if ! grep -q 'af_packet\.ko' "$MODULES_LIST"; then
@@ -454,7 +463,7 @@ else
   echo "missing /etc/v86-net-modules.list" >>/tmp/v86-net-modules.log
 fi
 
-if [ -e /sys/bus/pci/drivers/ne2k-pci/bind ]; then
+if [ -e /sys/bus/pci/devices/0000:00:05.0 ] && [ ! -e /sys/bus/pci/devices/0000:00:05.0/driver ] && [ -e /sys/bus/pci/drivers/ne2k-pci/bind ]; then
   echo 0000:00:05.0 > /sys/bus/pci/drivers/ne2k-pci/bind 2>>/tmp/v86-net-modules.log || true
 fi
 

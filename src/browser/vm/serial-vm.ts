@@ -541,7 +541,7 @@ export async function startVm(options: StartVmOptions = {}): Promise<void> {
     syncSnapshotButtons();
 
     const relayUrl = getWsRelayUrl();
-    logTool(`[network] v86 ne2k net_device.relay_url = ${relayUrl}${NL}`);
+    logTool(`[network] v86 virtio net_device.relay_url = ${relayUrl}${NL}`);
     logTool(`[host] RAM ${runtime.ramMb} MB · VRAM ${runtime.vramMb} MB · Disco ${runtime.hda ? runtime.hda.url : "initramfs/RAM"}${NL}`);
     if (cfg.profile) logTool(`[profile] ${cfg.profile.name || cfg.profile.id} · ${cfg.profile.output || ""}${NL}`);
     else logTool(`[profile] libre / manual${NL}`);
@@ -555,8 +555,8 @@ export async function startVm(options: StartVmOptions = {}): Promise<void> {
       bzimage: { buffer: buffers.bzimage },
       ...(buffers.initrd ? { initrd: { buffer: buffers.initrd } } : {}),
       ...(runtime.hda ? { hda: { url: runtime.hda.url, async: true, size: runtime.hda.sizeMb * 1024 * 1024 } } : {}),
-      // NE2000/RTL8029. v86 creates this as PCI 10ec:8029 and Alpine loads it with ne2k-pci.
-      net_device: { type: "ne2k", relay_url: relayUrl },
+      // virtio-net is faster on modern Alpine and is supported by the generated initramfs.
+      net_device: { type: "virtio", relay_url: relayUrl },
       filesystem: {},
       // UART1 is reserved for non-interactive background tools.
       // UART2 is reserved for the browser xterm/PTY daemon.
