@@ -3,6 +3,7 @@
 // incrementally and avoids replacing innerHTML on every token.
 
 import { t } from "../../app/i18n";
+import { scrollChatLogToBottom } from "./chat-scroll";
 
 const SAFE_URL_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
 const STREAMING_MARKDOWN_VENDOR = "../vendor/llm/streaming-markdown/smd.js";
@@ -108,18 +109,6 @@ function createSafeRenderer(smd: StreamingMarkdownModule, container: HTMLElement
   };
 
   return renderer;
-}
-
-function isNearBottom(element: Element, tolerance = 80): boolean {
-  return element.scrollHeight - element.scrollTop - element.clientHeight <= tolerance;
-}
-
-function scrollChatToBottom(container: HTMLElement, force = false): void {
-  const chatLog = container.closest(".chat-log");
-  if (!chatLog) return;
-  if (force || isNearBottom(chatLog)) {
-    chatLog.scrollTop = chatLog.scrollHeight;
-  }
 }
 
 async function copyTextToClipboard(text: string): Promise<boolean> {
@@ -228,7 +217,7 @@ export async function createMarkdownStreamRenderer(container: HTMLElement): Prom
       } else {
         root.textContent = raw;
       }
-      scrollChatToBottom(container);
+      scrollChatLogToBottom(container);
       scheduleEnhance();
     },
     end(): void {
@@ -250,7 +239,7 @@ export async function createMarkdownStreamRenderer(container: HTMLElement): Prom
         });
       }
       enhanceCodeBlocksWithCopy(root);
-      scrollChatToBottom(container, true);
+      scrollChatLogToBottom(container);
     },
     getRaw(): string {
       return raw;

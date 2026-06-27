@@ -162,6 +162,8 @@
   "caps.view.recheckAria": "Recheck WebGPU/WASM capabilities",
   "caps.view.recheckError": "error checking WebGPU",
   "chat.clear.title": "Clear visible chat, internal history and artifacts",
+  "chat.follow.aria": "Go to bottom of chat",
+  "chat.follow.title": "Go to bottom of chat",
   "chat.empty.defaultModelLabel": "local model",
   "chat.empty.lengthLimit": "The answer was cut off by the model's output limit. Raise the output budget or use a model with more context.",
   "chat.empty.noVisibleText": "The {label} produced no visible text. It may be empty output, a streaming incompatibility, or a format the parser cannot render.",

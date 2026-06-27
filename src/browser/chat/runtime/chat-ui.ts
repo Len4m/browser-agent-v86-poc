@@ -2,6 +2,7 @@
 // DOM/bubble helpers for the chat runtime agent loop.
 
 import { t } from "../../app/i18n";
+import { scrollChatLogToBottom } from "../rendering/chat-scroll";
 import { createMarkdownStreamRenderer, type MarkdownStreamRenderer } from "../rendering/markdown-renderer";
 import { llmAgentRouting } from "./agent-routing";
 import { llmArtifacts, type LlmArtifact } from "./artifact-store";
@@ -89,7 +90,7 @@ function createAssistantMessageShell(extraClass = ""): HTMLElement {
   bubble.className = "bubble ba-llm-bubble";
   msg.appendChild(bubble);
   log.appendChild(msg);
-  log.scrollTop = log.scrollHeight;
+  scrollChatLogToBottom(log);
   return bubble;
 }
 
@@ -124,7 +125,7 @@ async function appendFinalAgentBubble(markdown: unknown): Promise<HTMLElement | 
   renderer.write(text);
   renderer.end();
   const log = document.getElementById("chat-log");
-  if (log) log.scrollTop = log.scrollHeight;
+  scrollChatLogToBottom(log);
   return bubble;
 }
 
@@ -231,7 +232,7 @@ function setChatTailIndicator(label = t("common.generatingResponse")): HTMLEleme
   if (created || indicator.parentElement !== log || log.lastElementChild !== indicator) {
     log.appendChild(indicator);
   }
-  log.scrollTop = log.scrollHeight;
+  scrollChatLogToBottom(log);
   return indicator;
 }
 

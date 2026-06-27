@@ -296,6 +296,39 @@
   background: linear-gradient(180deg, #fbfaff, #ffffff);
 }
 
+.ba-chat-follow-button {
+  position: fixed;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  padding: 0;
+  border: 1px solid rgba(37, 99, 235, 0.28);
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.72);
+  color: #fff;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.14);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  transform: translate(-50%, -100%);
+}
+
+.ba-chat-follow-button:hover {
+  background: rgba(29, 78, 216, 0.86);
+}
+
+.ba-chat-follow-button:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.28);
+  outline-offset: 2px;
+}
+
+.ba-chat-follow-button[hidden] {
+  display: none;
+}
+
 .chat-log,
 .chat-log .msg,
 .chat-log .bubble,
