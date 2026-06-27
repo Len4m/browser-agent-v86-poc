@@ -278,12 +278,11 @@ Key files:
 - `scripts/check/frontend-manifest.mjs`
 - `scripts/check/js-syntax.mjs`
 - `scripts/check/i18n.mjs`
-- `scripts/check/browser-modernity.mjs`
 - `scripts/check/server.mjs`
 
 `check-server` starts `server.mjs` at `127.0.0.1:5199` and validates COOP, COEP, CORP, and `Range`.
 
-`npm run lint` uses ESLint flat config (`eslint.config.js`). ESLint applies type-aware TypeScript rules to the modernized browser modules, and `scripts/check/browser-modernity.mjs` blocks regressions involving `@ts-nocheck`, inline scripts, retired compatibility names, and new `window.BA`/`window.BA_*` assignments.
+`npm run lint` uses ESLint flat config (`eslint.config.js`). ESLint applies type-aware TypeScript rules to the modernized browser modules.
 
 `npm test` compiles `tests/**/*.test.ts` with esbuild into `build/test/` and runs `node --test`. Tests under `tests/browser/` cover the behavior of pure modules in `src/browser/`; they are not browser end-to-end tests. `scripts/check/` is reserved for repository integrity, generated asset, and architecture-rule validation.
 
@@ -308,4 +307,4 @@ Key files:
 9. `npm run build:prod` uses `https://browseragent.icu/` as `BA_PUBLIC_SITE_URL` by default; other domains must override that variable to generate canonical and Open Graph/Twitter metadata with absolute URLs for the correct domain.
 10. Keep explicit limits for logs, artifacts, history, and tool output.
 11. Test creating, closing, and refreshing xterm consoles, as well as full-screen programs and tools, after changing serial channels or console geometry.
-12. Keep the `scripts/check/browser-modernity.mjs` limits at zero for `@ts-nocheck`, inline scripts, and retired compatibility names; document any exception as a technical boundary.
+12. Keep browser code typed, modular, and explicit; rely on ESLint, TypeScript, and code review, and justify any exception to the established architecture.

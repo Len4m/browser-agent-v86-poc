@@ -278,12 +278,11 @@ Archivos clave:
 - `scripts/check/frontend-manifest.mjs`
 - `scripts/check/js-syntax.mjs`
 - `scripts/check/i18n.mjs`
-- `scripts/check/browser-modernity.mjs`
 - `scripts/check/server.mjs`
 
 `check-server` arranca `server.mjs` en `127.0.0.1:5199` y valida COOP, COEP, CORP y `Range`.
 
-`npm run lint` usa ESLint flat config (`eslint.config.js`). El código TypeScript de navegador se valida con reglas TypeScript type-aware en los módulos modernizados, y `scripts/check/browser-modernity.mjs` bloquea regresiones de `@ts-nocheck`, scripts inline, nombres de compatibilidad retirados y nuevas asignaciones `window.BA`/`window.BA_*`.
+`npm run lint` usa ESLint flat config (`eslint.config.js`). El código TypeScript de navegador se valida con reglas TypeScript type-aware en los módulos modernizados.
 
 `npm test` compila `tests/**/*.test.ts` con esbuild hacia `build/test/` y ejecuta `node --test`. Los tests en `tests/browser/` cubren comportamiento de módulos puros de `src/browser/`; no son tests end-to-end en navegador. `scripts/check/` queda reservado para validaciones de integridad del repo, assets generados y reglas de arquitectura.
 
@@ -308,4 +307,4 @@ Archivos clave:
 9. `npm run build:prod` usa `https://browseragent.icu/` como `BA_PUBLIC_SITE_URL` por defecto; otros dominios deben sobrescribir esa variable para generar canonical y Open Graph/Twitter con URLs absolutas del dominio correcto.
 10. Mantener límites explícitos para logs, artifacts, historial y salidas de tools.
 11. Probar consolas xterm, cierre, refresco, programas de pantalla completa y tools tras tocar seriales o geometría de consola.
-12. Mantener los límites de `scripts/check/browser-modernity.mjs` en cero para `@ts-nocheck`, scripts inline y nombres de compatibilidad retirados; cualquier excepción debe estar documentada como frontera técnica.
+12. Mantener el código de navegador tipado, modular y explícito; apoyarse en ESLint, TypeScript y revisión de código, y justificar cualquier excepción a la arquitectura establecida.
