@@ -132,7 +132,6 @@ run("bash", ["scripts/setup/vm-alpine-initramfs.sh"], {
   env: {
     PROFILE_ID: id,
     PROFILE_NAME: name,
-    PROFILE_DESCRIPTION: String(profile.description || ""),
     PROFILE_PACKAGES: packages.join("\n"),
     PROFILE_EXTRA_REPOSITORIES: extraRepositories.join("\n"),
     PROFILE_FIRSTBOOT_FILE: firstBootFile,

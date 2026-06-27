@@ -1,0 +1,91 @@
+#!/bin/sh
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export TERM=xterm
+
+mount -t devtmpfs dev /dev 2>/dev/null || mount -t tmpfs dev /dev
+mkdir -p /dev/pts /proc /sys /run /tmp /mnt /root
+mount -t devpts devpts /dev/pts 2>/dev/null || true
+mount -t proc proc /proc 2>/dev/null || true
+mount -t sysfs sysfs /sys 2>/dev/null || true
+mount -t tmpfs tmpfs /run 2>/dev/null || true
+mount -t tmpfs tmpfs /tmp 2>/dev/null || true
+
+hostname browser-alpine 2>/dev/null || true
+printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\n' > /etc/resolv.conf
+
+: > /tmp/v86-net-modules.log
+printf 'build-id: ' >> /tmp/v86-net-modules.log
+cat /etc/browser-agent-build-id >> /tmp/v86-net-modules.log 2>/dev/null || true
+printf '\n' >> /tmp/v86-net-modules.log
+
+if [ -f /etc/v86-net-modules.list ]; then
+  while read -r mod; do
+    [ -n "$mod" ] || continue
+    if [ -f "$mod" ]; then
+      insmod "$mod" >>/tmp/v86-net-modules.log 2>&1 || true
+    else
+      echo "missing $mod" >>/tmp/v86-net-modules.log
+    fi
+  done < /etc/v86-net-modules.list
+else
+  echo "missing /etc/v86-net-modules.list" >>/tmp/v86-net-modules.log
+fi
+
+if [ -e /sys/bus/pci/devices/0000:00:05.0 ] && [ ! -e /sys/bus/pci/devices/0000:00:05.0/driver ] && [ -e /sys/bus/pci/drivers/ne2k-pci/bind ]; then
+  echo 0000:00:05.0 > /sys/bus/pci/drivers/ne2k-pci/bind 2>>/tmp/v86-net-modules.log || true
+fi
+
+cat > /sbin/browser-agent-login <<'LOGIN'
+#!/bin/sh
+export HOME=/root
+export TERM=${TERM:-xterm-256color}
+export HISTFILE=/dev/null
+cd /root 2>/dev/null || cd /
+
+stty rows 24 cols 100 </dev/ttyS0 2>/dev/null || stty rows 24 cols 100 2>/dev/null || true
+exec /bin/sh -l
+LOGIN
+chmod +x /sbin/browser-agent-login
+
+supervise_browser_agent_runner() {
+  name="$1"
+  tty="$2"
+  command="$3"
+  log="/tmp/${name}.log"
+
+  (
+    while true; do
+      if [ -e "$tty" ]; then
+        "$command" "$tty" >"$log" 2>&1
+      fi
+      sleep 1
+    done
+  ) &
+}
+
+supervise_browser_agent_runner ba-serial1-runner /dev/ttyS1 /usr/local/bin/ba-serial1-runner
+supervise_browser_agent_runner ba-serial2-console-runner /dev/ttyS2 /usr/local/bin/ba-serial2-console-runner
+
+if [ -x /etc/browser-agent-firstboot.sh ]; then
+  /etc/browser-agent-firstboot.sh >>/tmp/browser-agent-firstboot.log 2>&1 || true
+fi
+
+{
+  printf '\n'
+  if [ -f /etc/browser-agent-boot-message ]; then
+    cat /etc/browser-agent-boot-message
+  else
+    echo 'Browser Alpine ready.'
+    echo 'Network: pulsa Conectar en la UI.'
+    echo 'Packages: apk update; apk add curl nano'
+  fi
+  printf '\n'
+} >/dev/ttyS0
+
+while true; do
+  # Use getty instead of launching /bin/sh directly. This gives the shell a
+  # proper controlling TTY on ttyS0, enabling job control (Ctrl+Z, jobs, fg, bg).
+  setsid getty -L -n -l /sbin/browser-agent-login 115200 ttyS0 xterm >/dev/ttyS0 2>&1
+  printf '\n[init] serial getty exited, restarting...\n' >/dev/ttyS0
+  sleep 1
+done
