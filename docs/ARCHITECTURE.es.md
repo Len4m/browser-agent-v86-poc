@@ -217,7 +217,39 @@ El listado de perfiles se descubre desde `vm/profiles/*.json`, excluyendo `profi
 
 `scripts/setup/vm-profile-image.mjs` genera manifests en `public/v86/images/profiles/` y mantiene `index.json`. Los perfiles usan initramfs; los discos HDA creados por `scripts/setup/vm-hda-data-disks.sh` son imágenes ext2 raw para datos.
 
-Los runners seriales se instalan desde `vm/overlay/common/usr/local/bin/`. Tras cambiar overlay, perfiles, runners o build de Alpine, ejecutar `npm run setup`.
+### Cómo se crea un perfil VM y qué ficheros intervienen
+
+El flujo va del JSON del perfil a la imagen initramfs servida en `public/`:
+
+```txt
+vm/profiles/<id>.json                  (definición del perfil)
+  -> scripts/check/vm-profiles.mjs     (valida contra profile.schema.json)
+  -> scripts/setup/vm-profile-image.mjs (orquestador del perfil)
+       -> build/profiles/<id>/firstboot.sh
+       -> build/profiles/<id>/build-commands.sh
+       -> bash scripts/setup/vm-alpine-initramfs.sh  (vía variables PROFILE_*/ALPINE_*)
+            -> scripts/setup/lib/common.sh           (require_build_tools, repos, metadatos)
+            -> scripts/setup/lib/profile-rootfs.sh   (paquetes vía Docker, buildCommands, mensaje)
+                 -> scripts/setup/lib/docker-install-packages.sh (ejecutado dentro del contenedor)
+            -> scripts/setup/lib/kernel-modules.sh   (kernel linux-lts + módulos v86)
+            -> vm/overlay/common/init                (guest /init)
+            -> vm/overlay/common/usr/local/bin/ba-serial1-runner, ba-serial2-console-runner
+  -> public/v86/images/alpine-initramfs.gz, alpine-vmlinuz-lts   (salidas)
+  -> public/v86/images/profiles/<id>.json + index.json          (manifests)
+```
+
+Ficheros por paso:
+
+- Definición: `vm/profiles/<id>.json` (esquema en `vm/profiles/profile.schema.json`; el nombre de fichero debe coincidir con el `id`).
+- Orquestador del perfil: `scripts/setup/vm-profile-image.mjs` lee el JSON, escribe `firstboot.sh` y `build-commands.sh` en `build/profiles/<id>/` e invoca el build pasando `PROFILE_*` y `ALPINE_*`.
+- Build de la imagen: `scripts/setup/vm-alpine-initramfs.sh` actúa como orquestador y delega en `scripts/setup/lib/*.sh`:
+  - `common.sh`: comprobación de dependencias de host, `/etc/apk/repositories` y metadatos del rootfs (`browser-agent-build-id`, `-profile-name`, `-profile-id`).
+  - `profile-rootfs.sh`: instalación de paquetes del perfil mediante Docker export (con `docker-install-packages.sh` dentro del contenedor), ejecución de `buildCommands` y mensaje de arranque.
+  - `kernel-modules.sh`: descarga `linux-lts`, extrae el kernel y resuelve/copia los módulos de red y almacenamiento, generando `/etc/v86-net-modules.list`.
+- Guest: el `/init` y los runners serie se instalan desde la fuente única en `vm/overlay/common/` con `install -m 0755`.
+- Salidas: `public/v86/images/alpine-initramfs.gz`, `alpine-vmlinuz-lts` y los manifests en `public/v86/images/profiles/`.
+
+Los runners seriales y el guest `/init` se instalan desde `vm/overlay/common/`. Tras cambiar overlay, perfiles, runners, librerías de build o build de Alpine, ejecutar `npm run setup`.
 
 ## Capa LLM
 
