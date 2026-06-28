@@ -261,7 +261,7 @@ async function configureNetworkInVm(): Promise<void> {
   if (result.stdout) logTool(`${NL}${result.stdout}${NL}`);
   if (result.stderr) logTool(`${NL}[network stderr] ${result.stderr}${NL}`);
 
-  const ok = result.stdout.includes("HTTP_GOOGLE_OK") || result.stdout.includes("bytes from");
+  const ok = result.stdout.includes("HTTP_BROWSER_AGENT_OK") || result.stdout.includes("bytes from");
   state.networkConfigured = ok;
   state.networkConfiguring = false;
 
