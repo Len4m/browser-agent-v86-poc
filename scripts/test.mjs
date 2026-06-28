@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { toolDefinitionsPlugin } from "./build/plugins/tool-definitions-plugin.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const testsDir = join(root, "tests");
@@ -40,6 +41,7 @@ await esbuild.build({
   target: ["node18"],
   outExtension: { ".js": ".mjs" },
   packages: "external",
+  plugins: [toolDefinitionsPlugin(root)],
   logLevel: "silent",
 });
 
