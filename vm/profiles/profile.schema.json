@@ -5,7 +5,7 @@
   "description": "Schema for source VM profiles in vm/profiles/*.json. Profiles are consumed by scripts/setup/vm-profile-image.mjs to generate public v86 initramfs manifests.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id"],
+  "required": ["id", "allowedTools"],
   "properties": {
     "$schema": {
       "type": "string",
@@ -87,6 +87,16 @@
         "pattern": "^[A-Za-z0-9_.:+-]+$"
       },
       "description": "Alpine packages installed into the exported rootfs before packing the initramfs."
+    },
+    "allowedTools": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9_.-]+$"
+      },
+      "description": "Ordered LLM tool allowlist for this VM profile. Order is used as default priority when models see a limited number of tools."
     },
     "extraRepositories": {
       "type": "array",

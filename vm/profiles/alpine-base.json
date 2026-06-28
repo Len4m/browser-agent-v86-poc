@@ -17,6 +17,19 @@
     "nano",
     "python3"
   ],
+  "allowedTools": [
+    "vm.python.exec",
+    "vm.sh.exec",
+    "vm.fs.list",
+    "vm.fs.read",
+    "vm.fs.write",
+    "vm.cmd.which",
+    "web.curl.head",
+    "vm.sys.info",
+    "vm.console.status",
+    "vm.pkg.info",
+    "web.curl.fetch_text"
+  ],
   "firstBootCommands": [
     "update-ca-certificates >/tmp/update-ca-certificates.log 2>&1 || true"
   ],
