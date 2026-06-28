@@ -73,6 +73,41 @@ test("tools missing required profile packages are not exposed", () => {
     llmToolRegistry.listToolNames({ profileId: "missing-packages", includeUnavailable: true }),
     ["web.curl.head", "vm.sh.exec"],
   );
+  assert.deepEqual(llmToolRegistry.listToolRuntimeChecks({ profileId: "missing-packages" }), []);
+  assert.deepEqual(
+    llmToolRegistry.listToolRuntimeChecks({ profileId: "missing-packages", includeUnavailable: true }),
+    [{ label: "curl", command: "command -v curl" }],
+  );
+});
+
+test("tool runtime checks are derived from allowed tool definitions", () => {
+  installProfiles();
+
+  assert.deepEqual(
+    llmToolRegistry.listToolRuntimeChecks({ profileId: "alpine-base", includeUnavailable: true }),
+    [
+      { label: "python3", command: "command -v python3" },
+      { label: "curl", command: "command -v curl" },
+    ],
+  );
+
+  assert.deepEqual(
+    llmToolRegistry.listToolRuntimeChecks({ profileId: "alpine-pentest-web", includeUnavailable: true }).map((check) => check.label),
+    [
+      "python3",
+      "curl",
+      "dig",
+      "ip",
+      "nmap",
+      "ffuf",
+      "httpx",
+      "nikto.pl",
+      "timeout",
+      "Net::SSLeay",
+      "IO::Socket::SSL",
+      "openssl",
+    ],
+  );
 });
 
 test("Nikto tool uses the nikto.pl profile contract", () => {
@@ -93,6 +128,29 @@ test("Nikto tool uses the nikto.pl profile contract", () => {
   assert.match(command, /command -v 'timeout'/);
   assert.match(command, /timeout 75s nikto\.pl/);
   assert.doesNotMatch(command, /nikto_cmd|nikto_run|\/usr\/share\/nikto|command -v 'nikto'/);
+});
+
+test("HTTPX tool resolves fallback binary names", () => {
+  const tool = llmToolRegistry.getTool("web.httpx.probe");
+  assert.ok(tool);
+  const normalizeArgs = tool.normalizeArgs;
+  if (typeof normalizeArgs !== "function") throw new Error("HTTPX tool must normalize args");
+
+  const args = normalizeArgs({
+    url: "https://example.com",
+    rate: 10,
+    threads: 2,
+    techDetect: false,
+  });
+  const command = tool.buildCommand(args);
+
+  assert.match(command, /command -v httpx \|\| command -v httpx-pd \|\| command -v httpx-toolkit/);
+  assert.match(command, /"\$httpx_cmd" -u/);
+  assert.doesNotMatch(command, /command -v 'httpx'/);
+  assert.deepEqual(tool.runtimeChecks, [{
+    label: "httpx",
+    command: "command -v httpx || command -v httpx-pd || command -v httpx-toolkit || for p in /usr/bin/httpx* /usr/local/bin/httpx*; do [ -x \"$p\" ] && exit 0; done; exit 1",
+  }]);
 });
 
 test("each tool definition owns its AI SDK input schema", () => {

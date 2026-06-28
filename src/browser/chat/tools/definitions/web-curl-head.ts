@@ -7,6 +7,7 @@ export const toolDefinition: ToolDefinition = {
   name: "web.curl.head", get label() { return t("tools.name.web.curl.head"); }, riskLevel: 2, category: "web.http",
   requiresVm: true, requiresConsole: true, timeoutMs: 30000, maxOutputBytes: 24000,
   requiredPackages: ["curl"],
+  runtimeChecks: [{ label: "curl", command: "command -v curl" }],
   get description() { return t("tools.desc.web.curl.head"); },
   get promptDescription() { return toolPrompt(this.label, '{"url":"https://example.com","followRedirects":true,"insecure":true,"timeoutSec":8}'); },
   buildInputSchema(z) {

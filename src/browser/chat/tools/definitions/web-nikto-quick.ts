@@ -73,7 +73,13 @@ function formatNiktoResult(toolDef: Pick<ToolDefinition, "maxOutputBytes">, resu
 export const toolDefinition: ToolDefinition = {
   name: "web.nikto.quick", get label() { return t("tools.name.web.nikto.quick"); }, riskLevel: 3, category: "web.scan",
   requiresVm: true, requiresConsole: true, timeoutMs: 170000, maxOutputBytes: 32768,
-  requiredPackages: ["nikto"],
+  requiredPackages: ["nikto", "perl-net-ssleay", "perl-io-socket-ssl"],
+  runtimeChecks: [
+    { label: "nikto.pl", command: "command -v nikto.pl" },
+    { label: "timeout", command: "command -v timeout" },
+    { label: "Net::SSLeay", command: "perl -MNet::SSLeay -e 1" },
+    { label: "IO::Socket::SSL", command: "perl -MIO::Socket::SSL -e 1" },
+  ],
   get description() { return t("tools.desc.web.nikto.quick"); },
   get promptDescription() { return toolPrompt(this.label, '{"url":"https://example.com","maxTimeSec":60,"timeoutSec":5,"tuning":"123b"}'); },
   buildInputSchema(z) {

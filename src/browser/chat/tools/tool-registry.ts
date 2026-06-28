@@ -15,6 +15,7 @@ import type {
   SecurityLevel,
   ToolDefinition,
   ToolMetadata,
+  ToolRuntimeCheck,
 } from "./types";
 
 function isVmProfile(value: unknown): value is VmProfile {
@@ -160,6 +161,17 @@ export const llmToolRegistry: LlmToolRegistryApi = (() => {
     };
   }
 
+  function toolRuntimeChecks(tool: ToolDefinition): ToolRuntimeCheck[] {
+    const checks = Array.isArray(tool.runtimeChecks) ? tool.runtimeChecks : [];
+    return checks
+      .filter((check) => isRecord(check))
+      .map((check) => ({
+        label: textValue(check.label).trim(),
+        command: textValue(check.command).trim(),
+      }))
+      .filter((check) => Boolean(check.label && check.command));
+  }
+
   function listToolNames({ profileId = baseRuntimeContext().activeProfile, includeUnavailable = false } = {}): string[] {
     return rawAllowedToolNames(profileId)
       .filter((name, index, names) => names.indexOf(name) === index)
@@ -176,6 +188,21 @@ export const llmToolRegistry: LlmToolRegistryApi = (() => {
       .filter((tool): tool is ToolDefinition => Boolean(tool))
       .sort(compareToolsForDisplay)
       .map(toolMetadata);
+  }
+
+  function listToolRuntimeChecks({ profileId = baseRuntimeContext().activeProfile, includeUnavailable = false } = {}): ToolRuntimeCheck[] {
+    const out: ToolRuntimeCheck[] = [];
+    const seen = new Set<string>();
+    for (const name of listToolNames({ profileId, includeUnavailable })) {
+      const tool = getTool(name);
+      if (!tool) continue;
+      for (const check of toolRuntimeChecks(tool)) {
+        if (seen.has(check.label)) continue;
+        seen.add(check.label);
+        out.push(check);
+      }
+    }
+    return out;
   }
 
   function buildPromptToolCatalog(): string {
@@ -255,6 +282,7 @@ export const llmToolRegistry: LlmToolRegistryApi = (() => {
     getTool,
     listTools,
     listToolNames,
+    listToolRuntimeChecks,
     normalizeToolCall,
     buildPromptRuntimeContext,
     buildPromptRuntimeContextCompact,

@@ -31,6 +31,11 @@ export interface ToolExecutionResult {
   toolCall?: NormalizedToolCall;
 }
 
+export interface ToolRuntimeCheck {
+  label: string;
+  command: string;
+}
+
 export interface ToolDefinition {
   name: string;
   label: string;
@@ -41,6 +46,7 @@ export interface ToolDefinition {
   timeoutMs: number;
   maxOutputBytes?: number;
   requiredPackages?: string[];
+  runtimeChecks?: ToolRuntimeCheck[];
   description: string;
   promptDescription: string;
   normalizeArgs?: (args?: ToolArgs) => ToolArgs;
@@ -102,6 +108,7 @@ export interface LlmToolRegistryApi {
   normalizeToolCall: (value: unknown) => NormalizedToolCall;
   buildPromptRuntimeContext: () => string;
   buildPromptRuntimeContextCompact: (options?: PromptRuntimeContextCompactOptions) => string;
+  listToolRuntimeChecks: (options?: ListToolsOptions) => ToolRuntimeCheck[];
   assertVmToolPreconditions: () => RuntimeToolContext;
 }
 

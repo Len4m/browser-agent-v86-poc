@@ -7,6 +7,7 @@ export const toolDefinition: ToolDefinition = {
   name: "tls.openssl.cert", get label() { return t("tools.name.tls.openssl.cert"); }, riskLevel: 2, category: "tls",
   requiresVm: true, requiresConsole: true, timeoutMs: 18000, maxOutputBytes: 16000,
   requiredPackages: ["openssl"],
+  runtimeChecks: [{ label: "openssl", command: "command -v openssl" }],
   get description() { return t("tools.desc.tls.openssl.cert"); },
   get promptDescription() { return toolPrompt(this.label, '{"host":"example.com","port":443}'); },
   buildInputSchema(z) {

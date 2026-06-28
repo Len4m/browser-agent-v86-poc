@@ -3,7 +3,9 @@
 import { $, NL, state } from "../app/state";
 import { t, tn } from "../app/i18n";
 import { shellQuote } from "../app/text-utils";
-import { getConfig, getSelectedProfile, getVmRuntimeConfig, getWsRelayUrl, type VmProfile } from "../vm/profile-config";
+import { llmToolRegistry } from "../chat/tools/tool-registry";
+import type { ToolRuntimeCheck } from "../chat/tools/types";
+import { getConfig, getSelectedProfile, getVmRuntimeConfig, getWsRelayUrl } from "../vm/profile-config";
 import { checkAsset, checkWsRelayEndpoint, loadScript } from "../vm/runtime-assets";
 import { backgroundToolsApi, type BackgroundToolDiagnostics } from "../vm/background-tools-serial1";
 import { execVm, type ExecVmOptions, type ExecVmResult } from "../vm/operations";
@@ -28,11 +30,6 @@ type V86RuntimeWindow = Window & typeof globalThis & {
   V86Starter?: unknown;
   V86?: unknown;
 };
-
-interface ToolCheck {
-  label: string;
-  test: string;
-}
 
 function v86RuntimeWindow(): V86RuntimeWindow {
   return window;
@@ -125,44 +122,17 @@ function getVmCommandCheckSkipReason(): string {
   return "";
 }
 
-function getExpectedToolChecks(profile: VmProfile | null): ToolCheck[] {
-  const packages = new Set(profile?.packages || []);
-  const checks: ToolCheck[] = [];
-
-  const addTool = (label: string, test: string): void => {
-    if (!checks.some((item) => item.label === label)) checks.push({ label, test });
-  };
-
-  if (packages.has("curl")) addTool("curl", "command -v curl");
-  if (packages.has("nano")) addTool("nano", "command -v nano");
-  if (packages.has("nmap")) addTool("nmap", "command -v nmap");
-  if (packages.has("ffuf")) addTool("ffuf", "command -v ffuf");
-  if (packages.has("python3")) addTool("python3", "command -v python3");
-  if (packages.has("py3-pip")) addTool("pip", "command -v pip3 || command -v pip");
-  if (packages.has("bind-tools")) addTool("dig", "command -v dig");
-  if (packages.has("iproute2")) addTool("ip", "command -v ip");
-  if (packages.has("nikto")) addTool("nikto", "command -v nikto.pl && command -v nikto");
-  if (packages.has("httpx")) addTool("httpx", "command -v httpx || command -v httpx-pd || command -v httpx-toolkit || ls /usr/bin/httpx* /usr/local/bin/httpx* >/dev/null 2>&1");
-
-  if (packages.has("perl-net-ssleay")) {
-    addTool("Net::SSLeay", "perl -MNet::SSLeay -e 1");
-  }
-  if (packages.has("perl-io-socket-ssl")) {
-    addTool("IO::Socket::SSL", "perl -MIO::Socket::SSL -e 1");
-  }
-
-  return checks;
-}
-
 function makePackageCheckCommand(packages: string[] = []): string {
   const list = packages.map(shellQuote).join(" ");
   if (!list) return "P=BA_PKG; echo ${P}_OK";
   return `P=BA_PKG; missing=""; for p in ${list}; do apk info -e "$p" >/dev/null 2>&1 || missing="$missing $p"; done; if [ -n "$missing" ]; then echo "\${P}_MISSING:$missing"; exit 1; else echo "\${P}_OK"; fi`;
 }
 
-function makeToolCheckCommand(toolChecks: ToolCheck[]): string {
+function makeToolCheckCommand(toolChecks: ToolRuntimeCheck[]): string {
   if (!toolChecks.length) return "P=BA_TOOLS; echo ${P}_OK";
-  const tests = toolChecks.map((item) => `(${item.test}) >/dev/null 2>&1 || missing="$missing ${item.label}"`).join("; ");
+  const tests = toolChecks
+    .map((item) => `(${item.command}) >/dev/null 2>&1 || missing=$(printf '%s %s' "$missing" ${shellQuote(item.label)})`)
+    .join("; ");
   return `P=BA_TOOLS; missing=""; ${tests}; if [ -n "$missing" ]; then echo "\${P}_MISSING:$missing"; exit 1; else echo "\${P}_OK"; fi`;
 }
 
@@ -316,18 +286,17 @@ export async function runChecks({ probeWsRelay = true }: RunChecksOptions = {}):
         add(t("checks.item.vmPackages"), true, t("common.manualMode"));
       }
 
-      if (profile) {
-        const toolChecks = getExpectedToolChecks(profile);
-        const toolResult = await runVmCheck(makeToolCheckCommand(toolChecks), {
-          label: t("checks.label.checkingTools"),
-          timeoutMs: 18000,
-        });
-        const clean = normalizeTerminalStreamForMarkers(toolResult.stdout);
-        const missingTools = clean.match(/BA_TOOLS_MISSING:([^\n\r]*)/)?.[1]?.trim();
-        add(t("checks.item.vmTools"), toolResult.code === 0, missingTools ? t("checks.detail.missing", { list: missingTools }) : toolResult.stderr || tn("checks.detail.checksCount", toolChecks.length));
-      } else {
-        add(t("checks.item.vmTools"), true, t("common.manualMode"));
-      }
+      const toolChecks = llmToolRegistry.listToolRuntimeChecks({
+        profileId: profile?.id || "manual",
+        includeUnavailable: true,
+      });
+      const toolResult = await runVmCheck(makeToolCheckCommand(toolChecks), {
+        label: t("checks.label.checkingTools"),
+        timeoutMs: 18000,
+      });
+      const toolClean = normalizeTerminalStreamForMarkers(toolResult.stdout);
+      const missingTools = toolClean.match(/BA_TOOLS_MISSING:([^\n\r]*)/)?.[1]?.trim();
+      add(t("checks.item.vmTools"), toolResult.code === 0, missingTools ? t("checks.detail.missing", { list: missingTools }) : toolResult.stderr || tn("checks.detail.checksCount", toolChecks.length));
 
       const netCommand = "PFX=BA_VM_NET; IFACE=$(ls /sys/class/net | grep -v '^lo$' | head -n1); if [ -z \"$IFACE\" ]; then echo ${PFX}_NO_IFACE; exit 1; fi; printf '%s_IFACE:%s\\n' \"$PFX\" \"$IFACE\"; if ! ip -4 addr show \"$IFACE\" | grep -q 'inet '; then echo ${PFX}_NO_IPV4; exit 2; fi; if wget -q -T 5 -O /tmp/ba-net-check https://browseragent.icu/; then echo ${PFX}_HTTP_OK; else ping -c 1 -W 2 1.1.1.1 >/dev/null 2>&1 && echo ${PFX}_PING_OK || { echo ${PFX}_FAIL; exit 3; }; fi";
       const netResult = await runVmCheck(netCommand, {

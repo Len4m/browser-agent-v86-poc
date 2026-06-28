@@ -13,6 +13,7 @@ export const toolDefinition: ToolDefinition = {
   name: "net.dns.lookup", get label() { return t("tools.name.net.dns.lookup"); }, riskLevel: 2, category: "net.dns",
   requiresVm: true, requiresConsole: true, timeoutMs: 10000, maxOutputBytes: 16000,
   requiredPackages: ["bind-tools"],
+  runtimeChecks: [{ label: "dig", command: "command -v dig" }],
   get description() { return t("tools.desc.net.dns.lookup"); },
   get promptDescription() { return toolPrompt(this.label, '{"host":"example.com","type":"A"}'); },
   buildInputSchema(z) {

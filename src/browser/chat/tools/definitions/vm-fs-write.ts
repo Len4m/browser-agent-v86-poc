@@ -52,6 +52,7 @@ export const toolDefinition: ToolDefinition = {
   name: "vm.fs.write", get label() { return t("tools.name.vm.fs.write"); }, riskLevel: 3, category: "vm.fs",
   requiresVm: true, requiresConsole: true, timeoutMs: 12000, maxOutputBytes: 12000,
   requiredPackages: ["python3"],
+  runtimeChecks: [{ label: "python3", command: "command -v python3" }],
   get description() { return t("tools.desc.vm.fs.write"); },
   get promptDescription() { return toolPrompt(this.label, '{"path":"/tmp/nota.txt","content":"texto","createDirs":false,"overwrite":false}'); },
   buildInputSchema(z) {
