@@ -2,11 +2,11 @@
 
 > **English** | [Español](README.es.md)
 
-[![Beta version](https://img.shields.io/badge/version-0.9.8--beta.3-orange)](https://github.com/Len4m/browser-agent-v86-poc)
+[![Beta version](https://img.shields.io/badge/version-0.9.8--beta.4-orange)](https://github.com/Len4m/browser-agent-v86-poc)
 
 Browser Agent v86 POC runs an **x86 Linux VM with v86**, an **in-browser LLM chat**, and agent tools that can execute commands inside the VM. Its purpose is to experiment with local AI, Linux, automation, and networking from a web application served entirely as static files.
 
-Current status: **beta `0.9.8-beta.3`**. Version `1.0.0` is reserved for the first stable release.
+Current status: **beta `0.9.8-beta.4`**. Version `1.0.0` is reserved for the first stable release.
 
 - Demo: [https://browseragent.icu/](https://browseragent.icu/)
 - Repository: [https://github.com/Len4m/browser-agent-v86-poc](https://github.com/Len4m/browser-agent-v86-poc)
@@ -98,8 +98,8 @@ docs/ARCHITECTURE.en.md    # architecture and internal contracts, English
 | [docs/USER_MANUAL.es.md](docs/USER_MANUAL.es.md) | ES | Spanish end-user guide to the VM, chat, and panels; does not cover installation or development. |
 | [docs/USAGE.en.md](docs/USAGE.en.md) | EN | Local setup, VM/LLM/wsnic, scripts, runtime zip, and common issues. |
 | [docs/USAGE.es.md](docs/USAGE.es.md) | ES | Spanish guide to local setup, VM/LLM/wsnic, scripts, runtime zip, and common issues. |
-| [docs/ARCHITECTURE.en.md](docs/ARCHITECTURE.en.md) | EN | Frontend architecture, build, VM, serial channels, LLM, and maintenance rules. |
-| [docs/ARCHITECTURE.es.md](docs/ARCHITECTURE.es.md) | ES | Spanish guide to frontend architecture, build, VM, serial channels, LLM, and maintenance rules. |
+| [docs/ARCHITECTURE.en.md](docs/ARCHITECTURE.en.md) | EN | Frontend architecture, build, VM, serial channels, LLM, tool/profile contracts, and maintenance rules. |
+| [docs/ARCHITECTURE.es.md](docs/ARCHITECTURE.es.md) | ES | Spanish guide to frontend architecture, build, VM, serial channels, LLM, tool/profile contracts, and maintenance rules. |
 
 Each document links directly to its counterpart in the other language. Use `USAGE` and `ARCHITECTURE` when contributing to or deploying the project.
 
