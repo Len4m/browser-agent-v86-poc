@@ -2,11 +2,11 @@
 
 > **English** | [Español](README.es.md)
 
-[![Beta version](https://img.shields.io/badge/version-0.9.8--beta.4-orange)](https://github.com/Len4m/browser-agent-v86-poc)
+[![Beta version](https://img.shields.io/badge/version-0.9.8--beta.5-orange)](https://github.com/Len4m/browser-agent-v86-poc)
 
 Browser Agent v86 POC runs an **x86 Linux VM with v86**, an **in-browser LLM chat**, and agent tools that can execute commands inside the VM. Its purpose is to experiment with local AI, Linux, automation, and networking from a web application served entirely as static files.
 
-Current status: **beta `0.9.8-beta.4`**. Version `1.0.0` is reserved for the first stable release.
+Current status: **beta `0.9.8-beta.5`**. Version `1.0.0` is reserved for the first stable release.
 
 - Demo: [https://browseragent.icu/](https://browseragent.icu/)
 - Repository: [https://github.com/Len4m/browser-agent-v86-poc](https://github.com/Len4m/browser-agent-v86-poc)
