@@ -8,6 +8,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { discoverToolDefinitions } from "../build/lib/tool-definitions.mjs";
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
 const profilesDir = join(root, "vm", "profiles");
@@ -16,6 +17,11 @@ const profileFiles = readdirSync(profilesDir)
   .filter((file) => file.endsWith(".json") && !file.endsWith(".schema.json"))
   .sort();
 const requiredProfilePackages = ["python3"];
+const toolDefinitions = discoverToolDefinitions(root);
+const knownToolNames = new Set(toolDefinitions.map((tool) => tool.name));
+const toolPackageRequirements = Object.fromEntries(
+  toolDefinitions.map((tool) => [tool.name, tool.requiredPackages]),
+);
 const errors = [];
 
 function typeOf(value) {
@@ -126,6 +132,19 @@ for (const file of profileFiles) {
   for (const packageName of requiredProfilePackages) {
     if (!packages.includes(packageName)) {
       errors.push(`${path}.packages: missing required package ${packageName} (guest runners depend on it)`);
+    }
+  }
+
+  const allowedTools = Array.isArray(profile.allowedTools) ? profile.allowedTools : [];
+  for (const [index, toolName] of allowedTools.entries()) {
+    if (!knownToolNames.has(toolName)) {
+      errors.push(`${path}.allowedTools[${index}]: unknown tool ${toolName}`);
+      continue;
+    }
+    for (const packageName of toolPackageRequirements[toolName] || []) {
+      if (!packages.includes(packageName)) {
+        errors.push(`${path}.allowedTools[${index}]: ${toolName} requires package ${packageName}`);
+      }
     }
   }
 }

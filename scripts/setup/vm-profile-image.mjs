@@ -75,6 +75,7 @@ const profile = JSON.parse(readFileSync(profilePath, "utf8"));
 const id = assertString(profile.id, "id");
 const name = assertString(profile.name || profile.id, "name");
 const packages = assertArray(profile.packages || [], "packages");
+const allowedTools = assertArray(profile.allowedTools, "allowedTools");
 const extraRepositories = assertArray(profile.extraRepositories || [], "extraRepositories");
 const firstBootCommands = assertArray(profile.firstBootCommands || [], "firstBootCommands");
 const buildCommands = assertArray(profile.buildCommands || [], "buildCommands");
@@ -164,6 +165,7 @@ const manifest = {
   initramfsBytes: bytes(outputAbs),
   kernelBytes: bytes(kernelAbs),
   packages,
+  allowedTools,
   firstBootCommands,
   buildCommands,
   validationCommands,
@@ -202,6 +204,7 @@ index.push({
   recommendedVramMb,
   defaultDisk,
   packages,
+  allowedTools,
   extraRepositories,
   generatedAt: manifest.generatedAt,
 });
