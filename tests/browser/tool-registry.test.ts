@@ -75,6 +75,26 @@ test("tools missing required profile packages are not exposed", () => {
   );
 });
 
+test("Nikto tool uses the nikto.pl profile contract", () => {
+  const tool = llmToolRegistry.getTool("web.nikto.quick");
+  assert.ok(tool);
+  const normalizeArgs = tool.normalizeArgs;
+  if (typeof normalizeArgs !== "function") throw new Error("Nikto tool must normalize args");
+
+  const args = normalizeArgs({
+    url: "https://example.com",
+    maxTimeSec: 60,
+    timeoutSec: 5,
+    tuning: "123b",
+  });
+  const command = tool.buildCommand(args);
+
+  assert.match(command, /command -v 'nikto\.pl'/);
+  assert.match(command, /command -v 'timeout'/);
+  assert.match(command, /timeout 75s nikto\.pl/);
+  assert.doesNotMatch(command, /nikto_cmd|nikto_run|\/usr\/share\/nikto|command -v 'nikto'/);
+});
+
 test("each tool definition owns its AI SDK input schema", () => {
   const fakeSchema: AiSdkSchemaLike = {
     describe() { return fakeSchema; },

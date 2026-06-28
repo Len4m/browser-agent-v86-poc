@@ -42,13 +42,7 @@ function buildNiktoQuickCommand(args: ToolArgs): string {
     "-timeout", String(timeoutSec),
     "-maxtime", `${maxTimeSec}s`,
   ].map(shellQuote).join(" ");
-  const niktoCommand = [
-    "nikto_cmd=$(command -v nikto 2>/dev/null || command -v nikto.pl 2>/dev/null || true)",
-    "if [ -z \"$nikto_cmd\" ]; then for p in /usr/bin/nikto.pl /usr/share/nikto/program/nikto.pl /usr/share/nikto/nikto.pl; do if [ -f \"$p\" ]; then nikto_cmd=\"$p\"; break; fi; done; fi",
-    "if [ -z \"$nikto_cmd\" ]; then printf 'ERROR: missing command: nikto\\n'; exit 127; fi",
-    `case "$nikto_cmd" in *.pl) nikto_run="perl $nikto_cmd ${niktoArgs}" ;; *) nikto_run="$nikto_cmd ${niktoArgs}" ;; esac`,
-    `if command -v timeout >/dev/null 2>&1; then timeout ${hardLimitSec}s sh -lc "exec $nikto_run"; else sh -lc "exec $nikto_run"; fi`,
-  ].join("; ");
+  const niktoCommand = `timeout ${hardLimitSec}s nikto.pl ${niktoArgs}`;
   return sedLinesBodyCommand("ba-nikto", niktoCommand, 180);
 }
 
@@ -99,7 +93,7 @@ export const toolDefinition: ToolDefinition = {
     };
   },
   buildCommand(args) {
-    return captureCommand("ba-nikto", ["perl"], buildNiktoQuickCommand(args));
+    return captureCommand("ba-nikto", ["nikto.pl", "timeout"], buildNiktoQuickCommand(args));
   },
   formatResult(result, args) {
     return formatNiktoResult(this, result, args);

@@ -141,7 +141,7 @@ function getExpectedToolChecks(profile: VmProfile | null): ToolCheck[] {
   if (packages.has("py3-pip")) addTool("pip", "command -v pip3 || command -v pip");
   if (packages.has("bind-tools")) addTool("dig", "command -v dig");
   if (packages.has("iproute2")) addTool("ip", "command -v ip");
-  if (packages.has("nikto")) addTool("nikto", "command -v nikto || command -v nikto.pl || [ -f /usr/share/nikto/program/nikto.pl ] || [ -f /usr/bin/nikto.pl ]");
+  if (packages.has("nikto")) addTool("nikto", "command -v nikto.pl && command -v nikto");
   if (packages.has("httpx")) addTool("httpx", "command -v httpx || command -v httpx-pd || command -v httpx-toolkit || ls /usr/bin/httpx* /usr/local/bin/httpx* >/dev/null 2>&1");
 
   if (packages.has("perl-net-ssleay")) {
