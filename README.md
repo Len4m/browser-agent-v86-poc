@@ -103,6 +103,12 @@ docs/                      # user, usage, architecture, and developer documentat
 
 Each document links to its counterpart in the other language. Use `USAGE`, `ARCHITECTURE`, and `VM_PROFILES_AND_TOOLS` when contributing to or deploying the project.
 
+## Contributing
+
+All kinds of contributions are welcome: [issues](https://github.com/Len4m/browser-agent-v86-poc/issues), bug reports, ideas, translations, documentation improvements, [pull requests](https://github.com/Len4m/browser-agent-v86-poc/pulls), and new VM profiles or profile tools. If you want to add runtime capabilities, see the [VM profiles and tools guide](docs/VM_PROFILES_AND_TOOLS.en.md).
+
+If the project is useful or interesting to you, starring the repository helps other developers discover it.
+
 ## License
 
 Browser Agent v86 POC's original code is released under the MIT License. See [LICENSE](LICENSE).
