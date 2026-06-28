@@ -1,7 +1,13 @@
 import { t } from "../../../app/i18n";
 import { shellQuote } from "../../../app/text-utils";
-import { captureCommand, normalizeDnsType, normalizeHost, standardFormat, summaryCouldNot, textValue, toolPrompt } from "../shared";
+import { captureCommand, normalizeHost, standardFormat, summaryCouldNot, textValue, toolPrompt } from "../shared";
 import type { ToolDefinition } from "../types";
+
+function normalizeDnsType(value: unknown): string {
+  const type = (textValue(value) || "A").trim().toUpperCase();
+  const allowed = new Set(["A", "AAAA", "CNAME", "MX", "NS", "TXT", "SOA", "ANY"]);
+  return allowed.has(type) ? type : "A";
+}
 
 export const toolDefinition: ToolDefinition = {
   name: "net.dns.lookup", get label() { return t("tools.name.net.dns.lookup"); }, riskLevel: 2, category: "net.dns",

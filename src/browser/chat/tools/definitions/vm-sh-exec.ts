@@ -1,7 +1,24 @@
 import { t } from "../../../app/i18n";
 import { clampInt, shellQuote } from "../../../app/text-utils";
-import { captureCommand, normalizeShellCommand, standardFormat, toolPrompt } from "../shared";
+import { captureCommand, standardFormat, textValue, toolPrompt } from "../shared";
 import type { ToolDefinition } from "../types";
+
+function normalizeShellCommand(value: unknown): string {
+  const command = textValue(value).trim();
+  if (!command) throw new Error(t("tools.error.shellEmpty"));
+  if (command.includes("\0")) throw new Error(t("tools.error.commandNull"));
+  if (command.length > 2400) throw new Error(t("tools.error.commandTooLong"));
+  if (/\brm\s+-[^\n;]*r[^\n;]*f[^\n;]*(?:\/\s*$|\/\s|\/\*|--no-preserve-root)/i.test(command)) {
+    throw new Error(t("tools.error.blockedRmrf"));
+  }
+  if (/\b(?:mkfs|mkswap|fdisk|parted)\b/i.test(command)) {
+    throw new Error(t("tools.error.blockedDisk"));
+  }
+  if (/\bdd\b[^\n;]*\bof=\/dev\//i.test(command)) {
+    throw new Error(t("tools.error.blockedDevWrite"));
+  }
+  return command;
+}
 
 export const toolDefinition: ToolDefinition = {
   name: "vm.sh.exec", get label() { return t("tools.name.vm.sh.exec"); }, riskLevel: 3, category: "vm.exec",

@@ -1,7 +1,11 @@
 import { t } from "../../../app/i18n";
 import { clampInt, shellQuote } from "../../../app/text-utils";
-import { normalizeReadArgs, standardFormat, summaryCouldNot, summaryHeadTarget, toolPrompt } from "../shared";
-import type { ToolDefinition } from "../types";
+import { normalizeVmPath, standardFormat, summaryCouldNot, summaryHeadTarget, toolPrompt } from "../shared";
+import type { ToolArgs, ToolDefinition } from "../types";
+
+function normalizeReadArgs(args: ToolArgs = {}): ToolArgs {
+  return { path: normalizeVmPath(args.path || ""), maxBytes: clampInt(args.maxBytes, 256, 32768, 8192) };
+}
 
 export const toolDefinition: ToolDefinition = {
   name: "vm.fs.read", get label() { return t("tools.name.vm.fs.read"); }, riskLevel: 1, category: "vm.fs",

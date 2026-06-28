@@ -1,7 +1,24 @@
 import { t } from "../../../app/i18n";
 import { clampInt, shellQuote } from "../../../app/text-utils";
-import { captureCommand, normalizeHost, normalizePortList, standardFormat, summaryToolFailedOn, summaryToolOn, toolPrompt } from "../shared";
+import { captureCommand, normalizeHost, standardFormat, summaryToolFailedOn, summaryToolOn, textValue, toolPrompt } from "../shared";
 import type { ToolDefinition } from "../types";
+
+function normalizePortList(value: unknown): string {
+  const raw = Array.isArray(value) ? value.join(",") : textValue(value).trim();
+  if (!raw) return "";
+  if (!/^\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*$/.test(raw)) throw new Error(t("tools.error.portsInvalid"));
+  const parts = raw.split(",");
+  if (parts.length > 20) throw new Error(t("tools.error.portsTooMany"));
+  for (const part of parts) {
+    const [startRaw, endRaw = startRaw] = part.split("-");
+    const start = Number(startRaw);
+    const end = Number(endRaw);
+    if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end > 65535 || start > end) {
+      throw new Error(t("tools.error.portsInvalid"));
+    }
+  }
+  return raw;
+}
 
 export const toolDefinition: ToolDefinition = {
   name: "net.nmap.quick", get label() { return t("tools.name.net.nmap.quick"); }, riskLevel: 3, category: "net.scan",
