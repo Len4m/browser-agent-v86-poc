@@ -279,6 +279,16 @@ Important details:
 - Reasoning (thinking) is configured per model in `data/llm-models.json` (the `thinking` field: `enabled`, `tagName`, `startWithReasoning`). Transformers.js extracts it with `extractReasoningMiddleware` according to `tagName`; chat displays it through the LLM panel toggle. It is streamed and is not retained in memory or as the final response.
 - Ollama is called from the browser, not the VM. The default endpoint is `http://127.0.0.1:11434`.
 
+### Tool and profile contract
+
+The tool system is split between tool definitions, profile policy, and runtime execution.
+
+- Tool definitions live in `src/browser/chat/tools/definitions/*.ts` and are discovered into the virtual `virtual:ba-tools` module; there is no hand-written tool index.
+- VM profiles expose tools through `allowedTools`. That list is the policy source of truth for generated profiles, and its order is used as the default priority when the UI/model limits visible tools.
+- `requiredPackages` links each tool to the Alpine packages it needs. `scripts/check/vm-profiles.mjs` validates unknown tools and missing packages; runtime also filters tools that the active profile cannot support.
+- Execution flows through argument normalization, optional risk confirmation, VM/serial preconditions, `buildCommand()`, `execVm(..., targetTools: true)` on `serial1`, result formatting, and artifact storage.
+- If a tool needs a specific executable name, keep the profile build/validation commands, UI checks, and tests aligned. For example, `web.nikto.quick` depends on package `nikto` but executes `nikto.pl` through `timeout`; `alpine-pentest-web` also exposes a `nikto` symlink for manual use.
+
 Key files:
 
 | File | Responsibility |
@@ -287,9 +297,10 @@ Key files:
 | `src/browser/chat/provider/ai-sdk/browser-agent-runner.ts` | AI SDK turn, steps, streaming, and fallback synthesis |
 | `src/browser/chat/provider/ai-sdk/ollama-browser-model.ts` | Ollama HTTP provider for the browser |
 | `src/browser/chat/provider/ai-sdk/llm-browser-ai.worker.ts` | Transformers.js worker |
+| `src/browser/chat/tools/definitions/*.ts` | Individual tool definitions discovered into `virtual:ba-tools` |
 | `src/browser/chat/tools/ai-tools.ts` | Registry → AI SDK `tool()` adapter |
 | `src/browser/chat/tools/tool-executor.ts` | Executes tools through `execVm` and publishes events |
-| `src/browser/chat/tools/tool-registry.ts` | Single tool catalog by context/profile |
+| `src/browser/chat/tools/tool-registry.ts` | Profile-gated facade over the virtual tool catalog |
 | `src/browser/chat/runtime/context-budget.ts` | Context and token budget |
 | `src/browser/chat/runtime/artifact-store.ts` | Compact persistence of tool results |
 | `src/browser/chat/rendering/markdown-renderer.ts` | Streaming Markdown without React |
@@ -333,7 +344,7 @@ Key files:
 3. Add new CSS under `src/web/styles/` and `@import` it from `src/web/styles/style.css`.
 4. Add new browser libraries through `package.json` plus a copy/bundle script; do not copy them manually into `public/vendor/`.
 5. Add new models to `data/llm-models.json` and rebuild the generated assets with `npm run build`.
-6. Add new tools to `src/browser/chat/tools/tool-registry.ts`; do not duplicate catalogs.
+6. Add new tools as definition modules in `src/browser/chat/tools/definitions/`; keep the literal name, `requiredPackages`, profile `allowedTools`, checks, and tests aligned.
 7. Changes to profiles, the overlay, or runners require `npm run setup`.
 8. Changes to the AI SDK provider or worker require `npm run build`.
 9. `npm run build:prod` uses `https://browseragent.icu/` as `BA_PUBLIC_SITE_URL` by default; other domains must override that variable to generate canonical and Open Graph/Twitter metadata with absolute URLs for the correct domain.
