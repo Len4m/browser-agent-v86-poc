@@ -90,18 +90,15 @@ docs/ARCHITECTURE.en.md # architecture and internal contracts (English)
 
 ## Documentación
 
-| Documento | Idioma | Contenido |
-| --- | --- | --- |
-| [README.es.md](README.es.md) | ES | Entrada al repositorio (este fichero). |
-| [README.md](README.md) | EN | Repository entry point. |
-| [docs/USER_MANUAL.es.md](docs/USER_MANUAL.es.md) | ES | Manual de uso de la aplicación (VM, chat, paneles); sin instalación ni desarrollo. |
-| [docs/USER_MANUAL.en.md](docs/USER_MANUAL.en.md) | EN | User manual for application usage (VM, chat, panels); does not cover installation or development. |
-| [docs/USAGE.es.md](docs/USAGE.es.md) | ES | Instalación local, VM/LLM/wsnic, scripts, runtime zip y problemas habituales. |
-| [docs/USAGE.en.md](docs/USAGE.en.md) | EN | Local setup, VM/LLM/wsnic, scripts, runtime zip, and common issues. |
-| [docs/ARCHITECTURE.es.md](docs/ARCHITECTURE.es.md) | ES | Arquitectura frontend, build, VM, seriales, LLM, contratos tools/perfiles y reglas de mantenimiento. |
-| [docs/ARCHITECTURE.en.md](docs/ARCHITECTURE.en.md) | EN | Frontend architecture, build, VM, serial channels, LLM, tool/profile contracts, and maintenance rules. |
+| Documento | Contenido |
+| --- | --- |
+| [README.es.md](README.es.md) | Entrada al repositorio (este fichero). |
+| [docs/USER_MANUAL.es.md](docs/USER_MANUAL.es.md) | Manual de uso de la aplicación (VM, chat, paneles); sin instalación ni desarrollo. |
+| [docs/USAGE.es.md](docs/USAGE.es.md) | Instalación local, VM/LLM/wsnic, scripts, runtime zip y problemas habituales. |
+| [docs/ARCHITECTURE.es.md](docs/ARCHITECTURE.es.md) | Arquitectura frontend, build, VM, seriales, LLM, contratos tools/perfiles y reglas de mantenimiento. |
+| [docs/VM_PROFILES_AND_TOOLS.es.md](docs/VM_PROFILES_AND_TOOLS.es.md) | Guía de desarrollo para añadir perfiles VM y exponer tools mediante la política del perfil. |
 
-Cada documento enlaza directamente con su versión en el otro idioma. Para contribuir o desplegar el proyecto, usa `USAGE` y `ARCHITECTURE`.
+Cada documento enlaza con su versión en el otro idioma. Para contribuir o desplegar el proyecto, usa `USAGE`, `ARCHITECTURE` y `VM_PROFILES_AND_TOOLS`.
 
 ## Licencia
 

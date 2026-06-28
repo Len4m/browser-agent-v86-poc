@@ -90,18 +90,15 @@ docs/ARCHITECTURE.en.md    # architecture and internal contracts, English
 
 ## Documentation
 
-| Document | Language | Contents |
-| --- | --- | --- |
-| [README.md](README.md) | EN | Repository entry point (this file). |
-| [README.es.md](README.es.md) | ES | Repository entry point in Spanish. |
-| [docs/USER_MANUAL.en.md](docs/USER_MANUAL.en.md) | EN | End-user guide to the VM, chat, and panels; does not cover installation or development. |
-| [docs/USER_MANUAL.es.md](docs/USER_MANUAL.es.md) | ES | Spanish end-user guide to the VM, chat, and panels; does not cover installation or development. |
-| [docs/USAGE.en.md](docs/USAGE.en.md) | EN | Local setup, VM/LLM/wsnic, scripts, runtime zip, and common issues. |
-| [docs/USAGE.es.md](docs/USAGE.es.md) | ES | Spanish guide to local setup, VM/LLM/wsnic, scripts, runtime zip, and common issues. |
-| [docs/ARCHITECTURE.en.md](docs/ARCHITECTURE.en.md) | EN | Frontend architecture, build, VM, serial channels, LLM, tool/profile contracts, and maintenance rules. |
-| [docs/ARCHITECTURE.es.md](docs/ARCHITECTURE.es.md) | ES | Spanish guide to frontend architecture, build, VM, serial channels, LLM, tool/profile contracts, and maintenance rules. |
+| Document | Contents |
+| --- | --- |
+| [README.md](README.md) | Repository entry point (this file). |
+| [docs/USER_MANUAL.en.md](docs/USER_MANUAL.en.md) | End-user guide to the VM, chat, and panels; does not cover installation or development. |
+| [docs/USAGE.en.md](docs/USAGE.en.md) | Local setup, VM/LLM/wsnic, scripts, runtime zip, and common issues. |
+| [docs/ARCHITECTURE.en.md](docs/ARCHITECTURE.en.md) | Frontend architecture, build, VM, serial channels, LLM, tool/profile contracts, and maintenance rules. |
+| [docs/VM_PROFILES_AND_TOOLS.en.md](docs/VM_PROFILES_AND_TOOLS.en.md) | Developer guide for adding VM profiles and exposing tools through profile policy. |
 
-Each document links directly to its counterpart in the other language. Use `USAGE` and `ARCHITECTURE` when contributing to or deploying the project.
+Each document links to its counterpart in the other language. Use `USAGE`, `ARCHITECTURE`, and `VM_PROFILES_AND_TOOLS` when contributing to or deploying the project.
 
 ## License
 
