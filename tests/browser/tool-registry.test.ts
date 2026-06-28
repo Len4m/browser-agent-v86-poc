@@ -130,7 +130,7 @@ test("Nikto tool uses the nikto.pl profile contract", () => {
   assert.doesNotMatch(command, /nikto_cmd|nikto_run|\/usr\/share\/nikto|command -v 'nikto'/);
 });
 
-test("HTTPX tool resolves fallback binary names", () => {
+test("HTTPX tool uses the profile httpx command directly", () => {
   const tool = llmToolRegistry.getTool("web.httpx.probe");
   assert.ok(tool);
   const normalizeArgs = tool.normalizeArgs;
@@ -144,12 +144,12 @@ test("HTTPX tool resolves fallback binary names", () => {
   });
   const command = tool.buildCommand(args);
 
-  assert.match(command, /command -v httpx \|\| command -v httpx-pd \|\| command -v httpx-toolkit/);
-  assert.match(command, /"\$httpx_cmd" -u/);
-  assert.doesNotMatch(command, /command -v 'httpx'/);
+  assert.match(command, /command -v 'httpx'/);
+  assert.match(command, /httpx -u/);
+  assert.doesNotMatch(command, /httpx_cmd|httpx-pd|httpx-toolkit|\/usr\/local\/bin\/httpx/);
   assert.deepEqual(tool.runtimeChecks, [{
     label: "httpx",
-    command: "command -v httpx || command -v httpx-pd || command -v httpx-toolkit || for p in /usr/bin/httpx* /usr/local/bin/httpx*; do [ -x \"$p\" ] && exit 0; done; exit 1",
+    command: "command -v httpx",
   }]);
 });
 

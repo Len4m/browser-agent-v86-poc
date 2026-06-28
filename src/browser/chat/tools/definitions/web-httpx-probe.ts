@@ -3,15 +3,11 @@ import { clampInt, shellQuote } from "../../../app/text-utils";
 import { captureCommand, normalizeBool, normalizeUrl, standardFormat, summaryToolFailedOn, summaryToolOn, textValue, toolPrompt } from "../shared";
 import type { ToolArgs, ToolDefinition } from "../types";
 
-const HTTPX_RUNTIME_CHECK = "command -v httpx || command -v httpx-pd || command -v httpx-toolkit || for p in /usr/bin/httpx* /usr/local/bin/httpx*; do [ -x \"$p\" ] && exit 0; done; exit 1";
+const HTTPX_RUNTIME_CHECK = "command -v httpx";
 
 function limitedBodyCommand(prefix: unknown, bodyCommand: string, outputCommand: string): string {
   const safePrefix = (textValue(prefix) || "ba-tool").replace(/[^A-Za-z0-9_.-]/g, "-");
   return `(__ba_tmp_dir=/run/ba-tools; mkdir -p "$__ba_tmp_dir" 2>/dev/null || __ba_tmp_dir=/tmp; out=$(mktemp "$__ba_tmp_dir/${safePrefix}.out.XXXXXX" 2>/dev/null || echo "$__ba_tmp_dir/${safePrefix}.out.$$"); ( ${bodyCommand} ) > "$out" 2>&1; rc=$?; ${outputCommand}; rm -f "$out"; exit $rc)`;
-}
-
-function resolveHttpxCommand(): string {
-  return "httpx_cmd=$(command -v httpx || command -v httpx-pd || command -v httpx-toolkit || for p in /usr/bin/httpx* /usr/local/bin/httpx*; do [ -x \"$p\" ] && { printf '%s\\n' \"$p\"; break; }; done); if [ -z \"$httpx_cmd\" ]; then printf 'ERROR: missing command: httpx\\n'; exit 127; fi";
 }
 
 function buildHttpxProbeCommand(args: ToolArgs): string {
@@ -19,7 +15,7 @@ function buildHttpxProbeCommand(args: ToolArgs): string {
   const threads = clampInt(args.threads, 1, 5, 2);
   const rate = clampInt(args.rate, 1, 30, 10);
   const timeoutSec = clampInt(args.timeoutSec, 1, 10, 3);
-  const httpxCommand = `${resolveHttpxCommand()}; "$httpx_cmd" -u ${shellQuote(args.url)} -silent -no-color -disable-update-check -no-stdin -x GET -method -status-code -content-length -content-type -web-server -response-time -title${techFlag} -follow-redirects -threads ${threads} -rate-limit ${rate} -timeout ${timeoutSec} -retries 0 -response-size-to-read 32768`;
+  const httpxCommand = `httpx -u ${shellQuote(args.url)} -silent -no-color -disable-update-check -no-stdin -x GET -method -status-code -content-length -content-type -web-server -response-time -title${techFlag} -follow-redirects -threads ${threads} -rate-limit ${rate} -timeout ${timeoutSec} -retries 0 -response-size-to-read 32768`;
   const outputCommand = `if [ -s "$out" ]; then sed -n '1,120p' "$out"; else printf 'ERROR: httpx returned no results for %s\\n' ${shellQuote(args.url)}; rc=1; fi`;
   return limitedBodyCommand("ba-httpx", httpxCommand, outputCommand);
 }
@@ -50,7 +46,7 @@ export const toolDefinition: ToolDefinition = {
     };
   },
   buildCommand(args) {
-    return captureCommand("ba-httpx", [], buildHttpxProbeCommand(args));
+    return captureCommand("ba-httpx", ["httpx"], buildHttpxProbeCommand(args));
   },
   formatResult(result, args) {
     return standardFormat(this, result, args, () => summaryToolOn("HTTPX", args.url), () => summaryToolFailedOn("HTTPX", args.url));
