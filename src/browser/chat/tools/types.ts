@@ -1,3 +1,5 @@
+import type { AiSdkSchemaLike, AiSdkZodLike } from "../provider/ai-sdk-runtime";
+
 export type ToolArgValue =
   | string
   | number
@@ -42,6 +44,7 @@ export interface ToolDefinition {
   description: string;
   promptDescription: string;
   normalizeArgs?: (args?: ToolArgs) => ToolArgs;
+  buildInputSchema?: (z: AiSdkZodLike) => AiSdkSchemaLike;
   buildCommand: (args: ToolArgs) => string;
   formatResult?: (result: ToolExecutionResult, args: ToolArgs) => ToolExecutionResult;
 }
@@ -95,6 +98,7 @@ export interface LlmToolRegistryApi {
   PROFILE_TOOL_NAMES: Record<string, string[]>;
   getTool: (name: unknown) => ToolDefinition | undefined;
   listTools: (options?: ListToolsOptions) => ToolMetadata[];
+  listToolNames: (options?: ListToolsOptions) => string[];
   normalizeToolCall: (value: unknown) => NormalizedToolCall;
   buildPromptRuntimeContext: () => string;
   buildPromptRuntimeContextCompact: (options?: PromptRuntimeContextCompactOptions) => string;

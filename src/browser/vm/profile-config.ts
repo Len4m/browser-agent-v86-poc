@@ -16,6 +16,7 @@ export interface VmProfile {
   recommendedVramMb?: number;
   defaultDisk?: string;
   packages?: string[];
+  allowedTools?: string[];
 }
 
 interface VmConfig {

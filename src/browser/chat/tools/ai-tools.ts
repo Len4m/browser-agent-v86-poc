@@ -102,91 +102,6 @@ function buildModelText(toolCall: NormalizedToolCall, toolResult: ToolExecutionR
   return lines.filter(Boolean).join("\n");
 }
 
-function buildZodSchemas(z: AiSdkZodLike): Record<string, AiSdkSchemaLike> {
-  return {
-    "vm.fs.list": z.object({
-      path: z.string().describe(t("tools.schema.vmFsListPath")),
-      maxEntries: z.number().optional().describe(t("tools.schema.maxEntries")),
-    }),
-    "vm.fs.read": z.object({
-      path: z.string().describe(t("tools.schema.vmFsReadPath")),
-      maxBytes: z.number().optional().describe(t("tools.schema.maxBytes")),
-    }),
-    "vm.fs.write": z.object({
-      path: z.string().describe(t("tools.schema.vmFsWritePath")),
-      content: z.string().describe(t("tools.schema.vmFsWriteContent")),
-      createDirs: z.boolean().optional().describe(t("tools.schema.createDirs")),
-      overwrite: z.boolean().optional().describe(t("tools.schema.overwrite")),
-    }),
-    "vm.cmd.which": z.object({
-      commands: z.array(z.string()).describe(t("tools.schema.whichCommands")),
-    }),
-    "vm.sys.info": z.object({}),
-    "vm.console.status": z.object({}),
-    "vm.pkg.info": z.object({
-      filter: z.string().optional().describe(t("tools.schema.pkgFilter")),
-    }),
-    "web.curl.head": z.object({
-      url: z.string().describe(t("tools.schema.urlHttp")),
-      followRedirects: z.boolean().optional(),
-      insecure: z.boolean().optional(),
-      timeoutSec: z.number().optional(),
-    }),
-    "web.curl.fetch_text": z.object({
-      url: z.string().describe(t("tools.schema.urlHttp")),
-      maxBytes: z.number().optional(),
-      followRedirects: z.boolean().optional(),
-      insecure: z.boolean().optional(),
-      timeoutSec: z.number().optional(),
-    }),
-    "net.dns.lookup": z.object({
-      host: z.string().describe(t("tools.schema.hostOrDomain")),
-      type: z.string().optional().describe(t("tools.schema.dnsType")),
-    }),
-    "net.ip.status": z.object({}),
-    "net.nmap.quick": z.object({
-      target: z.string().describe(t("tools.schema.ipOrHost")),
-      ports: z.string().optional().describe(t("tools.schema.ports")),
-      topPorts: z.number().optional(),
-    }),
-    "web.ffuf.dir_light": z.object({
-      url: z.string().describe(t("tools.schema.ffufUrl")),
-      wordlist: z.string().optional(),
-      threads: z.number().optional(),
-      rate: z.number().optional(),
-      maxTimeSec: z.number().optional().describe(t("tools.schema.ffufMaxTimeSec")),
-      filterLength: z.string().optional().describe(t("tools.schema.ffufFilterLength")),
-      filterWords: z.string().optional().describe(t("tools.schema.ffufFilterWords")),
-      filterLines: z.string().optional().describe(t("tools.schema.ffufFilterLines")),
-    }),
-    "vm.python.exec": z.object({
-      code: z.string().describe(t("tools.schema.pythonCode")),
-    }),
-    "web.httpx.probe": z.object({
-      url: z.string().describe(t("tools.schema.url")),
-      rate: z.number().optional(),
-      threads: z.number().optional(),
-      timeoutSec: z.number().optional(),
-      techDetect: z.boolean().optional().describe(t("tools.schema.techDetect")),
-    }),
-    "web.nikto.quick": z.object({
-      url: z.string().describe(t("tools.schema.url")),
-      maxTimeSec: z.number().optional(),
-      timeoutSec: z.number().optional().describe(t("tools.schema.timeoutSec")),
-      tuning: z.string().optional().describe(t("tools.schema.niktoTuning")),
-    }),
-    "tls.openssl.cert": z.object({
-      host: z.string().describe(t("tools.schema.host")),
-      port: z.number().optional(),
-    }),
-    "vm.sh.exec": z.object({
-      command: z.string().describe(t("tools.schema.shCommand")),
-      timeoutMs: z.number().optional(),
-      maxOutputBytes: z.number().optional(),
-    }),
-  };
-}
-
 function buildToolOutputSchema(z: AiSdkZodLike): AiSdkSchemaLike {
   return z.object({
     ok: z.boolean(),
@@ -212,22 +127,23 @@ export function buildAiSdkTools({
   if (!sdk?.tool || !sdk.z) return {};
 
   const z = sdk.z;
-  const schemas = buildZodSchemas(z);
   const outputSchema = buildToolOutputSchema(z);
-  const toolList = llmToolRegistry.listTools({ profileId });
   const allowedToolNames = Array.isArray(toolNames) ? [...new Set(toolNames.filter(Boolean))] : null;
-  const allow = allowedToolNames ? new Set(allowedToolNames) : null;
+  const availableToolNames = llmToolRegistry.listToolNames({ profileId });
+  const available = new Set(availableToolNames);
+  const toolNamesToRegister = allowedToolNames
+    ? allowedToolNames.filter((name) => available.has(name))
+    : availableToolNames;
   const tools: Record<string, unknown> = {};
 
-  for (const meta of toolList) {
-    if (allow && !allow.has(meta.name)) continue;
-    const toolDef = llmToolRegistry.getTool(meta.name);
+  for (const toolName of toolNamesToRegister) {
+    const toolDef = llmToolRegistry.getTool(toolName);
     if (!toolDef) continue;
 
-    const schema = schemas[meta.name] || z.object({}).passthrough?.() || z.object({});
+    const schema = toolDef.buildInputSchema?.(z) || z.object({}).passthrough?.() || z.object({});
     const description = [toolDef.label, toolDef.promptDescription || toolDef.description].filter(Boolean).join(" - ");
 
-    tools[meta.name] = sdk.tool({
+    tools[toolDef.name] = sdk.tool({
       description,
       inputSchema: schema,
       outputSchema,
@@ -241,18 +157,18 @@ export function buildAiSdkTools({
       async execute(args): Promise<AiToolOutput> {
         const toolCall: NormalizedToolCall = {
           type: "tool_call",
-          tool: meta.name,
+          tool: toolDef.name,
           arguments: toToolArgs(args),
-          reason: t("tools.exec.reasonModelRequest", { name: meta.name }),
+          reason: t("tools.exec.reasonModelRequest", { name: toolDef.name }),
           riskLevel: toolDef.riskLevel,
         };
 
         await onToolStart?.({ toolCall, toolDef });
 
-        llmResourceGovernor.start("tool", meta.name);
+        llmResourceGovernor.start("tool", toolDef.name);
         let toolResult: ToolExecutionResult;
         try {
-          toolResult = await llmToolExecutor.runTool(toolCall, { source, allowedToolNames });
+          toolResult = await llmToolExecutor.runTool(toolCall, { source, allowedToolNames: toolNamesToRegister });
         } finally {
           llmResourceGovernor.finish("tool");
         }
@@ -263,7 +179,7 @@ export function buildAiSdkTools({
         return {
           ok: Boolean(toolResult.ok),
           code: Number.isFinite(Number(toolResult.code)) ? Number(toolResult.code) : null,
-          tool: meta.name,
+          tool: toolDef.name,
           summary: toolResult.summary || toolResult.stderr || "",
           artifactId: artifact.id,
           sizeBytes: Number(artifact.sizeBytes || 0),

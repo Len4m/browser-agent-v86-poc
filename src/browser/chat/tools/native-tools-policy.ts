@@ -19,16 +19,6 @@ const FALLBACK_MODEL: LlmModelConfig = {
   },
 };
 
-const FALLBACK_TOOL_NAMES = [
-  "vm.python.exec",
-  "vm.sh.exec",
-  "vm.fs.list",
-  "vm.fs.read",
-  "vm.fs.write",
-  "vm.cmd.which",
-  "web.curl.head",
-];
-
 export interface NativeToolsPolicyApi {
   getMaxNativeTools: (modelConfig?: LlmModelConfig | null) => number;
   getDefaultToolNames: (modelConfig?: LlmModelConfig | null, profileId?: string) => string[];
@@ -79,19 +69,11 @@ function getMaxNativeTools(modelConfig?: LlmModelConfig | null): number {
 }
 
 function listAvailableToolNames(_modelConfig?: LlmModelConfig | null, profileId = getProfileId()): string[] {
-  return llmToolRegistry.listTools({ profileId }).map((tool) => tool.name);
+  return llmToolRegistry.listToolNames({ profileId });
 }
 
 function getDefaultToolNames(modelConfig?: LlmModelConfig | null, profileId = getProfileId()): string[] {
-  const agent = getModelConfig(modelConfig).agent;
-  const available = new Set(listAvailableToolNames(modelConfig, profileId));
-  const fromModel = Array.isArray(agent?.defaultNativeTools) ? agent.defaultNativeTools : [];
-  const picked = fromModel.filter((name) => available.has(name));
-  if (picked.length) return picked.slice(0, getMaxNativeTools(modelConfig));
-
-  return FALLBACK_TOOL_NAMES
-    .filter((name) => available.has(name))
-    .slice(0, getMaxNativeTools(modelConfig));
+  return listAvailableToolNames(modelConfig, profileId).slice(0, getMaxNativeTools(modelConfig));
 }
 
 function loadStored(modelId: string): string[] | null {
