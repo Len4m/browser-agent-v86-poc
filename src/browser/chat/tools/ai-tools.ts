@@ -6,9 +6,10 @@ import { t } from "../../app/i18n";
 import { getAiSdk, type AiSdkSchemaLike, type AiSdkZodLike } from "../provider/ai-sdk-runtime";
 import { llmArtifacts, type LlmArtifact } from "../runtime/artifact-store";
 import { llmResourceGovernor } from "../runtime/resource-governor";
+import { isRecord, textValue, toToolArgs } from "./shared";
 import { llmToolExecutor } from "./tool-executor";
 import { llmToolRegistry } from "./tool-registry";
-import type { NormalizedToolCall, ToolArgs, ToolArgValue, ToolDefinition, ToolExecutionResult } from "./types";
+import type { NormalizedToolCall, ToolDefinition, ToolExecutionResult } from "./types";
 
 interface BuildAiSdkToolsOptions {
   userText?: string;
@@ -33,32 +34,6 @@ interface AiToolOutput {
   sizeBytes: number;
   truncated: boolean;
   modelText: string;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isToolArgValue(value: unknown): value is ToolArgValue {
-  if (value == null) return true;
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return true;
-  return Array.isArray(value)
-    && value.every((item) => typeof item === "string" || typeof item === "number" || typeof item === "boolean");
-}
-
-function toToolArgs(value: unknown): ToolArgs {
-  if (!isRecord(value)) return {};
-  const out: ToolArgs = {};
-  for (const [key, entry] of Object.entries(value)) {
-    out[key] = isToolArgValue(entry) ? entry : textValue(entry);
-  }
-  return out;
-}
-
-function textValue(value: unknown): string {
-  if (typeof value === "string") return value;
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
-  return "";
 }
 
 function activeRuntimeProfileId(): string {

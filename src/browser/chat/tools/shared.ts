@@ -86,7 +86,7 @@ export function captureCommand(prefix: unknown, requiredCommands: unknown, bodyC
   ].join("; ");
 }
 
-function truncateText(text: unknown, maxBytes = 32768): { text: string; truncated: boolean } {
+export function truncateToolOutput(text: unknown, maxBytes = 32768): { text: string; truncated: boolean } {
   const value = textValue(text);
   if (value.length <= maxBytes) return { text: value, truncated: false };
   return { text: value.slice(0, maxBytes) + `\n...[salida truncada a ${maxBytes} caracteres]`, truncated: true };
@@ -96,7 +96,7 @@ function splitCleanLines(text: unknown): string[] {
   return stripAnsiAndControls(text).replace(/\n{3,}/g, "\n\n").split("\n").map((line) => line.replace(/\s+$/g, ""));
 }
 
-function removeToolNoise(text: unknown): string {
+export function cleanToolOutput(text: unknown): string {
   const lines = splitCleanLines(text);
   return lines.filter((line) => {
     const trimmed = line.trim();
@@ -110,14 +110,14 @@ function removeToolNoise(text: unknown): string {
   }).join("\n").replace(/^\n+|\n+$/g, "");
 }
 
-function failureDetail(cleanStderr: unknown, cleanStdout: unknown, code: unknown): string {
+export function toolFailureDetail(cleanStderr: unknown, cleanStdout: unknown, code: unknown): string {
   const stderr = textValue(cleanStderr).trim();
   if (stderr) return stderr;
 
   const errorLine = textValue(cleanStdout)
     .split("\n")
     .map((line) => line.trim())
-    .find((line) => /^(?:ERROR\b|Traceback\b|curl:\s*\(\d+\)|(?:\/bin\/)?sh:|python\d*:|dig:|nmap:|ffuf:|httpx:|nikto:)/i.test(line));
+    .find((line) => /^(?:ERROR\b|Traceback\b|curl:\s*\(\d+\)|(?:\/bin\/)?sh:|python\d*:|dig:|nmap:|ffuf:|httpx:|nikto(?:\.pl)?:)/i.test(line));
   return errorLine || `exit code ${textValue(code)}`;
 }
 
@@ -128,15 +128,15 @@ export function standardFormat(
   okSummary: (args: ToolArgs) => string,
   failSummary: (args: ToolArgs) => string,
 ): ToolExecutionResult {
-  const cleanStdout = removeToolNoise(result.stdout || "");
-  const cleanStderr = removeToolNoise(result.stderr || "");
-  const out = truncateText(cleanStdout, toolDef.maxOutputBytes || 32768);
+  const cleanStdout = cleanToolOutput(result.stdout || "");
+  const cleanStderr = cleanToolOutput(result.stderr || "");
+  const out = truncateToolOutput(cleanStdout, toolDef.maxOutputBytes || 32768);
   const code = Number(result.code ?? 1);
   return {
     ok: code === 0,
     code,
     stdout: out.text,
-    stderr: code === 0 ? cleanStderr : failureDetail(cleanStderr, out.text, code),
+    stderr: code === 0 ? cleanStderr : toolFailureDetail(cleanStderr, out.text, code),
     truncated: out.truncated,
     summary: code === 0 ? okSummary(args) : failSummary(args),
   };

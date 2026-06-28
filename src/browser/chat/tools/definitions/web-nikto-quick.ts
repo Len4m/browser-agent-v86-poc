@@ -1,6 +1,16 @@
 import { t } from "../../../app/i18n";
-import { clampInt, shellQuote, stripAnsiAndControls } from "../../../app/text-utils";
-import { captureCommand, normalizeUrl, summaryToolFailedOn, summaryToolOn, textValue, toolPrompt } from "../shared";
+import { clampInt, shellQuote } from "../../../app/text-utils";
+import {
+  captureCommand,
+  cleanToolOutput,
+  normalizeUrl,
+  summaryToolFailedOn,
+  summaryToolOn,
+  textValue,
+  toolFailureDetail,
+  toolPrompt,
+  truncateToolOutput,
+} from "../shared";
 import type { ToolArgs, ToolDefinition, ToolExecutionResult } from "../types";
 
 function normalizeNiktoTuning(value: unknown): string {
@@ -42,45 +52,10 @@ function buildNiktoQuickCommand(args: ToolArgs): string {
   return sedLinesBodyCommand("ba-nikto", niktoCommand, 180);
 }
 
-function truncateText(text: unknown, maxBytes = 32768): { text: string; truncated: boolean } {
-  const value = textValue(text);
-  if (value.length <= maxBytes) return { text: value, truncated: false };
-  return { text: value.slice(0, maxBytes) + `\n...[salida truncada a ${maxBytes} caracteres]`, truncated: true };
-}
-
-function splitCleanLines(text: unknown): string[] {
-  return stripAnsiAndControls(text).replace(/\n{3,}/g, "\n\n").split("\n").map((line) => line.replace(/\s+$/g, ""));
-}
-
-function removeToolNoise(text: unknown): string {
-  const lines = splitCleanLines(text);
-  return lines.filter((line) => {
-    const trimmed = line.trim();
-    if (!trimmed) return true;
-    if (/^BA_(TOOL|FILE|FS)_[A-Z0-9_:-]+/.test(trimmed)) return false;
-    if (/^__BAGENT_[A-Za-z0-9_]+___(?:START|END(?::\d+)?)$/.test(trimmed)) return false;
-    if (/^browser-[^#%$>]*[#$>]\s*/.test(trimmed)) return false;
-    if (/^>\s*(?:__ba_tty=|echo BA_|p=|if \[|head -c|ls -la|printf)/.test(trimmed)) return false;
-    if (/^(?:__ba_tty=|echo BA_|p=|if \[|head -c|ls -la|printf|__rc=)/.test(trimmed)) return false;
-    return true;
-  }).join("\n").replace(/^\n+|\n+$/g, "");
-}
-
-function failureDetail(cleanStderr: unknown, cleanStdout: unknown, code: unknown): string {
-  const stderr = textValue(cleanStderr).trim();
-  if (stderr) return stderr;
-
-  const errorLine = textValue(cleanStdout)
-    .split("\n")
-    .map((line) => line.trim())
-    .find((line) => /^(?:ERROR\b|Traceback\b|curl:\s*\(\d+\)|(?:\/bin\/)?sh:|python\d*:|dig:|nmap:|ffuf:|httpx:|nikto:)/i.test(line));
-  return errorLine || `exit code ${textValue(code)}`;
-}
-
 function formatNiktoResult(toolDef: Pick<ToolDefinition, "maxOutputBytes">, result: ToolExecutionResult, args: ToolArgs): ToolExecutionResult {
-  const cleanStdout = removeToolNoise(result.stdout || "").replace(/^\s*Terminated\s*\n?/i, "").trim();
-  const cleanStderr = removeToolNoise(result.stderr || "");
-  const out = truncateText(cleanStdout, toolDef.maxOutputBytes || 32768);
+  const cleanStdout = cleanToolOutput(result.stdout || "").replace(/^\s*Terminated\s*\n?/i, "").trim();
+  const cleanStderr = cleanToolOutput(result.stderr || "");
+  const out = truncateToolOutput(cleanStdout, toolDef.maxOutputBytes || 32768);
   const combined = `${cleanStdout}\n${cleanStderr}`;
   const code = Number(result.code ?? 1);
   const boundedUseful = [124, 137, 143].includes(code)
@@ -91,7 +66,7 @@ function formatNiktoResult(toolDef: Pick<ToolDefinition, "maxOutputBytes">, resu
     ok,
     code,
     stdout: out.text,
-    stderr: ok ? "" : failureDetail(cleanStderr, out.text, code),
+    stderr: ok ? "" : toolFailureDetail(cleanStderr, out.text, code),
     truncated: out.truncated,
     summary: boundedUseful
       ? t("tools.summary.niktoBoundedOk", { url: textValue(args.url), code })
