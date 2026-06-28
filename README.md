@@ -37,6 +37,12 @@ You do not need to clone the repository. Transformers.js models are downloaded a
 
 Main requirements: Node.js 18+, Linux (or macOS with GNU-compatible build tools), Docker, system tools for generating initramfs/disk images, and an Internet connection to download base assets, Alpine packages, and browser models when first loaded.
 
+On Debian/Ubuntu, install the system dependencies with:
+
+```bash
+sudo apt install -y cpio gzip tar curl zstd xz-utils coreutils e2fsprogs findutils gawk grep sed
+```
+
 Indicative memory/GPU: minimum 4 GB RAM; 8 GB RAM and a WebGPU GPU with ~2 GB VRAM/shared memory for local browser LLM; more RAM/VRAM improves stability. Details in [docs/USAGE.en.md](docs/USAGE.en.md).
 
 ```bash
@@ -75,17 +81,14 @@ Do not open `index.html` through `file://`. `npm start` already serves `public/`
 
 ```txt
 public/                    # browser-served root; generated outputs and static assets
+data/                      # model catalog and structured data used by the build
 src/browser/               # frontend TypeScript source
 src/web/                   # source HTML template and CSS
 scripts/                   # main scripts and internal build/setup/check/clean steps
+tests/                     # Node/unit tests for browser modules and repository behavior
 vm/profiles/               # Alpine VM profiles
 vm/overlay/common/         # runners and files included in the initramfs
-docs/USER_MANUAL.es.md     # end-user manual, Spanish
-docs/USER_MANUAL.en.md     # end-user manual, English
-docs/USAGE.es.md           # usage, development, distribution, and troubleshooting, Spanish
-docs/USAGE.en.md           # usage, development, distribution, and troubleshooting, English
-docs/ARCHITECTURE.es.md    # architecture and internal contracts, Spanish
-docs/ARCHITECTURE.en.md    # architecture and internal contracts, English
+docs/                      # user, usage, architecture, and developer documentation
 ```
 
 ## Documentation

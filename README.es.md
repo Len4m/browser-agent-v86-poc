@@ -37,6 +37,12 @@ La demo no requiere clonar el repo. Los modelos Transformers.js se descargan y e
 
 Requisitos principales: Node.js 18+, Linux (o macOS con herramientas de build compatibles con GNU), Docker, herramientas de sistema para generar initramfs/discos y conexión a Internet para descargar assets base, paquetes Alpine y los modelos de navegador cuando se cargan por primera vez.
 
+En Debian/Ubuntu, instala las dependencias de sistema con:
+
+```bash
+sudo apt install -y cpio gzip tar curl zstd xz-utils coreutils e2fsprogs findutils gawk grep sed
+```
+
 Memoria/GPU orientativa: mínimo 4 GB RAM; 8 GB RAM y GPU WebGPU con ~2 GB VRAM/memoria compartida para LLM local en navegador; más RAM/VRAM mejora la estabilidad. Detalles en [docs/USAGE.es.md](docs/USAGE.es.md).
 
 ```bash
@@ -75,17 +81,14 @@ No abras `index.html` como `file://`. `npm start` ya sirve `public/` con las cab
 
 ```txt
 public/             # raíz servida al navegador; contiene salidas generadas y assets estáticos
+data/               # catálogo de modelos y datos estructurados usados por el build
 src/browser/        # código TypeScript del frontend
 src/web/            # plantilla HTML y CSS fuente
 scripts/            # scripts principales y pasos internos de build/setup/check/clean
+tests/              # tests Node/unitarios de módulos browser y comportamiento del repo
 vm/profiles/        # perfiles Alpine de VM
 vm/overlay/common/  # runners y ficheros incluidos en el initramfs
-docs/USER_MANUAL.es.md  # manual de uso (usuarios finales), español
-docs/USER_MANUAL.en.md  # user manual (end users), English
-docs/USAGE.es.md        # uso, desarrollo, distribución y troubleshooting (español)
-docs/USAGE.en.md        # usage, development, distribution, and troubleshooting (English)
-docs/ARCHITECTURE.es.md # arquitectura y contratos internos (español)
-docs/ARCHITECTURE.en.md # architecture and internal contracts (English)
+docs/               # documentación de usuario, uso, arquitectura y desarrollo
 ```
 
 ## Documentación
