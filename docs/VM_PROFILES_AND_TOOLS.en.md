@@ -89,7 +89,7 @@ The connection between them is:
    - `firstBootCommands`: written to `/etc/browser-agent-firstboot.sh` and run when the VM boots.
    - `validationCommands`: manual-validation metadata only. `scripts/setup/vm-profile-image.mjs` copies them to the profile manifest and prints them at the end as suggested commands, but does not run them during `setup`, `build`, `check`, or runtime.
 
-   If a check must fail image generation, put it in `buildCommands`. If it must run once when the VM boots, put it in `firstBootCommands`. If it must appear in **Run checks**, implement it in the UI checks.
+   If a check must fail image generation, put it in `buildCommands`. If it must run once when the VM boots, put it in `firstBootCommands`. If it proves a tool's real availability and must appear in **Run checks**, declare it in that tool's `runtimeChecks`.
 
    Example:
 
@@ -153,7 +153,11 @@ The connection between them is:
 
    If the tool needs an Alpine binary or runtime, declare `requiredPackages` with APK package names. Any profile adding that tool to `allowedTools` must include those packages in `packages`.
 
-4. Normalize arguments and build bounded commands.
+4. Declare runtime availability checks.
+
+   If the tool needs concrete commands, add `runtimeChecks` with short labels and minimal commands such as `command -v curl`, `command -v nikto.pl`, or an `httpx` binary-name fallback. The **Run checks** panel gets these checks from the registry according to `allowedTools`; do not add package maps to the UI.
+
+5. Normalize arguments and build bounded commands.
 
    Use existing helpers when they fit:
 
@@ -163,27 +167,27 @@ The connection between them is:
    - `captureCommand` to wrap commands and detect missing binaries.
    - `standardFormat`, `cleanToolOutput`, `truncateToolOutput`, or `toolFailureDetail` for output formatting.
 
-5. Add AI SDK schema and i18n.
+6. Add AI SDK schema and i18n.
 
    If the tool is exposed to the model, define `buildInputSchema(z)` and localized strings in `src/web/locales/en.json` and `src/web/locales/es.json` for name, description, schema text, and errors.
 
-6. Set risk and limits.
+7. Set risk and limits.
 
    - `riskLevel: 1`: bounded reads.
    - `riskLevel: 2`: low-impact diagnostics.
    - `riskLevel: 3`: active actions such as commands or light scans.
    - `timeoutMs` and `maxOutputBytes` must be explicit and conservative.
 
-7. Expose the tool in a profile.
+8. Expose the tool in a profile.
 
    Add the tool name to the profile's `allowedTools` and the required packages to `packages`. If the tool depends on a specific executable name that differs from the package name, keep these aligned:
 
    - Profile `buildCommands` or `firstBootCommands`.
    - `validationCommands`.
-   - UI checks when that availability should appear in **Run checks**.
+   - `runtimeChecks` in the tool definition when that availability should appear in **Run checks**.
    - Tests if the contract is delicate.
 
-   Current example: `web.nikto.quick` declares `requiredPackages: ["nikto"]`, but runs `nikto.pl` through `timeout`. The `alpine-pentest-web` profile creates a `nikto` symlink for manual use and validates both commands.
+   Current example: `web.nikto.quick` declares `requiredPackages` for Nikto and the Perl SSL modules, but runs `nikto.pl` through `timeout`. The `alpine-pentest-web` profile creates a `nikto` symlink for manual use and validates both commands.
 
 ## Recommended Validation
 

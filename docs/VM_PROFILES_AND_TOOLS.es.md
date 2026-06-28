@@ -89,7 +89,7 @@ La union entre ambos contratos es:
    - `firstBootCommands`: se escriben en `/etc/browser-agent-firstboot.sh` y se ejecutan al arrancar la VM.
    - `validationCommands`: son solo metadatos de validacion manual. `scripts/setup/vm-profile-image.mjs` los copia al manifest del perfil y los imprime al final como comandos sugeridos, pero no los ejecuta durante `setup`, `build`, `check` ni en runtime.
 
-   Si una comprobacion debe fallar la generacion de imagen, ponla en `buildCommands`. Si debe ejecutarse una vez al arrancar la VM, ponla en `firstBootCommands`. Si debe aparecer en el panel **Comprobar**, hay que implementarla en los checks de UI.
+   Si una comprobacion debe fallar la generacion de imagen, ponla en `buildCommands`. Si debe ejecutarse una vez al arrancar la VM, ponla en `firstBootCommands`. Si comprueba la disponibilidad real de una tool y debe aparecer en el panel **Comprobar**, declarala en `runtimeChecks` de esa tool.
 
    Ejemplo:
 
@@ -153,7 +153,11 @@ La union entre ambos contratos es:
 
    Si la tool necesita un binario o runtime de Alpine, declara `requiredPackages` con nombres de paquete APK. Despues, cualquier perfil que añada esa tool a `allowedTools` debe incluir esos paquetes en `packages`.
 
-4. Normaliza argumentos y construye comandos de forma acotada.
+4. Declara checks de disponibilidad runtime.
+
+   Si la tool necesita comandos concretos, añade `runtimeChecks` con etiquetas cortas y comandos minimos como `command -v curl`, `command -v nikto.pl` o un fallback de nombres para `httpx`. El panel **Comprobar** usa estos checks desde el registry segun `allowedTools`; no añadas mapas de paquetes a la UI.
+
+5. Normaliza argumentos y construye comandos de forma acotada.
 
    Usa helpers existentes cuando encajen:
 
@@ -163,27 +167,27 @@ La union entre ambos contratos es:
    - `captureCommand` para envolver comandos y detectar binarios ausentes.
    - `standardFormat`, `cleanToolOutput`, `truncateToolOutput` o `toolFailureDetail` para formatear salida.
 
-5. Añade schema AI SDK e i18n.
+6. Añade schema AI SDK e i18n.
 
    Si la tool se expone al modelo, define `buildInputSchema(z)` y textos localizados en `src/web/locales/en.json` y `src/web/locales/es.json` para nombre, descripcion, schema y errores.
 
-6. Ajusta riesgo y limites.
+7. Ajusta riesgo y limites.
 
    - `riskLevel: 1`: lectura acotada.
    - `riskLevel: 2`: diagnostico de bajo impacto.
    - `riskLevel: 3`: acciones activas como comandos o escaneos ligeros.
    - `timeoutMs` y `maxOutputBytes` deben ser explicitos y conservadores.
 
-7. Expón la tool en un perfil.
+8. Expón la tool en un perfil.
 
    Añade el nombre de la tool a `allowedTools` del perfil y los paquetes necesarios a `packages`. Si la tool depende de un ejecutable concreto distinto del nombre del paquete, reflejalo en:
 
    - `buildCommands` o `firstBootCommands` del perfil.
    - `validationCommands`.
-   - Checks de UI si esa disponibilidad debe aparecer en **Comprobar**.
+   - `runtimeChecks` en la propia definicion de tool si esa disponibilidad debe aparecer en **Comprobar**.
    - Tests si el contrato es delicado.
 
-   Ejemplo actual: `web.nikto.quick` declara `requiredPackages: ["nikto"]`, pero ejecuta `nikto.pl` mediante `timeout`. El perfil `alpine-pentest-web` crea un symlink `nikto` para uso manual y valida ambos comandos.
+   Ejemplo actual: `web.nikto.quick` declara `requiredPackages` para Nikto y los modulos Perl SSL, pero ejecuta `nikto.pl` mediante `timeout`. El perfil `alpine-pentest-web` crea un symlink `nikto` para uso manual y valida ambos comandos.
 
 ## Validacion recomendada
 

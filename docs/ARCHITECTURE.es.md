@@ -286,8 +286,9 @@ El sistema de tools se divide entre definiciones, politica de perfil y ejecucion
 - Las definiciones viven en `src/browser/chat/tools/definitions/*.ts` y se descubren en el modulo virtual `virtual:ba-tools`; no hay un indice de tools escrito a mano.
 - Los perfiles VM exponen tools mediante `allowedTools`. Esa lista es la fuente de verdad de politica en perfiles generados, y su orden se usa como prioridad por defecto cuando la UI/modelo limita las tools visibles.
 - `requiredPackages` conecta cada tool con los paquetes Alpine que necesita. `scripts/check/vm-profiles.mjs` valida tools desconocidas y paquetes ausentes; en runtime tambien se filtran tools que el perfil activo no puede soportar.
+- `runtimeChecks` declara los comandos minimos que prueban la disponibilidad real de una tool en la VM. El panel **Comprobar** los obtiene del registry segun `allowedTools`; el check de paquetes instalados del perfil sigue separado.
 - La ejecucion pasa por normalizacion de argumentos, confirmacion opcional por riesgo, precondiciones de VM/serial, `buildCommand()`, `execVm(..., targetTools: true)` en `serial1`, formateo de resultado y almacenamiento como artifact.
-- Si una tool necesita un ejecutable concreto, mantener alineados los comandos de build/validacion del perfil, los checks de UI y los tests. Por ejemplo, `web.nikto.quick` depende del paquete `nikto` pero ejecuta `nikto.pl` mediante `timeout`; `alpine-pentest-web` tambien expone un symlink `nikto` para uso manual.
+- Si una tool necesita un ejecutable concreto, mantener alineados los comandos de build/validacion del perfil, `runtimeChecks` y los tests. Por ejemplo, `web.nikto.quick` depende de Nikto y paquetes Perl SSL pero ejecuta `nikto.pl` mediante `timeout`; `alpine-pentest-web` tambien expone un symlink `nikto` para uso manual.
 
 Archivos clave:
 

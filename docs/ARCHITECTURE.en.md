@@ -286,8 +286,9 @@ The tool system is split between tool definitions, profile policy, and runtime e
 - Tool definitions live in `src/browser/chat/tools/definitions/*.ts` and are discovered into the virtual `virtual:ba-tools` module; there is no hand-written tool index.
 - VM profiles expose tools through `allowedTools`. That list is the policy source of truth for generated profiles, and its order is used as the default priority when the UI/model limits visible tools.
 - `requiredPackages` links each tool to the Alpine packages it needs. `scripts/check/vm-profiles.mjs` validates unknown tools and missing packages; runtime also filters tools that the active profile cannot support.
+- `runtimeChecks` declares the minimal commands that prove a tool is actually available in the VM. The **Run checks** panel gets them from the registry according to `allowedTools`; the profile package-installed check stays separate.
 - Execution flows through argument normalization, optional risk confirmation, VM/serial preconditions, `buildCommand()`, `execVm(..., targetTools: true)` on `serial1`, result formatting, and artifact storage.
-- If a tool needs a specific executable name, keep the profile build/validation commands, UI checks, and tests aligned. For example, `web.nikto.quick` depends on package `nikto` but executes `nikto.pl` through `timeout`; `alpine-pentest-web` also exposes a `nikto` symlink for manual use.
+- If a tool needs a specific executable name, keep the profile build/validation commands, `runtimeChecks`, and tests aligned. For example, `web.nikto.quick` depends on Nikto plus Perl SSL packages but executes `nikto.pl` through `timeout`; `alpine-pentest-web` also exposes a `nikto` symlink for manual use.
 
 Key files:
 
