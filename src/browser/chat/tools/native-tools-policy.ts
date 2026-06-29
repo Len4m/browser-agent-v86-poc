@@ -72,6 +72,11 @@ function listAvailableToolNames(_modelConfig?: LlmModelConfig | null, profileId 
   return llmToolRegistry.listToolNames({ profileId });
 }
 
+function filterProfileOrdered(names: string[], modelConfig?: LlmModelConfig | null, profileId = getProfileId()): string[] {
+  const selected = new Set(names);
+  return listAvailableToolNames(modelConfig, profileId).filter((name) => selected.has(name));
+}
+
 function getDefaultToolNames(modelConfig?: LlmModelConfig | null, profileId = getProfileId()): string[] {
   return listAvailableToolNames(modelConfig, profileId).slice(0, getMaxNativeTools(modelConfig));
 }
@@ -99,13 +104,11 @@ function syncStateNativeTools(names: string[]): void {
 function resolveActiveToolNames(modelConfig?: LlmModelConfig | null, profileId = getProfileId()): string[] {
   const cfg = getModelConfig(modelConfig);
   const max = getMaxNativeTools(cfg);
-  const available = new Set(listAvailableToolNames(cfg, profileId));
   const stored = loadStored(cfg.id);
-  const defaults = getDefaultToolNames(cfg, profileId);
-  const source = stored !== null ? stored : defaults;
-  let chosen = source.filter((name) => available.has(name));
-  if (!chosen.length && stored === null) chosen = defaults.filter((name) => available.has(name));
-  const out = chosen.slice(0, max);
+  const out = (stored === null
+    ? listAvailableToolNames(cfg, profileId)
+    : filterProfileOrdered(stored, cfg, profileId)
+  ).slice(0, max);
   syncStateNativeTools(out);
   return out;
 }
@@ -113,8 +116,7 @@ function resolveActiveToolNames(modelConfig?: LlmModelConfig | null, profileId =
 function setActiveToolNames(modelConfig: LlmModelConfig | null | undefined, names: string[], profileId = getProfileId()): string[] {
   const cfg = getModelConfig(modelConfig);
   const max = getMaxNativeTools(cfg);
-  const available = new Set(listAvailableToolNames(cfg, profileId));
-  const clean = [...new Set(names.filter((name) => available.has(name)))].slice(0, max);
+  const clean = filterProfileOrdered(names, cfg, profileId).slice(0, max);
   saveStored(cfg.id, clean);
   syncStateNativeTools(clean);
   llmEventsApi.emit("native-tools", { names: clean, max, modelId: cfg.id });

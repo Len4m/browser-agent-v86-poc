@@ -29,6 +29,23 @@ function installProfiles(): void {
   state.profiles = [baseProfile, liteProfile, webProfile];
 }
 
+function installLocalStorage(): Map<string, string> {
+  const store = new Map<string, string>();
+  const fakeStorage = {
+    clear: () => store.clear(),
+    getItem: (key: string) => store.get(key) ?? null,
+    key: (index: number) => Array.from(store.keys())[index] ?? null,
+    removeItem: (key: string) => { store.delete(key); },
+    setItem: (key: string, value: string) => { store.set(key, String(value)); },
+    get length() { return store.size; },
+  } satisfies Storage;
+  Object.defineProperty(globalThis, "localStorage", {
+    value: fakeStorage,
+    configurable: true,
+  });
+  return store;
+}
+
 test("manual profile exposes only the current base tool allowlist in priority order", () => {
   assert.deepEqual(llmToolRegistry.listToolNames({ profileId: "manual" }), manualTools);
 });
@@ -39,6 +56,15 @@ test("VM profiles expose allowedTools order from source JSON", () => {
   assert.deepEqual(llmToolRegistry.listToolNames({ profileId: "alpine-base" }), baseProfile.allowedTools);
   assert.deepEqual(llmToolRegistry.listToolNames({ profileId: "alpine-pentest-lite" }), liteProfile.allowedTools);
   assert.deepEqual(llmToolRegistry.listToolNames({ profileId: "alpine-pentest-web" }), webProfile.allowedTools);
+});
+
+test("VM profile tool metadata preserves allowedTools priority order", () => {
+  installProfiles();
+
+  assert.deepEqual(
+    llmToolRegistry.listTools({ profileId: "alpine-pentest-web" }).map((tool) => tool.name),
+    webProfile.allowedTools,
+  );
 });
 
 test("native tool defaults use profile priority and model quantity limit", () => {
@@ -58,6 +84,45 @@ test("native tool defaults use profile priority and model quantity limit", () =>
     "vm.python.exec",
     "vm.sh.exec",
   ]);
+});
+
+test("native active tools are resolved in profile priority order and capped", () => {
+  installProfiles();
+  const store = installLocalStorage();
+  const model: LlmModelConfig = {
+    id: "ordered-model",
+    engine: "transformersjs",
+    agent: {
+      maxSteps: 2,
+      maxNativeTools: 3,
+      toolCalling: "fair",
+      defaultNativeTools: [],
+    },
+  };
+  store.set("ba.llm.nativeTools.ordered-model", JSON.stringify([
+    "web.httpx.probe",
+    "web.curl.head",
+    "vm.sh.exec",
+    "vm.python.exec",
+  ]));
+
+  assert.deepEqual(llmNativeToolsPolicy.resolveActiveToolNames(model, "alpine-pentest-web"), [
+    "vm.python.exec",
+    "vm.sh.exec",
+    "web.curl.head",
+  ]);
+  assert.deepEqual(
+    llmNativeToolsPolicy.setActiveToolNames(model, [
+      "web.httpx.probe",
+      "vm.sh.exec",
+      "web.curl.head",
+    ], "alpine-pentest-web"),
+    [
+      "vm.sh.exec",
+      "web.curl.head",
+      "web.httpx.probe",
+    ],
+  );
 });
 
 test("tools missing required profile packages are not exposed", () => {

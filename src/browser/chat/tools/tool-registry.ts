@@ -126,26 +126,6 @@ export const llmToolRegistry: LlmToolRegistryApi = (() => {
 
   function getTool(name: unknown): ToolDefinition | undefined { return TOOLS[textValue(name)]; }
 
-  const TOOL_CATEGORY_ORDER = [
-    "vm.fs", "vm.system", "vm.exec",
-    "net.local", "net.dns", "net.scan",
-    "web.http", "web.fuzz", "web.scan",
-    "tls",
-  ];
-
-  function toolCategoryRank(category: unknown): number {
-    const idx = TOOL_CATEGORY_ORDER.indexOf(textValue(category));
-    return idx === -1 ? TOOL_CATEGORY_ORDER.length : idx;
-  }
-
-  function compareToolsForDisplay(a: ToolDefinition, b: ToolDefinition): number {
-    const byCategory = toolCategoryRank(a.category) - toolCategoryRank(b.category);
-    if (byCategory !== 0) return byCategory;
-    const byRisk = (Number(a.riskLevel) || 0) - (Number(b.riskLevel) || 0);
-    if (byRisk !== 0) return byRisk;
-    return String(a.name).localeCompare(String(b.name));
-  }
-
   function toolMetadata(tool: ToolDefinition): ToolMetadata {
     return {
       name: tool.name,
@@ -186,7 +166,6 @@ export const llmToolRegistry: LlmToolRegistryApi = (() => {
     return listToolNames({ profileId, includeUnavailable })
       .map((name) => getTool(name))
       .filter((tool): tool is ToolDefinition => Boolean(tool))
-      .sort(compareToolsForDisplay)
       .map(toolMetadata);
   }
 
