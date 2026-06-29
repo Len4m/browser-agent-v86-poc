@@ -46,6 +46,10 @@ function pathJoin(base, key) {
 function validate(value, node, path = "$") {
   if (!node || typeof node !== "object") return;
 
+  if (Object.prototype.hasOwnProperty.call(node, "const") && value !== node.const) {
+    errors.push(`${path}: expected ${JSON.stringify(node.const)}, got ${JSON.stringify(value)}`);
+  }
+
   if (node.type && !matchesType(value, node.type)) {
     errors.push(`${path}: expected ${node.type}, got ${typeOf(value)}`);
     return;
@@ -74,6 +78,9 @@ function validate(value, node, path = "$") {
   }
 
   if (Array.isArray(value)) {
+    if (Number.isFinite(node.minItems) && value.length < node.minItems) {
+      errors.push(`${path}: expected at least ${node.minItems} items`);
+    }
     if (node.uniqueItems) {
       const seen = new Set();
       for (const [index, item] of value.entries()) {
@@ -83,6 +90,21 @@ function validate(value, node, path = "$") {
       }
     }
     if (node.items) value.forEach((item, index) => validate(item, node.items, pathJoin(path, index)));
+    if (node.contains) {
+      const before = errors.length;
+      const matches = value.filter((item) => {
+        const snapshot = errors.length;
+        validate(item, node.contains, path);
+        const matched = errors.length === snapshot;
+        errors.length = snapshot;
+        return matched;
+      });
+      errors.length = before;
+      const minContains = Number.isFinite(node.minContains) ? node.minContains : 1;
+      if (matches.length < minContains) {
+        errors.push(`${path}: expected at least ${minContains} item matching contains`);
+      }
+    }
   }
 
   if (value && typeof value === "object" && !Array.isArray(value)) {
