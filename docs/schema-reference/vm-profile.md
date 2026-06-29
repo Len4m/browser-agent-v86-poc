@@ -13,7 +13,7 @@ Schema for source VM profiles in vm/profiles/*.json. Profiles are consumed by sc
 
 ## Required Fields
 
-`id`, `name`, `description`, `type`, `alpineVersion`, `alpineBranch`, `arch`, `output`, `kernelOutput`, `minRamMb`, `recommendedRamMb`, `recommendedVramMb`, `defaultDisk`, `packages`, `allowedTools`
+`id`, `name`, `description`, `type`, `alpineVersion`, `alpineBranch`, `output`, `kernelOutput`, `minRamMb`, `recommendedRamMb`, `recommendedVramMb`, `defaultDisk`, `packages`, `allowedTools`
 
 ## Properties
 
@@ -26,7 +26,7 @@ Schema for source VM profiles in vm/profiles/*.json. Profiles are consumed by sc
 | `type` | yes | string | Profile boot mode. Current builder creates initramfs-based images. | enum: "initramfs" |
 | `alpineVersion` | yes | string | Alpine version used to select the minirootfs, for example 3.23.4. | pattern: ^[0-9]+\.[0-9]+(\.[0-9]+)?$ |
 | `alpineBranch` | yes | string | Alpine repository branch, for example v3.23. | pattern: ^v[0-9]+\.[0-9]+$ |
-| `arch` | yes | string | Alpine architecture. v86 currently boots the 32-bit x86 profiles. | enum: "x86" |
+| `arch` | no | string | Optional Alpine architecture override. v86 profiles currently boot 32-bit x86; omit to use the builder default. | const: "x86" |
 | `output` | yes | string | Output initramfs path relative to public/ or repository root. | minLength: 1; pattern: ^(public/)?v86/images/.+\.gz$ |
 | `kernelOutput` | yes | string | Output kernel path relative to public/ or repository root. | minLength: 1; pattern: ^(public/)?v86/images/.+ |
 | `minRamMb` | yes | integer | Minimum RAM shown for this profile in MB. Real minimum must be validated manually. | minimum: 64 |

@@ -12,7 +12,6 @@
     "type",
     "alpineVersion",
     "alpineBranch",
-    "arch",
     "output",
     "kernelOutput",
     "minRamMb",
@@ -60,8 +59,8 @@
     },
     "arch": {
       "type": "string",
-      "enum": ["x86"],
-      "description": "Alpine architecture. v86 currently boots the 32-bit x86 profiles."
+      "const": "x86",
+      "description": "Optional Alpine architecture override. v86 profiles currently boot 32-bit x86; omit to use the builder default."
     },
     "output": {
       "type": "string",
