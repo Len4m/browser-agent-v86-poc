@@ -21,7 +21,7 @@ Source schema for data/llm-models.json. This schema describes the author-edited 
 
 ## Required Fields
 
-`id`, `label`, `shortLabel`, `engine`, `engineLabel`, `model`, `task`, `device`, `dtype`, `sizeLabel`, `repoSizeLabel`, `minMemoryLabel`, `languageLabel`, `requiresShaderF16`, `compatibilityLabel`, `temperature`, `topP`, `description`
+`id`, `label`, `shortLabel`, `engine`, `model`, `device`, `dtype`, `sizeLabel`, `repoSizeLabel`, `minMemoryLabel`, `languageLabel`, `requiresShaderF16`, `compatibilityLabel`, `temperature`, `topP`, `description`
 
 ## Properties
 
@@ -31,9 +31,7 @@ Source schema for data/llm-models.json. This schema describes the author-edited 
 | `items[].label` | yes | string | Full model name shown in selectors and panels. | minLength: 1 |
 | `items[].shortLabel` | yes | string | Short model name for badges, status text and compact UI. | minLength: 1 |
 | `items[].engine` | yes | string | Runtime used to execute the model. | enum: "ollama", "transformersjs" |
-| `items[].engineLabel` | yes | string | Human-readable runtime label shown in the UI. | minLength: 1 |
 | `items[].model` | yes | string | Runtime model identifier. For Ollama this is the local tag; for Transformers.js it is usually a compatible Hugging Face repository. |  |
-| `items[].task` | yes | string | Model task. Current values are typically chat for Ollama and text-generation for Transformers.js. | minLength: 1 |
 | `items[].device` | yes | string | Execution device. Ollama uses remote; Transformers.js uses webgpu or wasm. | enum: "remote", "webgpu", "wasm" |
 | `items[].dtype` | yes | string | Numeric format or quantization requested from the runtime. | enum: "host", "auto", "fp32", "fp16", "q8", "q4", "q4f16" |
 | `items[].sizeLabel` | yes | string | Approximate model size displayed in the UI. Informational only. | minLength: 1 |

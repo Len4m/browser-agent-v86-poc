@@ -9,7 +9,7 @@ import { appEvents } from "../../core/events";
 import { showBaModal, showBaModalPanel } from "../../ui/modal";
 import { getSelectedProfile, type VmProfile } from "../../vm/profile-config";
 import { ensureLLMCapabilities, syncLLMCapabilityBadges, type LlmCapabilities } from "../state/capabilities";
-import { getLlmState, llmEventsApi, llmModels, type LlmModelConfig } from "../state/chat-state";
+import { getLlmState, llmEngineLabel, llmEventsApi, llmModels, type LlmModelConfig } from "../state/chat-state";
 import { llmAgent } from "../runtime/agent-loop";
 import { llmArtifacts, type LlmArtifactSummary } from "../runtime/artifact-store";
 import { llmContextBudget } from "../runtime/context-budget";
@@ -529,7 +529,7 @@ function updateSelectedModelCard(): void {
   if (meta) {
     const entries: Array<[string, unknown] | null> = [
       getLlmState()?.loaded ? [t("panel.llm.meta.backendLoaded"), activeBackendLabel(model) || "—"] : null,
-      [t("panel.llm.meta.engine"), model.engineLabel || "Transformers.js"],
+      [t("panel.llm.meta.engine"), llmEngineLabel(model.engine)],
       [t("panel.llm.meta.download"), model.sizeLabel || "—"],
       [t("panel.llm.meta.quantization"), model.dtype || "—"],
       [t("panel.llm.meta.memory"), model.minMemoryLabel || "—"],

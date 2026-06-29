@@ -46,14 +46,12 @@ export interface LlmModelConfig {
   label?: string;
   shortLabel?: string;
   engine: string;
-  engineLabel?: string;
   description?: string;
   sizeLabel?: string;
   minMemoryLabel?: string;
   compatibilityLabel?: string;
   languageLabel?: string;
   model?: string;
-  task?: string;
   device?: string;
   dtype?: string;
   custom?: boolean;
@@ -292,6 +290,10 @@ function mergeThinkingMeta(model: LlmModelConfig): LlmThinkingMeta {
     startWithReasoning: false,
     ...(model.thinking || {}),
   };
+}
+
+export function llmEngineLabel(engine: unknown): string {
+  return engine === "ollama" ? "Ollama local HTTP" : "Transformers.js v4";
 }
 
 function defaultContextMeta(model: LlmModelConfig): Pick<LlmModelConfig, "contextWindowTokens" | "maxNewTokens" | "contextPolicy"> {

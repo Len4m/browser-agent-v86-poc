@@ -12,9 +12,7 @@
       "label",
       "shortLabel",
       "engine",
-      "engineLabel",
       "model",
-      "task",
       "device",
       "dtype",
       "sizeLabel",
@@ -48,19 +46,9 @@
         "enum": ["ollama", "transformersjs"],
         "description": "Runtime used to execute the model."
       },
-      "engineLabel": {
-        "type": "string",
-        "minLength": 1,
-        "description": "Human-readable runtime label shown in the UI."
-      },
       "model": {
         "type": "string",
         "description": "Runtime model identifier. For Ollama this is the local tag; for Transformers.js it is usually a compatible Hugging Face repository."
-      },
-      "task": {
-        "type": "string",
-        "minLength": 1,
-        "description": "Model task. Current values are typically chat for Ollama and text-generation for Transformers.js."
       },
       "device": {
         "type": "string",
