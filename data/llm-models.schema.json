@@ -9,8 +9,6 @@
     "additionalProperties": false,
     "required": [
       "id",
-      "label",
-      "shortLabel",
       "engine",
       "model",
       "device",
@@ -30,16 +28,6 @@
         "type": "string",
         "minLength": 1,
         "description": "Stable unique identifier used by selection, policies and local state. Do not rename without migrating references."
-      },
-      "label": {
-        "type": "string",
-        "minLength": 1,
-        "description": "Full model name shown in selectors and panels."
-      },
-      "shortLabel": {
-        "type": "string",
-        "minLength": 1,
-        "description": "Short model name for badges, status text and compact UI."
       },
       "engine": {
         "type": "string",

@@ -43,8 +43,6 @@ export interface LlmContextPolicy {
 
 export interface LlmModelConfig {
   id: string;
-  label?: string;
-  shortLabel?: string;
   engine: string;
   description?: string;
   sizeLabel?: string;
@@ -294,6 +292,19 @@ function mergeThinkingMeta(model: LlmModelConfig): LlmThinkingMeta {
 
 export function llmEngineLabel(engine: unknown): string {
   return engine === "ollama" ? "Ollama local HTTP" : "Transformers.js v4";
+}
+
+function llmModelName(model: LlmModelConfig): string {
+  const value = typeof model.model === "string" && model.model.trim() ? model.model.trim() : "custom";
+  return model.engine === "ollama" ? value : value.split("/").pop() || value;
+}
+
+export function llmModelLabel(model: LlmModelConfig): string {
+  return `${model.engine === "ollama" ? "Ollama" : "Transformers.js"} · ${llmModelName(model)}`;
+}
+
+export function llmModelShortLabel(model: LlmModelConfig): string {
+  return llmModelName(model);
 }
 
 function defaultContextMeta(model: LlmModelConfig): Pick<LlmModelConfig, "contextWindowTokens" | "maxNewTokens" | "contextPolicy"> {

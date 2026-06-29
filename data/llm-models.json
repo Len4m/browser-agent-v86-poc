@@ -1,8 +1,6 @@
 [
   {
     "id": "ollama-qwen3-1.7b",
-    "label": "Ollama · Qwen3 1.7B",
-    "shortLabel": "Ollama Qwen3 1.7B",
     "engine": "ollama",
     "model": "qwen3:1.7b",
     "device": "remote",
@@ -23,8 +21,6 @@
   },
   {
     "id": "ollama-llama3.2-latest",
-    "label": "Ollama · Llama 3.2 latest",
-    "shortLabel": "Ollama Llama 3.2",
     "engine": "ollama",
     "model": "llama3.2:latest",
     "device": "remote",
@@ -43,8 +39,6 @@
   },
   {
     "id": "ollama-granite4.1-3b",
-    "label": "Ollama · Granite 4.1 3B",
-    "shortLabel": "Ollama Granite 4.1 3B",
     "engine": "ollama",
     "model": "granite4.1:3b",
     "device": "remote",
@@ -64,8 +58,6 @@
   },
   {
     "id": "ollama-qwen3.5-4b",
-    "label": "Ollama · Qwen3.5 4B",
-    "shortLabel": "Ollama Qwen3.5 4B",
     "engine": "ollama",
     "model": "qwen3.5:4b",
     "device": "remote",
@@ -86,8 +78,6 @@
   },
   {
     "id": "ollama-granite3.3-8b",
-    "label": "Ollama · Granite 3.3 8B",
-    "shortLabel": "Ollama Granite 3.3 8B",
     "engine": "ollama",
     "model": "granite3.3:8b",
     "device": "remote",
@@ -107,8 +97,6 @@
   },
   {
     "id": "ollama-llama3.1-8b",
-    "label": "Ollama · Llama 3.1 8B",
-    "shortLabel": "Ollama Llama 3.1 8B",
     "engine": "ollama",
     "model": "llama3.1:8b",
     "device": "remote",
@@ -128,8 +116,6 @@
   },
   {
     "id": "ollama-qwen3-8b",
-    "label": "Ollama · Qwen3 8B",
-    "shortLabel": "Ollama Qwen3 8B",
     "engine": "ollama",
     "model": "qwen3:8b",
     "device": "remote",
@@ -150,8 +136,6 @@
   },
   {
     "id": "ollama-granite4.1-8b",
-    "label": "Ollama · Granite 4.1 8B",
-    "shortLabel": "Ollama Granite 4.1 8B",
     "engine": "ollama",
     "model": "granite4.1:8b",
     "device": "remote",
@@ -171,8 +155,6 @@
   },
   {
     "id": "ollama-qwen3.5-9b",
-    "label": "Ollama · Qwen3.5 9B",
-    "shortLabel": "Ollama Qwen3.5 9B",
     "engine": "ollama",
     "model": "qwen3.5:9b",
     "device": "remote",
@@ -193,8 +175,6 @@
   },
   {
     "id": "ollama-qwen3-14b",
-    "label": "Ollama · Qwen3 14B",
-    "shortLabel": "Ollama Qwen3 14B",
     "engine": "ollama",
     "model": "qwen3:14b",
     "device": "remote",
@@ -215,8 +195,6 @@
   },
   {
     "id": "ollama-gpt-oss-20b",
-    "label": "Ollama · gpt-oss 20B",
-    "shortLabel": "Ollama gpt-oss 20B",
     "engine": "ollama",
     "model": "gpt-oss:20b",
     "device": "remote",
@@ -241,8 +219,6 @@
   },
   {
     "id": "ollama-gpt-oss-latest",
-    "label": "Ollama · gpt-oss latest",
-    "shortLabel": "Ollama gpt-oss",
     "engine": "ollama",
     "model": "gpt-oss:latest",
     "device": "remote",
@@ -267,8 +243,6 @@
   },
   {
     "id": "ollama-qwen3-30b",
-    "label": "Ollama · Qwen3 30B-A3B",
-    "shortLabel": "Ollama Qwen3 30B",
     "engine": "ollama",
     "model": "qwen3:30b",
     "device": "remote",
@@ -289,8 +263,6 @@
   },
   {
     "id": "ollama-glm-4.7-flash",
-    "label": "Ollama · GLM 4.7 Flash",
-    "shortLabel": "Ollama GLM 4.7 Flash",
     "engine": "ollama",
     "model": "glm-4.7-flash:latest",
     "device": "remote",
@@ -311,8 +283,6 @@
   },
   {
     "id": "custom-ollama",
-    "label": "Ollama · modelo custom",
-    "shortLabel": "Ollama custom",
     "engine": "ollama",
     "model": "",
     "device": "remote",
@@ -332,8 +302,6 @@
   },
   {
     "id": "qwen3-tools-onnx-q4f16",
-    "label": "Qwen3 0.6B ONNX · tools probado",
-    "shortLabel": "Qwen3 0.6B tools",
     "engine": "transformersjs",
     "model": "onnx-community/Qwen3-0.6B-ONNX",
     "device": "webgpu",
@@ -357,8 +325,6 @@
   },
   {
     "id": "qwen3-tools-onnx-q4",
-    "label": "Qwen3 0.6B ONNX · q4 tools experimental",
-    "shortLabel": "Qwen3 0.6B q4",
     "engine": "transformersjs",
     "model": "onnx-community/Qwen3-0.6B-ONNX",
     "device": "webgpu",
@@ -383,8 +349,6 @@
   },
   {
     "id": "qwen2.5-coder-0.5b-instruct-q4",
-    "label": "Qwen2.5 Coder 0.5B Instruct ONNX · q4 experimental",
-    "shortLabel": "Qwen2.5 Coder 0.5B q4",
     "engine": "transformersjs",
     "model": "onnx-community/Qwen2.5-Coder-0.5B-Instruct",
     "device": "webgpu",
@@ -410,8 +374,6 @@
   },
   {
     "id": "glm-edge-1.5b-chat-onnx-q4",
-    "label": "GLM Edge 1.5B Chat ONNX · q4 experimental",
-    "shortLabel": "GLM Edge 1.5B q4",
     "engine": "transformersjs",
     "model": "onnx-community/glm-edge-1.5b-chat-ONNX",
     "device": "webgpu",
@@ -432,8 +394,6 @@
   },
   {
     "id": "glm-edge-1.5b-chat-onnx-q4f16",
-    "label": "GLM Edge 1.5B Chat ONNX · q4f16 experimental",
-    "shortLabel": "GLM Edge 1.5B q4f16",
     "engine": "transformersjs",
     "model": "onnx-community/glm-edge-1.5b-chat-ONNX",
     "device": "webgpu",
@@ -454,8 +414,6 @@
   },
   {
     "id": "glm-edge-1.5b-chat-onnx-fp16",
-    "label": "GLM Edge 1.5B Chat ONNX · fp16 experimental",
-    "shortLabel": "GLM Edge 1.5B fp16",
     "engine": "transformersjs",
     "model": "onnx-community/glm-edge-1.5b-chat-ONNX",
     "device": "webgpu",
@@ -476,8 +434,6 @@
   },
   {
     "id": "granite-4.0-350m-onnx-web-fp16",
-    "label": "Granite 4.0 350M ONNX-web · tools experimental",
-    "shortLabel": "Granite 350M tools",
     "engine": "transformersjs",
     "model": "onnx-community/granite-4.0-350m-ONNX-web",
     "device": "webgpu",
@@ -498,8 +454,6 @@
   },
   {
     "id": "lfm2-tool-1.2b-onnx-fp16",
-    "label": "LFM2 1.2B Tool ONNX",
-    "shortLabel": "LFM2 1.2B Tool",
     "engine": "transformersjs",
     "model": "onnx-community/LFM2-1.2B-Tool-ONNX",
     "device": "webgpu",
@@ -520,8 +474,6 @@
   },
   {
     "id": "lfm2-tool-1.2b-onnx-q4",
-    "label": "LFM2 1.2B Tool ONNX · q4",
-    "shortLabel": "LFM2 1.2B Tool q4",
     "engine": "transformersjs",
     "model": "onnx-community/LFM2-1.2B-Tool-ONNX",
     "device": "webgpu",
@@ -542,8 +494,6 @@
   },
   {
     "id": "granite-4.0-micro-onnx-web-q4f16",
-    "label": "Granite 4.0 Micro ONNX-web",
-    "shortLabel": "Granite Micro tools",
     "engine": "transformersjs",
     "model": "onnx-community/granite-4.0-micro-ONNX-web",
     "device": "webgpu",
@@ -564,8 +514,6 @@
   },
   {
     "id": "custom-transformersjs",
-    "label": "Modelo custom Transformers.js",
-    "shortLabel": "Modelo custom",
     "engine": "transformersjs",
     "model": "",
     "device": "webgpu",
@@ -583,8 +531,6 @@
   },
   {
     "id": "gemma-3-270m-it-onnx-wasm-fallback",
-    "label": "Gemma 3 270M IT ONNX · fallback WASM",
-    "shortLabel": "Gemma 270M WASM",
     "engine": "transformersjs",
     "model": "onnx-community/gemma-3-270m-it-ONNX",
     "device": "wasm",

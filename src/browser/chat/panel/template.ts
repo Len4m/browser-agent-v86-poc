@@ -3,7 +3,7 @@
 // and live language switching. Dynamic values are translated by panel.ts.
 
 import { t } from "../../app/i18n";
-import { llmModels, type LlmModelConfig } from "../state/chat-state";
+import { llmModelLabel, llmModels, type LlmModelConfig } from "../state/chat-state";
 import { llmToolRegistry } from "../tools/tool-registry";
 
 interface LlmPanelTemplateApi {
@@ -47,7 +47,7 @@ function modelOptionsHtml(): string {
     const compat = model.requiresShaderF16
       ? ` · ${t("common.requiresShaderF16")}`
       : "";
-    return `<option value="${escapeHtml(model.id)}">${escapeHtml(model.label)}${escapeHtml(size)}${escapeHtml(dtype)}${escapeHtml(compat)}</option>`;
+    return `<option value="${escapeHtml(model.id)}">${escapeHtml(llmModelLabel(model))}${escapeHtml(size)}${escapeHtml(dtype)}${escapeHtml(compat)}</option>`;
   };
 
   const used = new Set<string>();

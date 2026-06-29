@@ -9,7 +9,7 @@ import { appEvents } from "../../core/events";
 import { addMessage } from "../../vm/runtime-assets";
 import { backgroundToolsApi } from "../../vm/background-tools-serial1";
 import { detectLLMCapabilities, type LlmCapabilities } from "../state/capabilities";
-import { getLlmState, llmEventsApi, llmModels, type LlmModelConfig, type LlmState } from "../state/chat-state";
+import { getLlmState, llmEventsApi, llmModelShortLabel, llmModels, type LlmModelConfig, type LlmState } from "../state/chat-state";
 import { getAiSdk, getAiSdkReady, type AiSdkBridgeApi, type AiSdkRunAgentStreamTurnResult } from "../provider/ai-sdk-runtime";
 import { buildAiSdkTools } from "../tools/ai-tools";
 import { llmToolResultPolicy } from "./tool-result-policy";
@@ -251,7 +251,7 @@ function buildEmptyResponseMessage({
   if (streamIsToolPlan) return t("chat.empty.toolPlan");
   if (toolPhaseSeen || runnerInfo.hadToolWork) return t("chat.empty.toolNoSynthesis");
   if (/length|max|token/i.test(textValue(finishReason))) return t("chat.empty.lengthLimit");
-  const label = modelConfig?.shortLabel || modelConfig?.label || modelConfig?.id || t("chat.empty.defaultModelLabel");
+  const label = modelConfig ? llmModelShortLabel(modelConfig) : t("chat.empty.defaultModelLabel");
   return t("chat.empty.noVisibleText", { label });
 }
 
@@ -403,7 +403,7 @@ async function loadSelectedModel(): Promise<void> {
       fallbackFrom: activeConfig.fallbackFrom || null,
     });
     updateChatAvailability();
-    const statusLabel = activeConfig.shortLabel || activeConfig.label || activeConfig.id;
+    const statusLabel = llmModelShortLabel(activeConfig);
     const backendHint = activeRuntime.provider === "transformersjs"
       ? ` · ${activeRuntime.device === "wasm" ? "WASM" : "WebGPU"}${activeRuntime.dtype ? `/${activeRuntime.dtype}` : ""}`
       : "";

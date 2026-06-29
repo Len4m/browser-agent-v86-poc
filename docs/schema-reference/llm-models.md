@@ -21,15 +21,13 @@ Source schema for data/llm-models.json. This schema describes the author-edited 
 
 ## Required Fields
 
-`id`, `label`, `shortLabel`, `engine`, `model`, `device`, `dtype`, `sizeLabel`, `repoSizeLabel`, `minMemoryLabel`, `languageLabel`, `requiresShaderF16`, `compatibilityLabel`, `temperature`, `topP`, `description`
+`id`, `engine`, `model`, `device`, `dtype`, `sizeLabel`, `repoSizeLabel`, `minMemoryLabel`, `languageLabel`, `requiresShaderF16`, `compatibilityLabel`, `temperature`, `topP`, `description`
 
 ## Properties
 
 | Field | Required | Type | Description | Constraints |
 | --- | --- | --- | --- | --- |
 | `items[].id` | yes | string | Stable unique identifier used by selection, policies and local state. Do not rename without migrating references. | minLength: 1 |
-| `items[].label` | yes | string | Full model name shown in selectors and panels. | minLength: 1 |
-| `items[].shortLabel` | yes | string | Short model name for badges, status text and compact UI. | minLength: 1 |
 | `items[].engine` | yes | string | Runtime used to execute the model. | enum: "ollama", "transformersjs" |
 | `items[].model` | yes | string | Runtime model identifier. For Ollama this is the local tag; for Transformers.js it is usually a compatible Hugging Face repository. |  |
 | `items[].device` | yes | string | Execution device. Ollama uses remote; Transformers.js uses webgpu or wasm. | enum: "remote", "webgpu", "wasm" |

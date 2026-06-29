@@ -436,7 +436,6 @@
   "panel.llm.meta.tools": "Herramientas",
   "panel.llm.model.descFallback": "Modelo compatible con AI SDK.",
   "panel.llm.model.repoCustomHint": "Introduce un modelo compatible antes de cargar.",
-  "panel.llm.modelFallback": "modelo",
   "panel.llm.note.tools": "Activa herramientas con el botón de llave inglesa junto al campo de chat. Ollama requiere CORS permitido en el host.",
   "panel.llm.optgroup.ollama": "Ollama",
   "panel.llm.optgroup.others": "Otros",

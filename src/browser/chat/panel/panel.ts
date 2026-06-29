@@ -9,7 +9,7 @@ import { appEvents } from "../../core/events";
 import { showBaModal, showBaModalPanel } from "../../ui/modal";
 import { getSelectedProfile, type VmProfile } from "../../vm/profile-config";
 import { ensureLLMCapabilities, syncLLMCapabilityBadges, type LlmCapabilities } from "../state/capabilities";
-import { getLlmState, llmEngineLabel, llmEventsApi, llmModels, type LlmModelConfig } from "../state/chat-state";
+import { getLlmState, llmEngineLabel, llmEventsApi, llmModelShortLabel, llmModels, type LlmModelConfig } from "../state/chat-state";
 import { llmAgent } from "../runtime/agent-loop";
 import { llmArtifacts, type LlmArtifactSummary } from "../runtime/artifact-store";
 import { llmContextBudget } from "../runtime/context-budget";
@@ -523,7 +523,7 @@ function updateSelectedModelCard(): void {
   const meta = document.getElementById("ba-llm-selected-meta");
   const repo = document.getElementById("ba-llm-repo-path");
 
-  if (title) title.textContent = model.shortLabel || model.label || model.id;
+  if (title) title.textContent = llmModelShortLabel(model);
   if (desc) desc.textContent = model.description || t("panel.llm.model.descFallback");
   if (repo) repo.textContent = model.custom ? t("panel.llm.model.repoCustomHint") : model.model || "";
   if (meta) {
@@ -664,7 +664,7 @@ function getNativeToolsPickerState(): NativeToolsPickerState {
 function nativeToolsHintText(model: LlmModelConfig, activeCount: number, max: number): string {
   const weak = model.agent?.toolCalling === "weak";
   if (!activeCount) return t("panel.llm.tools.noneSelected");
-  const label = model.shortLabel || model.label || t("panel.llm.modelFallback");
+  const label = llmModelShortLabel(model);
   return weak
     ? tn("panel.llm.tools.hintWeak", activeCount, { label, max })
     : tn("panel.llm.tools.hintStrong", activeCount, { label, max });
@@ -757,7 +757,7 @@ function updateChatToolsButton(): void {
 
   const { model, max, active, policy } = getNativeToolsPickerState();
   const activeCount = active.size;
-  const label = model.shortLabel || model.label || t("panel.llm.modelFallback");
+  const label = llmModelShortLabel(model);
 
   if (badge) {
     badge.textContent = activeCount ? String(activeCount) : "";

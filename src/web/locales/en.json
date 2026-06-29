@@ -436,7 +436,6 @@
   "panel.llm.meta.tools": "Tools",
   "panel.llm.model.descFallback": "AI SDK-compatible model.",
   "panel.llm.model.repoCustomHint": "Enter a compatible model before loading.",
-  "panel.llm.modelFallback": "model",
   "panel.llm.note.tools": "Enable tools with the wrench button next to the chat input. Ollama requires CORS allowed on the host.",
   "panel.llm.optgroup.ollama": "Ollama",
   "panel.llm.optgroup.others": "Others",
