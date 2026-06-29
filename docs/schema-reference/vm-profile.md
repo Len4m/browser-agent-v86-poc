@@ -34,6 +34,5 @@ Schema for source VM profiles in vm/profiles/*.json. Profiles are consumed by sc
 | `extraRepositories` | no | array&lt;string&gt; | Extra APK repositories appended after the main/community repositories. | uniqueItems; items minLength: 1; items pattern: ^https?://.+ |
 | `firstBootCommands` | no | array&lt;string&gt; | Shell commands written to /etc/browser-agent-firstboot.sh and executed during VM boot. | items minLength: 1 |
 | `buildCommands` | no | array&lt;string&gt; | Shell commands executed by scripts/setup/vm-alpine-initramfs.sh against /rootfs during image generation. | items minLength: 1 |
-| `validationCommands` | no | array&lt;string&gt; | Manual commands printed after build to validate the generated VM profile. | items minLength: 1 |
 | `bootMessage` | no | string | Message displayed on serial0 after first boot setup. | minLength: 1 |
 | `notes` | no | array&lt;string&gt; | Maintainer notes for profile-specific package/repository decisions. | items minLength: 1 |

@@ -31,12 +31,5 @@
     "rm -rf /rootfs/var/cache/apk/* /rootfs/tmp/* /rootfs/var/tmp/*",
     "rm -rf /rootfs/usr/share/man /rootfs/usr/share/doc"
   ],
-  "validationCommands": [
-    "curl --version",
-    "nano --version || true",
-    "python3 --version",
-    "df -h",
-    "free -m"
-  ],
   "bootMessage": "Browser Alpine Base Lite ready."
 }

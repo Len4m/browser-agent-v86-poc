@@ -77,11 +77,10 @@ La union entre ambos contratos es:
    ]
    ```
 
-6. Usa `buildCommands`, `firstBootCommands` y `validationCommands` con intencion clara.
+6. Usa `buildCommands` y `firstBootCommands` con intencion clara.
 
    - `buildCommands`: se ejecutan durante la generacion de la imagen contra `/rootfs`. Sirven para crear symlinks, descargar wordlists pequeñas, limpiar cache o preparar ficheros.
    - `firstBootCommands`: se escriben en `/etc/browser-agent-firstboot.sh` y se ejecutan al arrancar la VM.
-   - `validationCommands`: son solo metadatos de validacion manual. `scripts/setup/vm-profile-image.mjs` los copia al manifest del perfil y los imprime al final como comandos sugeridos, pero no los ejecuta durante `setup`, `build`, `check` ni en runtime.
 
    Si una comprobacion debe fallar la generacion de imagen, ponla en `buildCommands`. Si debe ejecutarse una vez al arrancar la VM, ponla en `firstBootCommands`. Si comprueba la disponibilidad real de una tool y debe aparecer en el panel **Comprobar**, declarala en `runtimeChecks` de esa tool.
 
@@ -93,10 +92,6 @@ La union entre ambos contratos es:
    ],
    "buildCommands": [
      "rm -rf /rootfs/var/cache/apk/* /rootfs/tmp/* /rootfs/var/tmp/*"
-   ],
-   "validationCommands": [
-     "python3 --version",
-     "curl -fsS --max-time 8 -o /dev/null https://browseragent.icu/"
    ]
    ```
 
@@ -177,11 +172,10 @@ La union entre ambos contratos es:
    Añade el nombre de la tool a `allowedTools` del perfil y los paquetes necesarios a `packages`. Si la tool depende de un ejecutable concreto distinto del nombre del paquete, reflejalo en:
 
    - `buildCommands` o `firstBootCommands` del perfil.
-   - `validationCommands`.
    - `runtimeChecks` en la propia definicion de tool si esa disponibilidad debe aparecer en **Comprobar**.
    - Tests si el contrato es delicado.
 
-   Ejemplo actual: `web.nikto.quick` declara `requiredPackages` para Nikto y los modulos Perl SSL, pero ejecuta `nikto.pl` mediante `timeout`. El perfil `alpine-pentest-web` crea un symlink `nikto` para uso manual y valida ambos comandos.
+   Ejemplo actual: `web.nikto.quick` declara `requiredPackages` para Nikto y los modulos Perl SSL, pero ejecuta `nikto.pl` mediante `timeout`. El perfil `alpine-pentest-web` crea un symlink `nikto` para uso manual y la tool valida su disponibilidad con `runtimeChecks`.
 
 ## Validacion recomendada
 

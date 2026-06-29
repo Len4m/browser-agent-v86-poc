@@ -77,11 +77,10 @@ The connection between them is:
    ]
    ```
 
-6. Use `buildCommands`, `firstBootCommands`, and `validationCommands` deliberately.
+6. Use `buildCommands` and `firstBootCommands` deliberately.
 
    - `buildCommands`: run during image generation against `/rootfs`. Use them for symlinks, small wordlist downloads, cache cleanup, or file preparation.
    - `firstBootCommands`: written to `/etc/browser-agent-firstboot.sh` and run when the VM boots.
-   - `validationCommands`: manual-validation metadata only. `scripts/setup/vm-profile-image.mjs` copies them to the profile manifest and prints them at the end as suggested commands, but does not run them during `setup`, `build`, `check`, or runtime.
 
    If a check must fail image generation, put it in `buildCommands`. If it must run once when the VM boots, put it in `firstBootCommands`. If it proves a tool's real availability and must appear in **Run checks**, declare it in that tool's `runtimeChecks`.
 
@@ -93,10 +92,6 @@ The connection between them is:
    ],
    "buildCommands": [
      "rm -rf /rootfs/var/cache/apk/* /rootfs/tmp/* /rootfs/var/tmp/*"
-   ],
-   "validationCommands": [
-     "python3 --version",
-     "curl -fsS --max-time 8 -o /dev/null https://browseragent.icu/"
    ]
    ```
 
@@ -177,11 +172,10 @@ The connection between them is:
    Add the tool name to the profile's `allowedTools` and the required packages to `packages`. If the tool depends on a specific executable name that differs from the package name, keep these aligned:
 
    - Profile `buildCommands` or `firstBootCommands`.
-   - `validationCommands`.
    - `runtimeChecks` in the tool definition when that availability should appear in **Run checks**.
    - Tests if the contract is delicate.
 
-   Current example: `web.nikto.quick` declares `requiredPackages` for Nikto and the Perl SSL modules, but runs `nikto.pl` through `timeout`. The `alpine-pentest-web` profile creates a `nikto` symlink for manual use and validates both commands.
+   Current example: `web.nikto.quick` declares `requiredPackages` for Nikto and the Perl SSL modules, but runs `nikto.pl` through `timeout`. The `alpine-pentest-web` profile creates a `nikto` symlink for manual use and the tool validates availability with `runtimeChecks`.
 
 ## Recommended Validation
 

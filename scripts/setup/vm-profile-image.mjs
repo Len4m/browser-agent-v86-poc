@@ -79,7 +79,6 @@ const allowedTools = assertArray(profile.allowedTools, "allowedTools");
 const extraRepositories = assertArray(profile.extraRepositories || [], "extraRepositories");
 const firstBootCommands = assertArray(profile.firstBootCommands || [], "firstBootCommands");
 const buildCommands = assertArray(profile.buildCommands || [], "buildCommands");
-const validationCommands = assertArray(profile.validationCommands || [], "validationCommands");
 const alpineVersion = profile.alpineVersion ? assertString(profile.alpineVersion, "alpineVersion") : "3.23.4";
 const alpineBranch = profile.alpineBranch ? assertString(profile.alpineBranch, "alpineBranch") : `v${alpineVersion.split(".").slice(0, 2).join(".")}`;
 const output = `v86/images/profiles/${id}-initramfs.gz`;
@@ -167,14 +166,13 @@ const manifest = {
   allowedTools,
   firstBootCommands,
   buildCommands,
-  validationCommands,
   recommendedRamMb,
   recommendedVramMb,
   defaultDisk,
   extraRepositories,
   generatedAt: new Date().toISOString(),
   notes: [
-    "RAM declarada: validar arrancando el perfil y ejecutando validationCommands.",
+    "RAM declarada: validar arrancando el perfil con el valor recomendado.",
     "No necesitas wsnic para construir esta imagen. Sí necesitas wsnic para validar red desde la VM.",
     "Esta imagen sigue siendo initramfs: los cambios hechos dentro de la VM no persisten salvo snapshot.",
   ],
@@ -212,6 +210,4 @@ console.log(`Kernel:    ${kernelOutputFile} (${human(manifest.kernelBytes)})`);
 console.log(`Initramfs: ${outputFile} (${human(manifest.initramfsBytes)})`);
 console.log(`Manifest:  public/v86/images/profiles/${id}.json`);
 console.log(`RAM perfil: ${recommendedRamMb} MB`);
-console.log("\nValidación sugerida dentro de la VM:");
-for (const cmd of validationCommands) console.log(`  ${cmd}`);
 console.log("\nPara probar con la UI actual, arranca la VM usando el initramfs generado por defecto.");

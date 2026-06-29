@@ -117,14 +117,6 @@
       },
       "description": "Shell commands executed by scripts/setup/vm-alpine-initramfs.sh against /rootfs during image generation."
     },
-    "validationCommands": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1
-      },
-      "description": "Manual commands printed after build to validate the generated VM profile."
-    },
     "bootMessage": {
       "type": "string",
       "minLength": 1,
