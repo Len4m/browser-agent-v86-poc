@@ -54,7 +54,7 @@
     "recommendedRamMb": {
       "type": "integer",
       "minimum": 64,
-      "description": "RAM applied automatically when this profile is selected. Profile RAM controls are locked in the UI."
+      "description": "RAM applied automatically when this profile is selected. With initramfs, this is total guest RAM and also backs the unpacked rootfs."
     },
     "recommendedVramMb": {
       "type": "integer",
@@ -66,7 +66,7 @@
       "type": "string",
       "pattern": "^(initramfs|hda-[0-9]+)$",
       "default": "initramfs",
-      "description": "Default disk selector value. Optional; defaults to initramfs."
+      "description": "Default disk selector value. Optional; defaults to initramfs. hda-* adds a data disk; boot/rootfs still use initramfs."
     },
     "packages": {
       "type": "array",

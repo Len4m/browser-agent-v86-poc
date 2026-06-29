@@ -26,9 +26,9 @@ Schema for source VM profiles in vm/profiles/*.json. Profiles are consumed by sc
 | `alpineVersion` | yes | string | Exact Alpine minirootfs version used as the rootfs base, for example 3.23.4. | pattern: ^[0-9]+\.[0-9]+(\.[0-9]+)?$ |
 | `alpineBranch` | no | string | Optional APK/Docker branch override. Defaults from alpineVersion, for example 3.23.4 -&gt; v3.23. | pattern: ^v[0-9]+\.[0-9]+$ |
 | `kernelOutput` | no | string | Optional kernel path override. Default derives from alpineVersion, for example 3.23.4 -&gt; v86/images/kernels/alpine-v3.23-vmlinuz-lts. | minLength: 1; pattern: ^(public/)?v86/images/.+ |
-| `recommendedRamMb` | yes | integer | RAM applied automatically when this profile is selected. Profile RAM controls are locked in the UI. | minimum: 64 |
+| `recommendedRamMb` | yes | integer | RAM applied automatically when this profile is selected. With initramfs, this is total guest RAM and also backs the unpacked rootfs. | minimum: 64 |
 | `recommendedVramMb` | no | integer | Recommended VRAM shown and applied by default in MB. Optional; defaults to 8 when omitted. Use 0 only when the profile has been tested without VGA memory. | minimum: 0 |
-| `defaultDisk` | no | string | Default disk selector value. Optional; defaults to initramfs. | pattern: ^(initramfs\|hda-[0-9]+)$ |
+| `defaultDisk` | no | string | Default disk selector value. Optional; defaults to initramfs. hda-* adds a data disk; boot/rootfs still use initramfs. | pattern: ^(initramfs\|hda-[0-9]+)$ |
 | `packages` | yes | array&lt;string&gt; | Alpine packages installed into the exported rootfs before packing the initramfs. Must include python3 because the guest serial/tool runners depend on it. | minItems: 1; uniqueItems; contains: "python3"; items minLength: 1; items pattern: ^[A-Za-z0-9_.:+-]+$ |
 | `allowedTools` | yes | array&lt;string&gt; | Ordered LLM tool allowlist for this VM profile. Order is used as default priority when models see a limited number of tools. | minItems: 1; uniqueItems; items minLength: 1; items pattern: ^[A-Za-z0-9_.-]+$ |
 | `extraRepositories` | no | array&lt;string&gt; | Extra APK repositories appended after the main/community repositories. | uniqueItems; items minLength: 1; items pattern: ^https?://.+ |
