@@ -2,7 +2,7 @@
 
 Compact reference generated from JSON Schema. Update the source schema before editing field semantics here.
 
-Schema for source VM profiles in vm/profiles/*.json. Profiles are consumed by scripts/setup/vm-profile-image.mjs to generate public v86 initramfs manifests. Minimal valid source profiles need an id, a package list with python3 for the guest runners, and the ordered allowedTools list.
+Schema for source VM profiles in vm/profiles/*.json. Profiles are consumed by scripts/setup/vm-profile-image.mjs to generate public v86 initramfs manifests. Source profiles are intentionally explicit for generated image identity, UI metadata, boot assets, RAM defaults, packages and ordered tool policy.
 
 ## Source
 
@@ -13,7 +13,7 @@ Schema for source VM profiles in vm/profiles/*.json. Profiles are consumed by sc
 
 ## Required Fields
 
-`id`, `packages`, `allowedTools`
+`id`, `name`, `description`, `type`, `alpineVersion`, `alpineBranch`, `arch`, `output`, `kernelOutput`, `minRamMb`, `recommendedRamMb`, `recommendedVramMb`, `defaultDisk`, `packages`, `allowedTools`
 
 ## Properties
 
@@ -21,20 +21,20 @@ Schema for source VM profiles in vm/profiles/*.json. Profiles are consumed by sc
 | --- | --- | --- | --- | --- |
 | `$schema` | no | string | Optional editor hint pointing to this schema. |  |
 | `id` | yes | string | Stable profile identifier. Used as manifest filename, selector value and build id prefix. | minLength: 1; pattern: ^[a-z0-9][a-z0-9.-]*$ |
-| `name` | no | string | Human-readable profile name shown in the UI. | minLength: 1 |
-| `description` | no | string | Short profile summary shown in the UI and generated manifests. |  |
-| `type` | no | string | Profile boot mode. Current builder creates initramfs-based images. | enum: "initramfs" |
-| `alpineVersion` | no | string | Alpine version used to select the minirootfs, for example 3.23.4. | pattern: ^[0-9]+\.[0-9]+(\.[0-9]+)?$ |
-| `alpineBranch` | no | string | Alpine repository branch, for example v3.23. | pattern: ^v[0-9]+\.[0-9]+$ |
-| `arch` | no | string | Alpine architecture. v86 currently boots the 32-bit x86 profiles. | enum: "x86" |
-| `output` | no | string | Output initramfs path relative to public/ or repository root. | minLength: 1; pattern: ^(public/)?v86/images/.+\.gz$ |
-| `kernelOutput` | no | string | Output kernel path relative to public/ or repository root. | minLength: 1; pattern: ^(public/)?v86/images/.+ |
-| `minRamMb` | no | integer | Minimum RAM shown for this profile in MB. Real minimum must be validated manually. | minimum: 64 |
-| `recommendedRamMb` | no | integer | Recommended RAM shown and applied by default in MB. | minimum: 64 |
-| `recommendedVramMb` | no | integer | Recommended VRAM shown and applied by default in MB. | minimum: 0 |
-| `defaultDisk` | no | string | Default disk selector value. Use initramfs or one of the hda-* values supported by the UI. | pattern: ^(initramfs\|hda-[0-9]+)$ |
+| `name` | yes | string | Human-readable profile name shown in the UI. | minLength: 1 |
+| `description` | yes | string | Short profile summary shown in the UI and generated manifests. | minLength: 1 |
+| `type` | yes | string | Profile boot mode. Current builder creates initramfs-based images. | enum: "initramfs" |
+| `alpineVersion` | yes | string | Alpine version used to select the minirootfs, for example 3.23.4. | pattern: ^[0-9]+\.[0-9]+(\.[0-9]+)?$ |
+| `alpineBranch` | yes | string | Alpine repository branch, for example v3.23. | pattern: ^v[0-9]+\.[0-9]+$ |
+| `arch` | yes | string | Alpine architecture. v86 currently boots the 32-bit x86 profiles. | enum: "x86" |
+| `output` | yes | string | Output initramfs path relative to public/ or repository root. | minLength: 1; pattern: ^(public/)?v86/images/.+\.gz$ |
+| `kernelOutput` | yes | string | Output kernel path relative to public/ or repository root. | minLength: 1; pattern: ^(public/)?v86/images/.+ |
+| `minRamMb` | yes | integer | Minimum RAM shown for this profile in MB. Real minimum must be validated manually. | minimum: 64 |
+| `recommendedRamMb` | yes | integer | Recommended RAM shown and applied by default in MB. | minimum: 64 |
+| `recommendedVramMb` | yes | integer | Recommended VRAM shown and applied by default in MB. | minimum: 0 |
+| `defaultDisk` | yes | string | Default disk selector value. Use initramfs or one of the hda-* values supported by the UI. | pattern: ^(initramfs\|hda-[0-9]+)$ |
 | `packages` | yes | array&lt;string&gt; | Alpine packages installed into the exported rootfs before packing the initramfs. Must include python3 because the guest serial/tool runners depend on it. | minItems: 1; uniqueItems; contains: "python3"; items minLength: 1; items pattern: ^[A-Za-z0-9_.:+-]+$ |
-| `allowedTools` | yes | array&lt;string&gt; | Ordered LLM tool allowlist for this VM profile. Order is used as default priority when models see a limited number of tools. | uniqueItems; items minLength: 1; items pattern: ^[A-Za-z0-9_.-]+$ |
+| `allowedTools` | yes | array&lt;string&gt; | Ordered LLM tool allowlist for this VM profile. Order is used as default priority when models see a limited number of tools. | minItems: 1; uniqueItems; items minLength: 1; items pattern: ^[A-Za-z0-9_.-]+$ |
 | `extraRepositories` | no | array&lt;string&gt; | Extra APK repositories appended after the main/community repositories. | uniqueItems; items minLength: 1; items pattern: ^https?://.+ |
 | `firstBootCommands` | no | array&lt;string&gt; | Shell commands written to /etc/browser-agent-firstboot.sh and executed during VM boot. | items minLength: 1 |
 | `buildCommands` | no | array&lt;string&gt; | Shell commands executed by scripts/setup/vm-alpine-initramfs.sh against /rootfs during image generation. | items minLength: 1 |

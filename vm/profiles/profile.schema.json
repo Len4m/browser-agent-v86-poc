@@ -2,10 +2,26 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Len4m/browser-agent-v86-poc/schemas/vm-profile.schema.json",
   "title": "Browser Agent v86 VM profile",
-  "description": "Schema for source VM profiles in vm/profiles/*.json. Profiles are consumed by scripts/setup/vm-profile-image.mjs to generate public v86 initramfs manifests. Minimal valid source profiles need an id, a package list with python3 for the guest runners, and the ordered allowedTools list.",
+  "description": "Schema for source VM profiles in vm/profiles/*.json. Profiles are consumed by scripts/setup/vm-profile-image.mjs to generate public v86 initramfs manifests. Source profiles are intentionally explicit for generated image identity, UI metadata, boot assets, RAM defaults, packages and ordered tool policy.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "packages", "allowedTools"],
+  "required": [
+    "id",
+    "name",
+    "description",
+    "type",
+    "alpineVersion",
+    "alpineBranch",
+    "arch",
+    "output",
+    "kernelOutput",
+    "minRamMb",
+    "recommendedRamMb",
+    "recommendedVramMb",
+    "defaultDisk",
+    "packages",
+    "allowedTools"
+  ],
   "properties": {
     "$schema": {
       "type": "string",
@@ -24,6 +40,7 @@
     },
     "description": {
       "type": "string",
+      "minLength": 1,
       "description": "Short profile summary shown in the UI and generated manifests."
     },
     "type": {
@@ -92,6 +109,7 @@
     },
     "allowedTools": {
       "type": "array",
+      "minItems": 1,
       "uniqueItems": true,
       "items": {
         "type": "string",
