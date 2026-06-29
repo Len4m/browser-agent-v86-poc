@@ -12,7 +12,6 @@
       "engine",
       "model",
       "sizeLabel",
-      "repoSizeLabel",
       "minMemoryLabel",
       "languageLabel",
       "requiresShaderF16",
@@ -50,11 +49,6 @@
         "type": "string",
         "minLength": 1,
         "description": "Approximate model size displayed in the UI. Informational only."
-      },
-      "repoSizeLabel": {
-        "type": "string",
-        "minLength": 1,
-        "description": "Repository, tag or quantization detail shown in the UI. Informational only."
       },
       "minMemoryLabel": {
         "type": "string",

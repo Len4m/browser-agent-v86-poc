@@ -21,7 +21,7 @@ Source schema for data/llm-models.json. This schema describes the author-edited 
 
 ## Required Fields
 
-`id`, `engine`, `model`, `sizeLabel`, `repoSizeLabel`, `minMemoryLabel`, `languageLabel`, `requiresShaderF16`, `compatibilityLabel`, `temperature`, `topP`, `description`
+`id`, `engine`, `model`, `sizeLabel`, `minMemoryLabel`, `languageLabel`, `requiresShaderF16`, `compatibilityLabel`, `temperature`, `topP`, `description`
 
 ## Properties
 
@@ -33,7 +33,6 @@ Source schema for data/llm-models.json. This schema describes the author-edited 
 | `items[].device` | no | string | Optional Transformers.js execution device. Defaults to webgpu when omitted. | enum: "webgpu", "wasm" |
 | `items[].dtype` | no | string | Optional Transformers.js numeric format or quantization. Defaults to auto when omitted. | enum: "auto", "fp32", "fp16", "q8", "q4", "q4f16" |
 | `items[].sizeLabel` | yes | string | Approximate model size displayed in the UI. Informational only. | minLength: 1 |
-| `items[].repoSizeLabel` | yes | string | Repository, tag or quantization detail shown in the UI. Informational only. | minLength: 1 |
 | `items[].minMemoryLabel` | yes | string | Approximate RAM/VRAM note shown in the UI. Informational only. | minLength: 1 |
 | `items[].languageLabel` | yes | string | Short language/capability summary shown in the UI. | minLength: 1 |
 | `items[].requiresShaderF16` | yes | boolean | true when a WebGPU model requires shader-f16 support. |  |
