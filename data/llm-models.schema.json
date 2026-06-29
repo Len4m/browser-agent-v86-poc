@@ -155,10 +155,23 @@
         "minimum": 1,
         "description": "Optional explicit output hard cap. If omitted, context-budget.ts derives output from contextWindowTokens - safeInputTokens."
       },
+      "contextPreset": {
+        "type": "string",
+        "enum": [
+          "transformers-tiny-tools-plan",
+          "transformers-tiny-tools",
+          "transformers-edge-tools",
+          "transformers-350m-tools",
+          "transformers-fp16-tools",
+          "transformers-micro-tools",
+          "transformers-tiny-fallback"
+        ],
+        "description": "Named context budget preset expanded by chat-state.ts before runtime use. contextPolicy may still override individual preset fields."
+      },
       "contextPolicy": {
         "type": "object",
         "additionalProperties": false,
-        "description": "Optional per-model budget overrides merged by context-budget.ts and chat-state.ts. The whole object is optional; every field inside is also optional because runtime defaults (DEFAULT_LOCAL_POLICY, DEFAULT_OLLAMA_POLICY, defaultContextMeta) fill missing values. In this catalog, Transformers.js entries that define contextPolicy usually specify provider plus the prompt/history/tool limits as a complete block; maxNewTokensForPlan is the only commonly omitted override.",
+        "description": "Optional per-model budget overrides merged after contextPreset by context-budget.ts and chat-state.ts. The whole object is optional; every field inside is also optional because runtime defaults (DEFAULT_LOCAL_POLICY, DEFAULT_OLLAMA_POLICY, defaultContextMeta) fill missing values.",
         "properties": {
           "provider": {
             "type": "string",
@@ -229,6 +242,37 @@
             "type": "integer",
             "minimum": 1,
             "description": "Optional cap for synthesis output. Usually omitted because getPolicy() derives it from resolveMaxOutputTokens()."
+          }
+        }
+      },
+      "agent": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Optional per-model agent/tool overrides. Missing fields are filled from generic defaults in chat-state.ts.",
+        "properties": {
+          "maxSteps": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Maximum AI SDK agent steps for a tool turn before runtime caps are applied."
+          },
+          "maxNativeTools": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Maximum number of active native tools sent to the model."
+          },
+          "toolCalling": {
+            "type": "string",
+            "enum": ["weak", "fair", "good"],
+            "description": "How many tool steps the runtime should allow for this model."
+          },
+          "defaultNativeTools": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "description": "Optional default tool names. Usually omitted so profile priority decides."
+          },
+          "selfSelectTools": {
+            "type": "boolean",
+            "description": "true when tests show the model should be allowed to decide tool use before heuristic fallback."
           }
         }
       },

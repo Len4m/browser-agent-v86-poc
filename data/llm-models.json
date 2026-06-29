@@ -380,19 +380,7 @@
     "temperature": 0.15,
     "topP": 0.85,
     "toolProfile": "reasoning-light",
-    "contextWindowTokens": 4096,
-    "contextPolicy": {
-      "provider": "transformersjs",
-      "contextWindowTokens": 4096,
-      "safeInputTokens": 1100,
-      "maxSystemChars": 780,
-      "maxRuntimeChars": 300,
-      "maxHistoryMessages": 1,
-      "maxHistoryChars": 350,
-      "maxToolResultChars": 1800,
-      "maxToolResultCharsForSynthesis": 1000,
-      "maxNewTokensForPlan": 384
-    },
+    "contextPreset": "transformers-tiny-tools-plan",
     "description": "Candidato principal para tools en navegador. Es el modelo con evidencia pública más directa para Transformers.js + @browser-ai/transformers-js + AI SDK, usando q4f16 y WebGPU.",
     "thinking": {
       "enabled": true,
@@ -419,19 +407,7 @@
     "temperature": 0.15,
     "topP": 0.85,
     "toolProfile": "reasoning-light",
-    "contextWindowTokens": 4096,
-    "contextPolicy": {
-      "provider": "transformersjs",
-      "contextWindowTokens": 4096,
-      "safeInputTokens": 1100,
-      "maxSystemChars": 780,
-      "maxRuntimeChars": 300,
-      "maxHistoryMessages": 1,
-      "maxHistoryChars": 350,
-      "maxToolResultChars": 1800,
-      "maxToolResultCharsForSynthesis": 1000,
-      "maxNewTokensForPlan": 384
-    },
+    "contextPreset": "transformers-tiny-tools-plan",
     "experimental": true,
     "description": "Variante q4 del Qwen3 recomendado para tools. Existe en el repo ONNX y evita shader-f16; se marca experimental porque la demo oficial de tool calling usa q4f16.",
     "thinking": {
@@ -458,17 +434,12 @@
     "temperature": 0.1,
     "topP": 0.85,
     "toolProfile": "strong-json",
-    "contextWindowTokens": 4096,
-    "contextPolicy": {
-      "provider": "transformersjs",
-      "contextWindowTokens": 4096,
-      "safeInputTokens": 1100,
-      "maxSystemChars": 780,
-      "maxRuntimeChars": 300,
-      "maxHistoryMessages": 1,
-      "maxHistoryChars": 350,
-      "maxToolResultChars": 1800,
-      "maxToolResultCharsForSynthesis": 1000
+    "contextPreset": "transformers-tiny-tools",
+    "agent": {
+      "maxSteps": 2,
+      "maxNativeTools": 2,
+      "toolCalling": "weak",
+      "selfSelectTools": true
     },
     "experimental": true,
     "description": "Opción q4 ligera probada en este proyecto para respuestas estructuradas/tool-calling mediante el parser de texto. Se mantiene como experimental porque el informe no la clasifica entre los modelos con evidencia pública fuerte."
@@ -493,18 +464,7 @@
     "temperature": 0.1,
     "topP": 0.85,
     "toolProfile": "middle-tools",
-    "contextWindowTokens": 4096,
-    "contextPolicy": {
-      "provider": "transformersjs",
-      "contextWindowTokens": 4096,
-      "safeInputTokens": 1250,
-      "maxSystemChars": 820,
-      "maxRuntimeChars": 320,
-      "maxHistoryMessages": 1,
-      "maxHistoryChars": 550,
-      "maxToolResultChars": 2200,
-      "maxToolResultCharsForSynthesis": 1300
-    },
+    "contextPreset": "transformers-edge-tools",
     "experimental": true,
     "description": "GLM Edge 1.5B Chat con pesos ONNX para Transformers.js. Se añade para probar tool calling en este proyecto; el repo publica q4, pero su evidencia pública principal es chat/text-generation, no tools con AI SDK."
   },
@@ -528,18 +488,7 @@
     "temperature": 0.1,
     "topP": 0.85,
     "toolProfile": "middle-tools",
-    "contextWindowTokens": 4096,
-    "contextPolicy": {
-      "provider": "transformersjs",
-      "contextWindowTokens": 4096,
-      "safeInputTokens": 1250,
-      "maxSystemChars": 820,
-      "maxRuntimeChars": 320,
-      "maxHistoryMessages": 1,
-      "maxHistoryChars": 550,
-      "maxToolResultChars": 2200,
-      "maxToolResultCharsForSynthesis": 1300
-    },
+    "contextPreset": "transformers-edge-tools",
     "experimental": true,
     "description": "Variante q4f16 de GLM Edge 1.5B Chat para GPUs con shader-f16. Se añade para pruebas; no está clasificada como compatible fuerte con tools hasta validarla localmente."
   },
@@ -563,18 +512,7 @@
     "temperature": 0.1,
     "topP": 0.85,
     "toolProfile": "middle-tools",
-    "contextWindowTokens": 4096,
-    "contextPolicy": {
-      "provider": "transformersjs",
-      "contextWindowTokens": 4096,
-      "safeInputTokens": 1250,
-      "maxSystemChars": 820,
-      "maxRuntimeChars": 320,
-      "maxHistoryMessages": 1,
-      "maxHistoryChars": 550,
-      "maxToolResultChars": 2200,
-      "maxToolResultCharsForSynthesis": 1300
-    },
+    "contextPreset": "transformers-edge-tools",
     "experimental": true,
     "description": "Variante fp16 de GLM Edge 1.5B Chat para pruebas de calidad en equipos con memoria y shader-f16. Más pesada que q4; tool calling pendiente de validación en el loop del proyecto."
   },
@@ -598,18 +536,7 @@
     "temperature": 0.1,
     "topP": 0.85,
     "toolProfile": "balanced",
-    "contextWindowTokens": 4096,
-    "contextPolicy": {
-      "provider": "transformersjs",
-      "contextWindowTokens": 4096,
-      "safeInputTokens": 1050,
-      "maxSystemChars": 740,
-      "maxRuntimeChars": 280,
-      "maxHistoryMessages": 1,
-      "maxHistoryChars": 320,
-      "maxToolResultChars": 1600,
-      "maxToolResultCharsForSynthesis": 900
-    },
+    "contextPreset": "transformers-350m-tools",
     "experimental": true,
     "description": "Opción mínima para validar UX de tools, streaming y aprobación humana. Tiene evidencia pública en el ejemplo oficial multi-modelo, pero menos robustez esperada que Qwen3, LFM2 o Granite Micro."
   },
@@ -633,18 +560,7 @@
     "temperature": 0.1,
     "topP": 0.85,
     "toolProfile": "strong-json",
-    "contextWindowTokens": 4096,
-    "contextPolicy": {
-      "provider": "transformersjs",
-      "contextWindowTokens": 4096,
-      "safeInputTokens": 1350,
-      "maxSystemChars": 860,
-      "maxRuntimeChars": 340,
-      "maxHistoryMessages": 1,
-      "maxHistoryChars": 650,
-      "maxToolResultChars": 2400,
-      "maxToolResultCharsForSynthesis": 1400
-    },
+    "contextPreset": "transformers-fp16-tools",
     "experimental": true,
     "description": "Modelo específicamente afinado para tool calling. Aparece en el ejemplo oficial de AI SDK en navegador con tools; se marca experimental porque la evidencia pública es menos directa que Qwen3."
   },
@@ -668,18 +584,7 @@
     "temperature": 0.1,
     "topP": 0.85,
     "toolProfile": "strong-json",
-    "contextWindowTokens": 4096,
-    "contextPolicy": {
-      "provider": "transformersjs",
-      "contextWindowTokens": 4096,
-      "safeInputTokens": 1250,
-      "maxSystemChars": 820,
-      "maxRuntimeChars": 320,
-      "maxHistoryMessages": 1,
-      "maxHistoryChars": 550,
-      "maxToolResultChars": 2200,
-      "maxToolResultCharsForSynthesis": 1300
-    },
+    "contextPreset": "transformers-edge-tools",
     "experimental": true,
     "description": "Variante q4 publicada del modelo LFM2 afinado para tool calling. Reduce memoria frente a fp16 y no requiere shader-f16; se mantiene experimental hasta validarla en el loop real del proyecto."
   },
@@ -703,18 +608,7 @@
     "temperature": 0.1,
     "topP": 0.85,
     "toolProfile": "strong-json",
-    "contextWindowTokens": 4096,
-    "contextPolicy": {
-      "provider": "transformersjs",
-      "contextWindowTokens": 4096,
-      "safeInputTokens": 1400,
-      "maxSystemChars": 900,
-      "maxRuntimeChars": 360,
-      "maxHistoryMessages": 1,
-      "maxHistoryChars": 700,
-      "maxToolResultChars": 2600,
-      "maxToolResultCharsForSynthesis": 1500
-    },
+    "contextPreset": "transformers-micro-tools",
     "experimental": true,
     "description": "Modelo con más capacidad entre los candidatos web con evidencia útil para tools. Se recomienda para equipos con memoria holgada; mantiene marca experimental por falta de benchmark homogéneo público."
   },
@@ -759,18 +653,7 @@
     "temperature": 0.15,
     "topP": 0.85,
     "toolProfile": "tiny-fallback",
-    "contextWindowTokens": 4096,
-    "contextPolicy": {
-      "provider": "transformersjs",
-      "contextWindowTokens": 4096,
-      "safeInputTokens": 900,
-      "maxSystemChars": 560,
-      "maxRuntimeChars": 220,
-      "maxHistoryMessages": 0,
-      "maxHistoryChars": 0,
-      "maxToolResultChars": 0,
-      "maxToolResultCharsForSynthesis": 0
-    },
+    "contextPreset": "transformers-tiny-fallback",
     "experimental": true,
     "description": "Fallback para navegadores sin WebGPU. Permite probar chat básico en CPU/WASM, pero las herramientas quedan desactivadas; para tool calling usa un navegador con WebGPU compatible o un modelo Ollama."
   }

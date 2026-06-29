@@ -440,7 +440,7 @@ function buildSystemMessage({ mode = "chat", nativeTools = false, appToolTurn = 
   const baseRaw = textValue(getLlmState()?.settings?.systemPrompt).trim();
   const runtimeRaw = buildRuntimeContext({
     nativeTools,
-    activeToolNames: appToolTurn ? activeToolNames : null,
+    activeToolNames: nativeTools || appToolTurn ? activeToolNames : null,
   });
 
   if (appToolTurn && mode === "chat") {

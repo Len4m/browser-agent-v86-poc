@@ -11,7 +11,10 @@ interface LlmAgentMeta {
   maxNativeTools: number;
   toolCalling: "weak" | "fair" | "good";
   defaultNativeTools: string[];
+  selfSelectTools?: boolean;
 }
+
+type LlmAgentInput = Partial<LlmAgentMeta>;
 
 interface LlmThinkingMeta {
   enabled: boolean;
@@ -62,8 +65,9 @@ export interface LlmModelConfig {
   contextWindowTokens?: number;
   maxNewTokens?: number;
   reuseGenerationCache?: boolean;
+  contextPreset?: string;
   contextPolicy?: LlmContextPolicy;
-  agent?: LlmAgentMeta;
+  agent?: LlmAgentInput;
   thinking?: Partial<LlmThinkingMeta>;
   runtime?: {
     provider?: string;
@@ -141,11 +145,80 @@ const DEFAULT_TOOLS = [
   "web.curl.head",
 ];
 
+function transformersContextPolicy(policy: LlmContextPolicy): LlmContextPolicy {
+  return {
+    provider: "transformersjs",
+    contextWindowTokens: 4096,
+    maxHistoryMessages: 1,
+    ...policy,
+  };
+}
+
+const CONTEXT_POLICY_PRESETS: Record<string, LlmContextPolicy> = {
+  "transformers-tiny-tools-plan": transformersContextPolicy({
+    safeInputTokens: 1100,
+    maxSystemChars: 780,
+    maxRuntimeChars: 300,
+    maxHistoryChars: 350,
+    maxToolResultChars: 1800,
+    maxToolResultCharsForSynthesis: 1000,
+    maxNewTokensForPlan: 384,
+  }),
+  "transformers-tiny-tools": transformersContextPolicy({
+    safeInputTokens: 1100,
+    maxSystemChars: 780,
+    maxRuntimeChars: 300,
+    maxHistoryChars: 350,
+    maxToolResultChars: 1800,
+    maxToolResultCharsForSynthesis: 1000,
+  }),
+  "transformers-edge-tools": transformersContextPolicy({
+    safeInputTokens: 1250,
+    maxSystemChars: 820,
+    maxRuntimeChars: 320,
+    maxHistoryChars: 550,
+    maxToolResultChars: 2200,
+    maxToolResultCharsForSynthesis: 1300,
+  }),
+  "transformers-350m-tools": transformersContextPolicy({
+    safeInputTokens: 1050,
+    maxSystemChars: 740,
+    maxRuntimeChars: 280,
+    maxHistoryChars: 320,
+    maxToolResultChars: 1600,
+    maxToolResultCharsForSynthesis: 900,
+  }),
+  "transformers-fp16-tools": transformersContextPolicy({
+    safeInputTokens: 1350,
+    maxSystemChars: 860,
+    maxRuntimeChars: 340,
+    maxHistoryChars: 650,
+    maxToolResultChars: 2400,
+    maxToolResultCharsForSynthesis: 1400,
+  }),
+  "transformers-micro-tools": transformersContextPolicy({
+    safeInputTokens: 1400,
+    maxSystemChars: 900,
+    maxRuntimeChars: 360,
+    maxHistoryChars: 700,
+    maxToolResultChars: 2600,
+    maxToolResultCharsForSynthesis: 1500,
+  }),
+  "transformers-tiny-fallback": transformersContextPolicy({
+    safeInputTokens: 900,
+    maxSystemChars: 560,
+    maxRuntimeChars: 220,
+    maxHistoryMessages: 0,
+    maxHistoryChars: 0,
+    maxToolResultChars: 0,
+    maxToolResultCharsForSynthesis: 0,
+  }),
+};
+
 const rawModels = llmModelsRaw as unknown as LlmModelConfig[];
 let llmState: LlmState | null = null;
 
 function defaultAgentMeta(model: LlmModelConfig): LlmAgentMeta {
-  const id = model.id || "";
   if (model.engine === "ollama") {
     return {
       maxSteps: 4,
@@ -154,7 +227,7 @@ function defaultAgentMeta(model: LlmModelConfig): LlmAgentMeta {
       defaultNativeTools: DEFAULT_TOOLS,
     };
   }
-  if (model.toolProfile === "tiny-fallback" || id.includes("270m")) {
+  if (model.toolProfile === "tiny-fallback") {
     return {
       maxSteps: 1,
       maxNativeTools: 1,
@@ -162,39 +235,7 @@ function defaultAgentMeta(model: LlmModelConfig): LlmAgentMeta {
       defaultNativeTools: DEFAULT_TOOLS,
     };
   }
-  if (id.includes("0.5b") || (id.includes("qwen3") && id.includes("0.6"))) {
-    return {
-      maxSteps: 2,
-      maxNativeTools: 2,
-      toolCalling: "weak",
-      defaultNativeTools: DEFAULT_TOOLS,
-    };
-  }
-  if (id.includes("3b")) {
-    return {
-      maxSteps: 3,
-      maxNativeTools: 8,
-      toolCalling: "fair",
-      defaultNativeTools: DEFAULT_TOOLS,
-    };
-  }
-  if (id.includes("llama") && (id.includes("1b-instruct") || id.includes("1b-instruct-onnx"))) {
-    return {
-      maxSteps: 2,
-      maxNativeTools: 2,
-      toolCalling: "weak",
-      defaultNativeTools: DEFAULT_TOOLS,
-    };
-  }
-  if (id.includes("1.5b") || id.includes("1b") || id.includes("1.7b")) {
-    return {
-      maxSteps: 3,
-      maxNativeTools: 5,
-      toolCalling: "fair",
-      defaultNativeTools: DEFAULT_TOOLS,
-    };
-  }
-  if (model.toolProfile === "reasoning-light" || id.includes("qwen3")) {
+  if (model.toolProfile === "reasoning-light") {
     return {
       maxSteps: 3,
       maxNativeTools: 4,
@@ -202,11 +243,27 @@ function defaultAgentMeta(model: LlmModelConfig): LlmAgentMeta {
       defaultNativeTools: DEFAULT_TOOLS,
     };
   }
-  if (model.toolProfile === "middle-tools" || model.toolProfile === "strong-json") {
+  if (model.toolProfile === "strong-json") {
     return {
       maxSteps: 3,
       maxNativeTools: 6,
       toolCalling: "good",
+      defaultNativeTools: DEFAULT_TOOLS,
+    };
+  }
+  if (model.toolProfile === "middle-tools") {
+    return {
+      maxSteps: 3,
+      maxNativeTools: 5,
+      toolCalling: "fair",
+      defaultNativeTools: DEFAULT_TOOLS,
+    };
+  }
+  if (model.toolProfile === "balanced") {
+    return {
+      maxSteps: 3,
+      maxNativeTools: 5,
+      toolCalling: "fair",
       defaultNativeTools: DEFAULT_TOOLS,
     };
   }
@@ -215,6 +272,16 @@ function defaultAgentMeta(model: LlmModelConfig): LlmAgentMeta {
     maxNativeTools: 5,
     toolCalling: "fair",
     defaultNativeTools: DEFAULT_TOOLS,
+  };
+}
+
+function mergeAgentMeta(model: LlmModelConfig): LlmAgentMeta {
+  const base = defaultAgentMeta(model);
+  const override = model.agent || {};
+  return {
+    ...base,
+    ...override,
+    defaultNativeTools: override.defaultNativeTools || base.defaultNativeTools,
   };
 }
 
@@ -228,7 +295,6 @@ function mergeThinkingMeta(model: LlmModelConfig): LlmThinkingMeta {
 }
 
 function defaultContextMeta(model: LlmModelConfig): Pick<LlmModelConfig, "contextWindowTokens" | "maxNewTokens" | "contextPolicy"> {
-  const id = model.id || "";
   const contextWindowTokens = Number(model.contextWindowTokens) || (model.engine === "ollama" ? 8192 : 4096);
   if (model.engine === "ollama") {
     return {
@@ -249,25 +315,21 @@ function defaultContextMeta(model: LlmModelConfig): Pick<LlmModelConfig, "contex
       },
     };
   }
-  let safeInputTokens = 1800;
-  if (id.includes("3b")) safeInputTokens = 1400;
-  else if (id.includes("0.5b") || (id.includes("qwen3") && id.includes("0.6")) || id.includes("270m")) {
-    safeInputTokens = 1100;
-  }
   return {
     contextWindowTokens,
-    contextPolicy: { contextWindowTokens, safeInputTokens },
+    contextPolicy: { contextWindowTokens, safeInputTokens: 1800 },
   };
 }
 
 function withModelCapabilities(model: LlmModelConfig): LlmModelConfig {
   const ctx = defaultContextMeta(model);
+  const preset = typeof model.contextPreset === "string" ? CONTEXT_POLICY_PRESETS[model.contextPreset] : null;
   return {
     ...model,
     contextWindowTokens: model.contextWindowTokens ?? ctx.contextWindowTokens,
     maxNewTokens: model.maxNewTokens ?? ctx.maxNewTokens,
-    contextPolicy: { ...(ctx.contextPolicy || {}), ...(model.contextPolicy || {}) },
-    agent: model.agent || defaultAgentMeta(model),
+    contextPolicy: { ...(ctx.contextPolicy || {}), ...(preset || {}), ...(model.contextPolicy || {}) },
+    agent: mergeAgentMeta(model),
     thinking: mergeThinkingMeta(model),
   };
 }

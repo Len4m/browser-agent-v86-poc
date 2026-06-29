@@ -3,14 +3,37 @@
 import { getLlmState, type LlmModelConfig } from "../state/chat-state";
 import { llmNativeToolsPolicy } from "../tools/native-tools-policy";
 
+interface ToolNeedHeuristicOptions {
+  activeToolNames?: string[] | null;
+}
+
+interface ToolNeedHeuristicResult {
+  matched: boolean;
+  rule: string;
+}
+
 interface AgentRoutingApi {
   flattenErrorMessage: (error: unknown) => string;
   isRecoverableGpuMemoryError: (message: unknown) => boolean;
   shouldEnableNativeTools: (options?: { referencedArtifact?: unknown }) => boolean;
   resolveNativeToolNames: (modelConfig?: LlmModelConfig | null) => string[];
   isLikelyToolPlanText: (text: unknown) => boolean;
-  userRequestLikelyNeedsVm: (userText: unknown) => boolean;
+  resolveToolNeedHeuristic: (userText: unknown, options?: ToolNeedHeuristicOptions) => ToolNeedHeuristicResult;
+  userRequestLikelyNeedsVm: (userText: unknown, options?: ToolNeedHeuristicOptions) => boolean;
 }
+
+interface HeuristicRule {
+  id: string;
+  pattern: RegExp;
+}
+
+const NEUTRAL_TOOL_RULES: HeuristicRule[] = [
+  { id: "explicit-command", pattern: /\b(curl|wget|httpx|nmap|ffuf|nikto|dig|openssl|whoami|which|uname|ifconfig|netstat|ss)\b/i },
+  { id: "ip-command", pattern: /\bip\s+(?:a|addr|address|route|link|neigh)\b/i },
+  { id: "absolute-path", pattern: /(?:^|\s)\/(?:etc|var|home|tmp|usr|bin|sbin|opt|root|run|proc|sys)(?:\/[\w.-]+)*\b/i },
+  { id: "explicit-tool-name", pattern: /\b(?:vm|web|net|tls)\.[a-z0-9_.]+\b/i },
+  { id: "serial-device", pattern: /\b(?:serial[0-9]+|ttyS[0-9]+)\b/i },
+];
 
 function textValue(value: unknown): string {
   if (typeof value === "string") return value;
@@ -53,11 +76,32 @@ function isLikelyToolPlanText(text: unknown): boolean {
   return /"(?:name|tool)"\s*:\s*"(?:vm|web|net|tls)\.[A-Za-z0-9_.]+"/.test(sample);
 }
 
-function userRequestLikelyNeedsVm(userText: unknown): boolean {
-  const sample = textValue(userText).toLowerCase();
-  return /\b(vm|lista|listar|listado|archivos?|ficheros?|directorios?|carpetas?|\/etc|\/var|\/home|serial|curl|wget|ip\b|red\b|docker|alpine|kernel|ejecuta|comando|which|leer|lee\b|muestra|mostrar|contenido|ruta)\b/i.test(sample)
-    || /\bde\s+\/[\w./-]+/.test(sample)
-    || /\ben\s+\/[\w./-]+/.test(sample);
+function matchRule(sample: string, rules: HeuristicRule[]): HeuristicRule | null {
+  return rules.find((rule) => rule.pattern.test(sample)) || null;
+}
+
+function matchesActiveToolName(sample: string, activeToolNames: string[] = []): boolean {
+  const lower = sample.toLowerCase();
+  return activeToolNames
+    .filter((name) => typeof name === "string" && name.includes("."))
+    .some((name) => lower.includes(name.toLowerCase()));
+}
+
+function resolveToolNeedHeuristic(userText: unknown, options: ToolNeedHeuristicOptions = {}): ToolNeedHeuristicResult {
+  const sample = textValue(userText);
+  if (!sample.trim()) return { matched: false, rule: "empty" };
+
+  if (matchesActiveToolName(sample, options.activeToolNames || [])) {
+    return { matched: true, rule: "active-tool-name" };
+  }
+  const neutral = matchRule(sample, NEUTRAL_TOOL_RULES);
+  if (neutral) return { matched: true, rule: neutral.id };
+
+  return { matched: false, rule: "none" };
+}
+
+function userRequestLikelyNeedsVm(userText: unknown, options: ToolNeedHeuristicOptions = {}): boolean {
+  return resolveToolNeedHeuristic(userText, options).matched;
 }
 
 export const llmAgentRouting: AgentRoutingApi = {
@@ -66,5 +110,6 @@ export const llmAgentRouting: AgentRoutingApi = {
   shouldEnableNativeTools,
   resolveNativeToolNames,
   isLikelyToolPlanText,
+  resolveToolNeedHeuristic,
   userRequestLikelyNeedsVm,
 };

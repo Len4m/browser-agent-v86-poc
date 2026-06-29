@@ -107,7 +107,7 @@ const {
   shouldEnableNativeTools,
   resolveNativeToolNames,
   isLikelyToolPlanText,
-  userRequestLikelyNeedsVm,
+  resolveToolNeedHeuristic,
 } = llmAgentRouting;
 
 const NATIVE_TOOL_STREAM_SKIP = new Set([
@@ -229,6 +229,7 @@ function getToolCallingMode(modelConfig: LlmModelConfig | null | undefined): Too
 }
 
 function canModelChooseToolsWithoutHeuristic(modelConfig: LlmModelConfig | null | undefined): boolean {
+  if (typeof modelConfig?.agent?.selfSelectTools === "boolean") return modelConfig.agent.selfSelectTools;
   const mode = getToolCallingMode(modelConfig);
   return modelConfig?.engine === "ollama" || mode === "good";
 }
@@ -491,17 +492,25 @@ async function runAgentTurn({
     || null;
   const nativeToolsMode = shouldEnableNativeTools({ referencedArtifact });
   const activeToolNames = nativeToolsMode ? resolveNativeToolNames(modelConfig) : [];
-  const needsVm = userRequestLikelyNeedsVm(userText);
   const modelMayChooseTools = canModelChooseToolsWithoutHeuristic(modelConfig);
-  const useToolLoop = nativeToolsMode && (needsVm || modelMayChooseTools);
+  const toolNeedHeuristic = resolveToolNeedHeuristic(userText, { activeToolNames });
+  const needsVm = toolNeedHeuristic.matched;
+  const heuristicFallback = !modelMayChooseTools && needsVm;
+  const useToolLoop = nativeToolsMode && (modelMayChooseTools || heuristicFallback);
   const toolCallingMode = getToolCallingMode(modelConfig);
+  const routeMode = !useToolLoop
+    ? "chat"
+    : (modelMayChooseTools ? "model-first" : "heuristic-fallback");
   streamDeltaLogCount = 0;
   agentDebug("route", "runAgentTurn", {
     modelId: modelConfig.id,
     toolCalling: toolCallingMode,
     nativeToolsMode,
     needsVm,
+    toolNeedHeuristic,
     modelMayChooseTools,
+    heuristicFallback,
+    routeMode,
     useToolLoop,
     activeToolNames,
     turnMaxStepsPreview: modelConfig.agent?.maxSteps,
