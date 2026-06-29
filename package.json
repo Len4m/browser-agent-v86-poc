@@ -20,6 +20,7 @@
     "setup": "node scripts/setup.mjs",
     "build": "node scripts/build.mjs",
     "build:prod": "BA_PUBLIC_SITE_URL=${BA_PUBLIC_SITE_URL:-https://browseragent.icu/} BA_MINIFY=1 node scripts/build.mjs",
+    "docs:schemas": "node scripts/docs/schema-reference.mjs",
     "lint": "eslint .",
     "test": "node scripts/test.mjs",
     "check": "tsc && npm run lint && npm test && node scripts/check.mjs",
