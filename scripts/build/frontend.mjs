@@ -97,7 +97,7 @@ function renderIndexHtml({ cssHref, appHref }) {
     .replaceAll("%BA_APP_VERSION%", escapeHtmlAttr(appVersion))
     .replace(/href="\.\/vendor\/xterm\/xterm\.css(?:\?v=[^"]*)?"/g, `href="./vendor/xterm/xterm.css?v=${cacheKeyForPublicFile("vendor/xterm/xterm.css")}"`)
     .replace(/href="\.\/(?:style\.css|assets\/app\.css)(?:\?v=[^"]*)?"/g, `href="${cssHref}"`)
-    .replace(/id="cfg-bzimage" type="hidden" value="[^"]*"/g, `id="cfg-bzimage" type="hidden" value="${versionedPublicPath("v86/images/alpine-vmlinuz-lts")}"`)
+    .replace(/id="cfg-bzimage" type="hidden" value="[^"]*"/g, `id="cfg-bzimage" type="hidden" value="${versionedPublicPath("v86/images/kernels/alpine-v3.23-vmlinuz-lts")}"`)
     .replace(/id="cfg-initrd" type="hidden" value="[^"]*"/g, `id="cfg-initrd" type="hidden" value="${versionedPublicPath("v86/images/profiles/alpine-base-initramfs.gz")}"`)
     .replace(/src="\.\/vendor\/xterm\/xterm\.js(?:\?v=[^"]*)?"/g, `src="${publicHref("vendor/xterm/xterm.js")}"`)
     .replace(/src="\.\/assets\/app\.js(?:\?v=[^"]*)?"/g, `src="${appHref}"`);

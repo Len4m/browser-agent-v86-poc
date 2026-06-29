@@ -80,12 +80,12 @@ const extraRepositories = assertArray(profile.extraRepositories || [], "extraRep
 const firstBootCommands = assertArray(profile.firstBootCommands || [], "firstBootCommands");
 const buildCommands = assertArray(profile.buildCommands || [], "buildCommands");
 const validationCommands = assertArray(profile.validationCommands || [], "validationCommands");
-const output = profile.output ? assertString(profile.output, "output") : "v86/images/alpine-initramfs.gz";
-const kernelOutput = profile.kernelOutput ? assertString(profile.kernelOutput, "kernelOutput") : "v86/images/alpine-vmlinuz-lts";
-const outputFile = publicFilePath(output);
-const kernelOutputFile = publicFilePath(kernelOutput);
 const alpineVersion = profile.alpineVersion ? assertString(profile.alpineVersion, "alpineVersion") : "3.23.4";
 const alpineBranch = profile.alpineBranch ? assertString(profile.alpineBranch, "alpineBranch") : `v${alpineVersion.split(".").slice(0, 2).join(".")}`;
+const output = `v86/images/profiles/${id}-initramfs.gz`;
+const kernelOutput = profile.kernelOutput ? assertString(profile.kernelOutput, "kernelOutput") : `v86/images/kernels/alpine-${alpineBranch}-vmlinuz-lts`;
+const outputFile = publicFilePath(output);
+const kernelOutputFile = publicFilePath(kernelOutput);
 const arch = profile.arch ? assertString(profile.arch, "arch") : "x86";
 const bootMessage = profile.bootMessage ? String(profile.bootMessage) : `${name} ready.`;
 const recommendedRamMb = Number(profile.recommendedRamMb || 512);
@@ -174,7 +174,7 @@ const manifest = {
   extraRepositories,
   generatedAt: new Date().toISOString(),
   notes: [
-    "RAM mínima real: validar arrancando el perfil con distintos tamaños de RAM y ejecutando validationCommands.",
+    "RAM declarada: validar arrancando el perfil y ejecutando validationCommands.",
     "No necesitas wsnic para construir esta imagen. Sí necesitas wsnic para validar red desde la VM.",
     "Esta imagen sigue siendo initramfs: los cambios hechos dentro de la VM no persisten salvo snapshot.",
   ],

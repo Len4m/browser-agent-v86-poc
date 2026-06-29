@@ -9,7 +9,7 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const requiredSetupAssets = [
   "public/vendor/xterm/xterm.css",
   "public/vendor/xterm/xterm.js",
-  "public/v86/images/alpine-vmlinuz-lts",
+  "public/v86/images/kernels/alpine-v3.23-vmlinuz-lts",
   "public/v86/images/profiles/alpine-base-initramfs.gz",
 ];
 

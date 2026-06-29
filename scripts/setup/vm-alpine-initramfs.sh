@@ -16,10 +16,10 @@ PROFILE_FIRSTBOOT_FILE="${PROFILE_FIRSTBOOT_FILE:-}"
 PROFILE_BUILD_COMMANDS_FILE="${PROFILE_BUILD_COMMANDS_FILE:-}"
 PROFILE_BOOT_MESSAGE="${PROFILE_BOOT_MESSAGE:-Browser Alpine ready.}"
 PROFILE_VERIFY_PACKAGES="${PROFILE_VERIFY_PACKAGES:-0}"
-OUT="$ROOT_DIR/${PROFILE_OUTPUT:-public/v86/images/alpine-initramfs.gz}"
+OUT="$ROOT_DIR/${PROFILE_OUTPUT:-public/v86/images/profiles/${PROFILE_ID}-initramfs.gz}"
 WORK="$(mktemp -d)"
 BUILD_ID="${PROFILE_ID}-$(date -u +%Y%m%d%H%M%S)"
-OUT_KERNEL="$ROOT_DIR/${PROFILE_KERNEL_OUTPUT:-public/v86/images/alpine-vmlinuz-lts}"
+OUT_KERNEL="$ROOT_DIR/${PROFILE_KERNEL_OUTPUT:-public/v86/images/kernels/alpine-${ALPINE_BRANCH}-vmlinuz-lts}"
 MODULES_LIST="$WORK/rootfs/etc/v86-net-modules.list"
 
 cleanup() {

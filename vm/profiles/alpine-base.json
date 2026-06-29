@@ -4,8 +4,6 @@
   "name": "Alpine Base Lite",
   "description": "Alpine mínimo con certificados, curl y nano.",
   "alpineVersion": "3.23.4",
-  "output": "v86/images/profiles/alpine-base-initramfs.gz",
-  "kernelOutput": "v86/images/alpine-vmlinuz-lts",
   "recommendedRamMb": 512,
   "packages": [
     "ca-certificates",

@@ -10,8 +10,6 @@
     "name",
     "description",
     "alpineVersion",
-    "output",
-    "kernelOutput",
     "recommendedRamMb",
     "defaultDisk",
     "packages",
@@ -26,7 +24,7 @@
       "type": "string",
       "minLength": 1,
       "pattern": "^[a-z0-9][a-z0-9.-]*$",
-      "description": "Stable profile identifier. Used as manifest filename, selector value and build id prefix."
+      "description": "Stable profile identifier. Used as manifest filename, selector value, build id prefix and generated initramfs filename."
     },
     "name": {
       "type": "string",
@@ -48,17 +46,11 @@
       "pattern": "^v[0-9]+\\.[0-9]+$",
       "description": "Optional APK/Docker branch override. Defaults from alpineVersion, for example 3.23.4 -> v3.23."
     },
-    "output": {
-      "type": "string",
-      "minLength": 1,
-      "pattern": "^(public/)?v86/images/.+\\.gz$",
-      "description": "Output initramfs path relative to public/ or repository root."
-    },
     "kernelOutput": {
       "type": "string",
       "minLength": 1,
       "pattern": "^(public/)?v86/images/.+",
-      "description": "Output kernel path relative to public/ or repository root."
+      "description": "Optional kernel path override. Default derives from alpineVersion, for example 3.23.4 -> v86/images/kernels/alpine-v3.23-vmlinuz-lts."
     },
     "recommendedRamMb": {
       "type": "integer",
