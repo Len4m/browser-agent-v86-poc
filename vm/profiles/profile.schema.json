@@ -9,14 +9,10 @@
     "id",
     "name",
     "description",
-    "type",
     "alpineVersion",
-    "alpineBranch",
     "output",
     "kernelOutput",
-    "minRamMb",
     "recommendedRamMb",
-    "recommendedVramMb",
     "defaultDisk",
     "packages",
     "allowedTools"
@@ -42,25 +38,15 @@
       "minLength": 1,
       "description": "Short profile summary shown in the UI and generated manifests."
     },
-    "type": {
-      "type": "string",
-      "enum": ["initramfs"],
-      "description": "Profile boot mode. Current builder creates initramfs-based images."
-    },
     "alpineVersion": {
       "type": "string",
       "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$",
-      "description": "Alpine version used to select the minirootfs, for example 3.23.4."
+      "description": "Exact Alpine minirootfs version used as the rootfs base, for example 3.23.4."
     },
     "alpineBranch": {
       "type": "string",
       "pattern": "^v[0-9]+\\.[0-9]+$",
-      "description": "Alpine repository branch, for example v3.23."
-    },
-    "arch": {
-      "type": "string",
-      "const": "x86",
-      "description": "Optional Alpine architecture override. v86 profiles currently boot 32-bit x86; omit to use the builder default."
+      "description": "Optional APK/Docker branch override. Defaults from alpineVersion, for example 3.23.4 -> v3.23."
     },
     "output": {
       "type": "string",
@@ -74,20 +60,16 @@
       "pattern": "^(public/)?v86/images/.+",
       "description": "Output kernel path relative to public/ or repository root."
     },
-    "minRamMb": {
-      "type": "integer",
-      "minimum": 64,
-      "description": "Minimum RAM shown for this profile in MB. Real minimum must be validated manually."
-    },
     "recommendedRamMb": {
       "type": "integer",
       "minimum": 64,
-      "description": "Recommended RAM shown and applied by default in MB."
+      "description": "RAM applied automatically when this profile is selected. Profile RAM controls are locked in the UI."
     },
     "recommendedVramMb": {
       "type": "integer",
       "minimum": 0,
-      "description": "Recommended VRAM shown and applied by default in MB."
+      "default": 8,
+      "description": "Recommended VRAM shown and applied by default in MB. Optional; defaults to 8 when omitted. Use 0 only when the profile has been tested without VGA memory."
     },
     "defaultDisk": {
       "type": "string",

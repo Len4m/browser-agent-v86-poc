@@ -13,7 +13,7 @@ Schema for source VM profiles in vm/profiles/*.json. Profiles are consumed by sc
 
 ## Required Fields
 
-`id`, `name`, `description`, `type`, `alpineVersion`, `alpineBranch`, `output`, `kernelOutput`, `minRamMb`, `recommendedRamMb`, `recommendedVramMb`, `defaultDisk`, `packages`, `allowedTools`
+`id`, `name`, `description`, `alpineVersion`, `output`, `kernelOutput`, `recommendedRamMb`, `defaultDisk`, `packages`, `allowedTools`
 
 ## Properties
 
@@ -23,15 +23,12 @@ Schema for source VM profiles in vm/profiles/*.json. Profiles are consumed by sc
 | `id` | yes | string | Stable profile identifier. Used as manifest filename, selector value and build id prefix. | minLength: 1; pattern: ^[a-z0-9][a-z0-9.-]*$ |
 | `name` | yes | string | Human-readable profile name shown in the UI. | minLength: 1 |
 | `description` | yes | string | Short profile summary shown in the UI and generated manifests. | minLength: 1 |
-| `type` | yes | string | Profile boot mode. Current builder creates initramfs-based images. | enum: "initramfs" |
-| `alpineVersion` | yes | string | Alpine version used to select the minirootfs, for example 3.23.4. | pattern: ^[0-9]+\.[0-9]+(\.[0-9]+)?$ |
-| `alpineBranch` | yes | string | Alpine repository branch, for example v3.23. | pattern: ^v[0-9]+\.[0-9]+$ |
-| `arch` | no | string | Optional Alpine architecture override. v86 profiles currently boot 32-bit x86; omit to use the builder default. | const: "x86" |
+| `alpineVersion` | yes | string | Exact Alpine minirootfs version used as the rootfs base, for example 3.23.4. | pattern: ^[0-9]+\.[0-9]+(\.[0-9]+)?$ |
+| `alpineBranch` | no | string | Optional APK/Docker branch override. Defaults from alpineVersion, for example 3.23.4 -&gt; v3.23. | pattern: ^v[0-9]+\.[0-9]+$ |
 | `output` | yes | string | Output initramfs path relative to public/ or repository root. | minLength: 1; pattern: ^(public/)?v86/images/.+\.gz$ |
 | `kernelOutput` | yes | string | Output kernel path relative to public/ or repository root. | minLength: 1; pattern: ^(public/)?v86/images/.+ |
-| `minRamMb` | yes | integer | Minimum RAM shown for this profile in MB. Real minimum must be validated manually. | minimum: 64 |
-| `recommendedRamMb` | yes | integer | Recommended RAM shown and applied by default in MB. | minimum: 64 |
-| `recommendedVramMb` | yes | integer | Recommended VRAM shown and applied by default in MB. | minimum: 0 |
+| `recommendedRamMb` | yes | integer | RAM applied automatically when this profile is selected. Profile RAM controls are locked in the UI. | minimum: 64 |
+| `recommendedVramMb` | no | integer | Recommended VRAM shown and applied by default in MB. Optional; defaults to 8 when omitted. Use 0 only when the profile has been tested without VGA memory. | minimum: 0 |
 | `defaultDisk` | yes | string | Default disk selector value. Use initramfs or one of the hda-* values supported by the UI. | pattern: ^(initramfs\|hda-[0-9]+)$ |
 | `packages` | yes | array&lt;string&gt; | Alpine packages installed into the exported rootfs before packing the initramfs. Must include python3 because the guest serial/tool runners depend on it. | minItems: 1; uniqueItems; contains: "python3"; items minLength: 1; items pattern: ^[A-Za-z0-9_.:+-]+$ |
 | `allowedTools` | yes | array&lt;string&gt; | Ordered LLM tool allowlist for this VM profile. Order is used as default priority when models see a limited number of tools. | minItems: 1; uniqueItems; items minLength: 1; items pattern: ^[A-Za-z0-9_.-]+$ |

@@ -12,7 +12,6 @@ export interface VmProfile {
   kernelOutput?: string;
   initramfsBytes?: number;
   recommendedRamMb?: number;
-  minRamMb?: number;
   recommendedVramMb?: number;
   defaultDisk?: string;
   packages?: string[];
@@ -118,8 +117,8 @@ function syncProfileControls({ applyDefaults = false }: ProfileOptions = {}): vo
   document.body.classList.toggle("vm-profile-preset", Boolean(profile));
 
   if (profile && applyDefaults) {
-    setSelectValueIfExists("vm-ram-mb", profile.recommendedRamMb || profile.minRamMb || 512);
-    setSelectValueIfExists("vm-vram-mb", profile.recommendedVramMb || 8);
+    setSelectValueIfExists("vm-ram-mb", profile.recommendedRamMb || 512);
+    setSelectValueIfExists("vm-vram-mb", profile.recommendedVramMb ?? 8);
     if (profile.defaultDisk) setSelectValueIfExists("vm-disk", profile.defaultDisk);
   }
 
@@ -145,7 +144,7 @@ export function updateProfileHint({ applyDefaults = false }: ProfileOptions = {}
   const packageCount = Array.isArray(profile.packages) ? profile.packages.length : 0;
   const packageText = packageCount ? ` · ${tn("vm.profile.packages", packageCount)}` : "";
   const diskText = profile.defaultDisk ? ` · ${t("vm.profile.disk", { disk: profile.defaultDisk })}` : "";
-  hint.textContent = `${profile.name || profile.id} · ${formatProfileBytes(profile.initramfsBytes)} · RAM ${profile.recommendedRamMb || "—"} MB · VRAM ${profile.recommendedVramMb || 8} MB${diskText}${packageText}`;
+  hint.textContent = `${profile.name || profile.id} · ${formatProfileBytes(profile.initramfsBytes)} · RAM ${profile.recommendedRamMb || "—"} MB · VRAM ${profile.recommendedVramMb ?? 8} MB${diskText}${packageText}`;
   hint.title = Array.isArray(profile.packages) && profile.packages.length ? t("vm.profile.packagesList", { list: profile.packages.join(", ") }) : "";
   syncProfileControls({ applyDefaults: false });
 }

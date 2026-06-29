@@ -144,12 +144,6 @@ for (const file of profileFiles) {
     if (file !== expectedFile) errors.push(`${path}.id: expected filename ${expectedFile}`);
   }
 
-  const minRamMb = Number(profile.minRamMb || 256);
-  const recommendedRamMb = Number(profile.recommendedRamMb || 512);
-  if (Number.isFinite(minRamMb) && Number.isFinite(recommendedRamMb) && recommendedRamMb < minRamMb) {
-    errors.push(`${path}.recommendedRamMb: expected >= minRamMb (${minRamMb}), got ${recommendedRamMb}`);
-  }
-
   const packages = Array.isArray(profile.packages) ? profile.packages : [];
   for (const packageName of requiredProfilePackages) {
     if (!packages.includes(packageName)) {

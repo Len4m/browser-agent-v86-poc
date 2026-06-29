@@ -88,9 +88,8 @@ const alpineVersion = profile.alpineVersion ? assertString(profile.alpineVersion
 const alpineBranch = profile.alpineBranch ? assertString(profile.alpineBranch, "alpineBranch") : `v${alpineVersion.split(".").slice(0, 2).join(".")}`;
 const arch = profile.arch ? assertString(profile.arch, "arch") : "x86";
 const bootMessage = profile.bootMessage ? String(profile.bootMessage) : `${name} ready.`;
-const minRamMb = Number(profile.minRamMb || 256);
 const recommendedRamMb = Number(profile.recommendedRamMb || 512);
-const recommendedVramMb = Number(profile.recommendedVramMb || 8);
+const recommendedVramMb = Number(profile.recommendedVramMb ?? 8);
 const defaultDisk = typeof profile.defaultDisk === "string" ? profile.defaultDisk : "initramfs";
 const requiredProfilePackages = ["python3"];
 
@@ -156,7 +155,7 @@ const manifest = {
   id,
   name,
   description: profile.description || "",
-  type: profile.type || "initramfs",
+  type: "initramfs",
   alpineVersion,
   alpineBranch,
   arch,
@@ -169,7 +168,6 @@ const manifest = {
   firstBootCommands,
   buildCommands,
   validationCommands,
-  minRamMb,
   recommendedRamMb,
   recommendedVramMb,
   defaultDisk,
@@ -199,7 +197,6 @@ index.push({
   output: manifest.output,
   kernelOutput: manifest.kernelOutput,
   initramfsBytes: manifest.initramfsBytes,
-  minRamMb,
   recommendedRamMb,
   recommendedVramMb,
   defaultDisk,
@@ -214,7 +211,7 @@ console.log("\n== Resultado ==");
 console.log(`Kernel:    ${kernelOutputFile} (${human(manifest.kernelBytes)})`);
 console.log(`Initramfs: ${outputFile} (${human(manifest.initramfsBytes)})`);
 console.log(`Manifest:  public/v86/images/profiles/${id}.json`);
-console.log(`RAM perfil: mínimo declarado ${minRamMb} MB · recomendado ${recommendedRamMb} MB`);
+console.log(`RAM perfil: ${recommendedRamMb} MB`);
 console.log("\nValidación sugerida dentro de la VM:");
 for (const cmd of validationCommands) console.log(`  ${cmd}`);
 console.log("\nPara probar con la UI actual, arranca la VM usando el initramfs generado por defecto.");
