@@ -38,6 +38,5 @@
     "df -h",
     "free -m"
   ],
-  "bootMessage": "Browser Alpine Base Lite ready.",
-  "defaultDisk": "initramfs"
+  "bootMessage": "Browser Alpine Base Lite ready."
 }

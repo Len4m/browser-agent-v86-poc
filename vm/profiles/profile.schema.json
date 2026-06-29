@@ -11,7 +11,6 @@
     "description",
     "alpineVersion",
     "recommendedRamMb",
-    "defaultDisk",
     "packages",
     "allowedTools"
   ],
@@ -66,7 +65,8 @@
     "defaultDisk": {
       "type": "string",
       "pattern": "^(initramfs|hda-[0-9]+)$",
-      "description": "Default disk selector value. Use initramfs or one of the hda-* values supported by the UI."
+      "default": "initramfs",
+      "description": "Default disk selector value. Optional; defaults to initramfs."
     },
     "packages": {
       "type": "array",

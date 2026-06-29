@@ -43,12 +43,11 @@ The connection between them is:
      "name": "Alpine Demo",
      "description": "Example Alpine profile.",
      "alpineVersion": "3.23.4",
-     "recommendedRamMb": 1024,
-     "defaultDisk": "initramfs"
+     "recommendedRamMb": 1024
    }
    ```
 
-   The builder derives the initramfs output from `id`, for example `v86/images/profiles/alpine-demo-initramfs.gz`. The kernel defaults to the shared file for the effective Alpine branch; set `kernelOutput` only when a profile needs a custom kernel path.
+   The builder derives the initramfs output from `id`, for example `v86/images/profiles/alpine-demo-initramfs.gz`. The kernel defaults to the shared file for the effective Alpine branch; set `kernelOutput` only when a profile needs a custom kernel path. `defaultDisk` is optional and defaults to `initramfs`.
 
 4. Declare `packages`.
 

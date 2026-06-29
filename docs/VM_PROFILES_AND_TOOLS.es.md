@@ -43,12 +43,11 @@ La union entre ambos contratos es:
      "name": "Alpine Demo",
      "description": "Perfil Alpine de ejemplo.",
      "alpineVersion": "3.23.4",
-     "recommendedRamMb": 1024,
-     "defaultDisk": "initramfs"
+     "recommendedRamMb": 1024
    }
    ```
 
-   El builder deriva la salida initramfs desde `id`, por ejemplo `v86/images/profiles/alpine-demo-initramfs.gz`. El kernel usa por defecto el fichero compartido de la rama Alpine efectiva; define `kernelOutput` solo si un perfil necesita una ruta de kernel propia.
+   El builder deriva la salida initramfs desde `id`, por ejemplo `v86/images/profiles/alpine-demo-initramfs.gz`. El kernel usa por defecto el fichero compartido de la rama Alpine efectiva; define `kernelOutput` solo si un perfil necesita una ruta de kernel propia. `defaultDisk` es opcional y por defecto es `initramfs`.
 
 4. Declara `packages`.
 
