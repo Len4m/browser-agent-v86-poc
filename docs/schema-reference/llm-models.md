@@ -49,7 +49,6 @@ Source schema for data/llm-models.json. This schema describes the author-edited 
 | `items[].contextPreset` | no | string | Preferred way to select a predefined context budget. chat-state.ts expands this into runtime contextPolicy fields before applying the optional contextPolicy override below. | enum: "transformers-tiny-tools-plan", "transformers-tiny-tools", "transformers-edge-tools", "transformers-350m-tools", "transformers-fp16-tools", "transformers-micro-tools", "transformers-tiny-fallback" |
 | `items[].contextPolicy` | no | object | Advanced per-model context budget override. Usually omit and use contextPreset instead. When present, these fields are merged after engine defaults and contextPreset, so they should only contain exceptions for a specific model. | additionalProperties: false |
 | `items[].agent` | no | object | Advanced per-model agent/tool override. Usually omit and use toolProfile instead. Missing fields are filled from defaults derived from engine/toolProfile in chat-state.ts. | additionalProperties: false |
-| `items[].custom` | no | boolean | true for entries that let the user type a model name in the UI. |  |
 | `items[].experimental` | no | boolean | true for test, fallback, slow or less recommended models. |  |
 | `items[].description` | yes | string | Human-readable description shown in the LLM panel. | minLength: 1 |
 

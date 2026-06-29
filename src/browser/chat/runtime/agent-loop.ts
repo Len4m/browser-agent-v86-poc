@@ -9,7 +9,7 @@ import { appEvents } from "../../core/events";
 import { addMessage } from "../../vm/runtime-assets";
 import { backgroundToolsApi } from "../../vm/background-tools-serial1";
 import { detectLLMCapabilities, type LlmCapabilities } from "../state/capabilities";
-import { getLlmState, llmEventsApi, llmModelShortLabel, llmModels, type LlmModelConfig, type LlmState } from "../state/chat-state";
+import { getLlmState, llmEventsApi, llmModelOptions, llmModelShortLabel, type LlmModelConfig, type LlmState } from "../state/chat-state";
 import { getAiSdk, getAiSdkReady, type AiSdkBridgeApi, type AiSdkRunAgentStreamTurnResult } from "../provider/ai-sdk-runtime";
 import { buildAiSdkTools } from "../tools/ai-tools";
 import { llmToolResultPolicy } from "./tool-result-policy";
@@ -303,7 +303,7 @@ function bindChatSubmitButton(): void {
 
 function getSelectedModelConfig(): LlmModelConfig {
   const llm = ensureLlmState();
-  const selected = llmModels.find((item) => item.id === llm.selectedModelId) || llmModels[0];
+  const selected = llmModelOptions.find((item) => item.id === llm.selectedModelId) || llmModelOptions[0];
   if (!selected) return { id: "custom-transformersjs", engine: "transformersjs" };
   if (!selected.custom) return { ...selected };
 

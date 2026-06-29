@@ -252,10 +252,6 @@
           }
         }
       },
-      "custom": {
-        "type": "boolean",
-        "description": "true for entries that let the user type a model name in the UI."
-      },
       "experimental": {
         "type": "boolean",
         "description": "true for test, fallback, slow or less recommended models."

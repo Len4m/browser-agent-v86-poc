@@ -4,7 +4,7 @@ import test from "node:test";
 import esCatalog from "../../src/web/locales/es.json";
 import { state } from "../../src/browser/app/state";
 import { setLang } from "../../src/browser/app/i18n";
-import { llmModels } from "../../src/browser/chat/state/chat-state";
+import { llmModelOptions, llmModels } from "../../src/browser/chat/state/chat-state";
 import { llmAgentRouting } from "../../src/browser/chat/runtime/agent-routing";
 import { llmContextBudget } from "../../src/browser/chat/runtime/context-budget";
 import webProfile from "../../vm/profiles/alpine-pentest-web.json";
@@ -96,7 +96,7 @@ test("model context presets expand to the same runtime policy fields", () => {
   const granite350 = llmModels.find((model) => model.id === "granite-4.0-350m-onnx-web-fp16");
   const lfm2 = llmModels.find((model) => model.id === "lfm2-tool-1.2b-onnx-fp16");
   const fallback = llmModels.find((model) => model.id === "gemma-3-270m-it-onnx-wasm-fallback");
-  const custom = llmModels.find((model) => model.id === "custom-transformersjs");
+  const custom = llmModelOptions.find((model) => model.id === "custom-transformersjs");
 
   assert.equal(qwen3?.contextWindowTokens, 4096);
   assert.equal(qwen3?.contextPolicy?.provider, "transformersjs");

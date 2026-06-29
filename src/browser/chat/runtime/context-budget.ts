@@ -4,7 +4,7 @@
 // and derives max output from the remaining room.
 
 import { t } from "../../app/i18n";
-import { getLlmState, llmModels, type LlmContextPolicy, type LlmModelConfig } from "../state/chat-state";
+import { getLlmState, llmModelOptions, type LlmContextPolicy, type LlmModelConfig } from "../state/chat-state";
 import { llmArtifacts, type LlmArtifact } from "./artifact-store";
 import { llmResourceGovernor } from "./resource-governor";
 import { llmToolRegistry } from "../tools/tool-registry";
@@ -258,8 +258,8 @@ function messageFromUnknown(value: unknown): ChatMessage | null {
 function getModelConfig(): LlmModelConfig {
   const llmState = getLlmState();
   return llmState?.activeModel
-    || llmModels.find((item) => item.id === llmState?.selectedModelId)
-    || llmModels[0]
+    || llmModelOptions.find((item) => item.id === llmState?.selectedModelId)
+    || llmModelOptions[0]
     || FALLBACK_MODEL;
 }
 

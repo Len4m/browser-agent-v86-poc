@@ -3,7 +3,7 @@
 // and live language switching. Dynamic values are translated by panel.ts.
 
 import { t } from "../../app/i18n";
-import { llmModelLabel, llmModels, type LlmModelConfig } from "../state/chat-state";
+import { llmModelLabel, llmModelOptions, type LlmModelConfig } from "../state/chat-state";
 import { llmToolRegistry } from "../tools/tool-registry";
 
 interface LlmPanelTemplateApi {
@@ -52,13 +52,13 @@ function modelOptionsHtml(): string {
 
   const used = new Set<string>();
   const grouped = groups.map((group) => {
-    const options = llmModels.filter((model) => group.matches(model));
+    const options = llmModelOptions.filter((model) => group.matches(model));
     options.forEach((model) => used.add(model.id));
     if (!options.length) return "";
     return `<optgroup label="${escapeHtml(group.label)}">${options.map(optionHtml).join("")}</optgroup>`;
   });
 
-  const remaining = llmModels.filter((model) => !used.has(model.id));
+  const remaining = llmModelOptions.filter((model) => !used.has(model.id));
   if (remaining.length) {
     grouped.push(`<optgroup label="${escapeHtml(t("panel.llm.optgroup.others"))}">${remaining.map(optionHtml).join("")}</optgroup>`);
   }

@@ -9,7 +9,7 @@ import { appEvents } from "../../core/events";
 import { showBaModal, showBaModalPanel } from "../../ui/modal";
 import { getSelectedProfile, type VmProfile } from "../../vm/profile-config";
 import { ensureLLMCapabilities, syncLLMCapabilityBadges, type LlmCapabilities } from "../state/capabilities";
-import { getLlmState, llmEngineLabel, llmEventsApi, llmModelShortLabel, llmModels, type LlmModelConfig } from "../state/chat-state";
+import { getLlmState, llmEngineLabel, llmEventsApi, llmModelOptions, llmModelShortLabel, llmModels, type LlmModelConfig } from "../state/chat-state";
 import { llmAgent } from "../runtime/agent-loop";
 import { llmArtifacts, type LlmArtifactSummary } from "../runtime/artifact-store";
 import { llmContextBudget } from "../runtime/context-budget";
@@ -158,8 +158,8 @@ function findLLMPanelBody(): HTMLElement | null {
 
 function getSelectedModel(): LlmModelConfig {
   const select = selectedModelSelect();
-  return llmModels.find((item) => item.id === select?.value)
-    || llmModels[0]
+  return llmModelOptions.find((item) => item.id === select?.value)
+    || llmModelOptions[0]
     || { id: "custom-transformersjs", engine: "transformersjs" };
 }
 
@@ -186,7 +186,7 @@ function updateModelOptionCompatibility(caps: LlmCapabilities | null): void {
   const noWebGPU = Boolean(caps && !caps.webgpu);
   const noF16 = Boolean(caps && caps.webgpu && !caps.shaderF16);
   for (const option of Array.from(select.options)) {
-    const model = llmModels.find((item) => item.id === option.value);
+    const model = llmModelOptions.find((item) => item.id === option.value);
     const needsWebGPU = (model?.engine || "transformersjs") === "transformersjs" && (model?.device || "webgpu") === "webgpu";
     const disabled = Boolean((noWebGPU && needsWebGPU) || (noF16 && model?.requiresShaderF16));
     option.disabled = disabled;
@@ -642,9 +642,9 @@ function getSelectedModelForTools(): LlmModelConfig {
   const llm = getLlmState();
   if (llm?.loaded && llm.activeModel) return llm.activeModel;
   const select = selectedModelSelect();
-  return llmModels.find((item) => item.id === select?.value)
+  return llmModelOptions.find((item) => item.id === select?.value)
     || llm?.activeModel
-    || llmModels[0]
+    || llmModelOptions[0]
     || { id: "custom-transformersjs", engine: "transformersjs" };
 }
 

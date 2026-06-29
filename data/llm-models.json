@@ -282,25 +282,6 @@
     "description": "GLM 4.7 Flash instalado en tu host; modelo pesado de clase 30B con etiqueta tools en Ollama. ollamaThink desactivado en el agente para tool-calling estable."
   },
   {
-    "id": "custom-ollama",
-    "engine": "ollama",
-    "model": "",
-    "device": "remote",
-    "dtype": "host",
-    "sizeLabel": "≈? GB",
-    "repoSizeLabel": "nombre de modelo instalado en Ollama",
-    "minMemoryLabel": "depende; VRAM parcial OK",
-    "languageLabel": "depende del modelo",
-    "requiresShaderF16": false,
-    "requiresWebGPU": false,
-    "compatibilityLabel": "requiere Ollama + CORS",
-    "temperature": 0.15,
-    "topP": 0.85,
-    "contextWindowTokens": 8192,
-    "custom": true,
-    "description": "Permite indicar cualquier modelo de Ollama, esté ya instalado o pendiente de instalar. Si falta, la carga indicará el comando ollama pull correspondiente."
-  },
-  {
     "id": "qwen3-tools-onnx-q4f16",
     "engine": "transformersjs",
     "model": "onnx-community/Qwen3-0.6B-ONNX",
@@ -511,23 +492,6 @@
     "contextPreset": "transformers-micro-tools",
     "experimental": true,
     "description": "Modelo con más capacidad entre los candidatos web con evidencia útil para tools. Se recomienda para equipos con memoria holgada; mantiene marca experimental por falta de benchmark homogéneo público."
-  },
-  {
-    "id": "custom-transformersjs",
-    "engine": "transformersjs",
-    "model": "",
-    "device": "webgpu",
-    "dtype": "q4",
-    "sizeLabel": "variable",
-    "repoSizeLabel": "depende del repositorio",
-    "minMemoryLabel": "depende del modelo",
-    "languageLabel": "depende del modelo",
-    "requiresShaderF16": false,
-    "compatibilityLabel": "por defecto q4/WebGPU",
-    "temperature": 0.15,
-    "topP": 0.85,
-    "custom": true,
-    "description": "Permite indicar un repositorio Hugging Face compatible con Transformers.js o una ruta local servida por este proyecto."
   },
   {
     "id": "gemma-3-270m-it-onnx-wasm-fallback",

@@ -3,7 +3,7 @@
 // the LLM panel through direct ESM imports.
 
 import { state } from "../../app/state";
-import { getLlmState, llmEventsApi, llmModels, type LlmModelConfig } from "../state/chat-state";
+import { getLlmState, llmEventsApi, llmModelOptions, type LlmModelConfig } from "../state/chat-state";
 import { llmToolRegistry } from "./tool-registry";
 
 const STORAGE_PREFIX = "ba.llm.nativeTools.";
@@ -56,8 +56,8 @@ function getModelConfig(modelConfig?: LlmModelConfig | null): LlmModelConfig {
   const llmState = getLlmState();
   return modelConfig
     || llmState?.activeModel
-    || llmModels.find((model) => model.id === llmState?.selectedModelId)
-    || llmModels[0]
+    || llmModelOptions.find((model) => model.id === llmState?.selectedModelId)
+    || llmModelOptions[0]
     || FALLBACK_MODEL;
 }
 

@@ -307,6 +307,33 @@ export function llmModelShortLabel(model: LlmModelConfig): string {
   return llmModelName(model);
 }
 
+const customModels: LlmModelConfig[] = [
+  {
+    id: "custom-ollama",
+    engine: "ollama",
+    model: "",
+    device: "remote",
+    dtype: "host",
+    custom: true,
+    requiresShaderF16: false,
+    requiresWebGPU: false,
+    temperature: 0.15,
+    topP: 0.85,
+    contextWindowTokens: 8192,
+  },
+  {
+    id: "custom-transformersjs",
+    engine: "transformersjs",
+    model: "",
+    device: "webgpu",
+    dtype: "auto",
+    custom: true,
+    requiresShaderF16: false,
+    temperature: 0.15,
+    topP: 0.85,
+  },
+];
+
 function defaultContextMeta(model: LlmModelConfig): Pick<LlmModelConfig, "contextWindowTokens" | "maxNewTokens" | "contextPolicy"> {
   const contextWindowTokens = Number(model.contextWindowTokens) || (model.engine === "ollama" ? 8192 : 4096);
   if (model.engine === "ollama") {
@@ -387,6 +414,8 @@ function createInitialLlmState(models: LlmModelConfig[]): LlmState {
 }
 
 export const llmModels: LlmModelConfig[] = rawModels.map(withModelCapabilities);
+export const llmCustomModels: LlmModelConfig[] = customModels.map(withModelCapabilities);
+export const llmModelOptions: LlmModelConfig[] = [...llmModels, ...llmCustomModels];
 
 function appLlmEventName(type: LlmEventType): `llm:${LlmEventType}` {
   return `llm:${type}`;
