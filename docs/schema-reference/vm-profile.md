@@ -13,20 +13,19 @@ Schema for source VM profiles in vm/profiles/*.json. Profiles are consumed by sc
 
 ## Required Fields
 
-`id`, `name`, `description`, `alpineVersion`, `output`, `kernelOutput`, `recommendedRamMb`, `defaultDisk`, `packages`, `allowedTools`
+`id`, `name`, `description`, `alpineVersion`, `recommendedRamMb`, `defaultDisk`, `packages`, `allowedTools`
 
 ## Properties
 
 | Field | Required | Type | Description | Constraints |
 | --- | --- | --- | --- | --- |
 | `$schema` | no | string | Optional editor hint pointing to this schema. |  |
-| `id` | yes | string | Stable profile identifier. Used as manifest filename, selector value and build id prefix. | minLength: 1; pattern: ^[a-z0-9][a-z0-9.-]*$ |
+| `id` | yes | string | Stable profile identifier. Used as manifest filename, selector value, build id prefix and generated initramfs filename. | minLength: 1; pattern: ^[a-z0-9][a-z0-9.-]*$ |
 | `name` | yes | string | Human-readable profile name shown in the UI. | minLength: 1 |
 | `description` | yes | string | Short profile summary shown in the UI and generated manifests. | minLength: 1 |
 | `alpineVersion` | yes | string | Exact Alpine minirootfs version used as the rootfs base, for example 3.23.4. | pattern: ^[0-9]+\.[0-9]+(\.[0-9]+)?$ |
 | `alpineBranch` | no | string | Optional APK/Docker branch override. Defaults from alpineVersion, for example 3.23.4 -&gt; v3.23. | pattern: ^v[0-9]+\.[0-9]+$ |
-| `output` | yes | string | Output initramfs path relative to public/ or repository root. | minLength: 1; pattern: ^(public/)?v86/images/.+\.gz$ |
-| `kernelOutput` | yes | string | Output kernel path relative to public/ or repository root. | minLength: 1; pattern: ^(public/)?v86/images/.+ |
+| `kernelOutput` | no | string | Optional kernel path override. Default derives from alpineVersion, for example 3.23.4 -&gt; v86/images/kernels/alpine-v3.23-vmlinuz-lts. | minLength: 1; pattern: ^(public/)?v86/images/.+ |
 | `recommendedRamMb` | yes | integer | RAM applied automatically when this profile is selected. Profile RAM controls are locked in the UI. | minimum: 64 |
 | `recommendedVramMb` | no | integer | Recommended VRAM shown and applied by default in MB. Optional; defaults to 8 when omitted. Use 0 only when the profile has been tested without VGA memory. | minimum: 0 |
 | `defaultDisk` | yes | string | Default disk selector value. Use initramfs or one of the hda-* values supported by the UI. | pattern: ^(initramfs\|hda-[0-9]+)$ |

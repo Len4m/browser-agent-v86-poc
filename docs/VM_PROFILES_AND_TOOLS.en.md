@@ -42,18 +42,13 @@ The connection between them is:
      "id": "alpine-demo",
      "name": "Alpine Demo",
      "description": "Example Alpine profile.",
-     "type": "initramfs",
      "alpineVersion": "3.23.4",
-     "alpineBranch": "v3.23",
-     "arch": "x86",
-     "output": "v86/images/profiles/alpine-demo-initramfs.gz",
-     "kernelOutput": "v86/images/alpine-vmlinuz-lts",
-     "minRamMb": 512,
      "recommendedRamMb": 1024,
-     "recommendedVramMb": 8,
      "defaultDisk": "initramfs"
    }
    ```
+
+   The builder derives the initramfs output from `id`, for example `v86/images/profiles/alpine-demo-initramfs.gz`. The kernel defaults to the shared file for the effective Alpine branch; set `kernelOutput` only when a profile needs a custom kernel path.
 
 4. Declare `packages`.
 

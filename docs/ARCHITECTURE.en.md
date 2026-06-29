@@ -234,7 +234,7 @@ vm/profiles/<id>.json                  (profile definition)
             -> scripts/setup/lib/kernel-modules.sh   (linux-lts kernel + v86 modules)
             -> vm/overlay/common/init                (guest /init)
             -> vm/overlay/common/usr/local/bin/ba-serial1-runner, ba-serial2-console-runner
-  -> public/v86/images/alpine-initramfs.gz, alpine-vmlinuz-lts   (outputs)
+  -> public/v86/images/profiles/<id>-initramfs.gz, public/v86/images/kernels/alpine-<branch>-vmlinuz-lts   (outputs)
   -> public/v86/images/profiles/<id>.json + index.json          (manifests)
 ```
 
@@ -247,7 +247,7 @@ Files per step:
   - `profile-rootfs.sh`: profile package installation via Docker export (with `docker-install-packages.sh` inside the container), `buildCommands` execution, and boot message.
   - `kernel-modules.sh`: downloads `linux-lts`, extracts the kernel, and resolves/copies the network and storage modules, generating `/etc/v86-net-modules.list`.
 - Guest: the `/init` and serial runners are installed from the single source under `vm/overlay/common/` with `install -m 0755`.
-- Outputs: `public/v86/images/alpine-initramfs.gz`, `alpine-vmlinuz-lts`, and the manifests in `public/v86/images/profiles/`.
+- Outputs: `public/v86/images/profiles/<id>-initramfs.gz`, the shared branch kernel under `public/v86/images/kernels/`, and the manifests in `public/v86/images/profiles/`.
 
 Serial runners and the guest `/init` are installed from `vm/overlay/common/`. After changing the overlay, profiles, runners, build libraries, or Alpine build, run `npm run setup`.
 
