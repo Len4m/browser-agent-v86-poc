@@ -190,11 +190,9 @@ function updateModelOptionCompatibility(caps: LlmCapabilities | null): void {
     const needsWebGPU = (model?.engine || "transformersjs") === "transformersjs" && (model?.device || "webgpu") === "webgpu";
     const disabled = Boolean((noWebGPU && needsWebGPU) || (noF16 && model?.requiresShaderF16));
     option.disabled = disabled;
-    if (disabled && !option.dataset.originalText) option.dataset.originalText = option.textContent || "";
-    if (!disabled && option.dataset.originalText) option.textContent = option.dataset.originalText;
-    const unavailable = t("common.unavailable");
-    if (disabled && !option.textContent?.includes(unavailable)) {
-      option.textContent = `${option.dataset.originalText || option.textContent || ""} · ${unavailable}`;
+    if (option.dataset.originalText) {
+      option.textContent = option.dataset.originalText;
+      delete option.dataset.originalText;
     }
   }
 
