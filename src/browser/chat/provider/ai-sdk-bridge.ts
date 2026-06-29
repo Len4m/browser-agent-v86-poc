@@ -55,9 +55,9 @@ function messageText(value: unknown): string {
 }
 
 function mapDtype(dtype: unknown): string {
-  const value = (textValue(dtype) || "q4").toLowerCase();
+  const value = (textValue(dtype) || "auto").toLowerCase();
   if (["auto", "fp32", "fp16", "q8", "q4", "q4f16"].includes(value)) return value;
-  return "q4";
+  return "auto";
 }
 
 function errorMessage(error: unknown): string {

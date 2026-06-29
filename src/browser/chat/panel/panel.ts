@@ -9,7 +9,7 @@ import { appEvents } from "../../core/events";
 import { showBaModal, showBaModalPanel } from "../../ui/modal";
 import { getSelectedProfile, type VmProfile } from "../../vm/profile-config";
 import { ensureLLMCapabilities, syncLLMCapabilityBadges, type LlmCapabilities } from "../state/capabilities";
-import { getLlmState, llmEngineLabel, llmEventsApi, llmModelOptions, llmModelShortLabel, llmModels, type LlmModelConfig } from "../state/chat-state";
+import { getLlmState, llmEngineLabel, llmEventsApi, llmModelOptions, llmModelRequiresWebGPU, llmModelShortLabel, llmModels, type LlmModelConfig } from "../state/chat-state";
 import { llmAgent } from "../runtime/agent-loop";
 import { llmArtifacts, type LlmArtifactSummary } from "../runtime/artifact-store";
 import { llmContextBudget } from "../runtime/context-budget";
@@ -187,7 +187,7 @@ function updateModelOptionCompatibility(caps: LlmCapabilities | null): void {
   const noF16 = Boolean(caps && caps.webgpu && !caps.shaderF16);
   for (const option of Array.from(select.options)) {
     const model = llmModelOptions.find((item) => item.id === option.value);
-    const needsWebGPU = (model?.engine || "transformersjs") === "transformersjs" && (model?.device || "webgpu") === "webgpu";
+    const needsWebGPU = llmModelRequiresWebGPU(model);
     const disabled = Boolean((noWebGPU && needsWebGPU) || (noF16 && model?.requiresShaderF16));
     option.disabled = disabled;
     if (option.dataset.originalText) {
@@ -197,7 +197,7 @@ function updateModelOptionCompatibility(caps: LlmCapabilities | null): void {
   }
 
   const selected = getSelectedModel();
-  const selectedNeedsWebGPU = (selected.engine || "transformersjs") === "transformersjs" && (selected.device || "webgpu") === "webgpu";
+  const selectedNeedsWebGPU = llmModelRequiresWebGPU(selected);
   if ((noWebGPU && selectedNeedsWebGPU) || (noF16 && selected.requiresShaderF16)) {
     const fallback = compatibleFallbackFor(selected, { noWebGPU, noF16 });
     select.value = fallback.id;
@@ -593,7 +593,7 @@ function syncCustomVisibility(): void {
   setProgress(null, true);
   const llm = ensureLlmState();
   const caps = isLlmCapabilities(llm.capabilities) ? llm.capabilities : null;
-  const needsWebGPU = (selected.engine || "transformersjs") === "transformersjs" && (selected.device || "webgpu") === "webgpu";
+  const needsWebGPU = llmModelRequiresWebGPU(selected);
   if (needsWebGPU && caps && !caps.webgpu) {
     setStatus(t("panel.llm.status.requiresWebgpu"), "warn");
   } else if (selected.requiresShaderF16 && caps?.webgpu && !caps.shaderF16) {
@@ -914,7 +914,7 @@ async function handleLoadClick(): Promise<void> {
     setProgress({ status: "init", model: getSelectedModel().model || "" }, true);
     const selected = getSelectedModel();
     const caps = await checkCapabilities();
-    if ((selected.engine || "transformersjs") === "transformersjs" && (selected.device || "webgpu") === "webgpu" && !caps.webgpu) return;
+    if (llmModelRequiresWebGPU(selected) && !caps.webgpu) return;
     setStatus(selected.engine === "ollama"
       ? t("common.connectingOllama")
       : (selected.device === "wasm" ? t("panel.llm.status.loadingWasm") : t("panel.llm.status.loadingModel")), "warn");

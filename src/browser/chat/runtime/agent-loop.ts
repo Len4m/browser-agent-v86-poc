@@ -9,7 +9,7 @@ import { appEvents } from "../../core/events";
 import { addMessage } from "../../vm/runtime-assets";
 import { backgroundToolsApi } from "../../vm/background-tools-serial1";
 import { detectLLMCapabilities, type LlmCapabilities } from "../state/capabilities";
-import { getLlmState, llmEventsApi, llmModelOptions, llmModelShortLabel, type LlmModelConfig, type LlmState } from "../state/chat-state";
+import { getLlmState, llmEventsApi, llmModelOptions, llmModelRequiresWebGPU, llmModelShortLabel, type LlmModelConfig, type LlmState } from "../state/chat-state";
 import { getAiSdk, getAiSdkReady, type AiSdkBridgeApi, type AiSdkRunAgentStreamTurnResult } from "../provider/ai-sdk-runtime";
 import { buildAiSdkTools } from "../tools/ai-tools";
 import { llmToolResultPolicy } from "./tool-result-policy";
@@ -314,10 +314,6 @@ function getSelectedModelConfig(): LlmModelConfig {
   };
 }
 
-function isTransformersModel(modelConfig: LlmModelConfig | null | undefined): boolean {
-  return (modelConfig?.engine || "transformersjs") === "transformersjs";
-}
-
 function modelRequiresUnavailableF16(modelConfig: LlmModelConfig, capabilities: LlmCapabilities | null): boolean {
   return Boolean(modelConfig.requiresShaderF16 || /f16/i.test(modelConfig.dtype || ""))
     && Boolean(capabilities?.webgpu)
@@ -349,7 +345,7 @@ async function loadSelectedModel(): Promise<void> {
   const caps = await ensureCapabilities();
   const sdk = await ensureAiSdk();
 
-  const needsWebGPU = isTransformersModel(modelConfig) && (modelConfig.device || "webgpu") === "webgpu";
+  const needsWebGPU = llmModelRequiresWebGPU(modelConfig);
   if (!modelConfig.model) {
     throw new Error(modelConfig.engine === "ollama"
       ? t("chat.error.ollamaModelMissing")

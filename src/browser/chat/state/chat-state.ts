@@ -54,7 +54,6 @@ export interface LlmModelConfig {
   dtype?: string;
   custom?: boolean;
   requiresShaderF16?: boolean;
-  requiresWebGPU?: boolean;
   toolProfile?: string;
   temperature?: number;
   topP?: number;
@@ -307,16 +306,17 @@ export function llmModelShortLabel(model: LlmModelConfig): string {
   return llmModelName(model);
 }
 
+export function llmModelRequiresWebGPU(model: LlmModelConfig | null | undefined): boolean {
+  return (model?.engine || "transformersjs") === "transformersjs" && (model?.device || "webgpu") === "webgpu";
+}
+
 const customModels: LlmModelConfig[] = [
   {
     id: "custom-ollama",
     engine: "ollama",
     model: "",
-    device: "remote",
-    dtype: "host",
     custom: true,
     requiresShaderF16: false,
-    requiresWebGPU: false,
     temperature: 0.15,
     topP: 0.85,
     contextWindowTokens: 8192,
@@ -325,7 +325,6 @@ const customModels: LlmModelConfig[] = [
     id: "custom-transformersjs",
     engine: "transformersjs",
     model: "",
-    device: "webgpu",
     dtype: "auto",
     custom: true,
     requiresShaderF16: false,
