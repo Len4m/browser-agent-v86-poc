@@ -280,6 +280,13 @@ function mergeAgentMeta(model: LlmModelConfig): LlmAgentMeta {
   };
 }
 
+const LOW_TEMPERATURE_PROFILES = new Set(["strong-json", "middle-tools", "balanced"]);
+
+function defaultSampling(model: LlmModelConfig): { temperature: number; topP: number } {
+  const temperature = model.toolProfile && LOW_TEMPERATURE_PROFILES.has(model.toolProfile) ? 0.1 : 0.15;
+  return { temperature, topP: 0.85 };
+}
+
 function mergeThinkingMeta(model: LlmModelConfig): LlmThinkingMeta {
   return {
     enabled: false,
@@ -317,8 +324,6 @@ const customModels: LlmModelConfig[] = [
     model: "",
     custom: true,
     requiresShaderF16: false,
-    temperature: 0.15,
-    topP: 0.85,
     contextWindowTokens: 8192,
   },
   {
@@ -328,8 +333,6 @@ const customModels: LlmModelConfig[] = [
     dtype: "auto",
     custom: true,
     requiresShaderF16: false,
-    temperature: 0.15,
-    topP: 0.85,
   },
 ];
 
@@ -363,8 +366,11 @@ function defaultContextMeta(model: LlmModelConfig): Pick<LlmModelConfig, "contex
 function withModelCapabilities(model: LlmModelConfig): LlmModelConfig {
   const ctx = defaultContextMeta(model);
   const preset = typeof model.contextPreset === "string" ? CONTEXT_POLICY_PRESETS[model.contextPreset] : null;
+  const sampling = defaultSampling(model);
   return {
     ...model,
+    temperature: model.temperature ?? sampling.temperature,
+    topP: model.topP ?? sampling.topP,
     contextWindowTokens: model.contextWindowTokens ?? ctx.contextWindowTokens,
     maxNewTokens: model.maxNewTokens ?? ctx.maxNewTokens,
     contextPolicy: { ...(ctx.contextPolicy || {}), ...(preset || {}), ...(model.contextPolicy || {}) },

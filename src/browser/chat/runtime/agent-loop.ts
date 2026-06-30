@@ -660,7 +660,7 @@ async function runAgentTurn({
       maxSteps: turnMaxSteps,
       maxTokens: turnMaxTokens,
       synthesisMaxTokens,
-      temperature: modelConfig.temperature ?? 0.2,
+      temperature: modelConfig.temperature ?? 0.15,
       topP: modelConfig.topP ?? 0.85,
       needsVm: useToolLoop,
       enableThinking: showThinking,
