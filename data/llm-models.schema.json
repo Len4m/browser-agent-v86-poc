@@ -12,10 +12,7 @@
       "engine",
       "model",
       "sizeLabel",
-      "minMemoryLabel",
-      "languageLabel",
       "requiresShaderF16",
-      "compatibilityLabel",
       "temperature",
       "topP",
       "description"
@@ -50,24 +47,9 @@
         "minLength": 1,
         "description": "Approximate model size displayed in the UI. Informational only."
       },
-      "minMemoryLabel": {
-        "type": "string",
-        "minLength": 1,
-        "description": "Approximate RAM/VRAM note shown in the UI. Informational only."
-      },
-      "languageLabel": {
-        "type": "string",
-        "minLength": 1,
-        "description": "Short language/capability summary shown in the UI."
-      },
       "requiresShaderF16": {
         "type": "boolean",
         "description": "true when a WebGPU model requires shader-f16 support."
-      },
-      "compatibilityLabel": {
-        "type": "string",
-        "minLength": 1,
-        "description": "Human-readable compatibility or requirement summary."
       },
       "toolProfile": {
         "type": "string",

@@ -46,9 +46,6 @@ export interface LlmModelConfig {
   engine: string;
   description?: string;
   sizeLabel?: string;
-  minMemoryLabel?: string;
-  compatibilityLabel?: string;
-  languageLabel?: string;
   model?: string;
   device?: string;
   dtype?: string;

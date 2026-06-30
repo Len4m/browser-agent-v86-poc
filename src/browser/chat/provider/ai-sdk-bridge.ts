@@ -248,7 +248,6 @@ function buildWasmFallbackConfig(modelConfig: LlmModelConfig): LlmModelConfig | 
     dtype: typeof modelConfig.wasmDtype === "string" ? modelConfig.wasmDtype : "auto",
     fallbackFrom: modelConfig.id || modelConfig.model,
     fallbackReason: "webgpu-runtime-failure",
-    compatibilityLabel: "alternativa WASM tras fallo WebGPU",
   };
 }
 

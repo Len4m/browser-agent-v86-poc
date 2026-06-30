@@ -21,7 +21,7 @@ Source schema for data/llm-models.json. This schema describes the author-edited 
 
 ## Required Fields
 
-`id`, `engine`, `model`, `sizeLabel`, `minMemoryLabel`, `languageLabel`, `requiresShaderF16`, `compatibilityLabel`, `temperature`, `topP`, `description`
+`id`, `engine`, `model`, `sizeLabel`, `requiresShaderF16`, `temperature`, `topP`, `description`
 
 ## Properties
 
@@ -33,10 +33,7 @@ Source schema for data/llm-models.json. This schema describes the author-edited 
 | `items[].device` | no | string | Optional Transformers.js execution device. Defaults to webgpu when omitted. | enum: "webgpu", "wasm" |
 | `items[].dtype` | no | string | Optional Transformers.js numeric format or quantization. Defaults to auto when omitted. | enum: "auto", "fp32", "fp16", "q8", "q4", "q4f16" |
 | `items[].sizeLabel` | yes | string | Approximate model size displayed in the UI. Informational only. | minLength: 1 |
-| `items[].minMemoryLabel` | yes | string | Approximate RAM/VRAM note shown in the UI. Informational only. | minLength: 1 |
-| `items[].languageLabel` | yes | string | Short language/capability summary shown in the UI. | minLength: 1 |
 | `items[].requiresShaderF16` | yes | boolean | true when a WebGPU model requires shader-f16 support. |  |
-| `items[].compatibilityLabel` | yes | string | Human-readable compatibility or requirement summary. | minLength: 1 |
 | `items[].toolProfile` | no | string | Preferred way to select predefined agent/tool defaults. chat-state.ts expands this into the runtime agent object unless the optional agent override below changes specific fields. | enum: "strong-json", "middle-tools", "reasoning-light", "tiny-fallback", "balanced" |
 | `items[].temperature` | yes | number | Sampling temperature sent to the model. Lower values are more deterministic. | minimum: 0 |
 | `items[].topP` | yes | number | Nucleus sampling top_p value sent to the model. | minimum: 0; maximum: 1 |

@@ -530,9 +530,6 @@ function updateSelectedModelCard(): void {
       [t("panel.llm.meta.engine"), llmEngineLabel(model.engine)],
       [t("panel.llm.meta.download"), model.sizeLabel || "—"],
       [t("panel.llm.meta.quantization"), model.dtype || "—"],
-      [t("panel.llm.meta.memory"), model.minMemoryLabel || "—"],
-      [t("panel.llm.meta.compatibility"), model.compatibilityLabel || "—"],
-      [t("panel.llm.meta.languages"), model.languageLabel || "—"],
       [t("panel.llm.meta.tools"), model.agent?.toolCalling || "—"],
       [t("panel.llm.meta.reasoning"), model.thinking?.enabled ? t("common.yes") : t("common.no")],
     ];
