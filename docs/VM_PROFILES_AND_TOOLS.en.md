@@ -18,6 +18,8 @@ The connection between them is:
 - `scripts/check/vm-profiles.mjs` validates that tools exist and that the profile includes their required packages.
 - At runtime, `tool-registry.ts` filters out tools that the active profile cannot support.
 
+Field definitions, validation rules, and required properties for `vm/profiles/<id>.json` are documented in the [VM profile schema reference](schema-reference/vm-profile.md) (generated from `vm/profiles/profile.schema.json` via `npm run docs:schemas`).
+
 ## Add A VM Profile
 
 1. Create `vm/profiles/<id>.json`.
@@ -105,7 +107,7 @@ The connection between them is:
    npm run check
    ```
 
-   This checks schema, duplicate ids, `python3`, unknown `allowedTools`, and missing `requiredPackages`.
+   This checks schema, duplicate ids, `python3`, unknown `allowedTools`, and missing `requiredPackages`. See the [schema reference](schema-reference/vm-profile.md) for per-field details.
 
 9. Generate the profile assets.
 

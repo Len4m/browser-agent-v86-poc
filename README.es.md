@@ -100,8 +100,9 @@ docs/               # documentación de usuario, uso, arquitectura y desarrollo
 | [docs/USAGE.es.md](docs/USAGE.es.md) | Instalación local, VM/LLM/wsnic, scripts, runtime zip y problemas habituales. |
 | [docs/ARCHITECTURE.es.md](docs/ARCHITECTURE.es.md) | Arquitectura frontend, build, VM, seriales, LLM, contratos tools/perfiles y reglas de mantenimiento. |
 | [docs/VM_PROFILES_AND_TOOLS.es.md](docs/VM_PROFILES_AND_TOOLS.es.md) | Guía de desarrollo para añadir perfiles VM y exponer tools mediante la política del perfil. |
+| [docs/schema-reference/](docs/schema-reference/README.md) | Referencias de campos generadas desde JSON Schema (catálogo LLM, perfil VM; **en inglés**). |
 
-Cada documento enlaza con su versión en el otro idioma. Para contribuir o desplegar el proyecto, usa `USAGE`, `ARCHITECTURE` y `VM_PROFILES_AND_TOOLS`.
+Cada documento enlaza con su versión en el otro idioma. Para contribuir o desplegar el proyecto, usa `USAGE`, `ARCHITECTURE` y `VM_PROFILES_AND_TOOLS`. Para la semántica de campos de perfiles y catálogo LLM, consulta `docs/schema-reference/`.
 
 ## Colaborar
 

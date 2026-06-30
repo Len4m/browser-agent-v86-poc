@@ -11,21 +11,12 @@ const schemas = [
     schemaPath: "data/llm-models.schema.json",
     dataPath: "data/llm-models.json",
     outputPath: "llm-models.md",
-    spanishOutputPath: "llm-models.es.md",
-    spanishTitle: "Catálogo de modelos LLM de Browser Agent v86",
-    spanishDescription: "Schema fuente de `data/llm-models.json`. Entradas del catálogo editadas manualmente; `chat-state.ts` las enriquece en modelos runtime (runtime `agent` desde `agentProfile`, runtime `contextPolicy` desde engine/`contextPreset`/`contextOverride`, `thinking`, sampling). `context-budget.ts` aplica baselines por engine y la `contextPolicy` enriquecida en tiempo de prompt.",
     presetsDoc: true,
     guidance: [
       "Use `agentProfile` for Transformers.js agent/tool defaults; add `agentOverride` only for tested per-model exceptions.",
       "Transformers.js: set `contextPreset` for context budgeting; use `contextOverride` only when specific limits differ.",
       "Ollama: no `contextPreset`; use `contextOverride` or `contextWindowTokens` to change engine defaults.",
       "Expanded preset values are in **Catalog Presets** below (`src/browser/chat/state/chat-state.ts`).",
-    ],
-    spanishGuidance: [
-      "Usa `agentProfile` para los defaults de agente/tools de Transformers.js; añade `agentOverride` solo para excepciones probadas por modelo.",
-      "Transformers.js: configura `contextPreset` para el presupuesto de contexto; usa `contextOverride` solo cuando límites concretos difieran.",
-      "Ollama: sin `contextPreset`; usa `contextOverride` o `contextWindowTokens` para cambiar los defaults del engine.",
-      "Los valores expandidos de presets están en **Catálogo de presets** (`src/browser/chat/state/chat-state.ts`).",
     ],
   },
   {
@@ -70,132 +61,15 @@ function constraints(node) {
   return parts.join("; ");
 }
 
-const DOC_TEXT = {
-  en: {
-    generatedNotice: "Compact reference generated from JSON Schema. Update the source schema before editing field semantics here.",
-    guidanceTitle: "Authoring Guidance",
-    catalogPresetsTitle: "Catalog Presets",
-    catalogPresetsIntro: "Documentation mirror of preset expansion in `src/browser/chat/state/chat-state.ts`. Catalog override objects (`agentOverride`, `contextOverride`) replace only the fields you set; chat-state.ts expands them into runtime `agent` and `contextPolicy`.",
-    agentProfilesTitle: "`agentProfile` presets",
-    agentProfilesIntro: "Expanded into runtime `agent` plus default `temperature`/`topP` (unless set on the catalog entry). The effective tool list still comes from the active VM profile and is capped by `maxNativeTools`.",
-    agentField: "Agent field",
-    sampling: "Sampling",
-    value: "Value",
-    engineDefault: "Engine default",
-    contextPresetsTitle: "`contextPreset` presets (Transformers.js)",
-    contextPresetsIntro: "Each preset merges `contextPresetBase.transformersjs` then its policy fields. Override with catalog `contextOverride` afterward (merged into runtime `contextPolicy`).",
-    contextPresetBase: "`contextPresetBase.transformersjs`:",
-    effectiveContextField: "Effective runtime contextPolicy field",
-    engineContextDefaults: "Engine context defaults (before `contextPreset` / `contextOverride`)",
-    source: "Source",
-    schema: "Schema",
-    data: "Data",
-    rootType: "Root type",
-    schemaId: "Schema id",
-    requiredFields: "Required Fields",
-    none: "None",
-    properties: "Properties",
-    field: "Field",
-    required: "Required",
-    type: "Type",
-    description: "Description",
-    constraints: "Constraints",
-    yes: "yes",
-    no: "no",
-  },
-  es: {
-    generatedNotice: "Referencia compacta generada desde JSON Schema. Actualiza el schema fuente antes de cambiar la semántica de los campos.",
-    guidanceTitle: "Guía de edición",
-    catalogPresetsTitle: "Catálogo de presets",
-    catalogPresetsIntro: "Documentación espejo de la expansión de presets en `src/browser/chat/state/chat-state.ts`. Los objetos override del catálogo (`agentOverride`, `contextOverride`) reemplazan solo los campos configurados; `chat-state.ts` los expande a runtime `agent` y `contextPolicy`.",
-    agentProfilesTitle: "Presets de `agentProfile`",
-    agentProfilesIntro: "Se expanden al runtime `agent` más `temperature`/`topP` por defecto (salvo que estén en la entrada del catálogo). La lista efectiva de tools sale del perfil VM activo y se limita con `maxNativeTools`.",
-    agentField: "Campo agente",
-    sampling: "Sampling",
-    value: "Valor",
-    engineDefault: "Default de engine",
-    contextPresetsTitle: "Presets de `contextPreset` (Transformers.js)",
-    contextPresetsIntro: "Cada preset fusiona `contextPresetBase.transformersjs` y después sus campos de policy. El catálogo puede sobreescribir con `contextOverride` después (fusionado en runtime `contextPolicy`).",
-    contextPresetBase: "`contextPresetBase.transformersjs`:",
-    effectiveContextField: "Campo efectivo de contextPolicy runtime",
-    engineContextDefaults: "Defaults de contexto por engine (antes de `contextPreset` / `contextOverride`)",
-    source: "Fuente",
-    schema: "Schema",
-    data: "Datos",
-    rootType: "Tipo raíz",
-    schemaId: "Schema id",
-    requiredFields: "Campos obligatorios",
-    none: "Ninguno",
-    properties: "Propiedades",
-    field: "Campo",
-    required: "Obligatorio",
-    type: "Tipo",
-    description: "Descripción",
-    constraints: "Restricciones",
-    yes: "sí",
-    no: "no",
-  },
-};
-
-const ES_FIELD_DESCRIPTIONS = {
-  id: "Identificador estable usado por selección, políticas y estado local. No renombrar sin migrar referencias.",
-  engine: "Runtime usado para ejecutar el modelo.",
-  model: "Identificador runtime del modelo. En Ollama es el tag local; en Transformers.js suele ser un repositorio compatible de Hugging Face.",
-  device: "Dispositivo opcional de ejecución de Transformers.js. Si se omite, el default es webgpu.",
-  dtype: "Formato numérico o cuantización opcional de Transformers.js. Si se omite, el default es auto.",
-  sizeLabel: "Tamaño aproximado mostrado en la UI. Solo informativo.",
-  requiresShaderF16: "Opcional. Configúralo en true solo para modelos Transformers.js WebGPU que requieran shader-f16. Por defecto es false si se omite.",
-  agentProfile: "Preset de defaults de agente/tools y temperatura de sampling. Úsalo en entradas Transformers.js; Ollama usa defaults de agente por engine, así que configura temperature directamente cuando haga falta. `chat-state.ts` lo expande al objeto runtime `agent`. Ver [Catálogo de presets](#catálogo-de-presets).",
-  agentOverride: "Override opcional de `agentProfile`. Configura solo campos que difieran del preset expandido tras probar el modelo. Expandido en runtime al objeto `agent` por `chat-state.ts`.",
-  temperature: "Temperatura de muestreo opcional. Valores bajos son más deterministas. Omítela para usar el default derivado de `agentProfile` (0.1 para tools-good/tools-fair, 0.15 en el resto).",
-  topP: "Valor opcional nucleus top_p. Omítelo para usar el default 0.85 aplicado en `chat-state.ts`.",
-  thinking: "Configuración opcional de razonamiento. Omítela en modelos que no razonan. `chat-state.ts` deriva el toggle de UI, el estado por defecto y el flag `think` de Ollama desde `mode`.",
-  contextWindowTokens: "Presupuesto de contexto de la app en tokens. No configura el contexto nativo del runtime. Se usa para derivar `safeInputTokens` y límites de salida.",
-  contextPreset: "Solo Transformers.js. Preset de campos de presupuesto de contexto. Expandido por `chat-state.ts` a runtime `contextPolicy`. Ver [Catálogo de presets](#catálogo-de-presets).",
-  contextOverride: "Override opcional de `contextPreset` y defaults de contexto por engine. En Ollama, configura solo campos que difieran de los defaults de engine.",
-  notes: "Códigos de notas neutrales al idioma. La UI los renderiza como texto localizado; codifica solo hechos no derivables de otros campos.",
-  ramGB: "RAM de sistema recomendada en GB. Solo informativa; se muestra en el panel LLM.",
-  vramGB: "VRAM de GPU recomendada en GB. Solo informativa; se muestra en el panel LLM.",
-  "agentOverride.maxSteps": "Override del máximo de pasos de agente AI SDK por turno con tools.",
-  "agentOverride.maxNativeTools": "Override del número máximo de tools nativas activas enviadas al modelo.",
-  "agentOverride.toolCalling": "Override del nivel de fiabilidad de tool-calling del modelo.",
-  "agentOverride.selfSelectTools": "Permite que un modelo probado decida uso de tools antes del fallback heurístico incluso si su nivel derivado es weak/fair.",
-  "thinking.mode": "Política de razonamiento. off: capaz pero suprimido. optional: muestra el toggle, inicialmente apagado. on: razonamiento activado por defecto.",
-  "thinking.extract": "Opciones de AI SDK `extractReasoningMiddleware` para extracción por tags. Solo Transformers.js.",
-  "thinking.extract.tagName": "Tag XML que envuelve el razonamiento, por ejemplo think.",
-  "thinking.extract.startWithReasoning": "Trata la salida como si empezara dentro del bloque de razonamiento.",
-  "thinking.extract.separator": "Separador insertado entre razonamiento y texto. Por defecto nueva línea (\\n) si se omite.",
-  "contextOverride.contextWindowTokens": "Override avanzado del presupuesto de contexto de la app dentro de `contextOverride`. Prefiere el campo superior `contextWindowTokens` si solo cambia el total.",
-  "contextOverride.safeInputTokens": "Presupuesto de tokens de entrada reservado para system, runtime, historial y resultados de tools antes de calcular la salida.",
-  "contextOverride.reservedOutputTokens": "Reserva estática opcional de salida. Normalmente se omite porque `getPolicy()` deriva límites dinámicamente.",
-  "contextOverride.maxSystemChars": "Límite de caracteres del bloque system prompt.",
-  "contextOverride.maxRuntimeChars": "Límite de caracteres de runtime/context inyectado en system prompt.",
-  "contextOverride.maxHistoryMessages": "Máximo de turnos previos retenidos en el prompt.",
-  "contextOverride.maxHistoryChars": "Límite de caracteres del historial retenido.",
-  "contextOverride.maxToolResultChars": "Límite de caracteres para resultados de tools incluidos en turnos de agente.",
-  "contextOverride.maxToolResultCharsForSynthesis": "Límite de caracteres para resultados de tools durante pasos de síntesis/respuesta final.",
-  "contextOverride.maxArtifacts": "Máximo de artefactos adjuntos al prompt. Rara vez se configura en el catálogo.",
-  "contextOverride.maxOutputTokens": "Límite duro opcional de tokens generados para chat/síntesis antes de límites por tipo.",
-  "contextOverride.maxNewTokensForPlan": "Límite opcional para pasos de generación de plan.",
-  "contextOverride.maxNewTokensForSynthesis": "Límite opcional para salida de síntesis.",
-};
-
-function descriptionFor(field, node, locale = "en") {
-  if (locale === "es" && ES_FIELD_DESCRIPTIONS[field]) return ES_FIELD_DESCRIPTIONS[field];
-  return node.description;
-}
-
-function propertyRows(properties = {}, required = [], prefix = "", locale = "en") {
-  const text = DOC_TEXT[locale];
+function propertyRows(properties = {}, required = [], prefix = "") {
   return Object.entries(properties).map(([name, node]) => {
     const field = `${prefix}${name}`;
-    const isRequired = required.includes(name) ? text.yes : text.no;
-    return `| \`${escapeMd(field)}\` | ${isRequired} | ${escapeMd(typeName(node))} | ${escapeMd(descriptionFor(field, node, locale))} | ${escapeMd(constraints(node))} |`;
+    const isRequired = required.includes(name) ? "yes" : "no";
+    return `| \`${escapeMd(field)}\` | ${isRequired} | ${escapeMd(typeName(node))} | ${escapeMd(node.description)} | ${escapeMd(constraints(node))} |`;
   });
 }
 
-function objectSections(node, pathPrefix, locale = "en") {
-  const text = DOC_TEXT[locale];
+function objectSections(node, pathPrefix = "") {
   const sections = [];
   for (const [name, child] of Object.entries(node.properties || {})) {
     if (child.type !== "object" || !child.properties) continue;
@@ -203,14 +77,14 @@ function objectSections(node, pathPrefix, locale = "en") {
     sections.push([
       `## ${sectionName}`,
       "",
-      escapeMd(descriptionFor(sectionName, child, locale)),
+      escapeMd(child.description),
       "",
-      `| ${text.field} | ${text.required} | ${text.type} | ${text.description} | ${text.constraints} |`,
+      "| Field | Required | Type | Description | Constraints |",
       "| --- | --- | --- | --- | --- |",
-      ...propertyRows(child.properties, child.required || [], `${sectionName}.`, locale),
+      ...propertyRows(child.properties, child.required || [], `${sectionName}.`),
       "",
     ].join("\n"));
-    sections.push(...objectSections(child, `${sectionName}.`, locale));
+    sections.push(...objectSections(child, `${sectionName}.`));
   }
   return sections;
 }
@@ -236,25 +110,21 @@ const LLM_CATALOG_PRESETS_DOC = {
   agentProfiles: {
     "tools-good": {
       description: "Reliable native tool calls. Use for models validated for multi-tool agent turns.",
-      descriptionEs: "Tool calling nativo fiable. Para modelos validados en turnos multi-tool.",
       agent: { maxSteps: 3, maxNativeTools: 10, toolCalling: "good" },
       sampling: { temperature: 0.1, topP: 0.85 },
     },
     "tools-fair": {
       description: "Mid-size models with fair native tool reliability.",
-      descriptionEs: "Modelos medianos con fiabilidad fair en tool calling nativo.",
       agent: { maxSteps: 3, maxNativeTools: 5, toolCalling: "fair" },
       sampling: { temperature: 0.1, topP: 0.85 },
     },
     "tools-light-good": {
       description: "Reliable tool-calling models that need a smaller active tool set.",
-      descriptionEs: "Modelos con tool calling fiable que necesitan un conjunto activo de tools más pequeño.",
       agent: { maxSteps: 3, maxNativeTools: 4, toolCalling: "good" },
       sampling: { temperature: 0.15, topP: 0.85 },
     },
     "tools-weak": {
       description: "Minimal fallback models; heavily capped tool loop.",
-      descriptionEs: "Modelos fallback mínimos; loop de tools muy limitado.",
       agent: { maxSteps: 1, maxNativeTools: 1, toolCalling: "weak" },
       sampling: { temperature: 0.15, topP: 0.85 },
     },
@@ -262,12 +132,10 @@ const LLM_CATALOG_PRESETS_DOC = {
   engineAgentDefaults: {
     ollama: {
       description: "Ollama entries use these agent limits and should set temperature directly when they need a sampling exception.",
-      descriptionEs: "Las entradas Ollama usan estos límites de agente y deben configurar `temperature` directamente si necesitan una excepción de sampling.",
       agent: { maxSteps: 4, maxNativeTools: 10, toolCalling: "good" },
     },
     transformersjs: {
       description: "Transformers.js fallback when agentProfile is omitted.",
-      descriptionEs: "Fallback de Transformers.js cuando se omite `agentProfile`.",
       agent: { maxSteps: 3, maxNativeTools: 5, toolCalling: "fair" },
       sampling: { temperature: 0.15, topP: 0.85 },
     },
@@ -281,7 +149,6 @@ const LLM_CATALOG_PRESETS_DOC = {
   contextPresets: {
     "browser-tools-xs": {
       description: "Tightest browser tool budget for very small local models.",
-      descriptionEs: "Presupuesto browser de tools más ajustado para modelos locales muy pequeños.",
       contextPolicy: {
         safeInputTokens: 1050,
         maxSystemChars: 740,
@@ -293,7 +160,6 @@ const LLM_CATALOG_PRESETS_DOC = {
     },
     "browser-tools-sm": {
       description: "Small browser tool budget for sub-1B local models.",
-      descriptionEs: "Presupuesto browser pequeño para modelos locales sub-1B.",
       contextPolicy: {
         safeInputTokens: 1100,
         maxSystemChars: 780,
@@ -305,7 +171,6 @@ const LLM_CATALOG_PRESETS_DOC = {
     },
     "browser-tools-md": {
       description: "Medium browser tool budget for 1B-1.5B local models.",
-      descriptionEs: "Presupuesto browser medio para modelos locales de 1B-1.5B.",
       contextPolicy: {
         safeInputTokens: 1250,
         maxSystemChars: 820,
@@ -317,7 +182,6 @@ const LLM_CATALOG_PRESETS_DOC = {
     },
     "browser-tools-lg": {
       description: "Large browser tool budget for stronger WebGPU local models.",
-      descriptionEs: "Presupuesto browser grande para modelos locales WebGPU más capaces.",
       contextPolicy: {
         safeInputTokens: 1350,
         maxSystemChars: 860,
@@ -329,7 +193,6 @@ const LLM_CATALOG_PRESETS_DOC = {
     },
     "browser-tools-xl": {
       description: "Largest browser tool budget for local models that tolerate more prompt/tool-result context.",
-      descriptionEs: "Mayor presupuesto browser para modelos locales que toleran más contexto de prompt/resultados de tools.",
       contextPolicy: {
         safeInputTokens: 1400,
         maxSystemChars: 900,
@@ -341,7 +204,6 @@ const LLM_CATALOG_PRESETS_DOC = {
     },
     "browser-chat-fallback": {
       description: "WASM chat fallback; history and tool results disabled to minimize GPU/RAM spikes.",
-      descriptionEs: "Fallback WASM de chat; historial y resultados de tools desactivados para minimizar picos de GPU/RAM.",
       contextPolicy: {
         safeInputTokens: 900,
         maxSystemChars: 560,
@@ -356,7 +218,6 @@ const LLM_CATALOG_PRESETS_DOC = {
   engineContextDefaults: {
     ollama: {
       description: "Default Ollama context before catalog contextOverride merges. safeInputTokens = min(6000, max(2400, contextWindowTokens - 2200)).",
-      descriptionEs: "Contexto default de Ollama antes de fusionar `contextOverride` del catálogo. safeInputTokens = min(6000, max(2400, contextWindowTokens - 2200)).",
       contextWindowTokens: 8192,
       contextPolicy: {
         reservedOutputTokens: 2048,
@@ -371,24 +232,22 @@ const LLM_CATALOG_PRESETS_DOC = {
     },
     transformersjs: {
       description: "Default Transformers.js context before contextPreset. Usually replaced by a preset on catalog entries.",
-      descriptionEs: "Contexto default de Transformers.js antes de `contextPreset`. Normalmente lo reemplaza un preset en las entradas del catálogo.",
       contextWindowTokens: 4096,
       contextPolicy: { safeInputTokens: 1800 },
     },
   },
 };
 
-function catalogPresetsSection(locale = "en") {
-  const text = DOC_TEXT[locale];
+function catalogPresetsSection() {
   const presets = LLM_CATALOG_PRESETS_DOC;
   const lines = [
-    `## ${text.catalogPresetsTitle}`,
+    "## Catalog Presets",
     "",
-    text.catalogPresetsIntro,
+    "Documentation mirror of preset expansion in `src/browser/chat/state/chat-state.ts`. Catalog override objects (`agentOverride`, `contextOverride`) replace only the fields you set; chat-state.ts expands them into runtime `agent` and `contextPolicy`.",
     "",
-    `### ${text.agentProfilesTitle}`,
+    "### `agentProfile` presets",
     "",
-    text.agentProfilesIntro,
+    "Expanded into runtime `agent` plus default `temperature`/`topP` (unless set on the catalog entry). The effective tool list still comes from the active VM profile and is capped by `maxNativeTools`.",
     "",
   ];
 
@@ -396,13 +255,13 @@ function catalogPresetsSection(locale = "en") {
     lines.push(
       `#### \`${name}\``,
       "",
-      escapeMd(locale === "es" ? profile.descriptionEs || profile.description : profile.description),
+      escapeMd(profile.description),
       "",
-      `| ${text.agentField} | ${text.value} |`,
+      "| Agent field | Value |",
       "| --- | --- |",
       ...formatObjectRows(profile.agent),
       "",
-      `| ${text.sampling} | ${text.value} |`,
+      "| Sampling | Value |",
       "| --- | --- |",
       ...formatObjectRows(profile.sampling),
       "",
@@ -411,18 +270,18 @@ function catalogPresetsSection(locale = "en") {
 
   for (const [engine, defaults] of Object.entries(presets.engineAgentDefaults)) {
     lines.push(
-      `#### ${text.engineDefault} (\`${engine}\`)`,
+      `#### Engine default (\`${engine}\`)`,
       "",
-      escapeMd(locale === "es" ? defaults.descriptionEs || defaults.description : defaults.description),
+      escapeMd(defaults.description),
       "",
-      `| ${text.agentField} | ${text.value} |`,
+      "| Agent field | Value |",
       "| --- | --- |",
       ...formatObjectRows(defaults.agent),
       "",
     );
     if (defaults.sampling) {
       lines.push(
-        `| ${text.sampling} | ${text.value} |`,
+        "| Sampling | Value |",
         "| --- | --- |",
         ...formatObjectRows(defaults.sampling),
         "",
@@ -431,13 +290,13 @@ function catalogPresetsSection(locale = "en") {
   }
 
   lines.push(
-    `### ${text.contextPresetsTitle}`,
+    "### `contextPreset` presets (Transformers.js)",
     "",
-    text.contextPresetsIntro,
+    "Each preset merges `contextPresetBase.transformersjs` then its policy fields. Override with catalog `contextOverride` afterward (merged into runtime `contextPolicy`).",
     "",
-    `**${text.contextPresetBase}**`,
+    "**`contextPresetBase.transformersjs`:**",
     "",
-    `| ${text.field} | ${text.value} |`,
+    "| Field | Value |",
     "| --- | --- |",
     ...formatObjectRows(presets.contextPresetBase.transformersjs),
     "",
@@ -448,9 +307,9 @@ function catalogPresetsSection(locale = "en") {
     lines.push(
       `#### \`${name}\``,
       "",
-      escapeMd(locale === "es" ? preset.descriptionEs || preset.description : preset.description),
+      escapeMd(preset.description),
       "",
-      `| ${text.effectiveContextField} | ${text.value} |`,
+      "| Effective runtime contextPolicy field | Value |",
       "| --- | --- |",
       ...formatObjectRows(merged),
       "",
@@ -458,7 +317,7 @@ function catalogPresetsSection(locale = "en") {
   }
 
   lines.push(
-    `### ${text.engineContextDefaults}`,
+    "### Engine context defaults (before `contextPreset` / `contextOverride`)",
     "",
   );
 
@@ -466,9 +325,9 @@ function catalogPresetsSection(locale = "en") {
     lines.push(
       `#### \`${engine}\``,
       "",
-      escapeMd(locale === "es" ? defaults.descriptionEs || defaults.description : defaults.description),
+      escapeMd(defaults.description),
       "",
-      `| ${text.field} | ${text.value} |`,
+      "| Field | Value |",
       "| --- | --- |",
       `| \`contextWindowTokens\` | ${defaults.contextWindowTokens} |`,
       ...formatObjectRows(defaults.contextPolicy),
@@ -479,63 +338,57 @@ function catalogPresetsSection(locale = "en") {
   return lines.join("\n");
 }
 
-function writeSchemaDoc(config, locale = "en") {
-  const text = DOC_TEXT[locale];
+function writeSchemaDoc(config) {
   const schema = JSON.parse(readFileSync(join(root, config.schemaPath), "utf8"));
   const rootNode = schema.type === "array" ? schema.items : schema;
   const required = rootNode.required || [];
-  const fieldPrefix = "";
-  const title = locale === "es" && config.spanishTitle ? config.spanishTitle : (schema.title || config.schemaPath);
-  const outputPath = locale === "es" ? config.spanishOutputPath : config.outputPath;
   const lines = [
-    `# ${title}`,
+    `# ${schema.title || config.schemaPath}`,
     "",
-    text.generatedNotice,
+    "Compact reference generated from JSON Schema. Update the source schema before editing field semantics here.",
     "",
-    escapeMd(locale === "es" && config.spanishDescription ? config.spanishDescription : schema.description),
+    escapeMd(schema.description),
     "",
   ];
 
-  const guidance = locale === "es" ? config.spanishGuidance || config.guidance : config.guidance;
-  if (guidance?.length) {
-    lines.push(`## ${text.guidanceTitle}`, "", ...guidance.map((item) => `- ${item}`), "");
+  if (config.guidance?.length) {
+    lines.push("## Authoring Guidance", "", ...config.guidance.map((item) => `- ${item}`), "");
   }
 
   lines.push(
-    `## ${text.source}`,
+    "## Source",
     "",
-    `- ${text.schema}: \`${config.schemaPath}\``,
-    `- ${text.data}: \`${config.dataPath}\``,
-    `- ${text.rootType}: \`${schema.type}\``,
-    `- ${text.schemaId}: \`${schema.$id || ""}\``,
+    `- Schema: \`${config.schemaPath}\``,
+    `- Data: \`${config.dataPath}\``,
+    `- Root type: \`${schema.type}\``,
+    `- Schema id: \`${schema.$id || ""}\``,
     "",
-    `## ${text.requiredFields}`,
+    "## Required Fields",
     "",
-    required.length ? required.map((item) => `\`${item}\``).join(", ") : text.none,
+    required.length ? required.map((item) => `\`${item}\``).join(", ") : "None",
     "",
-    `## ${text.properties}`,
+    "## Properties",
     "",
-    `| ${text.field} | ${text.required} | ${text.type} | ${text.description} | ${text.constraints} |`,
+    "| Field | Required | Type | Description | Constraints |",
     "| --- | --- | --- | --- | --- |",
-    ...propertyRows(rootNode.properties, required, fieldPrefix, locale),
+    ...propertyRows(rootNode.properties, required),
     "",
-    ...objectSections(rootNode, fieldPrefix, locale),
+    ...objectSections(rootNode),
   );
 
   const rules = conditionalRules(schema);
   if (rules) lines.push(rules);
 
   if (config.presetsDoc) {
-    lines.push(catalogPresetsSection(locale), "");
+    lines.push(catalogPresetsSection(), "");
   }
 
-  writeFileSync(join(outDir, outputPath), `${lines.join("\n").replace(/\n{3,}/g, "\n\n").trim()}\n`);
+  writeFileSync(join(outDir, config.outputPath), `${lines.join("\n").replace(/\n{3,}/g, "\n\n").trim()}\n`);
 }
 
 mkdirSync(outDir, { recursive: true });
 for (const config of schemas) {
   writeSchemaDoc(config);
-  if (config.spanishOutputPath) writeSchemaDoc(config, "es");
 }
 writeFileSync(join(outDir, "README.md"), [
   "# Schema Reference",
@@ -543,7 +396,6 @@ writeFileSync(join(outDir, "README.md"), [
   "Compact markdown references generated from repository JSON Schemas.",
   "",
   "- [LLM model catalog](llm-models.md)",
-  "- [Catálogo LLM (ES)](llm-models.es.md)",
   "- [VM profile](vm-profile.md)",
   "",
   "Regenerate with `npm run docs:schemas`.",

@@ -2,7 +2,7 @@
 
 Compact reference generated from JSON Schema. Update the source schema before editing field semantics here.
 
-Source schema for data/llm-models.json. Author-edited catalog entries; chat-state.ts enriches them into runtime models (runtime agent from agentProfile, runtime contextPolicy from engine/contextPreset/contextOverride, thinking, sampling). context-budget.ts applies engine baselines and the enriched contextPolicy at prompt time.
+`data/llm-models.json` is the hand-edited source catalog. `chat-state.ts` expands entries into runtime models; `context-budget.ts` applies context limits when building prompts.
 
 ## Authoring Guidance
 

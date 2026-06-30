@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Len4m/browser-agent-v86-poc/schemas/llm-models.schema.json",
   "title": "Browser Agent v86 LLM model catalog",
-  "description": "Source schema for data/llm-models.json. Author-edited catalog entries; chat-state.ts enriches them into runtime models (runtime agent from agentProfile, runtime contextPolicy from engine/contextPreset/contextOverride, thinking, sampling). context-budget.ts applies engine baselines and the enriched contextPolicy at prompt time.",
+  "description": "`data/llm-models.json` is the hand-edited source catalog. `chat-state.ts` expands entries into runtime models; `context-budget.ts` applies context limits when building prompts.",
   "type": "array",
   "items": {
     "type": "object",

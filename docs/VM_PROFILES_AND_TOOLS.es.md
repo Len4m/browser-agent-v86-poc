@@ -18,6 +18,8 @@ La union entre ambos contratos es:
 - `scripts/check/vm-profiles.mjs` valida que las tools existen y que el perfil incluye los paquetes requeridos.
 - En runtime, `tool-registry.ts` vuelve a filtrar tools incompatibles con el perfil activo.
 
+Las definiciones de campos, reglas de validación y propiedades obligatorias de `vm/profiles/<id>.json` están en la [referencia del schema de perfil VM](schema-reference/vm-profile.md) (**en inglés**; generada desde `vm/profiles/profile.schema.json` con `npm run docs:schemas`).
+
 ## Añadir un perfil VM
 
 1. Crea `vm/profiles/<id>.json`.
@@ -105,7 +107,7 @@ La union entre ambos contratos es:
    npm run check
    ```
 
-   Este comando comprueba schema, ids duplicados, `python3`, `allowedTools` desconocidas y `requiredPackages` faltantes.
+   Este comando comprueba schema, ids duplicados, `python3`, `allowedTools` desconocidas y `requiredPackages` faltantes. Consulta la [referencia del schema](schema-reference/vm-profile.md) (**en inglés**) si necesitas el detalle de cada campo.
 
 9. Genera los assets del perfil.
 
