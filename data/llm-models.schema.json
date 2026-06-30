@@ -14,8 +14,7 @@
       "sizeLabel",
       "requiresShaderF16",
       "temperature",
-      "topP",
-      "description"
+      "topP"
     ],
     "properties": {
       "id": {
@@ -226,10 +225,34 @@
         "type": "boolean",
         "description": "true for test, fallback, slow or less recommended models."
       },
+      "notes": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "string",
+          "enum": [
+            "tools-primary",
+            "tools-validated",
+            "chat-only",
+            "moe"
+          ]
+        },
+        "description": "Optional language-neutral note codes. The UI renders each code as localized text, so encode only facts that are not derivable from other fields (engine, dtype, requiresShaderF16, experimental, etc.). Possible codes: `tools-primary` (recommended for tool use), `tools-validated` (tool calling validated in this project), `chat-only` (chat only, tools disabled), `moe` (mixture-of-experts architecture)."
+      },
+      "ramGB": {
+        "type": "number",
+        "minimum": 0,
+        "description": "Optional recommended system RAM in GB. Informational only; shown in the LLM panel."
+      },
+      "vramGB": {
+        "type": "number",
+        "minimum": 0,
+        "description": "Optional recommended GPU VRAM in GB. Informational only; shown in the LLM panel."
+      },
       "description": {
         "type": "string",
         "minLength": 1,
-        "description": "Human-readable description shown in the LLM panel."
+        "description": "Optional free-text override shown in the LLM panel. Prefer notes + ramGB/vramGB so copy stays language-neutral; when present this replaces the composed text."
       }
     }
   }

@@ -21,7 +21,7 @@ Source schema for data/llm-models.json. This schema describes the author-edited 
 
 ## Required Fields
 
-`id`, `engine`, `model`, `sizeLabel`, `requiresShaderF16`, `temperature`, `topP`, `description`
+`id`, `engine`, `model`, `sizeLabel`, `requiresShaderF16`, `temperature`, `topP`
 
 ## Properties
 
@@ -45,7 +45,10 @@ Source schema for data/llm-models.json. This schema describes the author-edited 
 | `items[].contextPolicy` | no | object | Advanced per-model context budget override. Usually omit and use contextPreset instead. When present, these fields are merged after engine defaults and contextPreset, so they should only contain exceptions for a specific model. | additionalProperties: false |
 | `items[].agent` | no | object | Advanced per-model agent/tool override. Usually omit and use toolProfile instead. Missing fields are filled from defaults derived from engine/toolProfile in chat-state.ts. | additionalProperties: false |
 | `items[].experimental` | no | boolean | true for test, fallback, slow or less recommended models. |  |
-| `items[].description` | yes | string | Human-readable description shown in the LLM panel. | minLength: 1 |
+| `items[].notes` | no | array&lt;string&gt; | Optional language-neutral note codes. The UI renders each code as localized text, so encode only facts that are not derivable from other fields (engine, dtype, requiresShaderF16, experimental, etc.). Possible codes: `tools-primary` (recommended for tool use), `tools-validated` (tool calling validated in this project), `chat-only` (chat only, tools disabled), `moe` (mixture-of-experts architecture). | uniqueItems |
+| `items[].ramGB` | no | number | Optional recommended system RAM in GB. Informational only; shown in the LLM panel. | minimum: 0 |
+| `items[].vramGB` | no | number | Optional recommended GPU VRAM in GB. Informational only; shown in the LLM panel. | minimum: 0 |
+| `items[].description` | no | string | Optional free-text override shown in the LLM panel. Prefer notes + ramGB/vramGB so copy stays language-neutral; when present this replaces the composed text. | minLength: 1 |
 
 ## items[].thinking
 
