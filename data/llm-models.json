@@ -6,8 +6,8 @@
     "sizeLabel": "≈1.4 GB",
     "requiresShaderF16": false,
     "toolProfile": "reasoning-light",
-    "ollamaThink": false,
-    "contextWindowTokens": 8192
+    "contextWindowTokens": 8192,
+    "thinking": { "mode": "off" }
   },
   {
     "id": "ollama-llama3.2-latest",
@@ -33,8 +33,8 @@
     "sizeLabel": "≈3.4 GB",
     "requiresShaderF16": false,
     "toolProfile": "reasoning-light",
-    "ollamaThink": false,
-    "contextWindowTokens": 8192
+    "contextWindowTokens": 8192,
+    "thinking": { "mode": "off" }
   },
   {
     "id": "ollama-granite3.3-8b",
@@ -63,8 +63,8 @@
     "sizeLabel": "≈5.2 GB",
     "requiresShaderF16": false,
     "toolProfile": "reasoning-light",
-    "ollamaThink": false,
-    "contextWindowTokens": 8192
+    "contextWindowTokens": 8192,
+    "thinking": { "mode": "off" }
   },
   {
     "id": "ollama-granite4.1-8b",
@@ -82,8 +82,8 @@
     "sizeLabel": "≈6.6 GB",
     "requiresShaderF16": false,
     "toolProfile": "reasoning-light",
-    "ollamaThink": false,
-    "contextWindowTokens": 8192
+    "contextWindowTokens": 8192,
+    "thinking": { "mode": "off" }
   },
   {
     "id": "ollama-qwen3-14b",
@@ -92,8 +92,8 @@
     "sizeLabel": "≈9.3 GB",
     "requiresShaderF16": false,
     "toolProfile": "reasoning-light",
-    "ollamaThink": false,
-    "contextWindowTokens": 8192
+    "contextWindowTokens": 8192,
+    "thinking": { "mode": "off" }
   },
   {
     "id": "ollama-gpt-oss-20b",
@@ -102,13 +102,9 @@
     "sizeLabel": "≈14 GB",
     "requiresShaderF16": false,
     "toolProfile": "reasoning-light",
-    "ollamaThink": false,
     "contextWindowTokens": 8192,
     "ramGB": 16,
-    "thinking": {
-      "enabled": true,
-      "tagName": "redacted_thinking"
-    }
+    "thinking": { "mode": "optional" }
   },
   {
     "id": "ollama-gpt-oss-latest",
@@ -117,14 +113,10 @@
     "sizeLabel": "≈14 GB",
     "requiresShaderF16": false,
     "toolProfile": "reasoning-light",
-    "ollamaThink": false,
     "contextWindowTokens": 8192,
     "notes": ["tools-validated"],
     "ramGB": 16,
-    "thinking": {
-      "enabled": true,
-      "tagName": "redacted_thinking"
-    }
+    "thinking": { "mode": "optional" }
   },
   {
     "id": "ollama-qwen3-30b",
@@ -133,9 +125,9 @@
     "sizeLabel": "≈19 GB",
     "requiresShaderF16": false,
     "toolProfile": "reasoning-light",
-    "ollamaThink": false,
     "contextWindowTokens": 8192,
-    "notes": ["moe"]
+    "notes": ["moe"],
+    "thinking": { "mode": "off" }
   },
   {
     "id": "ollama-glm-4.7-flash",
@@ -144,9 +136,9 @@
     "sizeLabel": "≈19 GB",
     "requiresShaderF16": false,
     "toolProfile": "reasoning-light",
-    "ollamaThink": false,
     "contextWindowTokens": 8192,
-    "notes": ["moe"]
+    "notes": ["moe"],
+    "thinking": { "mode": "off" }
   },
   {
     "id": "qwen3-tools-onnx-q4f16",
@@ -160,8 +152,8 @@
     "notes": ["tools-primary"],
     "vramGB": 3,
     "thinking": {
-      "enabled": true,
-      "tagName": "think"
+      "mode": "optional",
+      "extract": { "tagName": "think" }
     }
   },
   {
@@ -177,8 +169,8 @@
     "notes": ["tools-primary"],
     "vramGB": 3,
     "thinking": {
-      "enabled": true,
-      "tagName": "think"
+      "mode": "optional",
+      "extract": { "tagName": "think" }
     }
   },
   {
