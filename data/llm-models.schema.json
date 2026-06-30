@@ -92,7 +92,7 @@
               },
               "separator": {
                 "type": "string",
-                "description": "Separator inserted between reasoning and text sections. Defaults to the SDK value when omitted."
+                "description": "Separator inserted between reasoning and text sections. Defaults to newline (\\n) when omitted."
               }
             }
           }

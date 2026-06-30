@@ -58,6 +58,16 @@ Optional reasoning configuration. Omit entirely for models that do not reason. c
 | `items[].thinking.mode` | yes | string | Reasoning policy. off: capable but suppressed (no UI toggle; Ollama receives think:false). optional: show the UI toggle, starting off. on: reasoning enabled by default. | enum: "off", "optional", "on" |
 | `items[].thinking.extract` | no | object | AI SDK extractReasoningMiddleware options for tag-based reasoning extraction. Transformers.js only; omit for Ollama, which exposes reasoning natively. | additionalProperties: false |
 
+## items[].thinking.extract
+
+AI SDK extractReasoningMiddleware options for tag-based reasoning extraction. Transformers.js only; omit for Ollama, which exposes reasoning natively.
+
+| Field | Required | Type | Description | Constraints |
+| --- | --- | --- | --- | --- |
+| `items[].thinking.extract.tagName` | yes | string | XML tag wrapping the reasoning, e.g. think. | minLength: 1 |
+| `items[].thinking.extract.startWithReasoning` | no | boolean | Treat the output as starting inside the reasoning block, for models that emit only the closing tag. |  |
+| `items[].thinking.extract.separator` | no | string | Separator inserted between reasoning and text sections. Defaults to newline (\n) when omitted. |  |
+
 ## items[].contextPolicy
 
 Advanced per-model context budget override. Usually omit and use contextPreset instead. When present, these fields are merged after engine defaults and contextPreset, so they should only contain exceptions for a specific model.

@@ -84,6 +84,7 @@ function objectSections(node, pathPrefix) {
       ...propertyRows(child.properties, child.required || [], `${sectionName}.`),
       "",
     ].join("\n"));
+    sections.push(...objectSections(child, `${sectionName}.`));
   }
   return sections;
 }
