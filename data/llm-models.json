@@ -9,8 +9,7 @@
     "temperature": 0.15,
     "topP": 0.85,
     "ollamaThink": false,
-    "contextWindowTokens": 8192,
-    "description": "Qwen3 1.7B en Ollama (Q4_K_M, ~1.4 GB). Contexto nativo 32K; el presupuesto del agente usa 8192 tokens conservadores como el resto de modelos Ollama. Se carga con thinking desactivado para evitar respuestas vacías en el chat. Memoria: modelo 1.4 GB; VRAM parcial. Compatibilidad: requiere Ollama + CORS."
+    "contextWindowTokens": 8192
   },
   {
     "id": "ollama-llama3.2-latest",
@@ -20,8 +19,7 @@
     "requiresShaderF16": false,
     "temperature": 0.15,
     "topP": 0.85,
-    "contextWindowTokens": 8192,
-    "description": "Modelo Llama 3.2 instalado en Ollama. Buena opción general y ligera, aunque no es mi primera elección para tool-calling frente a Qwen/Granite/gpt-oss. Memoria: modelo 2.0 GB; VRAM parcial. Compatibilidad: requiere Ollama + CORS."
+    "contextWindowTokens": 8192
   },
   {
     "id": "ollama-granite4.1-3b",
@@ -32,8 +30,7 @@
     "toolProfile": "strong-json",
     "temperature": 0.1,
     "topP": 0.85,
-    "contextWindowTokens": 8192,
-    "description": "Granite 4.1 3B, moderno y ligero para function-calling/JSON. Si no está instalado, ejecuta: ollama pull granite4.1:3b. Memoria: modelo 2.1 GB; VRAM parcial. Compatibilidad: requiere Ollama reciente + pull."
+    "contextWindowTokens": 8192
   },
   {
     "id": "ollama-qwen3.5-4b",
@@ -45,8 +42,7 @@
     "temperature": 0.15,
     "topP": 0.85,
     "ollamaThink": false,
-    "contextWindowTokens": 8192,
-    "description": "Qwen3.5 4B, modelo reciente con etiqueta tools en Ollama. Si no está instalado, ejecuta: ollama pull qwen3.5:4b. Memoria: modelo 3.4 GB; VRAM parcial. Compatibilidad: requiere Ollama reciente + pull."
+    "contextWindowTokens": 8192
   },
   {
     "id": "ollama-granite3.3-8b",
@@ -58,7 +54,7 @@
     "temperature": 0.1,
     "topP": 0.85,
     "contextWindowTokens": 8192,
-    "description": "Granite 3.3 8B instalado en tu host y validado con tool_calls en Ollama. Memoria: modelo 4.9 GB; VRAM parcial. Compatibilidad: requiere Ollama + CORS."
+    "notes": ["tools-validated"]
   },
   {
     "id": "ollama-llama3.1-8b",
@@ -69,8 +65,7 @@
     "toolProfile": "middle-tools",
     "temperature": 0.15,
     "topP": 0.85,
-    "contextWindowTokens": 8192,
-    "description": "Llama 3.1 8B mantiene soporte de tools en Ollama y ya está instalado en tu host. Memoria: modelo 4.9 GB; VRAM parcial. Compatibilidad: requiere Ollama + CORS."
+    "contextWindowTokens": 8192
   },
   {
     "id": "ollama-qwen3-8b",
@@ -82,8 +77,7 @@
     "temperature": 0.15,
     "topP": 0.85,
     "ollamaThink": false,
-    "contextWindowTokens": 8192,
-    "description": "Qwen3 8B para agente local con tools. Si no está instalado, ejecuta: ollama pull qwen3:8b. Memoria: modelo 5.2 GB; VRAM parcial. Compatibilidad: requiere Ollama + CORS."
+    "contextWindowTokens": 8192
   },
   {
     "id": "ollama-granite4.1-8b",
@@ -94,8 +88,7 @@
     "toolProfile": "strong-json",
     "temperature": 0.1,
     "topP": 0.85,
-    "contextWindowTokens": 8192,
-    "description": "Granite 4.1 8B, recomendado para tool-use y salida JSON estructurada. Si no está instalado, ejecuta: ollama pull granite4.1:8b. Memoria: modelo 5.3 GB; VRAM parcial. Compatibilidad: requiere Ollama reciente + pull."
+    "contextWindowTokens": 8192
   },
   {
     "id": "ollama-qwen3.5-9b",
@@ -107,8 +100,7 @@
     "temperature": 0.15,
     "topP": 0.85,
     "ollamaThink": false,
-    "contextWindowTokens": 8192,
-    "description": "Qwen3.5 9B, opción reciente para tools en sobremesas actuales. Si no está instalado, ejecuta: ollama pull qwen3.5:9b. Memoria: modelo 6.6 GB; VRAM parcial. Compatibilidad: requiere Ollama reciente + pull."
+    "contextWindowTokens": 8192
   },
   {
     "id": "ollama-qwen3-14b",
@@ -120,8 +112,7 @@
     "temperature": 0.15,
     "topP": 0.85,
     "ollamaThink": false,
-    "contextWindowTokens": 8192,
-    "description": "Qwen3 14B para equipos de sobremesa con memoria de sistema suficiente; no requiere necesariamente 9.3 GB de VRAM dedicada. Si no está instalado, ejecuta: ollama pull qwen3:14b. Memoria: modelo 9.3 GB; VRAM parcial. Compatibilidad: requiere Ollama + CORS."
+    "contextWindowTokens": 8192
   },
   {
     "id": "ollama-gpt-oss-20b",
@@ -134,7 +125,7 @@
     "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192,
-    "description": "gpt-oss 20B para tareas agentic/dev. ollamaThink desactivado en el agente: think+tools puede vaciar content en Ollama. Si no está instalado, ejecuta: ollama pull gpt-oss:20b. Memoria: sistema >=16 GB; VRAM opcional. Compatibilidad: requiere Ollama reciente + pull.",
+    "ramGB": 16,
     "thinking": {
       "enabled": true,
       "tagName": "redacted_thinking"
@@ -151,7 +142,8 @@
     "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192,
-    "description": "gpt-oss instalado en tu host y validado con tool_calls en Ollama. ollamaThink desactivado en el agente para evitar respuestas vacías con tools. Memoria: sistema >=16 GB; VRAM opcional. Compatibilidad: requiere Ollama + CORS.",
+    "notes": ["tools-validated"],
+    "ramGB": 16,
     "thinking": {
       "enabled": true,
       "tagName": "redacted_thinking"
@@ -168,7 +160,7 @@
     "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192,
-    "description": "Qwen3 30B-A3B MoE para agente local cuando el host tiene memoria suficiente. Si no está instalado, ejecuta: ollama pull qwen3:30b. Memoria: modelo 19 GB; VRAM parcial. Compatibilidad: requiere Ollama + CORS."
+    "notes": ["moe"]
   },
   {
     "id": "ollama-glm-4.7-flash",
@@ -181,7 +173,7 @@
     "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192,
-    "description": "GLM 4.7 Flash instalado en tu host; modelo pesado de clase 30B con etiqueta tools en Ollama. ollamaThink desactivado en el agente para tool-calling estable. Memoria: modelo 19 GB; VRAM parcial. Compatibilidad: requiere Ollama + CORS."
+    "notes": ["moe"]
   },
   {
     "id": "qwen3-tools-onnx-q4f16",
@@ -194,7 +186,8 @@
     "topP": 0.85,
     "toolProfile": "reasoning-light",
     "contextPreset": "transformers-tiny-tools-plan",
-    "description": "Candidato principal para tools en navegador. Es el modelo con evidencia pública más directa para Transformers.js + @browser-ai/transformers-js + AI SDK, usando q4f16 y WebGPU. Memoria: mín. práctico 1.5 GB; recomendado 2–3 GB. Compatibilidad: probado con AI SDK + tools · requiere WebGPU shader-f16.",
+    "notes": ["tools-primary"],
+    "vramGB": 3,
     "thinking": {
       "enabled": true,
       "tagName": "think"
@@ -212,7 +205,8 @@
     "toolProfile": "reasoning-light",
     "contextPreset": "transformers-tiny-tools-plan",
     "experimental": true,
-    "description": "Variante q4 del Qwen3 recomendado para tools. Existe en el repo ONNX y evita shader-f16; se marca experimental porque la demo oficial de tool calling usa q4f16. Memoria: mín. práctico 1.5 GB; recomendado 2–3 GB. Compatibilidad: q4 · sin shader-f16 · tools experimental.",
+    "notes": ["tools-primary"],
+    "vramGB": 3,
     "thinking": {
       "enabled": true,
       "tagName": "think"
@@ -236,7 +230,7 @@
       "selfSelectTools": true
     },
     "experimental": true,
-    "description": "Opción q4 ligera probada en este proyecto para respuestas estructuradas/tool-calling mediante el parser de texto. Se mantiene como experimental porque el informe no la clasifica entre los modelos con evidencia pública fuerte. Memoria: GPU/RAM baja. Compatibilidad: q4 · probado en este proyecto · tools experimental."
+    "notes": ["tools-validated"]
   },
   {
     "id": "glm-edge-1.5b-chat-onnx-q4",
@@ -249,8 +243,7 @@
     "topP": 0.85,
     "toolProfile": "middle-tools",
     "contextPreset": "transformers-edge-tools",
-    "experimental": true,
-    "description": "GLM Edge 1.5B Chat con pesos ONNX para Transformers.js. Se añade para probar tool calling en este proyecto; el repo publica q4, pero su evidencia pública principal es chat/text-generation, no tools con AI SDK. Memoria: GPU/RAM media. Compatibilidad: q4 · sin shader-f16 · tools por validar."
+    "experimental": true
   },
   {
     "id": "glm-edge-1.5b-chat-onnx-q4f16",
@@ -263,8 +256,7 @@
     "topP": 0.85,
     "toolProfile": "middle-tools",
     "contextPreset": "transformers-edge-tools",
-    "experimental": true,
-    "description": "Variante q4f16 de GLM Edge 1.5B Chat para GPUs con shader-f16. Se añade para pruebas; no está clasificada como compatible fuerte con tools hasta validarla localmente. Memoria: GPU con shader-f16. Compatibilidad: q4f16 · requiere shader-f16 · tools por validar."
+    "experimental": true
   },
   {
     "id": "glm-edge-1.5b-chat-onnx-fp16",
@@ -277,8 +269,7 @@
     "topP": 0.85,
     "toolProfile": "middle-tools",
     "contextPreset": "transformers-edge-tools",
-    "experimental": true,
-    "description": "Variante fp16 de GLM Edge 1.5B Chat para pruebas de calidad en equipos con memoria y shader-f16. Más pesada que q4; tool calling pendiente de validación en el loop del proyecto. Memoria: GPU alta con shader-f16. Compatibilidad: fp16 · requiere shader-f16 · pesado."
+    "experimental": true
   },
   {
     "id": "granite-4.0-350m-onnx-web-fp16",
@@ -292,7 +283,8 @@
     "toolProfile": "balanced",
     "contextPreset": "transformers-350m-tools",
     "experimental": true,
-    "description": "Opción mínima para validar UX de tools, streaming y aprobación humana. Tiene evidencia pública en el ejemplo oficial multi-modelo, pero menos robustez esperada que Qwen3, LFM2 o Granite Micro. Memoria: mín. práctico 1.5 GB; recomendado 2–3 GB. Compatibilidad: experimental · ligero · WebGPU shader-f16."
+    "notes": ["tools-validated"],
+    "vramGB": 3
   },
   {
     "id": "lfm2-tool-1.2b-onnx-fp16",
@@ -306,7 +298,8 @@
     "toolProfile": "strong-json",
     "contextPreset": "transformers-fp16-tools",
     "experimental": true,
-    "description": "Modelo específicamente afinado para tool calling. Aparece en el ejemplo oficial de AI SDK en navegador con tools; se marca experimental porque la evidencia pública es menos directa que Qwen3. Memoria: mín. práctico 4 GB; recomendado 6 GB+. Compatibilidad: experimental fuerte · modelo afinado para tools · WebGPU shader-f16."
+    "notes": ["tools-primary"],
+    "vramGB": 6
   },
   {
     "id": "lfm2-tool-1.2b-onnx-q4",
@@ -320,7 +313,8 @@
     "toolProfile": "strong-json",
     "contextPreset": "transformers-edge-tools",
     "experimental": true,
-    "description": "Variante q4 publicada del modelo LFM2 afinado para tool calling. Reduce memoria frente a fp16 y no requiere shader-f16; se mantiene experimental hasta validarla en el loop real del proyecto. Memoria: mín. práctico 2–3 GB; recomendado 4 GB+. Compatibilidad: q4 · modelo afinado para tools · experimental."
+    "notes": ["tools-primary"],
+    "vramGB": 4
   },
   {
     "id": "granite-4.0-micro-onnx-web-q4f16",
@@ -334,7 +328,8 @@
     "toolProfile": "strong-json",
     "contextPreset": "transformers-micro-tools",
     "experimental": true,
-    "description": "Modelo con más capacidad entre los candidatos web con evidencia útil para tools. Se recomienda para equipos con memoria holgada; mantiene marca experimental por falta de benchmark homogéneo público. Memoria: mín. práctico 4 GB; recomendado 6 GB+. Compatibilidad: experimental fuerte · más capacidad · WebGPU shader-f16."
+    "notes": ["tools-validated"],
+    "vramGB": 6
   },
   {
     "id": "gemma-3-270m-it-onnx-wasm-fallback",
@@ -349,6 +344,6 @@
     "toolProfile": "tiny-fallback",
     "contextPreset": "transformers-tiny-fallback",
     "experimental": true,
-    "description": "Fallback para navegadores sin WebGPU. Permite probar chat básico en CPU/WASM, pero las herramientas quedan desactivadas; para tool calling usa un navegador con WebGPU compatible o un modelo Ollama. Memoria: CPU/RAM · lento. Compatibilidad: WASM experimental · chat sin tools."
+    "notes": ["chat-only"]
   }
 ]
