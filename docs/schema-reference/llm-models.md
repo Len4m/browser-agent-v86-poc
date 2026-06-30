@@ -21,7 +21,7 @@ Source schema for data/llm-models.json. This schema describes the author-edited 
 
 ## Required Fields
 
-`id`, `engine`, `model`, `sizeLabel`, `requiresShaderF16`, `temperature`, `topP`
+`id`, `engine`, `model`, `sizeLabel`, `requiresShaderF16`
 
 ## Properties
 
@@ -35,8 +35,8 @@ Source schema for data/llm-models.json. This schema describes the author-edited 
 | `items[].sizeLabel` | yes | string | Approximate model size displayed in the UI. Informational only. | minLength: 1 |
 | `items[].requiresShaderF16` | yes | boolean | true when a WebGPU model requires shader-f16 support. |  |
 | `items[].toolProfile` | no | string | Preferred way to select predefined agent/tool defaults. chat-state.ts expands this into the runtime agent object unless the optional agent override below changes specific fields. | enum: "strong-json", "middle-tools", "reasoning-light", "tiny-fallback", "balanced" |
-| `items[].temperature` | yes | number | Sampling temperature sent to the model. Lower values are more deterministic. | minimum: 0 |
-| `items[].topP` | yes | number | Nucleus sampling top_p value sent to the model. | minimum: 0; maximum: 1 |
+| `items[].temperature` | no | number | Optional sampling temperature. Lower values are more deterministic. Omit to use the default derived from toolProfile in chat-state.ts (0.1 for strong-json/middle-tools/balanced, 0.15 otherwise); set this only for per-model exceptions. | minimum: 0 |
+| `items[].topP` | no | number | Optional nucleus sampling top_p value. Omit to use the default (0.85) applied in chat-state.ts; set this only for per-model exceptions. | minimum: 0; maximum: 1 |
 | `items[].ollamaThink` | no | boolean | Ollama-only thinking toggle when supported by the model and server. |  |
 | `items[].thinking` | no | object | Reasoning extraction via AI SDK extractReasoningMiddleware (Transformers.js) or UI toggle. tagName must match the XML tags emitted by the model. | additionalProperties: false |
 | `items[].contextWindowTokens` | no | integer | Raw model context window capacity. Usually omit for standard defaults/presets; set this only when a model has a different total context window than the runtime default. | minimum: 256 |

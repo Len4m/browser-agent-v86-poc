@@ -12,9 +12,7 @@
       "engine",
       "model",
       "sizeLabel",
-      "requiresShaderF16",
-      "temperature",
-      "topP"
+      "requiresShaderF16"
     ],
     "properties": {
       "id": {
@@ -58,13 +56,13 @@
       "temperature": {
         "type": "number",
         "minimum": 0,
-        "description": "Sampling temperature sent to the model. Lower values are more deterministic."
+        "description": "Optional sampling temperature. Lower values are more deterministic. Omit to use the default derived from toolProfile in chat-state.ts (0.1 for strong-json/middle-tools/balanced, 0.15 otherwise); set this only for per-model exceptions."
       },
       "topP": {
         "type": "number",
         "minimum": 0,
         "maximum": 1,
-        "description": "Nucleus sampling top_p value sent to the model."
+        "description": "Optional nucleus sampling top_p value. Omit to use the default (0.85) applied in chat-state.ts; set this only for per-model exceptions."
       },
       "ollamaThink": {
         "type": "boolean",
