@@ -44,10 +44,7 @@ function modelOptionsHtml(): string {
     const sizeLabel = textValue(model.sizeLabel);
     const size = sizeLabel ? ` · ${sizeLabel}` : "";
     const dtype = model.dtype ? ` · ${model.dtype}` : "";
-    const compat = model.requiresShaderF16
-      ? ` · ${t("common.requiresShaderF16")}`
-      : "";
-    return `<option value="${escapeHtml(model.id)}">${escapeHtml(llmModelLabel(model))}${escapeHtml(size)}${escapeHtml(dtype)}${escapeHtml(compat)}</option>`;
+    return `<option value="${escapeHtml(model.id)}">${escapeHtml(llmModelLabel(model))}${escapeHtml(size)}${escapeHtml(dtype)}</option>`;
   };
 
   const used = new Set<string>();

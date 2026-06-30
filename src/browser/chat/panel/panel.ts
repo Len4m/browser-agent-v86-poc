@@ -187,13 +187,10 @@ function updateModelOptionCompatibility(caps: LlmCapabilities | null): void {
   const noF16 = Boolean(caps && caps.webgpu && !caps.shaderF16);
   for (const option of Array.from(select.options)) {
     const model = llmModelOptions.find((item) => item.id === option.value);
+    if (!model) continue;
     const needsWebGPU = llmModelRequiresWebGPU(model);
-    const disabled = Boolean((noWebGPU && needsWebGPU) || (noF16 && model?.requiresShaderF16));
+    const disabled = Boolean((noWebGPU && needsWebGPU) || (noF16 && model.requiresShaderF16));
     option.disabled = disabled;
-    if (option.dataset.originalText) {
-      option.textContent = option.dataset.originalText;
-      delete option.dataset.originalText;
-    }
   }
 
   const selected = getSelectedModel();
@@ -401,7 +398,7 @@ function activeBackendLabel(model: LlmModelConfig): string {
     : (runtime.device === "wasm" ? "WASM" : runtime.device || "auto");
   const dtype = runtime.dtype ? ` · ${runtime.dtype}` : "";
   const fallback = runtime.fallback ? t("panel.llm.backend.fallbackSuffix") : "";
-  return `Transformers.js · ${device}${dtype}${fallback}`;
+  return `Transformers.js v4 · ${device}${dtype}${fallback}`;
 }
 
 function createTextElement(tagName: keyof HTMLElementTagNameMap, className: string, text = ""): HTMLElement {
@@ -549,11 +546,12 @@ function updateSelectedModelCard(): void {
   }
   if (repo) repo.textContent = model.custom ? t("panel.llm.model.repoCustomHint") : model.model || "";
   if (meta) {
+    const loaded = Boolean(getLlmState()?.loaded);
     const entries: Array<[string, unknown] | null> = [
-      getLlmState()?.loaded ? [t("panel.llm.meta.backendLoaded"), activeBackendLabel(model) || "—"] : null,
-      [t("panel.llm.meta.engine"), llmEngineMetaLabel(model)],
+      loaded ? [t("panel.llm.meta.backendLoaded"), activeBackendLabel(model) || "—"] : null,
+      loaded ? null : [t("panel.llm.meta.engine"), llmEngineMetaLabel(model)],
       [t("panel.llm.meta.download"), model.sizeLabel || "—"],
-      [t("panel.llm.meta.quantization"), model.dtype || "—"],
+      loaded ? null : [t("panel.llm.meta.quantization"), model.dtype || "—"],
       typeof model.ramGB === "number" ? [t("panel.llm.meta.ram"), `${model.ramGB} GB`] : null,
       typeof model.vramGB === "number" ? [t("panel.llm.meta.vram"), `${model.vramGB} GB`] : null,
       [t("panel.llm.meta.tools"), model.agent?.toolCalling || "—"],
