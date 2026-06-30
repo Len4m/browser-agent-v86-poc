@@ -6,8 +6,6 @@
     "sizeLabel": "≈1.4 GB",
     "requiresShaderF16": false,
     "toolProfile": "reasoning-light",
-    "temperature": 0.15,
-    "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192
   },
@@ -17,8 +15,6 @@
     "model": "llama3.2:latest",
     "sizeLabel": "≈2.0 GB",
     "requiresShaderF16": false,
-    "temperature": 0.15,
-    "topP": 0.85,
     "contextWindowTokens": 8192
   },
   {
@@ -28,8 +24,6 @@
     "sizeLabel": "≈2.1 GB",
     "requiresShaderF16": false,
     "toolProfile": "strong-json",
-    "temperature": 0.1,
-    "topP": 0.85,
     "contextWindowTokens": 8192
   },
   {
@@ -39,8 +33,6 @@
     "sizeLabel": "≈3.4 GB",
     "requiresShaderF16": false,
     "toolProfile": "reasoning-light",
-    "temperature": 0.15,
-    "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192
   },
@@ -51,8 +43,6 @@
     "sizeLabel": "≈4.9 GB",
     "requiresShaderF16": false,
     "toolProfile": "strong-json",
-    "temperature": 0.1,
-    "topP": 0.85,
     "contextWindowTokens": 8192,
     "notes": ["tools-validated"]
   },
@@ -64,7 +54,6 @@
     "requiresShaderF16": false,
     "toolProfile": "middle-tools",
     "temperature": 0.15,
-    "topP": 0.85,
     "contextWindowTokens": 8192
   },
   {
@@ -74,8 +63,6 @@
     "sizeLabel": "≈5.2 GB",
     "requiresShaderF16": false,
     "toolProfile": "reasoning-light",
-    "temperature": 0.15,
-    "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192
   },
@@ -86,8 +73,6 @@
     "sizeLabel": "≈5.3 GB",
     "requiresShaderF16": false,
     "toolProfile": "strong-json",
-    "temperature": 0.1,
-    "topP": 0.85,
     "contextWindowTokens": 8192
   },
   {
@@ -97,8 +82,6 @@
     "sizeLabel": "≈6.6 GB",
     "requiresShaderF16": false,
     "toolProfile": "reasoning-light",
-    "temperature": 0.15,
-    "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192
   },
@@ -109,8 +92,6 @@
     "sizeLabel": "≈9.3 GB",
     "requiresShaderF16": false,
     "toolProfile": "reasoning-light",
-    "temperature": 0.15,
-    "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192
   },
@@ -121,8 +102,6 @@
     "sizeLabel": "≈14 GB",
     "requiresShaderF16": false,
     "toolProfile": "reasoning-light",
-    "temperature": 0.15,
-    "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192,
     "ramGB": 16,
@@ -138,8 +117,6 @@
     "sizeLabel": "≈14 GB",
     "requiresShaderF16": false,
     "toolProfile": "reasoning-light",
-    "temperature": 0.15,
-    "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192,
     "notes": ["tools-validated"],
@@ -156,8 +133,6 @@
     "sizeLabel": "≈19 GB",
     "requiresShaderF16": false,
     "toolProfile": "reasoning-light",
-    "temperature": 0.15,
-    "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192,
     "notes": ["moe"]
@@ -169,8 +144,6 @@
     "sizeLabel": "≈19 GB",
     "requiresShaderF16": false,
     "toolProfile": "reasoning-light",
-    "temperature": 0.15,
-    "topP": 0.85,
     "ollamaThink": false,
     "contextWindowTokens": 8192,
     "notes": ["moe"]
@@ -182,8 +155,6 @@
     "dtype": "q4f16",
     "sizeLabel": "≈570 MB",
     "requiresShaderF16": true,
-    "temperature": 0.15,
-    "topP": 0.85,
     "toolProfile": "reasoning-light",
     "contextPreset": "transformers-tiny-tools-plan",
     "notes": ["tools-primary"],
@@ -200,8 +171,6 @@
     "dtype": "q4",
     "sizeLabel": "≈0.9 GB",
     "requiresShaderF16": false,
-    "temperature": 0.15,
-    "topP": 0.85,
     "toolProfile": "reasoning-light",
     "contextPreset": "transformers-tiny-tools-plan",
     "experimental": true,
@@ -219,8 +188,6 @@
     "dtype": "q4",
     "sizeLabel": "≈0.5–0.8 GB",
     "requiresShaderF16": false,
-    "temperature": 0.1,
-    "topP": 0.85,
     "toolProfile": "strong-json",
     "contextPreset": "transformers-tiny-tools",
     "agent": {
@@ -239,8 +206,6 @@
     "dtype": "q4",
     "sizeLabel": "≈1.5–2.0 GB",
     "requiresShaderF16": false,
-    "temperature": 0.1,
-    "topP": 0.85,
     "toolProfile": "middle-tools",
     "contextPreset": "transformers-edge-tools",
     "experimental": true
@@ -252,8 +217,6 @@
     "dtype": "q4f16",
     "sizeLabel": "≈1.2–1.8 GB",
     "requiresShaderF16": true,
-    "temperature": 0.1,
-    "topP": 0.85,
     "toolProfile": "middle-tools",
     "contextPreset": "transformers-edge-tools",
     "experimental": true
@@ -265,8 +228,6 @@
     "dtype": "fp16",
     "sizeLabel": "≈3 GB",
     "requiresShaderF16": true,
-    "temperature": 0.1,
-    "topP": 0.85,
     "toolProfile": "middle-tools",
     "contextPreset": "transformers-edge-tools",
     "experimental": true
@@ -278,8 +239,6 @@
     "dtype": "fp16",
     "sizeLabel": "≈700 MB",
     "requiresShaderF16": true,
-    "temperature": 0.1,
-    "topP": 0.85,
     "toolProfile": "balanced",
     "contextPreset": "transformers-350m-tools",
     "experimental": true,
@@ -293,8 +252,6 @@
     "dtype": "fp16",
     "sizeLabel": "≈2.4 GB",
     "requiresShaderF16": true,
-    "temperature": 0.1,
-    "topP": 0.85,
     "toolProfile": "strong-json",
     "contextPreset": "transformers-fp16-tools",
     "experimental": true,
@@ -308,8 +265,6 @@
     "dtype": "q4",
     "sizeLabel": "≈1.0–1.4 GB",
     "requiresShaderF16": false,
-    "temperature": 0.1,
-    "topP": 0.85,
     "toolProfile": "strong-json",
     "contextPreset": "transformers-edge-tools",
     "experimental": true,
@@ -323,8 +278,6 @@
     "dtype": "q4f16",
     "sizeLabel": "≈2.3 GB",
     "requiresShaderF16": true,
-    "temperature": 0.1,
-    "topP": 0.85,
     "toolProfile": "strong-json",
     "contextPreset": "transformers-micro-tools",
     "experimental": true,
@@ -339,8 +292,6 @@
     "dtype": "fp32",
     "sizeLabel": "≈1 GB+",
     "requiresShaderF16": false,
-    "temperature": 0.15,
-    "topP": 0.85,
     "toolProfile": "tiny-fallback",
     "contextPreset": "transformers-tiny-fallback",
     "experimental": true,
