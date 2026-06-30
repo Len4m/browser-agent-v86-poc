@@ -37,8 +37,7 @@ Source schema for data/llm-models.json. This schema describes the author-edited 
 | `items[].toolProfile` | no | string | Preferred way to select predefined agent/tool defaults. chat-state.ts expands this into the runtime agent object unless the optional agent override below changes specific fields. | enum: "strong-json", "middle-tools", "reasoning-light", "tiny-fallback", "balanced" |
 | `items[].temperature` | no | number | Optional sampling temperature. Lower values are more deterministic. Omit to use the default derived from toolProfile in chat-state.ts (0.1 for strong-json/middle-tools/balanced, 0.15 otherwise); set this only for per-model exceptions. | minimum: 0 |
 | `items[].topP` | no | number | Optional nucleus sampling top_p value. Omit to use the default (0.85) applied in chat-state.ts; set this only for per-model exceptions. | minimum: 0; maximum: 1 |
-| `items[].ollamaThink` | no | boolean | Ollama-only thinking toggle when supported by the model and server. |  |
-| `items[].thinking` | no | object | Reasoning extraction via AI SDK extractReasoningMiddleware (Transformers.js) or UI toggle. tagName must match the XML tags emitted by the model. | additionalProperties: false |
+| `items[].thinking` | no | object | Optional reasoning configuration. Omit entirely for models that do not reason. chat-state.ts derives the UI toggle, the default state, and the Ollama think request flag from mode; extract is only consumed by the Transformers.js tag-based reasoning middleware. | additionalProperties: false |
 | `items[].contextWindowTokens` | no | integer | Raw model context window capacity. Usually omit for standard defaults/presets; set this only when a model has a different total context window than the runtime default. | minimum: 256 |
 | `items[].maxNewTokens` | no | integer | Optional explicit output hard cap. Usually omit; if omitted, context-budget.ts derives output limits from the effective contextPolicy. | minimum: 1 |
 | `items[].contextPreset` | no | string | Preferred way to select a predefined context budget. chat-state.ts expands this into runtime contextPolicy fields before applying the optional contextPolicy override below. | enum: "transformers-tiny-tools-plan", "transformers-tiny-tools", "transformers-edge-tools", "transformers-350m-tools", "transformers-fp16-tools", "transformers-micro-tools", "transformers-tiny-fallback" |
@@ -52,13 +51,12 @@ Source schema for data/llm-models.json. This schema describes the author-edited 
 
 ## items[].thinking
 
-Reasoning extraction via AI SDK extractReasoningMiddleware (Transformers.js) or UI toggle. tagName must match the XML tags emitted by the model.
+Optional reasoning configuration. Omit entirely for models that do not reason. chat-state.ts derives the UI toggle, the default state, and the Ollama think request flag from mode; extract is only consumed by the Transformers.js tag-based reasoning middleware.
 
 | Field | Required | Type | Description | Constraints |
 | --- | --- | --- | --- | --- |
-| `items[].thinking.enabled` | no | boolean | Show the thinking toggle and apply reasoning middleware when tag-based extraction applies. |  |
-| `items[].thinking.tagName` | no | string | XML tag name for extractReasoningMiddleware, e.g. think or redacted_thinking. | minLength: 1 |
-| `items[].thinking.startWithReasoning` | no | boolean | AI SDK extractReasoningMiddleware option for models that omit the opening tag. |  |
+| `items[].thinking.mode` | yes | string | Reasoning policy. off: capable but suppressed (no UI toggle; Ollama receives think:false). optional: show the UI toggle, starting off. on: reasoning enabled by default. | enum: "off", "optional", "on" |
+| `items[].thinking.extract` | no | object | AI SDK extractReasoningMiddleware options for tag-based reasoning extraction. Transformers.js only; omit for Ollama, which exposes reasoning natively. | additionalProperties: false |
 
 ## items[].contextPolicy
 

@@ -64,27 +64,37 @@
         "maximum": 1,
         "description": "Optional nucleus sampling top_p value. Omit to use the default (0.85) applied in chat-state.ts; set this only for per-model exceptions."
       },
-      "ollamaThink": {
-        "type": "boolean",
-        "description": "Ollama-only thinking toggle when supported by the model and server."
-      },
       "thinking": {
         "type": "object",
         "additionalProperties": false,
-        "description": "Reasoning extraction via AI SDK extractReasoningMiddleware (Transformers.js) or UI toggle. tagName must match the XML tags emitted by the model.",
+        "required": ["mode"],
+        "description": "Optional reasoning configuration. Omit entirely for models that do not reason. chat-state.ts derives the UI toggle, the default state, and the Ollama think request flag from mode; extract is only consumed by the Transformers.js tag-based reasoning middleware.",
         "properties": {
-          "enabled": {
-            "type": "boolean",
-            "description": "Show the thinking toggle and apply reasoning middleware when tag-based extraction applies."
-          },
-          "tagName": {
+          "mode": {
             "type": "string",
-            "minLength": 1,
-            "description": "XML tag name for extractReasoningMiddleware, e.g. think or redacted_thinking."
+            "enum": ["off", "optional", "on"],
+            "description": "Reasoning policy. off: capable but suppressed (no UI toggle; Ollama receives think:false). optional: show the UI toggle, starting off. on: reasoning enabled by default."
           },
-          "startWithReasoning": {
-            "type": "boolean",
-            "description": "AI SDK extractReasoningMiddleware option for models that omit the opening tag."
+          "extract": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["tagName"],
+            "description": "AI SDK extractReasoningMiddleware options for tag-based reasoning extraction. Transformers.js only; omit for Ollama, which exposes reasoning natively.",
+            "properties": {
+              "tagName": {
+                "type": "string",
+                "minLength": 1,
+                "description": "XML tag wrapping the reasoning, e.g. think."
+              },
+              "startWithReasoning": {
+                "type": "boolean",
+                "description": "Treat the output as starting inside the reasoning block, for models that emit only the closing tag."
+              },
+              "separator": {
+                "type": "string",
+                "description": "Separator inserted between reasoning and text sections. Defaults to the SDK value when omitted."
+              }
+            }
           }
         }
       },
