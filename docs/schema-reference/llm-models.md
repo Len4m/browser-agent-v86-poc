@@ -39,7 +39,7 @@ Source schema for data/llm-models.json. Author-edited catalog entries; chat-stat
 | `topP` | no | number | Optional nucleus sampling top_p value. Omit to use the default (0.85) applied in chat-state.ts; set this only for per-model exceptions. | minimum: 0; maximum: 1 |
 | `thinking` | no | object | Optional reasoning configuration. Omit entirely for models that do not reason. chat-state.ts derives the UI toggle, the default state, and the Ollama think request flag from mode; extract is only consumed by the Transformers.js tag-based reasoning middleware. | additionalProperties: false |
 | `contextWindowTokens` | no | integer | Optional app-side context budget in tokens. Does not configure the model runtime native context (Ollama num_ctx, Transformers.js). chat-state.ts and context-budget.ts use it to derive safeInputTokens and max output limits. Omit for engine defaults (8192 Ollama, 4096 Transformers.js); set only when the effective budget should differ from those defaults. | minimum: 256 |
-| `contextPreset` | no | string | Transformers.js only. Preset for context budget fields. Expanded by chat-state.ts into runtime contextPolicy. See [Catalog Presets](#catalog-presets). | enum: "transformers-tiny-tools-plan", "transformers-tiny-tools", "transformers-edge-tools", "transformers-350m-tools", "transformers-fp16-tools", "transformers-micro-tools", "transformers-tiny-fallback" |
+| `contextPreset` | no | string | Transformers.js only. Preset for context budget fields. Expanded by chat-state.ts into runtime contextPolicy. See [Catalog Presets](#catalog-presets). | enum: "browser-tools-xs", "browser-tools-sm", "browser-tools-md", "browser-tools-lg", "browser-tools-xl", "browser-chat-fallback" |
 | `contextOverride` | no | object | Optional per-model override for contextPreset (field above) and engine context defaults. For Ollama, set only fields that differ from engine defaults. Merged in chat-state.ts into runtime contextPolicy, then consumed by context-budget.ts. | additionalProperties: false |
 | `notes` | no | array&lt;string&gt; | Optional language-neutral note codes. The UI renders each code as localized text, so encode only facts that are not derivable from other fields (engine, dtype, requiresShaderF16, etc.). Possible codes: `tools-primary` (recommended for tool use), `tools-validated` (tool calling validated in this project), `chat-only` (chat only, tools disabled), `moe` (mixture-of-experts architecture). | uniqueItems |
 | `ramGB` | no | number | Optional recommended system RAM in GB. Informational only; shown in the LLM panel. | minimum: 0 |
@@ -81,7 +81,6 @@ Optional per-model override for contextPreset (field above) and engine context d
 
 | Field | Required | Type | Description | Constraints |
 | --- | --- | --- | --- | --- |
-| `contextOverride.provider` | no | string | Advanced override for the budget provider family. Usually omit; engine/contextPreset already derive the effective provider at runtime. | enum: "ollama", "transformersjs" |
 | `contextOverride.contextWindowTokens` | no | integer | Advanced override for the app context budget inside contextOverride. Same semantics as the top-level field; prefer the top-level contextWindowTokens when only the budget total differs. | minimum: 256 |
 | `contextOverride.safeInputTokens` | no | integer | Input token budget reserved for system, runtime, history and tool results before output is computed. | minimum: 0 |
 | `contextOverride.reservedOutputTokens` | no | integer | Optional static output reservation. Usually omitted; getPolicy() derives output limits dynamically. | minimum: 1 |
@@ -197,66 +196,15 @@ Each preset merges `contextPresetBase.transformersjs` then its policy fields. Ov
 
 | Field | Value |
 | --- | --- |
-| `provider` | "transformersjs" |
 | `contextWindowTokens` | 4096 |
 | `maxHistoryMessages` | 1 |
 
-#### `transformers-tiny-tools-plan`
+#### `browser-tools-xs`
 
-Sub-1B tool models that also run plan-generation steps (maxNewTokensForPlan = 384).
-
-| Effective runtime contextPolicy field | Value |
-| --- | --- |
-| `provider` | "transformersjs" |
-| `contextWindowTokens` | 4096 |
-| `maxHistoryMessages` | 1 |
-| `safeInputTokens` | 1100 |
-| `maxSystemChars` | 780 |
-| `maxRuntimeChars` | 300 |
-| `maxHistoryChars` | 350 |
-| `maxToolResultChars` | 1800 |
-| `maxToolResultCharsForSynthesis` | 1000 |
-| `maxNewTokensForPlan` | 384 |
-
-#### `transformers-tiny-tools`
-
-Sub-1B tool models without a plan-specific output cap.
+Tightest browser tool budget for very small local models.
 
 | Effective runtime contextPolicy field | Value |
 | --- | --- |
-| `provider` | "transformersjs" |
-| `contextWindowTokens` | 4096 |
-| `maxHistoryMessages` | 1 |
-| `safeInputTokens` | 1100 |
-| `maxSystemChars` | 780 |
-| `maxRuntimeChars` | 300 |
-| `maxHistoryChars` | 350 |
-| `maxToolResultChars` | 1800 |
-| `maxToolResultCharsForSynthesis` | 1000 |
-
-#### `transformers-edge-tools`
-
-~1.2–1.5B edge models with moderate tool-result headroom.
-
-| Effective runtime contextPolicy field | Value |
-| --- | --- |
-| `provider` | "transformersjs" |
-| `contextWindowTokens` | 4096 |
-| `maxHistoryMessages` | 1 |
-| `safeInputTokens` | 1250 |
-| `maxSystemChars` | 820 |
-| `maxRuntimeChars` | 320 |
-| `maxHistoryChars` | 550 |
-| `maxToolResultChars` | 2200 |
-| `maxToolResultCharsForSynthesis` | 1300 |
-
-#### `transformers-350m-tools`
-
-~350M tool-tuned models with the tightest practical tool budgets.
-
-| Effective runtime contextPolicy field | Value |
-| --- | --- |
-| `provider` | "transformersjs" |
 | `contextWindowTokens` | 4096 |
 | `maxHistoryMessages` | 1 |
 | `safeInputTokens` | 1050 |
@@ -266,13 +214,42 @@ Sub-1B tool models without a plan-specific output cap.
 | `maxToolResultChars` | 1600 |
 | `maxToolResultCharsForSynthesis` | 900 |
 
-#### `transformers-fp16-tools`
+#### `browser-tools-sm`
 
-FP16 WebGPU models with slightly larger prompt and tool-result limits.
+Small browser tool budget for sub-1B local models.
 
 | Effective runtime contextPolicy field | Value |
 | --- | --- |
-| `provider` | "transformersjs" |
+| `contextWindowTokens` | 4096 |
+| `maxHistoryMessages` | 1 |
+| `safeInputTokens` | 1100 |
+| `maxSystemChars` | 780 |
+| `maxRuntimeChars` | 300 |
+| `maxHistoryChars` | 350 |
+| `maxToolResultChars` | 1800 |
+| `maxToolResultCharsForSynthesis` | 1000 |
+
+#### `browser-tools-md`
+
+Medium browser tool budget for 1B-1.5B local models.
+
+| Effective runtime contextPolicy field | Value |
+| --- | --- |
+| `contextWindowTokens` | 4096 |
+| `maxHistoryMessages` | 1 |
+| `safeInputTokens` | 1250 |
+| `maxSystemChars` | 820 |
+| `maxRuntimeChars` | 320 |
+| `maxHistoryChars` | 550 |
+| `maxToolResultChars` | 2200 |
+| `maxToolResultCharsForSynthesis` | 1300 |
+
+#### `browser-tools-lg`
+
+Large browser tool budget for stronger WebGPU local models.
+
+| Effective runtime contextPolicy field | Value |
+| --- | --- |
 | `contextWindowTokens` | 4096 |
 | `maxHistoryMessages` | 1 |
 | `safeInputTokens` | 1350 |
@@ -282,13 +259,12 @@ FP16 WebGPU models with slightly larger prompt and tool-result limits.
 | `maxToolResultChars` | 2400 |
 | `maxToolResultCharsForSynthesis` | 1400 |
 
-#### `transformers-micro-tools`
+#### `browser-tools-xl`
 
-~1.2B micro tool models with the largest local tool-result budget in this family.
+Largest browser tool budget for local models that tolerate more prompt/tool-result context.
 
 | Effective runtime contextPolicy field | Value |
 | --- | --- |
-| `provider` | "transformersjs" |
 | `contextWindowTokens` | 4096 |
 | `maxHistoryMessages` | 1 |
 | `safeInputTokens` | 1400 |
@@ -298,13 +274,12 @@ FP16 WebGPU models with slightly larger prompt and tool-result limits.
 | `maxToolResultChars` | 2600 |
 | `maxToolResultCharsForSynthesis` | 1500 |
 
-#### `transformers-tiny-fallback`
+#### `browser-chat-fallback`
 
 WASM chat fallback; history and tool results disabled to minimize GPU/RAM spikes.
 
 | Effective runtime contextPolicy field | Value |
 | --- | --- |
-| `provider` | "transformersjs" |
 | `contextWindowTokens` | 4096 |
 | `maxHistoryMessages` | 0 |
 | `safeInputTokens` | 900 |
@@ -323,7 +298,6 @@ Default Ollama context before catalog contextOverride merges. safeInputTokens = 
 | Field | Value |
 | --- | --- |
 | `contextWindowTokens` | 8192 |
-| `provider` | "ollama" |
 | `reservedOutputTokens` | 2048 |
 | `maxSystemChars` | 2600 |
 | `maxRuntimeChars` | 1200 |

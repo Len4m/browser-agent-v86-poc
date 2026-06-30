@@ -39,7 +39,7 @@ Schema fuente de `data/llm-models.json`. Entradas del catálogo editadas manualm
 | `topP` | no | number | Valor opcional nucleus top_p. Omítelo para usar el default 0.85 aplicado en `chat-state.ts`. | minimum: 0; maximum: 1 |
 | `thinking` | no | object | Configuración opcional de razonamiento. Omítela en modelos que no razonan. `chat-state.ts` deriva el toggle de UI, el estado por defecto y el flag `think` de Ollama desde `mode`. | additionalProperties: false |
 | `contextWindowTokens` | no | integer | Presupuesto de contexto de la app en tokens. No configura el contexto nativo del runtime. Se usa para derivar `safeInputTokens` y límites de salida. | minimum: 256 |
-| `contextPreset` | no | string | Solo Transformers.js. Preset de campos de presupuesto de contexto. Expandido por `chat-state.ts` a runtime `contextPolicy`. Ver [Catálogo de presets](#catálogo-de-presets). | enum: "transformers-tiny-tools-plan", "transformers-tiny-tools", "transformers-edge-tools", "transformers-350m-tools", "transformers-fp16-tools", "transformers-micro-tools", "transformers-tiny-fallback" |
+| `contextPreset` | no | string | Solo Transformers.js. Preset de campos de presupuesto de contexto. Expandido por `chat-state.ts` a runtime `contextPolicy`. Ver [Catálogo de presets](#catálogo-de-presets). | enum: "browser-tools-xs", "browser-tools-sm", "browser-tools-md", "browser-tools-lg", "browser-tools-xl", "browser-chat-fallback" |
 | `contextOverride` | no | object | Override opcional de `contextPreset` y defaults de contexto por engine. En Ollama, configura solo campos que difieran de los defaults de engine. | additionalProperties: false |
 | `notes` | no | array&lt;string&gt; | Códigos de notas neutrales al idioma. La UI los renderiza como texto localizado; codifica solo hechos no derivables de otros campos. | uniqueItems |
 | `ramGB` | no | number | RAM de sistema recomendada en GB. Solo informativa; se muestra en el panel LLM. | minimum: 0 |
@@ -81,7 +81,6 @@ Override opcional de `contextPreset` y defaults de contexto por engine. En Ollam
 
 | Campo | Obligatorio | Tipo | Descripción | Restricciones |
 | --- | --- | --- | --- | --- |
-| `contextOverride.provider` | no | string | Override avanzado de la familia de provider de presupuesto. Normalmente omítelo; engine/contextPreset ya derivan el provider efectivo. | enum: "ollama", "transformersjs" |
 | `contextOverride.contextWindowTokens` | no | integer | Override avanzado del presupuesto de contexto de la app dentro de `contextOverride`. Prefiere el campo superior `contextWindowTokens` si solo cambia el total. | minimum: 256 |
 | `contextOverride.safeInputTokens` | no | integer | Presupuesto de tokens de entrada reservado para system, runtime, historial y resultados de tools antes de calcular la salida. | minimum: 0 |
 | `contextOverride.reservedOutputTokens` | no | integer | Reserva estática opcional de salida. Normalmente se omite porque `getPolicy()` deriva límites dinámicamente. | minimum: 1 |
@@ -197,66 +196,15 @@ Cada preset fusiona `contextPresetBase.transformersjs` y después sus campos de 
 
 | Campo | Valor |
 | --- | --- |
-| `provider` | "transformersjs" |
 | `contextWindowTokens` | 4096 |
 | `maxHistoryMessages` | 1 |
 
-#### `transformers-tiny-tools-plan`
+#### `browser-tools-xs`
 
-Modelos de tools sub-1B que también ejecutan pasos de generación de plan (maxNewTokensForPlan = 384).
-
-| Campo efectivo de contextPolicy runtime | Valor |
-| --- | --- |
-| `provider` | "transformersjs" |
-| `contextWindowTokens` | 4096 |
-| `maxHistoryMessages` | 1 |
-| `safeInputTokens` | 1100 |
-| `maxSystemChars` | 780 |
-| `maxRuntimeChars` | 300 |
-| `maxHistoryChars` | 350 |
-| `maxToolResultChars` | 1800 |
-| `maxToolResultCharsForSynthesis` | 1000 |
-| `maxNewTokensForPlan` | 384 |
-
-#### `transformers-tiny-tools`
-
-Modelos de tools sub-1B sin límite de salida específico para plan.
+Presupuesto browser de tools más ajustado para modelos locales muy pequeños.
 
 | Campo efectivo de contextPolicy runtime | Valor |
 | --- | --- |
-| `provider` | "transformersjs" |
-| `contextWindowTokens` | 4096 |
-| `maxHistoryMessages` | 1 |
-| `safeInputTokens` | 1100 |
-| `maxSystemChars` | 780 |
-| `maxRuntimeChars` | 300 |
-| `maxHistoryChars` | 350 |
-| `maxToolResultChars` | 1800 |
-| `maxToolResultCharsForSynthesis` | 1000 |
-
-#### `transformers-edge-tools`
-
-Modelos edge de ~1.2–1.5B con margen moderado para resultados de tools.
-
-| Campo efectivo de contextPolicy runtime | Valor |
-| --- | --- |
-| `provider` | "transformersjs" |
-| `contextWindowTokens` | 4096 |
-| `maxHistoryMessages` | 1 |
-| `safeInputTokens` | 1250 |
-| `maxSystemChars` | 820 |
-| `maxRuntimeChars` | 320 |
-| `maxHistoryChars` | 550 |
-| `maxToolResultChars` | 2200 |
-| `maxToolResultCharsForSynthesis` | 1300 |
-
-#### `transformers-350m-tools`
-
-Modelos ~350M ajustados para tools con el presupuesto práctico más ajustado.
-
-| Campo efectivo de contextPolicy runtime | Valor |
-| --- | --- |
-| `provider` | "transformersjs" |
 | `contextWindowTokens` | 4096 |
 | `maxHistoryMessages` | 1 |
 | `safeInputTokens` | 1050 |
@@ -266,13 +214,42 @@ Modelos ~350M ajustados para tools con el presupuesto práctico más ajustado.
 | `maxToolResultChars` | 1600 |
 | `maxToolResultCharsForSynthesis` | 900 |
 
-#### `transformers-fp16-tools`
+#### `browser-tools-sm`
 
-Modelos FP16 WebGPU con límites algo mayores para prompt y resultados de tools.
+Presupuesto browser pequeño para modelos locales sub-1B.
 
 | Campo efectivo de contextPolicy runtime | Valor |
 | --- | --- |
-| `provider` | "transformersjs" |
+| `contextWindowTokens` | 4096 |
+| `maxHistoryMessages` | 1 |
+| `safeInputTokens` | 1100 |
+| `maxSystemChars` | 780 |
+| `maxRuntimeChars` | 300 |
+| `maxHistoryChars` | 350 |
+| `maxToolResultChars` | 1800 |
+| `maxToolResultCharsForSynthesis` | 1000 |
+
+#### `browser-tools-md`
+
+Presupuesto browser medio para modelos locales de 1B-1.5B.
+
+| Campo efectivo de contextPolicy runtime | Valor |
+| --- | --- |
+| `contextWindowTokens` | 4096 |
+| `maxHistoryMessages` | 1 |
+| `safeInputTokens` | 1250 |
+| `maxSystemChars` | 820 |
+| `maxRuntimeChars` | 320 |
+| `maxHistoryChars` | 550 |
+| `maxToolResultChars` | 2200 |
+| `maxToolResultCharsForSynthesis` | 1300 |
+
+#### `browser-tools-lg`
+
+Presupuesto browser grande para modelos locales WebGPU más capaces.
+
+| Campo efectivo de contextPolicy runtime | Valor |
+| --- | --- |
 | `contextWindowTokens` | 4096 |
 | `maxHistoryMessages` | 1 |
 | `safeInputTokens` | 1350 |
@@ -282,13 +259,12 @@ Modelos FP16 WebGPU con límites algo mayores para prompt y resultados de tools.
 | `maxToolResultChars` | 2400 |
 | `maxToolResultCharsForSynthesis` | 1400 |
 
-#### `transformers-micro-tools`
+#### `browser-tools-xl`
 
-Modelos micro tools de ~1.2B con el mayor presupuesto local para resultados de tools en esta familia.
+Mayor presupuesto browser para modelos locales que toleran más contexto de prompt/resultados de tools.
 
 | Campo efectivo de contextPolicy runtime | Valor |
 | --- | --- |
-| `provider` | "transformersjs" |
 | `contextWindowTokens` | 4096 |
 | `maxHistoryMessages` | 1 |
 | `safeInputTokens` | 1400 |
@@ -298,13 +274,12 @@ Modelos micro tools de ~1.2B con el mayor presupuesto local para resultados de t
 | `maxToolResultChars` | 2600 |
 | `maxToolResultCharsForSynthesis` | 1500 |
 
-#### `transformers-tiny-fallback`
+#### `browser-chat-fallback`
 
 Fallback WASM de chat; historial y resultados de tools desactivados para minimizar picos de GPU/RAM.
 
 | Campo efectivo de contextPolicy runtime | Valor |
 | --- | --- |
-| `provider` | "transformersjs" |
 | `contextWindowTokens` | 4096 |
 | `maxHistoryMessages` | 0 |
 | `safeInputTokens` | 900 |
@@ -323,7 +298,6 @@ Contexto default de Ollama antes de fusionar `contextOverride` del catálogo. sa
 | Campo | Valor |
 | --- | --- |
 | `contextWindowTokens` | 8192 |
-| `provider` | "ollama" |
 | `reservedOutputTokens` | 2048 |
 | `maxSystemChars` | 2600 |
 | `maxRuntimeChars` | 1200 |

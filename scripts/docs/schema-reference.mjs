@@ -165,7 +165,6 @@ const ES_FIELD_DESCRIPTIONS = {
   "thinking.extract.tagName": "Tag XML que envuelve el razonamiento, por ejemplo think.",
   "thinking.extract.startWithReasoning": "Trata la salida como si empezara dentro del bloque de razonamiento.",
   "thinking.extract.separator": "Separador insertado entre razonamiento y texto. Por defecto nueva línea (\\n) si se omite.",
-  "contextOverride.provider": "Override avanzado de la familia de provider de presupuesto. Normalmente omítelo; engine/contextPreset ya derivan el provider efectivo.",
   "contextOverride.contextWindowTokens": "Override avanzado del presupuesto de contexto de la app dentro de `contextOverride`. Prefiere el campo superior `contextWindowTokens` si solo cambia el total.",
   "contextOverride.safeInputTokens": "Presupuesto de tokens de entrada reservado para system, runtime, historial y resultados de tools antes de calcular la salida.",
   "contextOverride.reservedOutputTokens": "Reserva estática opcional de salida. Normalmente se omite porque `getPolicy()` deriva límites dinámicamente.",
@@ -275,52 +274,14 @@ const LLM_CATALOG_PRESETS_DOC = {
   },
   contextPresetBase: {
     transformersjs: {
-      provider: "transformersjs",
       contextWindowTokens: 4096,
       maxHistoryMessages: 1,
     },
   },
   contextPresets: {
-    "transformers-tiny-tools-plan": {
-      description: "Sub-1B tool models that also run plan-generation steps (maxNewTokensForPlan = 384).",
-      descriptionEs: "Modelos de tools sub-1B que también ejecutan pasos de generación de plan (maxNewTokensForPlan = 384).",
-      contextPolicy: {
-        safeInputTokens: 1100,
-        maxSystemChars: 780,
-        maxRuntimeChars: 300,
-        maxHistoryChars: 350,
-        maxToolResultChars: 1800,
-        maxToolResultCharsForSynthesis: 1000,
-        maxNewTokensForPlan: 384,
-      },
-    },
-    "transformers-tiny-tools": {
-      description: "Sub-1B tool models without a plan-specific output cap.",
-      descriptionEs: "Modelos de tools sub-1B sin límite de salida específico para plan.",
-      contextPolicy: {
-        safeInputTokens: 1100,
-        maxSystemChars: 780,
-        maxRuntimeChars: 300,
-        maxHistoryChars: 350,
-        maxToolResultChars: 1800,
-        maxToolResultCharsForSynthesis: 1000,
-      },
-    },
-    "transformers-edge-tools": {
-      description: "~1.2–1.5B edge models with moderate tool-result headroom.",
-      descriptionEs: "Modelos edge de ~1.2–1.5B con margen moderado para resultados de tools.",
-      contextPolicy: {
-        safeInputTokens: 1250,
-        maxSystemChars: 820,
-        maxRuntimeChars: 320,
-        maxHistoryChars: 550,
-        maxToolResultChars: 2200,
-        maxToolResultCharsForSynthesis: 1300,
-      },
-    },
-    "transformers-350m-tools": {
-      description: "~350M tool-tuned models with the tightest practical tool budgets.",
-      descriptionEs: "Modelos ~350M ajustados para tools con el presupuesto práctico más ajustado.",
+    "browser-tools-xs": {
+      description: "Tightest browser tool budget for very small local models.",
+      descriptionEs: "Presupuesto browser de tools más ajustado para modelos locales muy pequeños.",
       contextPolicy: {
         safeInputTokens: 1050,
         maxSystemChars: 740,
@@ -330,9 +291,33 @@ const LLM_CATALOG_PRESETS_DOC = {
         maxToolResultCharsForSynthesis: 900,
       },
     },
-    "transformers-fp16-tools": {
-      description: "FP16 WebGPU models with slightly larger prompt and tool-result limits.",
-      descriptionEs: "Modelos FP16 WebGPU con límites algo mayores para prompt y resultados de tools.",
+    "browser-tools-sm": {
+      description: "Small browser tool budget for sub-1B local models.",
+      descriptionEs: "Presupuesto browser pequeño para modelos locales sub-1B.",
+      contextPolicy: {
+        safeInputTokens: 1100,
+        maxSystemChars: 780,
+        maxRuntimeChars: 300,
+        maxHistoryChars: 350,
+        maxToolResultChars: 1800,
+        maxToolResultCharsForSynthesis: 1000,
+      },
+    },
+    "browser-tools-md": {
+      description: "Medium browser tool budget for 1B-1.5B local models.",
+      descriptionEs: "Presupuesto browser medio para modelos locales de 1B-1.5B.",
+      contextPolicy: {
+        safeInputTokens: 1250,
+        maxSystemChars: 820,
+        maxRuntimeChars: 320,
+        maxHistoryChars: 550,
+        maxToolResultChars: 2200,
+        maxToolResultCharsForSynthesis: 1300,
+      },
+    },
+    "browser-tools-lg": {
+      description: "Large browser tool budget for stronger WebGPU local models.",
+      descriptionEs: "Presupuesto browser grande para modelos locales WebGPU más capaces.",
       contextPolicy: {
         safeInputTokens: 1350,
         maxSystemChars: 860,
@@ -342,9 +327,9 @@ const LLM_CATALOG_PRESETS_DOC = {
         maxToolResultCharsForSynthesis: 1400,
       },
     },
-    "transformers-micro-tools": {
-      description: "~1.2B micro tool models with the largest local tool-result budget in this family.",
-      descriptionEs: "Modelos micro tools de ~1.2B con el mayor presupuesto local para resultados de tools en esta familia.",
+    "browser-tools-xl": {
+      description: "Largest browser tool budget for local models that tolerate more prompt/tool-result context.",
+      descriptionEs: "Mayor presupuesto browser para modelos locales que toleran más contexto de prompt/resultados de tools.",
       contextPolicy: {
         safeInputTokens: 1400,
         maxSystemChars: 900,
@@ -354,7 +339,7 @@ const LLM_CATALOG_PRESETS_DOC = {
         maxToolResultCharsForSynthesis: 1500,
       },
     },
-    "transformers-tiny-fallback": {
+    "browser-chat-fallback": {
       description: "WASM chat fallback; history and tool results disabled to minimize GPU/RAM spikes.",
       descriptionEs: "Fallback WASM de chat; historial y resultados de tools desactivados para minimizar picos de GPU/RAM.",
       contextPolicy: {
@@ -374,7 +359,6 @@ const LLM_CATALOG_PRESETS_DOC = {
       descriptionEs: "Contexto default de Ollama antes de fusionar `contextOverride` del catálogo. safeInputTokens = min(6000, max(2400, contextWindowTokens - 2200)).",
       contextWindowTokens: 8192,
       contextPolicy: {
-        provider: "ollama",
         reservedOutputTokens: 2048,
         maxSystemChars: 2600,
         maxRuntimeChars: 1200,
