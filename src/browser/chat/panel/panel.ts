@@ -504,6 +504,27 @@ function createArtifactResourceRow(summary: LlmArtifactSummary): HTMLDivElement 
   return row;
 }
 
+function llmNoteLabel(code: string): string {
+  switch (code) {
+    case "tools-primary":
+      return t("panel.llm.note.toolsPrimary");
+    case "tools-validated":
+      return t("panel.llm.note.toolsValidated");
+    case "chat-only":
+      return t("panel.llm.note.chatOnly");
+    case "moe":
+      return t("panel.llm.note.moe");
+    default:
+      return "";
+  }
+}
+
+function llmModelDescription(model: LlmModelConfig): string {
+  if (typeof model.description === "string" && model.description.trim()) return model.description;
+  const notes = Array.isArray(model.notes) ? model.notes : [];
+  return notes.map((note) => llmNoteLabel(String(note))).filter(Boolean).join(" · ");
+}
+
 function createMetaItem(key: string, value: unknown): HTMLSpanElement {
   const item = document.createElement("span");
   const label = document.createElement("b");
@@ -522,7 +543,11 @@ function updateSelectedModelCard(): void {
   const repo = document.getElementById("ba-llm-repo-path");
 
   if (title) title.textContent = llmModelShortLabel(model);
-  if (desc) desc.textContent = model.description || t("panel.llm.model.descFallback");
+  if (desc) {
+    const descText = llmModelDescription(model);
+    desc.textContent = descText;
+    desc.hidden = !descText;
+  }
   if (repo) repo.textContent = model.custom ? t("panel.llm.model.repoCustomHint") : model.model || "";
   if (meta) {
     const entries: Array<[string, unknown] | null> = [
@@ -530,6 +555,8 @@ function updateSelectedModelCard(): void {
       [t("panel.llm.meta.engine"), llmEngineLabel(model.engine)],
       [t("panel.llm.meta.download"), model.sizeLabel || "—"],
       [t("panel.llm.meta.quantization"), model.dtype || "—"],
+      typeof model.ramGB === "number" ? [t("panel.llm.meta.ram"), `${model.ramGB} GB`] : null,
+      typeof model.vramGB === "number" ? [t("panel.llm.meta.vram"), `${model.vramGB} GB`] : null,
       [t("panel.llm.meta.tools"), model.agent?.toolCalling || "—"],
       [t("panel.llm.meta.reasoning"), model.thinking?.enabled ? t("common.yes") : t("common.no")],
     ];
