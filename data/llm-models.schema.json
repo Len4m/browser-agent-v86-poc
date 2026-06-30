@@ -132,13 +132,12 @@
       "contextPreset": {
         "type": "string",
         "enum": [
-          "transformers-tiny-tools-plan",
-          "transformers-tiny-tools",
-          "transformers-edge-tools",
-          "transformers-350m-tools",
-          "transformers-fp16-tools",
-          "transformers-micro-tools",
-          "transformers-tiny-fallback"
+          "browser-tools-xs",
+          "browser-tools-sm",
+          "browser-tools-md",
+          "browser-tools-lg",
+          "browser-tools-xl",
+          "browser-chat-fallback"
         ],
         "description": "Transformers.js only. Preset for context budget fields. Expanded by chat-state.ts into runtime contextPolicy. See [Catalog Presets](#catalog-presets)."
       },
@@ -147,11 +146,6 @@
         "additionalProperties": false,
         "description": "Optional per-model override for contextPreset (field above) and engine context defaults. For Ollama, set only fields that differ from engine defaults. Merged in chat-state.ts into runtime contextPolicy, then consumed by context-budget.ts.",
         "properties": {
-          "provider": {
-            "type": "string",
-            "enum": ["ollama", "transformersjs"],
-            "description": "Advanced override for the budget provider family. Usually omit; engine/contextPreset already derive the effective provider at runtime."
-          },
           "contextWindowTokens": {
             "type": "integer",
             "minimum": 256,

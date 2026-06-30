@@ -33,7 +33,6 @@ interface LlmThinkingMeta {
 export interface LlmContextPolicy {
   contextWindowTokens?: number;
   safeInputTokens?: number;
-  provider?: string;
   reservedOutputTokens?: number;
   maxSystemChars?: number;
   maxRuntimeChars?: number;
@@ -139,7 +138,6 @@ interface LlmEventsApi {
 
 function transformersContextPolicy(policy: LlmContextPolicy): LlmContextPolicy {
   return {
-    provider: "transformersjs",
     contextWindowTokens: 4096,
     maxHistoryMessages: 1,
     ...policy,
@@ -147,16 +145,7 @@ function transformersContextPolicy(policy: LlmContextPolicy): LlmContextPolicy {
 }
 
 const CONTEXT_POLICY_PRESETS: Record<string, LlmContextPolicy> = {
-  "transformers-tiny-tools-plan": transformersContextPolicy({
-    safeInputTokens: 1100,
-    maxSystemChars: 780,
-    maxRuntimeChars: 300,
-    maxHistoryChars: 350,
-    maxToolResultChars: 1800,
-    maxToolResultCharsForSynthesis: 1000,
-    maxNewTokensForPlan: 384,
-  }),
-  "transformers-tiny-tools": transformersContextPolicy({
+  "browser-tools-sm": transformersContextPolicy({
     safeInputTokens: 1100,
     maxSystemChars: 780,
     maxRuntimeChars: 300,
@@ -164,7 +153,7 @@ const CONTEXT_POLICY_PRESETS: Record<string, LlmContextPolicy> = {
     maxToolResultChars: 1800,
     maxToolResultCharsForSynthesis: 1000,
   }),
-  "transformers-edge-tools": transformersContextPolicy({
+  "browser-tools-md": transformersContextPolicy({
     safeInputTokens: 1250,
     maxSystemChars: 820,
     maxRuntimeChars: 320,
@@ -172,7 +161,7 @@ const CONTEXT_POLICY_PRESETS: Record<string, LlmContextPolicy> = {
     maxToolResultChars: 2200,
     maxToolResultCharsForSynthesis: 1300,
   }),
-  "transformers-350m-tools": transformersContextPolicy({
+  "browser-tools-xs": transformersContextPolicy({
     safeInputTokens: 1050,
     maxSystemChars: 740,
     maxRuntimeChars: 280,
@@ -180,7 +169,7 @@ const CONTEXT_POLICY_PRESETS: Record<string, LlmContextPolicy> = {
     maxToolResultChars: 1600,
     maxToolResultCharsForSynthesis: 900,
   }),
-  "transformers-fp16-tools": transformersContextPolicy({
+  "browser-tools-lg": transformersContextPolicy({
     safeInputTokens: 1350,
     maxSystemChars: 860,
     maxRuntimeChars: 340,
@@ -188,7 +177,7 @@ const CONTEXT_POLICY_PRESETS: Record<string, LlmContextPolicy> = {
     maxToolResultChars: 2400,
     maxToolResultCharsForSynthesis: 1400,
   }),
-  "transformers-micro-tools": transformersContextPolicy({
+  "browser-tools-xl": transformersContextPolicy({
     safeInputTokens: 1400,
     maxSystemChars: 900,
     maxRuntimeChars: 360,
@@ -196,7 +185,7 @@ const CONTEXT_POLICY_PRESETS: Record<string, LlmContextPolicy> = {
     maxToolResultChars: 2600,
     maxToolResultCharsForSynthesis: 1500,
   }),
-  "transformers-tiny-fallback": transformersContextPolicy({
+  "browser-chat-fallback": transformersContextPolicy({
     safeInputTokens: 900,
     maxSystemChars: 560,
     maxRuntimeChars: 220,
@@ -347,7 +336,6 @@ function defaultContextMeta(model: LlmModelConfig): Pick<LlmModelConfig, "contex
     return {
       contextWindowTokens,
       contextPolicy: {
-        provider: "ollama",
         contextWindowTokens,
         safeInputTokens: Math.min(6000, Math.max(2400, contextWindowTokens - 2200)),
         reservedOutputTokens: 2048,

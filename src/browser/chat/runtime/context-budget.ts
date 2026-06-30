@@ -19,7 +19,6 @@ interface ChatMessage {
 }
 
 interface ContextBudgetPolicy extends LlmContextPolicy {
-  provider: string;
   contextWindowTokens: number;
   safeInputTokens: number;
   reservedOutputTokens: number;
@@ -74,7 +73,6 @@ interface LlmContextBudgetApi {
 }
 
 const DEFAULT_LOCAL_POLICY: ContextBudgetPolicy = {
-  provider: "transformersjs",
   contextWindowTokens: 4096,
   // Local browser inference runs beside v86, so these values are deliberately
   // below the theoretical model context. They reduce GPU memory spikes at the
@@ -91,7 +89,6 @@ const DEFAULT_LOCAL_POLICY: ContextBudgetPolicy = {
 };
 
 const DEFAULT_OLLAMA_POLICY: ContextBudgetPolicy = {
-  provider: "ollama",
   contextWindowTokens: 8192,
   safeInputTokens: 5200,
   reservedOutputTokens: 2048,
@@ -104,9 +101,13 @@ const DEFAULT_OLLAMA_POLICY: ContextBudgetPolicy = {
   maxArtifacts: 4,
 };
 
+function contextProvider(modelConfig: LlmModelConfig | null | undefined): "ollama" | "transformersjs" {
+  return modelConfig?.engine === "ollama" ? "ollama" : "transformersjs";
+}
+
 function getRawPolicy(modelConfig: LlmModelConfig | null = getModelConfig()): ContextBudgetPolicy {
   const selected = modelConfig || getModelConfig();
-  const provider = selected.contextPolicy?.provider || selected.engine || "transformersjs";
+  const provider = contextProvider(selected);
   const base = provider === "ollama" ? DEFAULT_OLLAMA_POLICY : DEFAULT_LOCAL_POLICY;
   return {
     ...base,
@@ -147,8 +148,8 @@ function getModelConfig(): LlmModelConfig {
     || FALLBACK_MODEL;
 }
 
-function localOutputCeiling(policy: ContextBudgetPolicy, safeInput: number): number {
-  if (policy.provider !== "transformersjs") return Infinity;
+function localOutputCeiling(provider: "ollama" | "transformersjs", safeInput: number): number {
+  if (provider !== "transformersjs") return Infinity;
   if (safeInput <= 1000) return 512;
   if (safeInput <= 1200) return 1024;
   return 1536;
@@ -157,6 +158,7 @@ function localOutputCeiling(policy: ContextBudgetPolicy, safeInput: number): num
 function resolveMaxOutputTokens(modelConfig: LlmModelConfig | null = getModelConfig(), kind: OutputKind = "chat"): number {
   const selected = modelConfig || getModelConfig();
   const policy = getRawPolicy(selected);
+  const provider = contextProvider(selected);
   const contextWindow = numberValue(
     selected.contextWindowTokens
       ?? policy.contextWindowTokens
@@ -167,7 +169,7 @@ function resolveMaxOutputTokens(modelConfig: LlmModelConfig | null = getModelCon
   const fromWindow = Math.max(128, contextWindow - safeInput - 48);
 
   let target = fromWindow;
-  const runtimeCap = localOutputCeiling(policy, safeInput);
+  const runtimeCap = localOutputCeiling(provider, safeInput);
   if (Number.isFinite(runtimeCap) && runtimeCap > 0) {
     target = Math.min(target, runtimeCap);
   }
@@ -182,7 +184,7 @@ function resolveMaxOutputTokens(modelConfig: LlmModelConfig | null = getModelCon
     if (Number.isFinite(planCap) && planCap > 0) {
       return Math.min(target, planCap);
     }
-    return Math.min(target, policy.provider === "ollama" ? 768 : 384);
+    return Math.min(target, provider === "ollama" ? 768 : 384);
   }
   return target;
 }

@@ -100,11 +100,12 @@ test("model context presets expand to the same runtime policy fields", () => {
   const custom = llmModelOptions.find((model) => model.id === "custom-transformersjs");
 
   assert.equal(qwen3?.contextWindowTokens, 4096);
-  assert.equal(qwen3?.contextPolicy?.provider, "transformersjs");
+  assert.equal(qwen3?.contextPreset, "browser-tools-sm");
   assert.equal(qwen3?.contextPolicy?.safeInputTokens, 1100);
   assert.equal(qwen3?.contextPolicy?.maxNewTokensForPlan, 384);
   assert.equal(qwen25?.contextPolicy?.safeInputTokens, 1100);
   assert.equal(qwen25?.contextPolicy?.maxNewTokensForPlan, undefined);
+  assert.equal(glm?.contextPreset, "browser-tools-md");
   assert.equal(glm?.contextPolicy?.maxToolResultChars, 2200);
   assert.equal(granite350?.contextPolicy?.maxRuntimeChars, 280);
   assert.equal(lfm2?.contextPolicy?.maxToolResultCharsForSynthesis, 1400);
