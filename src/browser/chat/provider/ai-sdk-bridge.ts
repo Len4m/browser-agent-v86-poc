@@ -153,7 +153,7 @@ function createWorker({ disposeGenerationCacheBeforeGenerate = false }: { dispos
 
 function shouldUseReasoningMiddleware(modelConfig: LlmModelConfig): boolean {
   const thinking = modelConfig?.thinking;
-  if (!thinking?.enabled || !thinking?.tagName) return false;
+  if (!thinking?.enabled || !thinking?.extract?.tagName) return false;
   // Ollama expone message.thinking como reasoning-delta cuando el modelo lo devuelve.
   // El middleware por tags solo aplica a texto generado por Transformers.js.
   if (modelConfig.engine === "ollama") return false;
@@ -164,14 +164,15 @@ function wrapAgentModel(baseModel: LanguageModelV3, modelConfig: LlmModelConfig)
   const engine = modelConfig?.engine || "transformersjs";
   const toolCalling = modelConfig?.agent?.toolCalling || "fair";
   const parseTextTools = engine === "transformersjs" && (toolCalling === "weak" || toolCalling === "fair");
-  const thinking = modelConfig?.thinking;
+  const extract = modelConfig?.thinking?.extract;
   let model = baseModel;
-  if (shouldUseReasoningMiddleware(modelConfig) && thinking?.tagName) {
+  if (shouldUseReasoningMiddleware(modelConfig) && extract?.tagName) {
     model = wrapLanguageModel({
       model,
       middleware: extractReasoningMiddleware({
-        tagName: thinking.tagName,
-        startWithReasoning: Boolean(thinking.startWithReasoning),
+        tagName: extract.tagName,
+        ...(extract.startWithReasoning !== undefined ? { startWithReasoning: extract.startWithReasoning } : {}),
+        ...(extract.separator !== undefined ? { separator: extract.separator } : {}),
       }),
     });
   }
@@ -201,7 +202,7 @@ function createModel(modelConfig: LlmModelConfig): LanguageModelV3 {
     terminateActiveWorker();
     base = ollamaBrowser(modelConfig.model, {
       endpoint: resolveOllamaEndpoint(),
-      think: typeof modelConfig.ollamaThink === "boolean" ? modelConfig.ollamaThink : undefined,
+      think: typeof modelConfig.thinking?.generate === "boolean" ? modelConfig.thinking.generate : undefined,
     });
     runtime = {
       provider: "ollama",

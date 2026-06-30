@@ -16,11 +16,19 @@ interface LlmAgentMeta {
 
 type LlmAgentInput = Partial<LlmAgentMeta>;
 
-interface LlmThinkingMeta {
-  enabled: boolean;
+interface LlmReasoningExtract {
   tagName: string;
-  startWithReasoning: boolean;
-  [key: string]: unknown;
+  startWithReasoning?: boolean;
+  separator?: string;
+}
+
+interface LlmThinkingMeta {
+  // Catalog input.
+  mode?: "off" | "optional" | "on";
+  // Derived runtime fields (filled by mergeThinkingMeta).
+  enabled?: boolean;
+  generate?: boolean;
+  extract?: LlmReasoningExtract;
 }
 
 export interface LlmContextPolicy {
@@ -63,7 +71,7 @@ export interface LlmModelConfig {
   contextPreset?: string;
   contextPolicy?: LlmContextPolicy;
   agent?: LlmAgentInput;
-  thinking?: Partial<LlmThinkingMeta>;
+  thinking?: LlmThinkingMeta;
   runtime?: {
     provider?: string;
     endpoint?: string;
@@ -288,11 +296,18 @@ function defaultSampling(model: LlmModelConfig): { temperature: number; topP: nu
 }
 
 function mergeThinkingMeta(model: LlmModelConfig): LlmThinkingMeta {
+  const mode = model.thinking?.mode;
+  const extract = model.thinking?.extract;
   return {
-    enabled: false,
-    tagName: "think",
-    startWithReasoning: false,
-    ...(model.thinking || {}),
+    enabled: mode === "optional" || mode === "on",
+    generate: mode === undefined ? undefined : mode === "on",
+    extract: extract?.tagName
+      ? {
+          tagName: extract.tagName,
+          startWithReasoning: extract.startWithReasoning,
+          separator: extract.separator,
+        }
+      : undefined,
   };
 }
 

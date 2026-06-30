@@ -276,7 +276,7 @@ Detalles importantes:
 - En el primer paso con tools, `prepareStep` puede restringir `activeTools` al subconjunto permitido.
 - El runner usa el loop de AI SDK (`streamText` + `stopWhen(stepCountIs)`), pero contiene una síntesis de respaldo si hubo tool work y la respuesta textual falta, parece un plan de tool o falla el paso de síntesis del SDK.
 - El middleware de Transformers.js elimina `toolChoice` para compatibilidad con ese backend.
-- El razonamiento (thinking) se configura por modelo en `data/llm-models.json` (campo `thinking`: `enabled`, `tagName`, `startWithReasoning`). En Transformers.js se extrae con `extractReasoningMiddleware` según el `tagName`; en chat se muestra con el conmutador del panel LLM. Se transmite en streaming y no se conserva en memoria ni como respuesta final.
+- El razonamiento (thinking) se configura por modelo en `data/llm-models.json` (campo `thinking`: `mode` y, para Transformers.js, `extract`). En Transformers.js se extrae con `extractReasoningMiddleware` usando `extract`; en Ollama se recibe como `message.thinking` nativo. En chat se muestra con el conmutador del panel LLM cuando el modo lo permite. Se transmite en streaming y no se conserva en memoria ni como respuesta final.
 - Ollama se llama desde el navegador, no desde la VM. El endpoint por defecto es `http://127.0.0.1:11434`.
 
 ### Contrato de tools y perfiles
