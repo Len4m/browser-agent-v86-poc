@@ -632,7 +632,6 @@ async function runAgentTurn({
 
   const turnMaxTokens = llmContextBudget.resolveMaxOutputTokens(modelConfig, useToolLoop && needsVm ? "plan" : "chat")
     ?? policy.maxNewTokensDefault
-    ?? modelConfig.maxNewTokens
     ?? (useToolLoop ? 192 : 512);
   const synthesisMaxTokens = llmContextBudget.resolveMaxOutputTokens(modelConfig, "synthesis")
     ?? policy.maxNewTokensForSynthesis

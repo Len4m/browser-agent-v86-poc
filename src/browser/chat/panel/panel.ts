@@ -9,7 +9,7 @@ import { appEvents } from "../../core/events";
 import { showBaModal, showBaModalPanel } from "../../ui/modal";
 import { getSelectedProfile, type VmProfile } from "../../vm/profile-config";
 import { ensureLLMCapabilities, syncLLMCapabilityBadges, type LlmCapabilities } from "../state/capabilities";
-import { getLlmState, llmEngineLabel, llmEventsApi, llmModelOptions, llmModelRequiresWebGPU, llmModelShortLabel, llmModels, type LlmModelConfig } from "../state/chat-state";
+import { getLlmState, llmEngineMetaLabel, llmEventsApi, llmModelOptions, llmModelRequiresWebGPU, llmModelShortLabel, llmModels, type LlmModelConfig } from "../state/chat-state";
 import { llmAgent } from "../runtime/agent-loop";
 import { llmArtifacts, type LlmArtifactSummary } from "../runtime/artifact-store";
 import { llmContextBudget } from "../runtime/context-budget";
@@ -520,7 +520,6 @@ function llmNoteLabel(code: string): string {
 }
 
 function llmModelDescription(model: LlmModelConfig): string {
-  if (typeof model.description === "string" && model.description.trim()) return model.description;
   const notes = Array.isArray(model.notes) ? model.notes : [];
   return notes.map((note) => llmNoteLabel(String(note))).filter(Boolean).join(" · ");
 }
@@ -552,7 +551,7 @@ function updateSelectedModelCard(): void {
   if (meta) {
     const entries: Array<[string, unknown] | null> = [
       getLlmState()?.loaded ? [t("panel.llm.meta.backendLoaded"), activeBackendLabel(model) || "—"] : null,
-      [t("panel.llm.meta.engine"), llmEngineLabel(model.engine)],
+      [t("panel.llm.meta.engine"), llmEngineMetaLabel(model)],
       [t("panel.llm.meta.download"), model.sizeLabel || "—"],
       [t("panel.llm.meta.quantization"), model.dtype || "—"],
       typeof model.ramGB === "number" ? [t("panel.llm.meta.ram"), `${model.ramGB} GB`] : null,
@@ -1008,6 +1007,7 @@ function mountPanel(): void {
   select.value = llm.selectedModelId;
   select.addEventListener("change", () => {
     if (llm.loaded) llmAgent.unloadModel();
+    ensureLlmState().selectedModelId = select.value;
     syncCustomVisibility();
     updateNativeToolsPickerUi();
   });
@@ -1123,6 +1123,11 @@ function bindEvents(): void {
   });
 
   appEvents.on("app:language-changed", () => {
+    const select = selectedModelSelect();
+    if (select) {
+      select.innerHTML = llmPanelTemplate.modelOptionsHtml();
+      select.value = ensureLlmState().selectedModelId;
+    }
     updateSelectedModelCard();
     updateResourceLines();
     updateAvailableToolsUi();

@@ -5,9 +5,19 @@
     "model": "qwen3:1.7b",
     "sizeLabel": "≈1.4 GB",
     "requiresShaderF16": false,
-    "toolProfile": "reasoning-light",
+    "thinking": {
+      "mode": "off"
+    },
     "contextWindowTokens": 8192,
-    "thinking": { "mode": "off" }
+    "contextOverride": {
+      "safeInputTokens": 5000,
+      "maxSystemChars": 2200,
+      "maxRuntimeChars": 1000,
+      "maxHistoryMessages": 6,
+      "maxHistoryChars": 9000,
+      "maxToolResultChars": 16000,
+      "maxToolResultCharsForSynthesis": 6000
+    }
   },
   {
     "id": "ollama-llama3.2-latest",
@@ -15,7 +25,10 @@
     "model": "llama3.2:latest",
     "sizeLabel": "≈2.0 GB",
     "requiresShaderF16": false,
-    "contextWindowTokens": 8192
+    "contextWindowTokens": 8192,
+    "contextOverride": {
+      "safeInputTokens": 5600
+    }
   },
   {
     "id": "ollama-granite4.1-3b",
@@ -23,7 +36,7 @@
     "model": "granite4.1:3b",
     "sizeLabel": "≈2.1 GB",
     "requiresShaderF16": false,
-    "toolProfile": "strong-json",
+    "temperature": 0.1,
     "contextWindowTokens": 8192
   },
   {
@@ -32,9 +45,10 @@
     "model": "qwen3.5:4b",
     "sizeLabel": "≈3.4 GB",
     "requiresShaderF16": false,
-    "toolProfile": "reasoning-light",
-    "contextWindowTokens": 8192,
-    "thinking": { "mode": "off" }
+    "thinking": {
+      "mode": "off"
+    },
+    "contextWindowTokens": 8192
   },
   {
     "id": "ollama-granite3.3-8b",
@@ -42,9 +56,11 @@
     "model": "granite3.3:8b",
     "sizeLabel": "≈4.9 GB",
     "requiresShaderF16": false,
-    "toolProfile": "strong-json",
+    "temperature": 0.1,
     "contextWindowTokens": 8192,
-    "notes": ["tools-validated"]
+    "notes": [
+      "tools-validated"
+    ]
   },
   {
     "id": "ollama-llama3.1-8b",
@@ -52,7 +68,6 @@
     "model": "llama3.1:8b",
     "sizeLabel": "≈4.9 GB",
     "requiresShaderF16": false,
-    "toolProfile": "middle-tools",
     "temperature": 0.15,
     "contextWindowTokens": 8192
   },
@@ -62,9 +77,10 @@
     "model": "qwen3:8b",
     "sizeLabel": "≈5.2 GB",
     "requiresShaderF16": false,
-    "toolProfile": "reasoning-light",
-    "contextWindowTokens": 8192,
-    "thinking": { "mode": "off" }
+    "thinking": {
+      "mode": "off"
+    },
+    "contextWindowTokens": 8192
   },
   {
     "id": "ollama-granite4.1-8b",
@@ -72,7 +88,7 @@
     "model": "granite4.1:8b",
     "sizeLabel": "≈5.3 GB",
     "requiresShaderF16": false,
-    "toolProfile": "strong-json",
+    "temperature": 0.1,
     "contextWindowTokens": 8192
   },
   {
@@ -81,9 +97,10 @@
     "model": "qwen3.5:9b",
     "sizeLabel": "≈6.6 GB",
     "requiresShaderF16": false,
-    "toolProfile": "reasoning-light",
-    "contextWindowTokens": 8192,
-    "thinking": { "mode": "off" }
+    "thinking": {
+      "mode": "off"
+    },
+    "contextWindowTokens": 8192
   },
   {
     "id": "ollama-qwen3-14b",
@@ -91,9 +108,10 @@
     "model": "qwen3:14b",
     "sizeLabel": "≈9.3 GB",
     "requiresShaderF16": false,
-    "toolProfile": "reasoning-light",
-    "contextWindowTokens": 8192,
-    "thinking": { "mode": "off" }
+    "thinking": {
+      "mode": "off"
+    },
+    "contextWindowTokens": 8192
   },
   {
     "id": "ollama-gpt-oss-20b",
@@ -101,10 +119,11 @@
     "model": "gpt-oss:20b",
     "sizeLabel": "≈14 GB",
     "requiresShaderF16": false,
-    "toolProfile": "reasoning-light",
+    "thinking": {
+      "mode": "optional"
+    },
     "contextWindowTokens": 8192,
-    "ramGB": 16,
-    "thinking": { "mode": "optional" }
+    "ramGB": 16
   },
   {
     "id": "ollama-gpt-oss-latest",
@@ -112,11 +131,14 @@
     "model": "gpt-oss:latest",
     "sizeLabel": "≈14 GB",
     "requiresShaderF16": false,
-    "toolProfile": "reasoning-light",
+    "thinking": {
+      "mode": "optional"
+    },
     "contextWindowTokens": 8192,
-    "notes": ["tools-validated"],
-    "ramGB": 16,
-    "thinking": { "mode": "optional" }
+    "notes": [
+      "tools-validated"
+    ],
+    "ramGB": 16
   },
   {
     "id": "ollama-qwen3-30b",
@@ -124,10 +146,13 @@
     "model": "qwen3:30b",
     "sizeLabel": "≈19 GB",
     "requiresShaderF16": false,
-    "toolProfile": "reasoning-light",
+    "thinking": {
+      "mode": "off"
+    },
     "contextWindowTokens": 8192,
-    "notes": ["moe"],
-    "thinking": { "mode": "off" }
+    "notes": [
+      "moe"
+    ]
   },
   {
     "id": "ollama-glm-4.7-flash",
@@ -135,10 +160,13 @@
     "model": "glm-4.7-flash:latest",
     "sizeLabel": "≈19 GB",
     "requiresShaderF16": false,
-    "toolProfile": "reasoning-light",
+    "thinking": {
+      "mode": "off"
+    },
     "contextWindowTokens": 8192,
-    "notes": ["moe"],
-    "thinking": { "mode": "off" }
+    "notes": [
+      "moe"
+    ]
   },
   {
     "id": "qwen3-tools-onnx-q4f16",
@@ -147,14 +175,18 @@
     "dtype": "q4f16",
     "sizeLabel": "≈570 MB",
     "requiresShaderF16": true,
-    "toolProfile": "reasoning-light",
-    "contextPreset": "transformers-tiny-tools-plan",
-    "notes": ["tools-primary"],
-    "vramGB": 3,
+    "agentProfile": "tools-light-good",
     "thinking": {
       "mode": "optional",
-      "extract": { "tagName": "think" }
-    }
+      "extract": {
+        "tagName": "think"
+      }
+    },
+    "contextPreset": "transformers-tiny-tools-plan",
+    "notes": [
+      "tools-primary"
+    ],
+    "vramGB": 3
   },
   {
     "id": "qwen3-tools-onnx-q4",
@@ -163,15 +195,18 @@
     "dtype": "q4",
     "sizeLabel": "≈0.9 GB",
     "requiresShaderF16": false,
-    "toolProfile": "reasoning-light",
-    "contextPreset": "transformers-tiny-tools-plan",
-    "experimental": true,
-    "notes": ["tools-primary"],
-    "vramGB": 3,
+    "agentProfile": "tools-light-good",
     "thinking": {
       "mode": "optional",
-      "extract": { "tagName": "think" }
-    }
+      "extract": {
+        "tagName": "think"
+      }
+    },
+    "contextPreset": "transformers-tiny-tools-plan",
+    "notes": [
+      "tools-primary"
+    ],
+    "vramGB": 3
   },
   {
     "id": "qwen2.5-coder-0.5b-instruct-q4",
@@ -180,16 +215,15 @@
     "dtype": "q4",
     "sizeLabel": "≈0.5–0.8 GB",
     "requiresShaderF16": false,
-    "toolProfile": "strong-json",
-    "contextPreset": "transformers-tiny-tools",
-    "agent": {
-      "maxSteps": 2,
+    "agentProfile": "tools-weak",
+    "agentOverride": {
       "maxNativeTools": 2,
-      "toolCalling": "weak",
       "selfSelectTools": true
     },
-    "experimental": true,
-    "notes": ["tools-validated"]
+    "contextPreset": "transformers-tiny-tools",
+    "notes": [
+      "tools-validated"
+    ]
   },
   {
     "id": "glm-edge-1.5b-chat-onnx-q4",
@@ -198,9 +232,8 @@
     "dtype": "q4",
     "sizeLabel": "≈1.5–2.0 GB",
     "requiresShaderF16": false,
-    "toolProfile": "middle-tools",
-    "contextPreset": "transformers-edge-tools",
-    "experimental": true
+    "agentProfile": "tools-fair",
+    "contextPreset": "transformers-edge-tools"
   },
   {
     "id": "glm-edge-1.5b-chat-onnx-q4f16",
@@ -209,9 +242,8 @@
     "dtype": "q4f16",
     "sizeLabel": "≈1.2–1.8 GB",
     "requiresShaderF16": true,
-    "toolProfile": "middle-tools",
-    "contextPreset": "transformers-edge-tools",
-    "experimental": true
+    "agentProfile": "tools-fair",
+    "contextPreset": "transformers-edge-tools"
   },
   {
     "id": "glm-edge-1.5b-chat-onnx-fp16",
@@ -220,9 +252,8 @@
     "dtype": "fp16",
     "sizeLabel": "≈3 GB",
     "requiresShaderF16": true,
-    "toolProfile": "middle-tools",
-    "contextPreset": "transformers-edge-tools",
-    "experimental": true
+    "agentProfile": "tools-fair",
+    "contextPreset": "transformers-edge-tools"
   },
   {
     "id": "granite-4.0-350m-onnx-web-fp16",
@@ -231,10 +262,11 @@
     "dtype": "fp16",
     "sizeLabel": "≈700 MB",
     "requiresShaderF16": true,
-    "toolProfile": "balanced",
+    "agentProfile": "tools-fair",
     "contextPreset": "transformers-350m-tools",
-    "experimental": true,
-    "notes": ["tools-validated"],
+    "notes": [
+      "tools-validated"
+    ],
     "vramGB": 3
   },
   {
@@ -244,10 +276,11 @@
     "dtype": "fp16",
     "sizeLabel": "≈2.4 GB",
     "requiresShaderF16": true,
-    "toolProfile": "strong-json",
+    "agentProfile": "tools-good",
     "contextPreset": "transformers-fp16-tools",
-    "experimental": true,
-    "notes": ["tools-primary"],
+    "notes": [
+      "tools-primary"
+    ],
     "vramGB": 6
   },
   {
@@ -257,10 +290,11 @@
     "dtype": "q4",
     "sizeLabel": "≈1.0–1.4 GB",
     "requiresShaderF16": false,
-    "toolProfile": "strong-json",
+    "agentProfile": "tools-good",
     "contextPreset": "transformers-edge-tools",
-    "experimental": true,
-    "notes": ["tools-primary"],
+    "notes": [
+      "tools-primary"
+    ],
     "vramGB": 4
   },
   {
@@ -270,10 +304,11 @@
     "dtype": "q4f16",
     "sizeLabel": "≈2.3 GB",
     "requiresShaderF16": true,
-    "toolProfile": "strong-json",
+    "agentProfile": "tools-good",
     "contextPreset": "transformers-micro-tools",
-    "experimental": true,
-    "notes": ["tools-validated"],
+    "notes": [
+      "tools-validated"
+    ],
     "vramGB": 6
   },
   {
@@ -284,9 +319,10 @@
     "dtype": "fp32",
     "sizeLabel": "≈1 GB+",
     "requiresShaderF16": false,
-    "toolProfile": "tiny-fallback",
+    "agentProfile": "tools-weak",
     "contextPreset": "transformers-tiny-fallback",
-    "experimental": true,
-    "notes": ["chat-only"]
+    "notes": [
+      "chat-only"
+    ]
   }
 ]

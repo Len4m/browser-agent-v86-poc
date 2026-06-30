@@ -57,7 +57,6 @@ interface ContextInspection {
 }
 
 interface LlmContextBudgetApi {
-  MODEL_POLICIES: Record<string, Partial<ContextBudgetPolicy>>;
   getRawPolicy: (modelConfig?: LlmModelConfig | null) => ContextBudgetPolicy;
   getPolicy: (modelConfig?: LlmModelConfig | null) => ContextBudgetPolicy;
   resolveMaxOutputTokens: (modelConfig?: LlmModelConfig | null, kind?: OutputKind) => number;
@@ -105,130 +104,15 @@ const DEFAULT_OLLAMA_POLICY: ContextBudgetPolicy = {
   maxArtifacts: 4,
 };
 
-const MODEL_POLICIES: Record<string, Partial<ContextBudgetPolicy>> = {
-  "gemma-3-270m-it-onnx-wasm-fp32": {
-    ...DEFAULT_LOCAL_POLICY,
-    safeInputTokens: 900,
-    maxSystemChars: 560,
-    maxRuntimeChars: 220,
-    maxHistoryMessages: 0,
-    maxHistoryChars: 0,
-    maxToolResultChars: 900,
-    maxToolResultCharsForSynthesis: 700,
-  },
-  "llama-3.2-1b-instruct-onnx-q4": {
-    ...DEFAULT_LOCAL_POLICY,
-    safeInputTokens: 1200,
-    maxSystemChars: 720,
-    maxRuntimeChars: 280,
-    maxHistoryMessages: 1,
-    maxHistoryChars: 400,
-    maxToolResultChars: 2200,
-    maxToolResultCharsForSynthesis: 1400,
-  },
-  "llama-3.2-1b-instruct-onnx-q4f16": {
-    ...DEFAULT_LOCAL_POLICY,
-    safeInputTokens: 1200,
-    maxSystemChars: 720,
-    maxRuntimeChars: 280,
-    maxHistoryMessages: 1,
-    maxHistoryChars: 400,
-    maxToolResultChars: 2200,
-    maxToolResultCharsForSynthesis: 1400,
-  },
-  "llama-3.2-3b-instruct-onnx-q4": {
-    ...DEFAULT_LOCAL_POLICY,
-    safeInputTokens: 1400,
-    maxToolResultChars: 2200,
-    maxToolResultCharsForSynthesis: 1200,
-    maxHistoryMessages: 1,
-    maxHistoryChars: 600,
-  },
-  "llama-3.2-3b-instruct-onnx-q4f16": {
-    ...DEFAULT_LOCAL_POLICY,
-    safeInputTokens: 1400,
-    maxToolResultChars: 2200,
-    maxToolResultCharsForSynthesis: 1200,
-    maxHistoryMessages: 1,
-    maxHistoryChars: 600,
-  },
-  "qwen2.5-coder-0.5b-instruct-q4": {
-    ...DEFAULT_LOCAL_POLICY,
-    safeInputTokens: 1100,
-    maxSystemChars: 780,
-    maxRuntimeChars: 300,
-    maxHistoryMessages: 1,
-    maxHistoryChars: 350,
-    maxToolResultChars: 1800,
-    maxToolResultCharsForSynthesis: 1000,
-  },
-  "qwen3-0.6b-onnx-q4f16": {
-    ...DEFAULT_LOCAL_POLICY,
-    safeInputTokens: 1100,
-    maxSystemChars: 780,
-    maxRuntimeChars: 300,
-    maxHistoryMessages: 1,
-    maxHistoryChars: 350,
-    maxToolResultChars: 1800,
-    maxToolResultCharsForSynthesis: 1000,
-  },
-  "qwen2.5-1.5b-instruct-q4": {
-    ...DEFAULT_LOCAL_POLICY,
-    safeInputTokens: 1350,
-    maxSystemChars: 900,
-    maxRuntimeChars: 360,
-    maxHistoryMessages: 1,
-    maxHistoryChars: 700,
-    maxToolResultChars: 2600,
-    maxToolResultCharsForSynthesis: 1600,
-  },
-  "smollm2-1.7b-instruct-q4f16": {
-    ...DEFAULT_LOCAL_POLICY,
-    safeInputTokens: 1300,
-    maxSystemChars: 820,
-    maxRuntimeChars: 320,
-    maxHistoryMessages: 1,
-    maxHistoryChars: 600,
-    maxToolResultChars: 2200,
-    maxToolResultCharsForSynthesis: 1400,
-  },
-  "custom-transformersjs": {
-    ...DEFAULT_LOCAL_POLICY,
-  },
-  "ollama-qwen3-4b": {
-    ...DEFAULT_OLLAMA_POLICY,
-    safeInputTokens: 5600,
-    maxSystemChars: 2600,
-    maxRuntimeChars: 1200,
-    maxHistoryMessages: 8,
-    maxHistoryChars: 12000,
-    maxToolResultChars: 20000,
-    maxToolResultCharsForSynthesis: 8000,
-  },
-  "ollama-qwen3-1.7b": {
-    ...DEFAULT_OLLAMA_POLICY,
-    safeInputTokens: 5000,
-    maxSystemChars: 2200,
-    maxRuntimeChars: 1000,
-    maxHistoryMessages: 6,
-    maxHistoryChars: 9000,
-    maxToolResultChars: 16000,
-    maxToolResultCharsForSynthesis: 6000,
-  },
-  "ollama-llama3.2-latest": {
-    ...DEFAULT_OLLAMA_POLICY,
-    safeInputTokens: 5600,
-    maxSystemChars: 2600,
-    maxRuntimeChars: 1200,
-    maxHistoryMessages: 8,
-    maxHistoryChars: 12000,
-    maxToolResultChars: 20000,
-    maxToolResultCharsForSynthesis: 8000,
-  },
-  "custom-ollama": {
-    ...DEFAULT_OLLAMA_POLICY,
-  },
-};
+function getRawPolicy(modelConfig: LlmModelConfig | null = getModelConfig()): ContextBudgetPolicy {
+  const selected = modelConfig || getModelConfig();
+  const provider = selected.contextPolicy?.provider || selected.engine || "transformersjs";
+  const base = provider === "ollama" ? DEFAULT_OLLAMA_POLICY : DEFAULT_LOCAL_POLICY;
+  return {
+    ...base,
+    ...(selected.contextPolicy || {}),
+  };
+}
 
 const FALLBACK_MODEL: LlmModelConfig = {
   id: "custom-transformersjs",
@@ -263,15 +147,6 @@ function getModelConfig(): LlmModelConfig {
     || FALLBACK_MODEL;
 }
 
-function getRawPolicy(modelConfig: LlmModelConfig | null = getModelConfig()): ContextBudgetPolicy {
-  const selected = modelConfig || getModelConfig();
-  return {
-    ...DEFAULT_LOCAL_POLICY,
-    ...(selected.contextPolicy || {}),
-    ...(MODEL_POLICIES[selected.id] || {}),
-  };
-}
-
 function localOutputCeiling(policy: ContextBudgetPolicy, safeInput: number): number {
   if (policy.provider !== "transformersjs") return Infinity;
   if (safeInput <= 1000) return 512;
@@ -300,11 +175,6 @@ function resolveMaxOutputTokens(modelConfig: LlmModelConfig | null = getModelCon
   const policyCap = Number(policy.maxOutputTokens);
   if (Number.isFinite(policyCap) && policyCap > 0) {
     target = Math.min(target, policyCap);
-  }
-
-  const catalogCap = Number(selected.maxNewTokens);
-  if (Number.isFinite(catalogCap) && catalogCap > 0) {
-    target = Math.min(target, catalogCap);
   }
 
   if (kind === "plan") {
@@ -628,7 +498,6 @@ function inspectMessages(messages: ChatMessage[], policy = getPolicy()): Context
 }
 
 export const llmContextBudget: LlmContextBudgetApi = {
-  MODEL_POLICIES,
   getRawPolicy,
   getPolicy,
   resolveMaxOutputTokens,

@@ -52,7 +52,6 @@ export interface LlmContextPolicy {
 export interface LlmModelConfig {
   id: string;
   engine: string;
-  description?: string;
   notes?: string[];
   ramGB?: number;
   vramGB?: number;
@@ -62,15 +61,16 @@ export interface LlmModelConfig {
   dtype?: string;
   custom?: boolean;
   requiresShaderF16?: boolean;
-  toolProfile?: string;
+  agentProfile?: string;
   temperature?: number;
   topP?: number;
   contextWindowTokens?: number;
-  maxNewTokens?: number;
   reuseGenerationCache?: boolean;
   contextPreset?: string;
+  contextOverride?: LlmContextPolicy;
   contextPolicy?: LlmContextPolicy;
-  agent?: LlmAgentInput;
+  agentOverride?: LlmAgentInput;
+  agent?: LlmAgentInput | LlmAgentMeta;
   thinking?: LlmThinkingMeta;
   runtime?: {
     provider?: string;
@@ -230,7 +230,7 @@ function defaultAgentMeta(model: LlmModelConfig): LlmAgentMeta {
       defaultNativeTools: DEFAULT_TOOLS,
     };
   }
-  if (model.toolProfile === "tiny-fallback") {
+  if (model.agentProfile === "tools-weak") {
     return {
       maxSteps: 1,
       maxNativeTools: 1,
@@ -238,7 +238,7 @@ function defaultAgentMeta(model: LlmModelConfig): LlmAgentMeta {
       defaultNativeTools: DEFAULT_TOOLS,
     };
   }
-  if (model.toolProfile === "reasoning-light") {
+  if (model.agentProfile === "tools-light-good") {
     return {
       maxSteps: 3,
       maxNativeTools: 4,
@@ -246,7 +246,7 @@ function defaultAgentMeta(model: LlmModelConfig): LlmAgentMeta {
       defaultNativeTools: DEFAULT_TOOLS,
     };
   }
-  if (model.toolProfile === "strong-json") {
+  if (model.agentProfile === "tools-good") {
     return {
       maxSteps: 3,
       maxNativeTools: 6,
@@ -254,15 +254,7 @@ function defaultAgentMeta(model: LlmModelConfig): LlmAgentMeta {
       defaultNativeTools: DEFAULT_TOOLS,
     };
   }
-  if (model.toolProfile === "middle-tools") {
-    return {
-      maxSteps: 3,
-      maxNativeTools: 5,
-      toolCalling: "fair",
-      defaultNativeTools: DEFAULT_TOOLS,
-    };
-  }
-  if (model.toolProfile === "balanced") {
+  if (model.agentProfile === "tools-fair") {
     return {
       maxSteps: 3,
       maxNativeTools: 5,
@@ -280,7 +272,7 @@ function defaultAgentMeta(model: LlmModelConfig): LlmAgentMeta {
 
 function mergeAgentMeta(model: LlmModelConfig): LlmAgentMeta {
   const base = defaultAgentMeta(model);
-  const override = model.agent || {};
+  const override = model.agentOverride || {};
   return {
     ...base,
     ...override,
@@ -288,10 +280,10 @@ function mergeAgentMeta(model: LlmModelConfig): LlmAgentMeta {
   };
 }
 
-const LOW_TEMPERATURE_PROFILES = new Set(["strong-json", "middle-tools", "balanced"]);
+const LOW_TEMPERATURE_PROFILES = new Set(["tools-good", "tools-fair"]);
 
 function defaultSampling(model: LlmModelConfig): { temperature: number; topP: number } {
-  const temperature = model.toolProfile && LOW_TEMPERATURE_PROFILES.has(model.toolProfile) ? 0.1 : 0.15;
+  const temperature = model.agentProfile && LOW_TEMPERATURE_PROFILES.has(model.agentProfile) ? 0.1 : 0.15;
   return { temperature, topP: 0.85 };
 }
 
@@ -311,7 +303,7 @@ function mergeThinkingMeta(model: LlmModelConfig): LlmThinkingMeta {
   };
 }
 
-export function llmEngineLabel(engine: unknown): string {
+function llmEngineLabel(engine: unknown): string {
   return engine === "ollama" ? "Ollama local HTTP" : "Transformers.js v4";
 }
 
@@ -320,8 +312,24 @@ function llmModelName(model: LlmModelConfig): string {
   return model.engine === "ollama" ? value : value.split("/").pop() || value;
 }
 
+function llmTransformersDeviceLabel(model: Pick<LlmModelConfig, "engine" | "device" | "runtime">): string {
+  if (model.engine !== "transformersjs") return "";
+  const device = model.runtime?.device || model.device || "webgpu";
+  if (device === "wasm") return t("common.wasm");
+  if (device === "webgpu") return t("checks.item.webgpu");
+  return device;
+}
+
+export function llmEngineMetaLabel(model: LlmModelConfig): string {
+  const base = llmEngineLabel(model.engine);
+  if (model.engine !== "transformersjs") return base;
+  return `${base} · ${llmTransformersDeviceLabel(model)}`;
+}
+
 export function llmModelLabel(model: LlmModelConfig): string {
-  return `${model.engine === "ollama" ? "Ollama" : "Transformers.js"} · ${llmModelName(model)}`;
+  const base = `${model.engine === "ollama" ? "Ollama" : "Transformers.js"} · ${llmModelName(model)}`;
+  if (model.engine !== "transformersjs") return base;
+  return `${base} · ${llmTransformersDeviceLabel(model)}`;
 }
 
 export function llmModelShortLabel(model: LlmModelConfig): string {
@@ -351,12 +359,11 @@ const customModels: LlmModelConfig[] = [
   },
 ];
 
-function defaultContextMeta(model: LlmModelConfig): Pick<LlmModelConfig, "contextWindowTokens" | "maxNewTokens" | "contextPolicy"> {
+function defaultContextMeta(model: LlmModelConfig): Pick<LlmModelConfig, "contextWindowTokens" | "contextPolicy"> {
   const contextWindowTokens = Number(model.contextWindowTokens) || (model.engine === "ollama" ? 8192 : 4096);
   if (model.engine === "ollama") {
     return {
       contextWindowTokens,
-      maxNewTokens: model.maxNewTokens,
       contextPolicy: {
         provider: "ollama",
         contextWindowTokens,
@@ -387,8 +394,7 @@ function withModelCapabilities(model: LlmModelConfig): LlmModelConfig {
     temperature: model.temperature ?? sampling.temperature,
     topP: model.topP ?? sampling.topP,
     contextWindowTokens: model.contextWindowTokens ?? ctx.contextWindowTokens,
-    maxNewTokens: model.maxNewTokens ?? ctx.maxNewTokens,
-    contextPolicy: { ...(ctx.contextPolicy || {}), ...(preset || {}), ...(model.contextPolicy || {}) },
+    contextPolicy: { ...(ctx.contextPolicy || {}), ...(preset || {}), ...(model.contextOverride || {}) },
     agent: mergeAgentMeta(model),
     thinking: mergeThinkingMeta(model),
   };

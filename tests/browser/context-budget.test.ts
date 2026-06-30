@@ -85,6 +85,7 @@ test("verified small transformers models can self-select tools before heuristic 
   assert.equal(qwen3?.agent?.toolCalling, "good");
   assert.equal(qwen25?.agent?.toolCalling, "weak");
   assert.equal(qwen25?.agent?.selfSelectTools, true);
+  assert.equal(qwen25?.agent?.maxNativeTools, 2);
   assert.equal(glm?.agent?.toolCalling, "fair");
   assert.equal(granite350?.agent?.toolCalling, "fair");
 });
