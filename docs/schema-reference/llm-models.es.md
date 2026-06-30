@@ -54,7 +54,6 @@ Override opcional de `agentProfile`. Configura solo campos que difieran del pres
 | `agentOverride.maxSteps` | no | integer | Override del máximo de pasos de agente AI SDK por turno con tools. | minimum: 1 |
 | `agentOverride.maxNativeTools` | no | integer | Override del número máximo de tools nativas activas enviadas al modelo. | minimum: 0 |
 | `agentOverride.toolCalling` | no | string | Override del nivel de fiabilidad de tool-calling del modelo. | enum: "weak", "fair", "good" |
-| `agentOverride.defaultNativeTools` | no | array&lt;string&gt; | Override avanzado de nombres de tools por defecto. Normalmente omítelo para que mande el orden `allowedTools` del perfil VM activo. | items minLength: 1 |
 | `agentOverride.selfSelectTools` | no | boolean | Permite que un modelo probado decida uso de tools antes del fallback heurístico incluso si su nivel derivado es weak/fair. |  |
 
 ## thinking
@@ -103,17 +102,7 @@ Documentación espejo de la expansión de presets en `src/browser/chat/state/cha
 
 ### Presets de `agentProfile`
 
-Se expanden al runtime `agent` más `temperature`/`topP` por defecto (salvo que estén en la entrada del catálogo). `defaultNativeTools` sale de la lista compartida salvo override en `agentOverride.defaultNativeTools`.
-
-**`defaultNativeTools` compartida:**
-
-- `vm.python.exec`
-- `vm.sh.exec`
-- `vm.fs.list`
-- `vm.fs.read`
-- `vm.fs.write`
-- `vm.cmd.which`
-- `web.curl.head`
+Se expanden al runtime `agent` más `temperature`/`topP` por defecto (salvo que estén en la entrada del catálogo). La lista efectiva de tools sale del perfil VM activo y se limita con `maxNativeTools`.
 
 #### `tools-good`
 
@@ -122,7 +111,7 @@ Tool calling nativo fiable. Para modelos validados en turnos multi-tool.
 | Campo agente | Valor |
 | --- | --- |
 | `maxSteps` | 3 |
-| `maxNativeTools` | 6 |
+| `maxNativeTools` | 10 |
 | `toolCalling` | "good" |
 
 | Sampling | Valor |

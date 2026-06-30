@@ -76,7 +76,6 @@ test("native tool defaults use profile priority and model quantity limit", () =>
       maxSteps: 2,
       maxNativeTools: 2,
       toolCalling: "fair",
-      defaultNativeTools: ["vm.fs.read"],
     },
   };
 
@@ -96,7 +95,6 @@ test("native active tools are resolved in profile priority order and capped", ()
       maxSteps: 2,
       maxNativeTools: 3,
       toolCalling: "fair",
-      defaultNativeTools: [],
     },
   };
   store.set("ba.llm.nativeTools.ordered-model", JSON.stringify([

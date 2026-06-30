@@ -73,11 +73,6 @@
             "enum": ["weak", "fair", "good"],
             "description": "Override for the model tool-calling reliability tier."
           },
-          "defaultNativeTools": {
-            "type": "array",
-            "items": { "type": "string", "minLength": 1 },
-            "description": "Advanced override for default tool names. Usually omit so the active VM profile allowedTools order decides."
-          },
           "selfSelectTools": {
             "type": "boolean",
             "description": "Override that allows a tested model to decide tool use before heuristic fallback even when its derived toolCalling tier is weak/fair."

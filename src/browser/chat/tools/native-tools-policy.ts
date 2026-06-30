@@ -15,7 +15,6 @@ const FALLBACK_MODEL: LlmModelConfig = {
     maxSteps: 3,
     maxNativeTools: 4,
     toolCalling: "fair",
-    defaultNativeTools: [],
   },
 };
 

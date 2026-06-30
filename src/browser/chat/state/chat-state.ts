@@ -10,7 +10,6 @@ interface LlmAgentMeta {
   maxSteps: number;
   maxNativeTools: number;
   toolCalling: "weak" | "fair" | "good";
-  defaultNativeTools: string[];
   selfSelectTools?: boolean;
 }
 
@@ -138,16 +137,6 @@ interface LlmEventsApi {
   on: (type: LlmEventType, listener: (detail: Record<string, unknown>) => void) => () => void;
 }
 
-const DEFAULT_TOOLS = [
-  "vm.python.exec",
-  "vm.sh.exec",
-  "vm.fs.list",
-  "vm.fs.read",
-  "vm.fs.write",
-  "vm.cmd.which",
-  "web.curl.head",
-];
-
 function transformersContextPolicy(policy: LlmContextPolicy): LlmContextPolicy {
   return {
     provider: "transformersjs",
@@ -227,7 +216,6 @@ function defaultAgentMeta(model: LlmModelConfig): LlmAgentMeta {
       maxSteps: 4,
       maxNativeTools: 10,
       toolCalling: "good",
-      defaultNativeTools: DEFAULT_TOOLS,
     };
   }
   if (model.agentProfile === "tools-weak") {
@@ -235,7 +223,6 @@ function defaultAgentMeta(model: LlmModelConfig): LlmAgentMeta {
       maxSteps: 1,
       maxNativeTools: 1,
       toolCalling: "weak",
-      defaultNativeTools: DEFAULT_TOOLS,
     };
   }
   if (model.agentProfile === "tools-light-good") {
@@ -243,15 +230,13 @@ function defaultAgentMeta(model: LlmModelConfig): LlmAgentMeta {
       maxSteps: 3,
       maxNativeTools: 4,
       toolCalling: "good",
-      defaultNativeTools: DEFAULT_TOOLS,
     };
   }
   if (model.agentProfile === "tools-good") {
     return {
       maxSteps: 3,
-      maxNativeTools: 6,
+      maxNativeTools: 10,
       toolCalling: "good",
-      defaultNativeTools: DEFAULT_TOOLS,
     };
   }
   if (model.agentProfile === "tools-fair") {
@@ -259,14 +244,12 @@ function defaultAgentMeta(model: LlmModelConfig): LlmAgentMeta {
       maxSteps: 3,
       maxNativeTools: 5,
       toolCalling: "fair",
-      defaultNativeTools: DEFAULT_TOOLS,
     };
   }
   return {
     maxSteps: 3,
     maxNativeTools: 5,
     toolCalling: "fair",
-    defaultNativeTools: DEFAULT_TOOLS,
   };
 }
 
@@ -276,7 +259,6 @@ function mergeAgentMeta(model: LlmModelConfig): LlmAgentMeta {
   return {
     ...base,
     ...override,
-    defaultNativeTools: override.defaultNativeTools || base.defaultNativeTools,
   };
 }
 

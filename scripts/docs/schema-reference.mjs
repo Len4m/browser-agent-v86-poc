@@ -77,8 +77,7 @@ const DOC_TEXT = {
     catalogPresetsTitle: "Catalog Presets",
     catalogPresetsIntro: "Documentation mirror of preset expansion in `src/browser/chat/state/chat-state.ts`. Catalog override objects (`agentOverride`, `contextOverride`) replace only the fields you set; chat-state.ts expands them into runtime `agent` and `contextPolicy`.",
     agentProfilesTitle: "`agentProfile` presets",
-    agentProfilesIntro: "Expanded into runtime `agent` plus default `temperature`/`topP` (unless set on the catalog entry). `defaultNativeTools` comes from the shared list below unless `agentOverride.defaultNativeTools` overrides it.",
-    sharedDefaultTools: "Shared `defaultNativeTools`:",
+    agentProfilesIntro: "Expanded into runtime `agent` plus default `temperature`/`topP` (unless set on the catalog entry). The effective tool list still comes from the active VM profile and is capped by `maxNativeTools`.",
     agentField: "Agent field",
     sampling: "Sampling",
     value: "Value",
@@ -110,8 +109,7 @@ const DOC_TEXT = {
     catalogPresetsTitle: "Catálogo de presets",
     catalogPresetsIntro: "Documentación espejo de la expansión de presets en `src/browser/chat/state/chat-state.ts`. Los objetos override del catálogo (`agentOverride`, `contextOverride`) reemplazan solo los campos configurados; `chat-state.ts` los expande a runtime `agent` y `contextPolicy`.",
     agentProfilesTitle: "Presets de `agentProfile`",
-    agentProfilesIntro: "Se expanden al runtime `agent` más `temperature`/`topP` por defecto (salvo que estén en la entrada del catálogo). `defaultNativeTools` sale de la lista compartida salvo override en `agentOverride.defaultNativeTools`.",
-    sharedDefaultTools: "`defaultNativeTools` compartida:",
+    agentProfilesIntro: "Se expanden al runtime `agent` más `temperature`/`topP` por defecto (salvo que estén en la entrada del catálogo). La lista efectiva de tools sale del perfil VM activo y se limita con `maxNativeTools`.",
     agentField: "Campo agente",
     sampling: "Sampling",
     value: "Valor",
@@ -161,7 +159,6 @@ const ES_FIELD_DESCRIPTIONS = {
   "agentOverride.maxSteps": "Override del máximo de pasos de agente AI SDK por turno con tools.",
   "agentOverride.maxNativeTools": "Override del número máximo de tools nativas activas enviadas al modelo.",
   "agentOverride.toolCalling": "Override del nivel de fiabilidad de tool-calling del modelo.",
-  "agentOverride.defaultNativeTools": "Override avanzado de nombres de tools por defecto. Normalmente omítelo para que mande el orden `allowedTools` del perfil VM activo.",
   "agentOverride.selfSelectTools": "Permite que un modelo probado decida uso de tools antes del fallback heurístico incluso si su nivel derivado es weak/fair.",
   "thinking.mode": "Política de razonamiento. off: capaz pero suprimido. optional: muestra el toggle, inicialmente apagado. on: razonamiento activado por defecto.",
   "thinking.extract": "Opciones de AI SDK `extractReasoningMiddleware` para extracción por tags. Solo Transformers.js.",
@@ -237,20 +234,11 @@ function formatObjectRows(obj) {
 
 // Preset tables for documentation only. Keep in sync with chat-state.ts.
 const LLM_CATALOG_PRESETS_DOC = {
-  defaultNativeTools: [
-    "vm.python.exec",
-    "vm.sh.exec",
-    "vm.fs.list",
-    "vm.fs.read",
-    "vm.fs.write",
-    "vm.cmd.which",
-    "web.curl.head",
-  ],
   agentProfiles: {
     "tools-good": {
       description: "Reliable native tool calls. Use for models validated for multi-tool agent turns.",
       descriptionEs: "Tool calling nativo fiable. Para modelos validados en turnos multi-tool.",
-      agent: { maxSteps: 3, maxNativeTools: 6, toolCalling: "good" },
+      agent: { maxSteps: 3, maxNativeTools: 10, toolCalling: "good" },
       sampling: { temperature: 0.1, topP: 0.85 },
     },
     "tools-fair": {
@@ -417,10 +405,6 @@ function catalogPresetsSection(locale = "en") {
     `### ${text.agentProfilesTitle}`,
     "",
     text.agentProfilesIntro,
-    "",
-    `**${text.sharedDefaultTools}**`,
-    "",
-    presets.defaultNativeTools.map((tool) => `- \`${tool}\``).join("\n"),
     "",
   ];
 
