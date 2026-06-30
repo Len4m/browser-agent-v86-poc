@@ -2,15 +2,14 @@
 
 Compact reference generated from JSON Schema. Update the source schema before editing field semantics here.
 
-Source schema for data/llm-models.json. This schema describes the author-edited catalog entries, not the fully enriched runtime model objects. chat-state.ts derives runtime agent defaults from engine/toolProfile and runtime contextPolicy defaults from engine/contextPreset.
+Source schema for data/llm-models.json. Author-edited catalog entries; chat-state.ts enriches them into runtime models (runtime agent from agentProfile, runtime contextPolicy from engine/contextPreset/contextOverride, thinking, sampling). context-budget.ts applies engine baselines and the enriched contextPolicy at prompt time.
 
 ## Authoring Guidance
 
-- Use `toolProfile` for normal tool/agent behavior. It is expanded into the runtime `agent` object by `chat-state.ts`.
-- Use `contextPreset` for normal context and token budgeting. It is expanded into the runtime `contextPolicy` object by `chat-state.ts`.
-- Use `agent` only for tested per-model exceptions, such as a model that needs fewer tools but can still self-select tool use.
-- Use `contextPolicy` only for per-model context budget exceptions that do not fit an existing preset.
-- `contextWindowTokens` is the raw total model capacity; `contextPolicy` is how the app spends that capacity across system prompt, history, artifacts, tool results, and output.
+- Use `agentProfile` for Transformers.js agent/tool defaults; add `agentOverride` only for tested per-model exceptions.
+- Transformers.js: set `contextPreset` for context budgeting; use `contextOverride` only when specific limits differ.
+- Ollama: no `contextPreset`; use `contextOverride` or `contextWindowTokens` to change engine defaults.
+- Expanded preset values are in **Catalog Presets** below (`src/browser/chat/state/chat-state.ts`).
 
 ## Source
 
@@ -27,76 +26,329 @@ Source schema for data/llm-models.json. This schema describes the author-edited 
 
 | Field | Required | Type | Description | Constraints |
 | --- | --- | --- | --- | --- |
-| `items[].id` | yes | string | Stable unique identifier used by selection, policies and local state. Do not rename without migrating references. | minLength: 1 |
-| `items[].engine` | yes | string | Runtime used to execute the model. | enum: "ollama", "transformersjs" |
-| `items[].model` | yes | string | Runtime model identifier. For Ollama this is the local tag; for Transformers.js it is usually a compatible Hugging Face repository. |  |
-| `items[].device` | no | string | Optional Transformers.js execution device. Defaults to webgpu when omitted. | enum: "webgpu", "wasm" |
-| `items[].dtype` | no | string | Optional Transformers.js numeric format or quantization. Defaults to auto when omitted. | enum: "auto", "fp32", "fp16", "q8", "q4", "q4f16" |
-| `items[].sizeLabel` | yes | string | Approximate model size displayed in the UI. Informational only. | minLength: 1 |
-| `items[].requiresShaderF16` | yes | boolean | true when a WebGPU model requires shader-f16 support. |  |
-| `items[].toolProfile` | no | string | Preferred way to select predefined agent/tool defaults. chat-state.ts expands this into the runtime agent object unless the optional agent override below changes specific fields. | enum: "strong-json", "middle-tools", "reasoning-light", "tiny-fallback", "balanced" |
-| `items[].temperature` | no | number | Optional sampling temperature. Lower values are more deterministic. Omit to use the default derived from toolProfile in chat-state.ts (0.1 for strong-json/middle-tools/balanced, 0.15 otherwise); set this only for per-model exceptions. | minimum: 0 |
-| `items[].topP` | no | number | Optional nucleus sampling top_p value. Omit to use the default (0.85) applied in chat-state.ts; set this only for per-model exceptions. | minimum: 0; maximum: 1 |
-| `items[].thinking` | no | object | Optional reasoning configuration. Omit entirely for models that do not reason. chat-state.ts derives the UI toggle, the default state, and the Ollama think request flag from mode; extract is only consumed by the Transformers.js tag-based reasoning middleware. | additionalProperties: false |
-| `items[].contextWindowTokens` | no | integer | Raw model context window capacity. Usually omit for standard defaults/presets; set this only when a model has a different total context window than the runtime default. | minimum: 256 |
-| `items[].maxNewTokens` | no | integer | Optional explicit output hard cap. Usually omit; if omitted, context-budget.ts derives output limits from the effective contextPolicy. | minimum: 1 |
-| `items[].contextPreset` | no | string | Preferred way to select a predefined context budget. chat-state.ts expands this into runtime contextPolicy fields before applying the optional contextPolicy override below. | enum: "transformers-tiny-tools-plan", "transformers-tiny-tools", "transformers-edge-tools", "transformers-350m-tools", "transformers-fp16-tools", "transformers-micro-tools", "transformers-tiny-fallback" |
-| `items[].contextPolicy` | no | object | Advanced per-model context budget override. Usually omit and use contextPreset instead. When present, these fields are merged after engine defaults and contextPreset, so they should only contain exceptions for a specific model. | additionalProperties: false |
-| `items[].agent` | no | object | Advanced per-model agent/tool override. Usually omit and use toolProfile instead. Missing fields are filled from defaults derived from engine/toolProfile in chat-state.ts. | additionalProperties: false |
-| `items[].experimental` | no | boolean | true for test, fallback, slow or less recommended models. |  |
-| `items[].notes` | no | array&lt;string&gt; | Optional language-neutral note codes. The UI renders each code as localized text, so encode only facts that are not derivable from other fields (engine, dtype, requiresShaderF16, experimental, etc.). Possible codes: `tools-primary` (recommended for tool use), `tools-validated` (tool calling validated in this project), `chat-only` (chat only, tools disabled), `moe` (mixture-of-experts architecture). | uniqueItems |
-| `items[].ramGB` | no | number | Optional recommended system RAM in GB. Informational only; shown in the LLM panel. | minimum: 0 |
-| `items[].vramGB` | no | number | Optional recommended GPU VRAM in GB. Informational only; shown in the LLM panel. | minimum: 0 |
-| `items[].description` | no | string | Optional free-text override shown in the LLM panel. Prefer notes + ramGB/vramGB so copy stays language-neutral; when present this replaces the composed text. | minLength: 1 |
+| `id` | yes | string | Stable unique identifier used by selection, policies and local state. Do not rename without migrating references. | minLength: 1 |
+| `engine` | yes | string | Runtime used to execute the model. | enum: "ollama", "transformersjs" |
+| `model` | yes | string | Runtime model identifier. For Ollama this is the local tag; for Transformers.js it is usually a compatible Hugging Face repository. |  |
+| `device` | no | string | Optional Transformers.js execution device. Defaults to webgpu when omitted. | enum: "webgpu", "wasm" |
+| `dtype` | no | string | Optional Transformers.js numeric format or quantization. Defaults to auto when omitted. | enum: "auto", "fp32", "fp16", "q8", "q4", "q4f16" |
+| `sizeLabel` | yes | string | Approximate model size displayed in the UI. Informational only. | minLength: 1 |
+| `requiresShaderF16` | yes | boolean | true when a WebGPU model requires shader-f16 support. |  |
+| `agentProfile` | no | string | Preset for agent/tool defaults and sampling temperature. Use it for Transformers.js catalog entries; Ollama entries use engine agent defaults, so set temperature directly when needed. Expanded by chat-state.ts into the runtime agent object. See [Catalog Presets](#catalog-presets). | enum: "tools-good", "tools-fair", "tools-light-good", "tools-weak" |
+| `agentOverride` | no | object | Optional per-model override for agentProfile (field above). Only set fields that differ from the expanded preset after a model has been tested. Expanded at runtime into the agent object by chat-state.ts. | additionalProperties: false |
+| `temperature` | no | number | Optional sampling temperature. Lower values are more deterministic. Omit to use the default derived from agentProfile in chat-state.ts (0.1 for tools-good/tools-fair, 0.15 otherwise); set this only for per-model exceptions. | minimum: 0 |
+| `topP` | no | number | Optional nucleus sampling top_p value. Omit to use the default (0.85) applied in chat-state.ts; set this only for per-model exceptions. | minimum: 0; maximum: 1 |
+| `thinking` | no | object | Optional reasoning configuration. Omit entirely for models that do not reason. chat-state.ts derives the UI toggle, the default state, and the Ollama think request flag from mode; extract is only consumed by the Transformers.js tag-based reasoning middleware. | additionalProperties: false |
+| `contextWindowTokens` | no | integer | Optional app-side context budget in tokens. Does not configure the model runtime native context (Ollama num_ctx, Transformers.js). chat-state.ts and context-budget.ts use it to derive safeInputTokens and max output limits. Omit for engine defaults (8192 Ollama, 4096 Transformers.js); set only when the effective budget should differ from those defaults. | minimum: 256 |
+| `contextPreset` | no | string | Transformers.js only. Preset for context budget fields. Expanded by chat-state.ts into runtime contextPolicy. See [Catalog Presets](#catalog-presets). | enum: "transformers-tiny-tools-plan", "transformers-tiny-tools", "transformers-edge-tools", "transformers-350m-tools", "transformers-fp16-tools", "transformers-micro-tools", "transformers-tiny-fallback" |
+| `contextOverride` | no | object | Optional per-model override for contextPreset (field above) and engine context defaults. For Ollama, set only fields that differ from engine defaults. Merged in chat-state.ts into runtime contextPolicy, then consumed by context-budget.ts. | additionalProperties: false |
+| `notes` | no | array&lt;string&gt; | Optional language-neutral note codes. The UI renders each code as localized text, so encode only facts that are not derivable from other fields (engine, dtype, requiresShaderF16, etc.). Possible codes: `tools-primary` (recommended for tool use), `tools-validated` (tool calling validated in this project), `chat-only` (chat only, tools disabled), `moe` (mixture-of-experts architecture). | uniqueItems |
+| `ramGB` | no | number | Optional recommended system RAM in GB. Informational only; shown in the LLM panel. | minimum: 0 |
+| `vramGB` | no | number | Optional recommended GPU VRAM in GB. Informational only; shown in the LLM panel. | minimum: 0 |
 
-## items[].thinking
+## agentOverride
+
+Optional per-model override for agentProfile (field above). Only set fields that differ from the expanded preset after a model has been tested. Expanded at runtime into the agent object by chat-state.ts.
+
+| Field | Required | Type | Description | Constraints |
+| --- | --- | --- | --- | --- |
+| `agentOverride.maxSteps` | no | integer | Override for maximum AI SDK agent steps for a tool turn before runtime caps are applied. | minimum: 1 |
+| `agentOverride.maxNativeTools` | no | integer | Override for maximum number of active native tools sent to the model. | minimum: 0 |
+| `agentOverride.toolCalling` | no | string | Override for the model tool-calling reliability tier. | enum: "weak", "fair", "good" |
+| `agentOverride.defaultNativeTools` | no | array&lt;string&gt; | Advanced override for default tool names. Usually omit so the active VM profile allowedTools order decides. | items minLength: 1 |
+| `agentOverride.selfSelectTools` | no | boolean | Override that allows a tested model to decide tool use before heuristic fallback even when its derived toolCalling tier is weak/fair. |  |
+
+## thinking
 
 Optional reasoning configuration. Omit entirely for models that do not reason. chat-state.ts derives the UI toggle, the default state, and the Ollama think request flag from mode; extract is only consumed by the Transformers.js tag-based reasoning middleware.
 
 | Field | Required | Type | Description | Constraints |
 | --- | --- | --- | --- | --- |
-| `items[].thinking.mode` | yes | string | Reasoning policy. off: capable but suppressed (no UI toggle; Ollama receives think:false). optional: show the UI toggle, starting off. on: reasoning enabled by default. | enum: "off", "optional", "on" |
-| `items[].thinking.extract` | no | object | AI SDK extractReasoningMiddleware options for tag-based reasoning extraction. Transformers.js only; omit for Ollama, which exposes reasoning natively. | additionalProperties: false |
+| `thinking.mode` | yes | string | Reasoning policy. off: capable but suppressed (no UI toggle; Ollama receives think:false). optional: show the UI toggle, starting off. on: reasoning enabled by default. | enum: "off", "optional", "on" |
+| `thinking.extract` | no | object | AI SDK extractReasoningMiddleware options for tag-based reasoning extraction. Transformers.js only; omit for Ollama, which exposes reasoning natively. | additionalProperties: false |
 
-## items[].thinking.extract
+## thinking.extract
 
 AI SDK extractReasoningMiddleware options for tag-based reasoning extraction. Transformers.js only; omit for Ollama, which exposes reasoning natively.
 
 | Field | Required | Type | Description | Constraints |
 | --- | --- | --- | --- | --- |
-| `items[].thinking.extract.tagName` | yes | string | XML tag wrapping the reasoning, e.g. think. | minLength: 1 |
-| `items[].thinking.extract.startWithReasoning` | no | boolean | Treat the output as starting inside the reasoning block, for models that emit only the closing tag. |  |
-| `items[].thinking.extract.separator` | no | string | Separator inserted between reasoning and text sections. Defaults to newline (\n) when omitted. |  |
+| `thinking.extract.tagName` | yes | string | XML tag wrapping the reasoning, e.g. think. | minLength: 1 |
+| `thinking.extract.startWithReasoning` | no | boolean | Treat the output as starting inside the reasoning block, for models that emit only the closing tag. |  |
+| `thinking.extract.separator` | no | string | Separator inserted between reasoning and text sections. Defaults to newline (\n) when omitted. |  |
 
-## items[].contextPolicy
+## contextOverride
 
-Advanced per-model context budget override. Usually omit and use contextPreset instead. When present, these fields are merged after engine defaults and contextPreset, so they should only contain exceptions for a specific model.
-
-| Field | Required | Type | Description | Constraints |
-| --- | --- | --- | --- | --- |
-| `items[].contextPolicy.provider` | no | string | Advanced override for the budget provider family. Usually omit; engine/contextPreset already derive the effective provider at runtime. | enum: "ollama", "transformersjs" |
-| `items[].contextPolicy.contextWindowTokens` | no | integer | Advanced override for the total context window used inside contextPolicy. Prefer the top-level contextWindowTokens field when only the model capacity differs. | minimum: 256 |
-| `items[].contextPolicy.safeInputTokens` | no | integer | Input token budget reserved for system, runtime, history and tool results before output is computed. | minimum: 0 |
-| `items[].contextPolicy.reservedOutputTokens` | no | integer | Optional static output reservation. Usually omitted; getPolicy() derives output limits dynamically. | minimum: 1 |
-| `items[].contextPolicy.maxSystemChars` | no | integer | Character cap for the system prompt block. | minimum: 0 |
-| `items[].contextPolicy.maxRuntimeChars` | no | integer | Character cap for runtime/context injected into the system prompt. | minimum: 0 |
-| `items[].contextPolicy.maxHistoryMessages` | no | integer | Maximum prior chat turns kept in the prompt. | minimum: 0 |
-| `items[].contextPolicy.maxHistoryChars` | no | integer | Character cap across retained history messages. | minimum: 0 |
-| `items[].contextPolicy.maxToolResultChars` | no | integer | Character cap for tool results included in agent turns. | minimum: 0 |
-| `items[].contextPolicy.maxToolResultCharsForSynthesis` | no | integer | Character cap for tool results during synthesis/final answer steps. | minimum: 0 |
-| `items[].contextPolicy.maxArtifacts` | no | integer | Maximum artifacts attached to a prompt. Rarely set in the catalog; defaults come from provider policy. | minimum: 0 |
-| `items[].contextPolicy.maxOutputTokens` | no | integer | Optional hard cap on generated output tokens for chat/synthesis before kind-specific limits apply. | minimum: 1 |
-| `items[].contextPolicy.maxNewTokensForPlan` | no | integer | Optional cap for plan-generation steps. If omitted, resolveMaxOutputTokens() uses 768 for Ollama and 384 for local Transformers.js. | minimum: 1 |
-| `items[].contextPolicy.maxNewTokensForSynthesis` | no | integer | Optional cap for synthesis output. Usually omitted because getPolicy() derives it from resolveMaxOutputTokens(). | minimum: 1 |
-
-## items[].agent
-
-Advanced per-model agent/tool override. Usually omit and use toolProfile instead. Missing fields are filled from defaults derived from engine/toolProfile in chat-state.ts.
+Optional per-model override for contextPreset (field above) and engine context defaults. For Ollama, set only fields that differ from engine defaults. Merged in chat-state.ts into runtime contextPolicy, then consumed by context-budget.ts.
 
 | Field | Required | Type | Description | Constraints |
 | --- | --- | --- | --- | --- |
-| `items[].agent.maxSteps` | no | integer | Override for maximum AI SDK agent steps for a tool turn before runtime caps are applied. | minimum: 1 |
-| `items[].agent.maxNativeTools` | no | integer | Override for maximum number of active native tools sent to the model. | minimum: 0 |
-| `items[].agent.toolCalling` | no | string | Override for the model tool-calling reliability tier. Derived from toolProfile by default. | enum: "weak", "fair", "good" |
-| `items[].agent.defaultNativeTools` | no | array&lt;string&gt; | Advanced override for default tool names. Usually omit so the active VM profile allowedTools order decides. | items minLength: 1 |
-| `items[].agent.selfSelectTools` | no | boolean | Override that allows a tested model to decide tool use before heuristic fallback even when its derived toolCalling tier is weak/fair. |  |
+| `contextOverride.provider` | no | string | Advanced override for the budget provider family. Usually omit; engine/contextPreset already derive the effective provider at runtime. | enum: "ollama", "transformersjs" |
+| `contextOverride.contextWindowTokens` | no | integer | Advanced override for the app context budget inside contextOverride. Same semantics as the top-level field; prefer the top-level contextWindowTokens when only the budget total differs. | minimum: 256 |
+| `contextOverride.safeInputTokens` | no | integer | Input token budget reserved for system, runtime, history and tool results before output is computed. | minimum: 0 |
+| `contextOverride.reservedOutputTokens` | no | integer | Optional static output reservation. Usually omitted; getPolicy() derives output limits dynamically. | minimum: 1 |
+| `contextOverride.maxSystemChars` | no | integer | Character cap for the system prompt block. | minimum: 0 |
+| `contextOverride.maxRuntimeChars` | no | integer | Character cap for runtime/context injected into the system prompt. | minimum: 0 |
+| `contextOverride.maxHistoryMessages` | no | integer | Maximum prior chat turns kept in the prompt. | minimum: 0 |
+| `contextOverride.maxHistoryChars` | no | integer | Character cap across retained history messages. | minimum: 0 |
+| `contextOverride.maxToolResultChars` | no | integer | Character cap for tool results included in agent turns. | minimum: 0 |
+| `contextOverride.maxToolResultCharsForSynthesis` | no | integer | Character cap for tool results during synthesis/final answer steps. | minimum: 0 |
+| `contextOverride.maxArtifacts` | no | integer | Maximum artifacts attached to a prompt. Rarely set in the catalog; engine defaults in context-budget.ts apply when omitted. | minimum: 0 |
+| `contextOverride.maxOutputTokens` | no | integer | Optional hard cap on generated output tokens for chat/synthesis before kind-specific limits apply. | minimum: 1 |
+| `contextOverride.maxNewTokensForPlan` | no | integer | Optional cap for plan-generation steps. If omitted, resolveMaxOutputTokens() uses 768 for Ollama and 384 for local Transformers.js. | minimum: 1 |
+| `contextOverride.maxNewTokensForSynthesis` | no | integer | Optional cap for synthesis output. Usually omitted because getPolicy() derives it from resolveMaxOutputTokens(). | minimum: 1 |
+
+## Catalog Presets
+
+Documentation mirror of preset expansion in `src/browser/chat/state/chat-state.ts`. Catalog override objects (`agentOverride`, `contextOverride`) replace only the fields you set; chat-state.ts expands them into runtime `agent` and `contextPolicy`.
+
+### `agentProfile` presets
+
+Expanded into runtime `agent` plus default `temperature`/`topP` (unless set on the catalog entry). `defaultNativeTools` comes from the shared list below unless `agentOverride.defaultNativeTools` overrides it.
+
+**Shared `defaultNativeTools`:**
+
+- `vm.python.exec`
+- `vm.sh.exec`
+- `vm.fs.list`
+- `vm.fs.read`
+- `vm.fs.write`
+- `vm.cmd.which`
+- `web.curl.head`
+
+#### `tools-good`
+
+Reliable native tool calls. Use for models validated for multi-tool agent turns.
+
+| Agent field | Value |
+| --- | --- |
+| `maxSteps` | 3 |
+| `maxNativeTools` | 6 |
+| `toolCalling` | "good" |
+
+| Sampling | Value |
+| --- | --- |
+| `temperature` | 0.1 |
+| `topP` | 0.85 |
+
+#### `tools-fair`
+
+Mid-size models with fair native tool reliability.
+
+| Agent field | Value |
+| --- | --- |
+| `maxSteps` | 3 |
+| `maxNativeTools` | 5 |
+| `toolCalling` | "fair" |
+
+| Sampling | Value |
+| --- | --- |
+| `temperature` | 0.1 |
+| `topP` | 0.85 |
+
+#### `tools-light-good`
+
+Reliable tool-calling models that need a smaller active tool set.
+
+| Agent field | Value |
+| --- | --- |
+| `maxSteps` | 3 |
+| `maxNativeTools` | 4 |
+| `toolCalling` | "good" |
+
+| Sampling | Value |
+| --- | --- |
+| `temperature` | 0.15 |
+| `topP` | 0.85 |
+
+#### `tools-weak`
+
+Minimal fallback models; heavily capped tool loop.
+
+| Agent field | Value |
+| --- | --- |
+| `maxSteps` | 1 |
+| `maxNativeTools` | 1 |
+| `toolCalling` | "weak" |
+
+| Sampling | Value |
+| --- | --- |
+| `temperature` | 0.15 |
+| `topP` | 0.85 |
+
+#### Engine default (`ollama`)
+
+Ollama entries use these agent limits and should set temperature directly when they need a sampling exception.
+
+| Agent field | Value |
+| --- | --- |
+| `maxSteps` | 4 |
+| `maxNativeTools` | 10 |
+| `toolCalling` | "good" |
+
+#### Engine default (`transformersjs`)
+
+Transformers.js fallback when agentProfile is omitted.
+
+| Agent field | Value |
+| --- | --- |
+| `maxSteps` | 3 |
+| `maxNativeTools` | 5 |
+| `toolCalling` | "fair" |
+
+| Sampling | Value |
+| --- | --- |
+| `temperature` | 0.15 |
+| `topP` | 0.85 |
+
+### `contextPreset` presets (Transformers.js)
+
+Each preset merges `contextPresetBase.transformersjs` then its policy fields. Override with catalog `contextOverride` afterward (merged into runtime `contextPolicy`).
+
+**`contextPresetBase.transformersjs`:**
+
+| Field | Value |
+| --- | --- |
+| `provider` | "transformersjs" |
+| `contextWindowTokens` | 4096 |
+| `maxHistoryMessages` | 1 |
+
+#### `transformers-tiny-tools-plan`
+
+Sub-1B tool models that also run plan-generation steps (maxNewTokensForPlan = 384).
+
+| Effective runtime contextPolicy field | Value |
+| --- | --- |
+| `provider` | "transformersjs" |
+| `contextWindowTokens` | 4096 |
+| `maxHistoryMessages` | 1 |
+| `safeInputTokens` | 1100 |
+| `maxSystemChars` | 780 |
+| `maxRuntimeChars` | 300 |
+| `maxHistoryChars` | 350 |
+| `maxToolResultChars` | 1800 |
+| `maxToolResultCharsForSynthesis` | 1000 |
+| `maxNewTokensForPlan` | 384 |
+
+#### `transformers-tiny-tools`
+
+Sub-1B tool models without a plan-specific output cap.
+
+| Effective runtime contextPolicy field | Value |
+| --- | --- |
+| `provider` | "transformersjs" |
+| `contextWindowTokens` | 4096 |
+| `maxHistoryMessages` | 1 |
+| `safeInputTokens` | 1100 |
+| `maxSystemChars` | 780 |
+| `maxRuntimeChars` | 300 |
+| `maxHistoryChars` | 350 |
+| `maxToolResultChars` | 1800 |
+| `maxToolResultCharsForSynthesis` | 1000 |
+
+#### `transformers-edge-tools`
+
+~1.2–1.5B edge models with moderate tool-result headroom.
+
+| Effective runtime contextPolicy field | Value |
+| --- | --- |
+| `provider` | "transformersjs" |
+| `contextWindowTokens` | 4096 |
+| `maxHistoryMessages` | 1 |
+| `safeInputTokens` | 1250 |
+| `maxSystemChars` | 820 |
+| `maxRuntimeChars` | 320 |
+| `maxHistoryChars` | 550 |
+| `maxToolResultChars` | 2200 |
+| `maxToolResultCharsForSynthesis` | 1300 |
+
+#### `transformers-350m-tools`
+
+~350M tool-tuned models with the tightest practical tool budgets.
+
+| Effective runtime contextPolicy field | Value |
+| --- | --- |
+| `provider` | "transformersjs" |
+| `contextWindowTokens` | 4096 |
+| `maxHistoryMessages` | 1 |
+| `safeInputTokens` | 1050 |
+| `maxSystemChars` | 740 |
+| `maxRuntimeChars` | 280 |
+| `maxHistoryChars` | 320 |
+| `maxToolResultChars` | 1600 |
+| `maxToolResultCharsForSynthesis` | 900 |
+
+#### `transformers-fp16-tools`
+
+FP16 WebGPU models with slightly larger prompt and tool-result limits.
+
+| Effective runtime contextPolicy field | Value |
+| --- | --- |
+| `provider` | "transformersjs" |
+| `contextWindowTokens` | 4096 |
+| `maxHistoryMessages` | 1 |
+| `safeInputTokens` | 1350 |
+| `maxSystemChars` | 860 |
+| `maxRuntimeChars` | 340 |
+| `maxHistoryChars` | 650 |
+| `maxToolResultChars` | 2400 |
+| `maxToolResultCharsForSynthesis` | 1400 |
+
+#### `transformers-micro-tools`
+
+~1.2B micro tool models with the largest local tool-result budget in this family.
+
+| Effective runtime contextPolicy field | Value |
+| --- | --- |
+| `provider` | "transformersjs" |
+| `contextWindowTokens` | 4096 |
+| `maxHistoryMessages` | 1 |
+| `safeInputTokens` | 1400 |
+| `maxSystemChars` | 900 |
+| `maxRuntimeChars` | 360 |
+| `maxHistoryChars` | 700 |
+| `maxToolResultChars` | 2600 |
+| `maxToolResultCharsForSynthesis` | 1500 |
+
+#### `transformers-tiny-fallback`
+
+WASM chat fallback; history and tool results disabled to minimize GPU/RAM spikes.
+
+| Effective runtime contextPolicy field | Value |
+| --- | --- |
+| `provider` | "transformersjs" |
+| `contextWindowTokens` | 4096 |
+| `maxHistoryMessages` | 0 |
+| `safeInputTokens` | 900 |
+| `maxSystemChars` | 560 |
+| `maxRuntimeChars` | 220 |
+| `maxHistoryChars` | 0 |
+| `maxToolResultChars` | 0 |
+| `maxToolResultCharsForSynthesis` | 0 |
+
+### Engine context defaults (before `contextPreset` / `contextOverride`)
+
+#### `ollama`
+
+Default Ollama context before catalog contextOverride merges. safeInputTokens = min(6000, max(2400, contextWindowTokens - 2200)).
+
+| Field | Value |
+| --- | --- |
+| `contextWindowTokens` | 8192 |
+| `provider` | "ollama" |
+| `reservedOutputTokens` | 2048 |
+| `maxSystemChars` | 2600 |
+| `maxRuntimeChars` | 1200 |
+| `maxHistoryMessages` | 8 |
+| `maxHistoryChars` | 12000 |
+| `maxToolResultChars` | 20000 |
+| `maxToolResultCharsForSynthesis` | 8000 |
+| `maxArtifacts` | 4 |
+
+#### `transformersjs`
+
+Default Transformers.js context before contextPreset. Usually replaced by a preset on catalog entries.
+
+| Field | Value |
+| --- | --- |
+| `contextWindowTokens` | 4096 |
+| `safeInputTokens` | 1800 |
