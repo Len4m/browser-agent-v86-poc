@@ -4,7 +4,6 @@
     "engine": "ollama",
     "model": "qwen3:1.7b",
     "sizeLabel": "≈1.4 GB",
-    "requiresShaderF16": false,
     "thinking": {
       "mode": "off"
     },
@@ -24,7 +23,6 @@
     "engine": "ollama",
     "model": "llama3.2:latest",
     "sizeLabel": "≈2.0 GB",
-    "requiresShaderF16": false,
     "contextWindowTokens": 8192,
     "contextOverride": {
       "safeInputTokens": 5600
@@ -35,7 +33,6 @@
     "engine": "ollama",
     "model": "granite4.1:3b",
     "sizeLabel": "≈2.1 GB",
-    "requiresShaderF16": false,
     "temperature": 0.1,
     "contextWindowTokens": 8192
   },
@@ -44,7 +41,6 @@
     "engine": "ollama",
     "model": "qwen3.5:4b",
     "sizeLabel": "≈3.4 GB",
-    "requiresShaderF16": false,
     "thinking": {
       "mode": "off"
     },
@@ -55,7 +51,6 @@
     "engine": "ollama",
     "model": "granite3.3:8b",
     "sizeLabel": "≈4.9 GB",
-    "requiresShaderF16": false,
     "temperature": 0.1,
     "contextWindowTokens": 8192,
     "notes": [
@@ -67,7 +62,6 @@
     "engine": "ollama",
     "model": "llama3.1:8b",
     "sizeLabel": "≈4.9 GB",
-    "requiresShaderF16": false,
     "temperature": 0.15,
     "contextWindowTokens": 8192
   },
@@ -76,7 +70,6 @@
     "engine": "ollama",
     "model": "qwen3:8b",
     "sizeLabel": "≈5.2 GB",
-    "requiresShaderF16": false,
     "thinking": {
       "mode": "off"
     },
@@ -87,7 +80,6 @@
     "engine": "ollama",
     "model": "granite4.1:8b",
     "sizeLabel": "≈5.3 GB",
-    "requiresShaderF16": false,
     "temperature": 0.1,
     "contextWindowTokens": 8192
   },
@@ -96,7 +88,6 @@
     "engine": "ollama",
     "model": "qwen3.5:9b",
     "sizeLabel": "≈6.6 GB",
-    "requiresShaderF16": false,
     "thinking": {
       "mode": "off"
     },
@@ -107,7 +98,6 @@
     "engine": "ollama",
     "model": "qwen3:14b",
     "sizeLabel": "≈9.3 GB",
-    "requiresShaderF16": false,
     "thinking": {
       "mode": "off"
     },
@@ -118,7 +108,6 @@
     "engine": "ollama",
     "model": "gpt-oss:20b",
     "sizeLabel": "≈14 GB",
-    "requiresShaderF16": false,
     "thinking": {
       "mode": "optional"
     },
@@ -130,7 +119,6 @@
     "engine": "ollama",
     "model": "gpt-oss:latest",
     "sizeLabel": "≈14 GB",
-    "requiresShaderF16": false,
     "thinking": {
       "mode": "optional"
     },
@@ -145,7 +133,6 @@
     "engine": "ollama",
     "model": "qwen3:30b",
     "sizeLabel": "≈19 GB",
-    "requiresShaderF16": false,
     "thinking": {
       "mode": "off"
     },
@@ -159,7 +146,6 @@
     "engine": "ollama",
     "model": "glm-4.7-flash:latest",
     "sizeLabel": "≈19 GB",
-    "requiresShaderF16": false,
     "thinking": {
       "mode": "off"
     },
@@ -197,7 +183,6 @@
     "model": "onnx-community/Qwen3-0.6B-ONNX",
     "dtype": "q4",
     "sizeLabel": "≈0.9 GB",
-    "requiresShaderF16": false,
     "agentProfile": "tools-light-good",
     "thinking": {
       "mode": "optional",
@@ -220,7 +205,6 @@
     "model": "onnx-community/Qwen2.5-Coder-0.5B-Instruct",
     "dtype": "q4",
     "sizeLabel": "≈0.5–0.8 GB",
-    "requiresShaderF16": false,
     "agentProfile": "tools-weak",
     "agentOverride": {
       "maxNativeTools": 2,
@@ -237,7 +221,6 @@
     "model": "onnx-community/glm-edge-1.5b-chat-ONNX",
     "dtype": "q4",
     "sizeLabel": "≈1.5–2.0 GB",
-    "requiresShaderF16": false,
     "agentProfile": "tools-fair",
     "contextPreset": "browser-tools-md"
   },
@@ -295,7 +278,6 @@
     "model": "onnx-community/LFM2-1.2B-Tool-ONNX",
     "dtype": "q4",
     "sizeLabel": "≈1.0–1.4 GB",
-    "requiresShaderF16": false,
     "agentProfile": "tools-good",
     "contextPreset": "browser-tools-md",
     "notes": [
@@ -324,7 +306,6 @@
     "device": "wasm",
     "dtype": "fp32",
     "sizeLabel": "≈1 GB+",
-    "requiresShaderF16": false,
     "agentProfile": "tools-weak",
     "contextPreset": "browser-chat-fallback",
     "notes": [

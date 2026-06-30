@@ -317,7 +317,6 @@ const customModels: LlmModelConfig[] = [
     engine: "ollama",
     model: "",
     custom: true,
-    requiresShaderF16: false,
     contextWindowTokens: 8192,
   },
   {
@@ -326,7 +325,6 @@ const customModels: LlmModelConfig[] = [
     model: "",
     dtype: "auto",
     custom: true,
-    requiresShaderF16: false,
   },
 ];
 

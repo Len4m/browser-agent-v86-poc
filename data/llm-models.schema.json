@@ -11,8 +11,7 @@
       "id",
       "engine",
       "model",
-      "sizeLabel",
-      "requiresShaderF16"
+      "sizeLabel"
     ],
     "properties": {
       "id": {
@@ -46,7 +45,8 @@
       },
       "requiresShaderF16": {
         "type": "boolean",
-        "description": "true when a WebGPU model requires shader-f16 support."
+        "default": false,
+        "description": "Optional. Set true only for WebGPU Transformers.js models that require shader-f16 support. Defaults to false when omitted."
       },
       "agentProfile": {
         "type": "string",

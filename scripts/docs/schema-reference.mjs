@@ -144,7 +144,7 @@ const ES_FIELD_DESCRIPTIONS = {
   device: "Dispositivo opcional de ejecución de Transformers.js. Si se omite, el default es webgpu.",
   dtype: "Formato numérico o cuantización opcional de Transformers.js. Si se omite, el default es auto.",
   sizeLabel: "Tamaño aproximado mostrado en la UI. Solo informativo.",
-  requiresShaderF16: "true cuando un modelo WebGPU requiere soporte shader-f16.",
+  requiresShaderF16: "Opcional. Configúralo en true solo para modelos Transformers.js WebGPU que requieran shader-f16. Por defecto es false si se omite.",
   agentProfile: "Preset de defaults de agente/tools y temperatura de sampling. Úsalo en entradas Transformers.js; Ollama usa defaults de agente por engine, así que configura temperature directamente cuando haga falta. `chat-state.ts` lo expande al objeto runtime `agent`. Ver [Catálogo de presets](#catálogo-de-presets).",
   agentOverride: "Override opcional de `agentProfile`. Configura solo campos que difieran del preset expandido tras probar el modelo. Expandido en runtime al objeto `agent` por `chat-state.ts`.",
   temperature: "Temperatura de muestreo opcional. Valores bajos son más deterministas. Omítela para usar el default derivado de `agentProfile` (0.1 para tools-good/tools-fair, 0.15 en el resto).",

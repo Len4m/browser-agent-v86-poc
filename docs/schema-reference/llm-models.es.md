@@ -20,7 +20,7 @@ Schema fuente de `data/llm-models.json`. Entradas del catálogo editadas manualm
 
 ## Campos obligatorios
 
-`id`, `engine`, `model`, `sizeLabel`, `requiresShaderF16`
+`id`, `engine`, `model`, `sizeLabel`
 
 ## Propiedades
 
@@ -32,7 +32,7 @@ Schema fuente de `data/llm-models.json`. Entradas del catálogo editadas manualm
 | `device` | no | string | Dispositivo opcional de ejecución de Transformers.js. Si se omite, el default es webgpu. | enum: "webgpu", "wasm" |
 | `dtype` | no | string | Formato numérico o cuantización opcional de Transformers.js. Si se omite, el default es auto. | enum: "auto", "fp32", "fp16", "q8", "q4", "q4f16" |
 | `sizeLabel` | sí | string | Tamaño aproximado mostrado en la UI. Solo informativo. | minLength: 1 |
-| `requiresShaderF16` | sí | boolean | true cuando un modelo WebGPU requiere soporte shader-f16. |  |
+| `requiresShaderF16` | no | boolean | Opcional. Configúralo en true solo para modelos Transformers.js WebGPU que requieran shader-f16. Por defecto es false si se omite. |  |
 | `agentProfile` | no | string | Preset de defaults de agente/tools y temperatura de sampling. Úsalo en entradas Transformers.js; Ollama usa defaults de agente por engine, así que configura temperature directamente cuando haga falta. `chat-state.ts` lo expande al objeto runtime `agent`. Ver [Catálogo de presets](#catálogo-de-presets). | enum: "tools-good", "tools-fair", "tools-light-good", "tools-weak" |
 | `agentOverride` | no | object | Override opcional de `agentProfile`. Configura solo campos que difieran del preset expandido tras probar el modelo. Expandido en runtime al objeto `agent` por `chat-state.ts`. | additionalProperties: false |
 | `temperature` | no | number | Temperatura de muestreo opcional. Valores bajos son más deterministas. Omítela para usar el default derivado de `agentProfile` (0.1 para tools-good/tools-fair, 0.15 en el resto). | minimum: 0 |
