@@ -106,7 +106,7 @@ Each document links to its counterpart in the other language. Use `USAGE`, `ARCH
 
 ## Contributing
 
-All kinds of contributions are welcome: [issues](https://github.com/Len4m/browser-agent-v86-poc/issues), bug reports, ideas, translations, documentation improvements, [pull requests](https://github.com/Len4m/browser-agent-v86-poc/pulls), and new VM profiles or profile tools. If you want to add runtime capabilities, see the [VM profiles and tools guide](docs/VM_PROFILES_AND_TOOLS.en.md).
+All kinds of contributions are welcome: [issues](https://github.com/Len4m/browser-agent-v86-poc/issues), bug reports, ideas, translations, documentation improvements, [pull requests](https://github.com/Len4m/browser-agent-v86-poc/pulls), and new VM profiles or profile tools. You can find planned improvements and open tasks in [TODO.md](TODO.md), currently available in Spanish. If you want to add runtime capabilities, see the [VM profiles and tools guide](docs/VM_PROFILES_AND_TOOLS.en.md).
 
 If the project is useful or interesting to you, starring the repository helps other developers discover it.
 

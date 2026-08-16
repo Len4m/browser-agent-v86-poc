@@ -106,7 +106,7 @@ Cada documento enlaza con su versión en el otro idioma. Para contribuir o despl
 
 ## Colaborar
 
-Se agradece cualquier tipo de colaboración: [issues](https://github.com/Len4m/browser-agent-v86-poc/issues), informes de bugs, ideas, traducciones, mejoras de documentación, [pull requests](https://github.com/Len4m/browser-agent-v86-poc/pulls) y nuevos perfiles VM o tools de perfil. Si quieres añadir capacidades al runtime, consulta la [guía de perfiles VM y tools](docs/VM_PROFILES_AND_TOOLS.es.md).
+Se agradece cualquier tipo de colaboración: [issues](https://github.com/Len4m/browser-agent-v86-poc/issues), informes de bugs, ideas, traducciones, mejoras de documentación, [pull requests](https://github.com/Len4m/browser-agent-v86-poc/pulls) y nuevos perfiles VM o tools de perfil. Puedes consultar las mejoras previstas y tareas pendientes en [TODO.md](TODO.md). Si quieres añadir capacidades al runtime, consulta la [guía de perfiles VM y tools](docs/VM_PROFILES_AND_TOOLS.es.md).
 
 Si el proyecto te resulta útil o interesante, dejar una estrella en el repositorio ayuda a que otras personas lo descubran.
 
