@@ -70,13 +70,13 @@ flowchart LR
 
 ## Raíz servida
 
-`public/` es la única raíz HTTP. El HTML/CSS editable vive fuera y se regenera con `npm run build`:
+`public/` es la única raíz HTTP. El HTML/CSS editable vive fuera y se regenera con `pnpm build`:
 
 - `src/web/index.html`: plantilla fuente del shell de UI.
 - `src/web/styles/style.css`: entry CSS fuente; importa `src/web/styles/*.css`.
 - `public/index.html`: shell generado con hashes de caché.
 - `public/style.css` y `public/styles/`: CSS generado/copiado para desarrollo.
-- `public/assets/app.css`: CSS bundle minificado generado por `npm run build:prod`.
+- `public/assets/app.css`: CSS bundle minificado generado por `pnpm build:prod`.
 - `public/assets/app.js`: bundle ESM principal generado.
 - `public/assets/ai-sdk-bridge.mjs`: bridge ESM generado e importado dinámicamente por `app.js`.
 - `public/assets/chat/`: bundle AI SDK y worker LLM generados.
@@ -109,7 +109,7 @@ Toda la copy de UI vive en catálogos JSON (`src/web/locales/*.json`) y el códi
 - Idiomas soportados: `es` (base) y `en`.
 - Selección: idioma guardado en `localStorage` (`ba.lang`). Si no hay un valor guardado, la app elige `es` cuando alguno de los idiomas del navegador es español y `en` en caso contrario. El selector de cabecera (`src/browser/app/lang-selector.ts`) cambia el idioma en caliente sin recargar.
 - Los dos catálogos se copian a `public/locales/`, pero el runtime solo mantiene en memoria el catálogo activo.
-- `npm run check` ejecuta `scripts/check/i18n.mjs` para garantizar paridad de claves entre `es.json` y `en.json`. La paridad de claves no valida la calidad del texto; las cadenas nuevas deben añadirse en ambos catálogos.
+- `pnpm check` ejecuta `scripts/check/i18n.mjs` para garantizar paridad de claves entre `es.json` y `en.json`. La paridad de claves no valida la calidad del texto; las cadenas nuevas deben añadirse en ambos catálogos.
 
 ## Build de la app
 
@@ -118,7 +118,7 @@ Toda la copy de UI vive en catálogos JSON (`src/web/locales/*.json`) y el códi
 1. `scripts/build/llm-browser-bundles.mjs`
 2. `scripts/build/frontend.mjs`
 
-`npm run build` presupone que `npm run setup` ya ha preparado los assets base de runtime que el HTML versiona, como xterm y el perfil Alpine base.
+`pnpm build` presupone que `pnpm setup` ya ha preparado los assets base de runtime que el HTML versiona, como xterm y el perfil Alpine base.
 
 Fuente y salidas generadas del LLM:
 
@@ -201,7 +201,7 @@ Fuentes de runners:
 - `vm/overlay/common/usr/local/bin/ba-serial1-runner`
 - `vm/overlay/common/usr/local/bin/ba-serial2-console-runner`
 
-Ambos runners guest están escritos en Python 3 y son procesos persistentes supervisados por el proceso init del guest incluido en el initramfs. Por tanto, `python3` es dependencia obligatoria de todos los perfiles VM; `npm run check` y `scripts/setup/vm-profile-image.mjs` lo validan.
+Ambos runners guest están escritos en Python 3 y son procesos persistentes supervisados por el proceso init del guest incluido en el initramfs. Por tanto, `python3` es dependencia obligatoria de todos los perfiles VM; `pnpm check` y `scripts/setup/vm-profile-image.mjs` lo validan.
 
 ## VM e imágenes
 
@@ -249,7 +249,7 @@ Ficheros por paso:
 - Guest: el `/init` y los runners serie se instalan desde la fuente única en `vm/overlay/common/` con `install -m 0755`.
 - Salidas: `public/v86/images/profiles/<id>-initramfs.gz`, el kernel compartido por rama en `public/v86/images/kernels/` y los manifests en `public/v86/images/profiles/`.
 
-Los runners seriales y el guest `/init` se instalan desde `vm/overlay/common/`. Tras cambiar overlay, perfiles, runners, librerías de build o build de Alpine, ejecutar `npm run setup`.
+Los runners seriales y el guest `/init` se instalan desde `vm/overlay/common/`. Tras cambiar overlay, perfiles, runners, librerías de build o build de Alpine, ejecutar `pnpm setup`.
 
 ## Capa LLM
 
@@ -308,11 +308,11 @@ Archivos clave:
 
 ## Checks
 
-`npm run check` ejecuta:
+`pnpm check` ejecuta:
 
 - `tsc --noEmit`
-- `npm run lint`
-- `npm test`
+- `pnpm lint`
+- `pnpm test`
 - `scripts/check.mjs`
 
 `scripts/check.mjs` ejecuta:
@@ -326,17 +326,17 @@ Archivos clave:
 
 `check-server` arranca `server.mjs` en `127.0.0.1:5199` y valida COOP, COEP, CORP y `Range`.
 
-`npm run lint` usa ESLint flat config (`eslint.config.js`). El código TypeScript de navegador se valida con reglas TypeScript type-aware en los módulos modernizados.
+`pnpm lint` usa ESLint flat config (`eslint.config.js`). El código TypeScript de navegador se valida con reglas TypeScript type-aware en los módulos modernizados.
 
-`npm test` compila `tests/**/*.test.ts` con esbuild hacia `build/test/` y ejecuta `node --test`. Los tests en `tests/browser/` cubren comportamiento de módulos puros de `src/browser/`; no son tests end-to-end en navegador. `scripts/check/` queda reservado para validaciones de integridad del repo, assets generados y reglas de arquitectura.
+`pnpm test` compila `tests/**/*.test.ts` con esbuild hacia `build/test/` y ejecuta `node --test`. Los tests en `tests/browser/` cubren comportamiento de módulos puros de `src/browser/`; no son tests end-to-end en navegador. `scripts/check/` queda reservado para validaciones de integridad del repo, assets generados y reglas de arquitectura.
 
 ## Limpieza
 
-`npm run clean` borra `build/` y las salidas generadas por el build en `public/`: `index.html`, CSS, `styles/`, `locales/` (desde `src/web/`), bundles y `assets/chat/`. No borra `public/vendor/` ni `public/v86/`, ni estáticos versionados (`favicon.ico`, iconos, `robots.txt`, etc.).
+`pnpm clean` borra `build/` y las salidas generadas por el build en `public/`: `index.html`, CSS, `styles/`, `locales/` (desde `src/web/`), bundles y `assets/chat/`. No borra `public/vendor/` ni `public/v86/`, ni estáticos versionados (`favicon.ico`, iconos, `robots.txt`, etc.).
 
-`npm run clean:runtime` borra el runtime pesado generado por `setup`: `public/vendor/` y `public/v86/`. Después hay que ejecutar `npm run setup` o `npm run prepare:local` antes de arrancar la VM.
+`pnpm clean:runtime` borra el runtime pesado generado por `setup`: `public/vendor/` y `public/v86/`. Después hay que ejecutar `pnpm setup` o `pnpm prepare:local` antes de arrancar la VM.
 
-`npm run clean:all` combina ambos alcances.
+`pnpm clean:all` combina ambos alcances.
 
 ## Reglas de mantenimiento
 
@@ -344,11 +344,11 @@ Archivos clave:
 2. El código de aplicación debe importarse desde `src/browser/main.ts` o desde módulos importados por este.
 3. Nuevo CSS en `src/web/styles/` y `@import` desde `src/web/styles/style.css`.
 4. Nuevas librerías browser vía `package.json` + script de copia/bundle, no copiadas a mano en `public/vendor/`.
-5. Añadir modelos nuevos a `data/llm-models.json` y reconstruir los assets generados con `npm run build`.
+5. Añadir modelos nuevos a `data/llm-models.json` y reconstruir los assets generados con `pnpm build`.
 6. Nueva tool como modulo de definicion en `src/browser/chat/tools/definitions/`; mantener alineados nombre literal, `requiredPackages`, `allowedTools` de perfiles, checks y tests.
-7. Cambios en perfiles, overlay o runners requieren `npm run setup`.
-8. Cambios en provider AI SDK o worker requieren `npm run build`.
-9. `npm run build:prod` usa `https://browseragent.icu/` como `BA_PUBLIC_SITE_URL` por defecto; otros dominios deben sobrescribir esa variable para generar canonical y Open Graph/Twitter con URLs absolutas del dominio correcto.
+7. Cambios en perfiles, overlay o runners requieren `pnpm setup`.
+8. Cambios en provider AI SDK o worker requieren `pnpm build`.
+9. `pnpm build:prod` usa `https://browseragent.icu/` como `BA_PUBLIC_SITE_URL` por defecto; otros dominios deben sobrescribir esa variable para generar canonical y Open Graph/Twitter con URLs absolutas del dominio correcto.
 10. Mantener límites explícitos para logs, artifacts, historial y salidas de tools.
 11. Probar consolas xterm, cierre, refresco, programas de pantalla completa y tools tras tocar seriales o geometría de consola.
 12. Mantener el código de navegador tipado, modular y explícito; apoyarse en ESLint, TypeScript y revisión de código, y justificar cualquier excepción a la arquitectura establecida.

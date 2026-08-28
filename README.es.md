@@ -35,7 +35,7 @@ La demo no requiere clonar el repo. Los modelos Transformers.js se descargan y e
 
 ## Ejecutar desde el repo
 
-Requisitos principales: Node.js 18+, Linux (o macOS con herramientas de build compatibles con GNU), Docker, herramientas de sistema para generar initramfs/discos y conexión a Internet para descargar assets base, paquetes Alpine y los modelos de navegador cuando se cargan por primera vez.
+Requisitos principales: Node.js 26.8.1, pnpm 11.24.0, Linux (o macOS con herramientas de build compatibles con GNU), Docker, herramientas de sistema para generar initramfs/discos y conexión a Internet para descargar assets base, paquetes Alpine y los modelos de navegador cuando se cargan por primera vez. Las versiones quedan fijadas en `.nvmrc`, `.node-version` y `packageManager`.
 
 En Debian/Ubuntu, instala las dependencias de sistema con:
 
@@ -48,9 +48,9 @@ Memoria/GPU orientativa: mínimo 4 GB RAM; 8 GB RAM y GPU WebGPU con ~2 GB VRAM/
 ```bash
 git clone https://github.com/Len4m/browser-agent-v86-poc.git
 cd browser-agent-v86-poc
-npm install
-npm run prepare:local
-npm start
+pnpm install
+pnpm prepare:local
+pnpm start
 ```
 
 Abre `http://127.0.0.1:5173/`.
@@ -75,7 +75,7 @@ Si ya tienes un zip de `public/` con los assets generados, no necesitas Node.js 
 - MIME correcto para `.wasm`.
 - Soporte `Range` para assets grandes.
 
-No abras `index.html` como `file://`. `npm start` ya sirve `public/` con las cabeceras necesarias.
+No abras `index.html` como `file://`. `pnpm start` ya sirve `public/` con las cabeceras necesarias.
 
 ## Estructura principal
 

@@ -118,7 +118,7 @@ for (const asset of npmAssets) {
   const src = join(root, asset.src);
   const dest = join(root, asset.dest);
   if (!existsSync(src) || statSync(src).size <= 0) {
-    throw new Error(`Falta ${asset.name} en ${asset.src}. Ejecuta npm install.`);
+    throw new Error(`Falta ${asset.name} en ${asset.src}. Ejecuta pnpm install.`);
   }
   mkdirSync(dirname(dest), { recursive: true });
   copyFileSync(src, dest);

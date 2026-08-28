@@ -33,11 +33,11 @@ Para usar un runtime ya generado basta con:
 
 Para preparar el proyecto desde el repo necesitas además:
 
-- Node.js 18+.
-- Linux. En macOS hay que instalar y exponer en `PATH` versiones compatibles con GNU de `tar`, `stat` y `cpio`, además de las herramientas ext2; las utilidades BSD incluidas por defecto no aceptan todas las opciones que usa `npm run setup`.
+- Node.js 26.8.1 y pnpm 11.24.0, fijados respectivamente en `.nvmrc` / `.node-version` y `packageManager`.
+- Linux. En macOS hay que instalar y exponer en `PATH` versiones compatibles con GNU de `tar`, `stat` y `cpio`, además de las herramientas ext2; las utilidades BSD incluidas por defecto no aceptan todas las opciones que usa `pnpm setup`.
 - Docker para construir los perfiles Alpine incluidos.
 - Herramientas de sistema: `tar`, `cpio`, `gzip`, `zstd`, `xz`, `curl`, `coreutils`, `e2fsprogs`, `find`, `awk`, `grep` y `sed`.
-- Conexión a Internet para los assets base, los paquetes Alpine y las wordlists de perfiles que descarga `npm run setup`.
+- Conexión a Internet para los assets base, los paquetes Alpine y las wordlists de perfiles que descarga `pnpm setup`.
 - 1-2 GB libres para runtime v86, initramfs, perfiles y discos sparse.
 
 En Debian/Ubuntu:
@@ -70,14 +70,14 @@ Como referencia, `qwen3-tools-onnx-q4` (`onnx-community/Qwen3-0.6B-ONNX`, q4/Web
 ```bash
 git clone https://github.com/Len4m/browser-agent-v86-poc.git
 cd browser-agent-v86-poc
-npm install
-npm run prepare:local
-npm start
+pnpm install
+pnpm prepare:local
+pnpm start
 ```
 
 Abre `http://127.0.0.1:5173/`.
 
-`npm run prepare:local` ejecuta `setup` y después `build`. La VM no arrancará correctamente hasta que existan los assets generados en `public/v86/`, `public/vendor/` y `public/assets/`.
+`pnpm prepare:local` ejecuta `setup` y después `build`. La VM no arrancará correctamente hasta que existan los assets generados en `public/v86/`, `public/vendor/` y `public/assets/`.
 
 ## Primer uso
 
@@ -89,7 +89,7 @@ Abre `http://127.0.0.1:5173/`.
 
 Puedes pulsar **Comprobar** en cualquier momento para validar cabeceras, assets, seriales, runners, red y tools cuando corresponda.
 
-Los perfiles generados aparecen desde `/v86/images/profiles/index.json`. Si no aparecen, ejecuta `npm run setup`.
+Los perfiles generados aparecen desde `/v86/images/profiles/index.json`. Si no aparecen, ejecuta `pnpm setup`.
 
 ## VM, perfiles y discos
 
@@ -106,7 +106,7 @@ La opción **Libre / manual** usa el kernel e initramfs por defecto y permite ca
 Discos:
 
 - `RAM / initramfs`: el sistema vive en memoria; los cambios se pierden al apagar salvo snapshot.
-- `hda 250 MB`, `hda 512 MB`, `hda 1 GB`: imágenes ext2 raw creadas por `npm run setup`.
+- `hda 250 MB`, `hda 512 MB`, `hda 1 GB`: imágenes ext2 raw creadas por `pnpm setup`.
 - Los discos HDA son datos montables en `/mnt/hda`; el sistema sigue arrancando desde initramfs.
 - Los snapshots guardan RAM/CPU/estado de v86, pero no incluyen cambios persistidos en discos HDA.
 
@@ -125,12 +125,12 @@ Los runners instalados en el initramfs vienen de:
 - `vm/overlay/common/usr/local/bin/ba-serial1-runner`
 - `vm/overlay/common/usr/local/bin/ba-serial2-console-runner`
 
-Ambos runners guest usan Python 3. Todos los perfiles en `vm/profiles/*.json` deben incluir el paquete `python3`; `npm run check` y la construcción de perfiles fallan si falta.
+Ambos runners guest usan Python 3. Todos los perfiles en `vm/profiles/*.json` deben incluir el paquete `python3`; `pnpm check` y la construcción de perfiles fallan si falta.
 
 Después de cambiar perfiles, overlay, runners o scripts de initramfs, ejecuta:
 
 ```bash
-npm run setup
+pnpm setup
 ```
 
 Validación rápida dentro de la VM:
@@ -149,7 +149,7 @@ Backends soportados:
 - **Transformers.js**: corre en el navegador con worker propio. WebGPU es lo recomendado; algunos modelos pueden caer a WASM si WebGPU falla.
 - **Ollama HTTP**: el navegador llama directamente al endpoint local, por defecto `http://127.0.0.1:11434`.
 
-Los modelos disponibles se declaran en `data/llm-models.json`; `npm run build` integra ese catálogo en el frontend.
+Los modelos disponibles se declaran en `data/llm-models.json`; `pnpm build` integra ese catálogo en el frontend.
 El catálogo prioriza modelos con evidencia de tool calling en `Transformers.js + AI SDK`; las entradas experimentales sirven para validación local antes de tratarlas como recomendadas.
 
 Notas de uso:
@@ -183,18 +183,18 @@ Flujo recomendado:
 
 | Comando | Uso |
 | --- | --- |
-| `npm install` | Instala dependencias npm; no genera los assets pesados |
-| `npm run prepare:local` | Ejecuta `setup` y `build` para dejar un entorno local usable |
-| `npm run setup` | Descarga/copia assets base, genera initramfs, perfiles y discos |
-| `npm run build` | Integra el catálogo de modelos y genera el worker/bridge LLM y el bundle frontend; requiere haber ejecutado `setup` al menos una vez |
-| `npm run build:prod` | Genera el runtime minificado para producción: JS/CSS minificados y hashes de caché |
-| `npm run check` | Ejecuta TypeScript, lint, tests unitarios y checks de integridad del repo/assets |
-| `npm run clean` | Borra `build/` y las salidas generadas por el build en `public/` |
-| `npm run clean:runtime` | Borra runtime pesado generado por `setup`: `public/vendor/` y `public/v86/` |
-| `npm run clean:all` | Ejecuta la limpieza de build y runtime |
-| `npm start` | Sirve `public/` con `server.mjs` en `127.0.0.1:5173` |
+| `pnpm install` | Instala las dependencias del proyecto; no genera los assets pesados |
+| `pnpm prepare:local` | Ejecuta `setup` y `build` para dejar un entorno local usable |
+| `pnpm setup` | Descarga/copia assets base, genera initramfs, perfiles y discos |
+| `pnpm build` | Integra el catálogo de modelos y genera el worker/bridge LLM y el bundle frontend; requiere haber ejecutado `setup` al menos una vez |
+| `pnpm build:prod` | Genera el runtime minificado para producción: JS/CSS minificados y hashes de caché |
+| `pnpm check` | Ejecuta TypeScript, lint, tests unitarios y checks de integridad del repo/assets |
+| `pnpm clean` | Borra `build/` y las salidas generadas por el build en `public/` |
+| `pnpm clean:runtime` | Borra runtime pesado generado por `setup`: `public/vendor/` y `public/v86/` |
+| `pnpm clean:all` | Ejecuta la limpieza de build y runtime |
+| `pnpm start` | Sirve `public/` con `server.mjs` en `127.0.0.1:5173` |
 
-Regenera con `npm run setup` después de tocar:
+Regenera con `pnpm setup` después de tocar:
 
 - `vm/profiles/*.json`
 - `vm/overlay/common/`
@@ -203,7 +203,7 @@ Regenera con `npm run setup` después de tocar:
 
 Los perfiles VM deben mantener `python3` en `packages`, porque los runners seriales del guest dependen de Python 3.
 
-Regenera con `npm run build` después de tocar:
+Regenera con `pnpm build` después de tocar:
 
 - `src/browser/`
 - `src/web/index.html`
@@ -215,20 +215,20 @@ Regenera con `npm run build` después de tocar:
 
 | Fuente | Salida | Regenerar |
 | --- | --- | --- |
-| `src/browser/`, `data/llm-models.json`, `src/web/index.html`, `src/web/styles/` | `public/index.html`, `public/style.css`, `public/styles/`, `public/assets/app.js`, `public/assets/ai-sdk-bridge.mjs` | `npm run build` |
-| `src/web/styles/` | `public/assets/app.css` | `npm run build:prod` |
-| `src/browser/chat/provider/ai-sdk/` | `public/assets/chat/` | `npm run build` |
-| `vm/profiles/*.json`, `vm/overlay/common/` | `build/profiles/`, `public/v86/images/profiles/` | `npm run setup` |
-| v86, xterm, DOMPurify, streaming-markdown, BIOS y Alpine base | `public/vendor/`, `public/v86/build/`, `public/v86/bios/`, `public/v86/images/` | `npm run setup` |
-| Discos HDA locales | `public/v86/disks/` | `npm run setup` |
+| `src/browser/`, `data/llm-models.json`, `src/web/index.html`, `src/web/styles/` | `public/index.html`, `public/style.css`, `public/styles/`, `public/assets/app.js`, `public/assets/ai-sdk-bridge.mjs` | `pnpm build` |
+| `src/web/styles/` | `public/assets/app.css` | `pnpm build:prod` |
+| `src/browser/chat/provider/ai-sdk/` | `public/assets/chat/` | `pnpm build` |
+| `vm/profiles/*.json`, `vm/overlay/common/` | `build/profiles/`, `public/v86/images/profiles/` | `pnpm setup` |
+| v86, xterm, DOMPurify, streaming-markdown, BIOS y Alpine base | `public/vendor/`, `public/v86/build/`, `public/v86/bios/`, `public/v86/images/` | `pnpm setup` |
+| Discos HDA locales | `public/v86/disks/` | `pnpm setup` |
 
 ## Limpieza
 
-Usa `npm run clean` durante el desarrollo normal. Borra `build/` y las salidas generadas por el build en `public/`: `index.html`, `style.css`, `styles/`, `locales/` (copiados desde `src/web/`), bundles JS y `assets/chat/`. No borra `public/vendor/` ni `public/v86/`, ni los estáticos versionados en git (`favicon.ico`, iconos, `robots.txt`, etc.).
+Usa `pnpm clean` durante el desarrollo normal. Borra `build/` y las salidas generadas por el build en `public/`: `index.html`, `style.css`, `styles/`, `locales/` (copiados desde `src/web/`), bundles JS y `assets/chat/`. No borra `public/vendor/` ni `public/v86/`, ni los estáticos versionados en git (`favicon.ico`, iconos, `robots.txt`, etc.).
 
-Usa `npm run clean:runtime` cuando quieras forzar una regeneración del runtime pesado: vendors, v86, BIOS, initramfs, perfiles y discos. Después ejecuta `npm run setup` o `npm run prepare:local` antes de arrancar la VM.
+Usa `pnpm clean:runtime` cuando quieras forzar una regeneración del runtime pesado: vendors, v86, BIOS, initramfs, perfiles y discos. Después ejecuta `pnpm setup` o `pnpm prepare:local` antes de arrancar la VM.
 
-Usa `npm run clean:all` para limpiar ambos grupos.
+Usa `pnpm clean:all` para limpiar ambos grupos.
 
 ## Runtime zip
 
@@ -237,8 +237,8 @@ El runtime estático es la carpeta `public/`. Un paquete completo con todas las 
 Crear zip:
 
 ```bash
-npm run prepare:local
-npm run check
+pnpm prepare:local
+pnpm check
 cd public
 zip -r ../browser-agent-v86-poc-runtime-public.zip .
 ```
@@ -260,13 +260,13 @@ El servidor final debe enviar COOP/COEP/CORP y soportar `Range`. `public/_header
 Para el build público de la demo oficial:
 
 ```bash
-npm run build:prod
+pnpm build:prod
 ```
 
 `build:prod` usa `https://browseragent.icu/` como `BA_PUBLIC_SITE_URL` por defecto. Para otro dominio:
 
 ```bash
-BA_PUBLIC_SITE_URL=https://tu-dominio.example/ npm run build:prod
+BA_PUBLIC_SITE_URL=https://tu-dominio.example/ pnpm build:prod
 ```
 
 Ese valor se usa para `canonical`, `og:url` e imágenes Open Graph/Twitter absolutas. Si se ejecuta el build no productivo sin esa variable, el HTML queda portable con URLs relativas al origen.
@@ -274,7 +274,7 @@ Ese valor se usa para `canonical`, `og:url` e imágenes Open Graph/Twitter absol
 Paquete local con servidor incluido:
 
 ```bash
-zip -r browser-agent-v86-poc-local-server.zip public server.mjs package.json package-lock.json
+zip -r browser-agent-v86-poc-local-server.zip public server.mjs package.json pnpm-lock.yaml pnpm-workspace.yaml
 ```
 
 Uso:
@@ -282,16 +282,16 @@ Uso:
 ```bash
 unzip browser-agent-v86-poc-local-server.zip -d destino/
 cd destino
-npm install
-npm start
+pnpm install
+pnpm start
 ```
 
 ## Problemas habituales
 
-- **VM no arranca**: ejecuta `npm run prepare:local` y después `npm run check`.
-- **No aparecen perfiles**: falta `/v86/images/profiles/index.json`; ejecuta `npm run setup`.
-- **Cambiaste initramfs, runners o perfiles**: ejecuta `npm run setup` y arranca una VM nueva.
-- **Disco HDA no monta**: verifica que existe `public/v86/disks/alpine-hda-*.img`; `npm run setup` los crea.
+- **VM no arranca**: ejecuta `pnpm prepare:local` y después `pnpm check`.
+- **No aparecen perfiles**: falta `/v86/images/profiles/index.json`; ejecuta `pnpm setup`.
+- **Cambiaste initramfs, runners o perfiles**: ejecuta `pnpm setup` y arranca una VM nueva.
+- **Disco HDA no monta**: verifica que existe `public/v86/disks/alpine-hda-*.img`; `pnpm setup` los crea.
 - **Tools o checks afectan a la consola visible**: valida `/dev/ttyS1`, `/dev/ttyS2` y los procesos `ba-serial1-runner` / `ba-serial2-console-runner`.
 - **Una consola xterm queda desincronizada**: usa refrescar; limpia el xterm local y envía `Ctrl+L` al shell activo.
 - **LLM local falla por WebGPU**: prueba un modelo WASM o reduce el modelo; algunas rutas intentan fallback WASM.

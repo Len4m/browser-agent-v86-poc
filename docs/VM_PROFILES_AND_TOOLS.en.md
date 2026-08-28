@@ -18,7 +18,7 @@ The connection between them is:
 - `scripts/check/vm-profiles.mjs` validates that tools exist and that the profile includes their required packages.
 - At runtime, `tool-registry.ts` filters out tools that the active profile cannot support.
 
-Field definitions, validation rules, and required properties for `vm/profiles/<id>.json` are documented in the [VM profile schema reference](schema-reference/vm-profile.md) (generated from `vm/profiles/profile.schema.json` via `npm run docs:schemas`).
+Field definitions, validation rules, and required properties for `vm/profiles/<id>.json` are documented in the [VM profile schema reference](schema-reference/vm-profile.md) (generated from `vm/profiles/profile.schema.json` via `pnpm docs:schemas`).
 
 ## Add A VM Profile
 
@@ -104,17 +104,17 @@ Field definitions, validation rules, and required properties for `vm/profiles/<i
 8. Validate the profile.
 
    ```bash
-   npm run check
+   pnpm check
    ```
 
    This checks schema, duplicate ids, `python3`, unknown `allowedTools`, and missing `requiredPackages`. See the [schema reference](schema-reference/vm-profile.md) for per-field details.
 
 9. Generate the profile assets.
 
-   Use `npm run setup` as the normal path. It validates all profiles, prepares base assets, generates profile images, updates `public/v86/images/profiles/index.json`, and creates local HDA disks.
+   Use `pnpm setup` as the normal path. It validates all profiles, prepares base assets, generates profile images, updates `public/v86/images/profiles/index.json`, and creates local HDA disks.
 
    ```bash
-   npm run setup
+   pnpm setup
    ```
 
    Command to generate one profile:
@@ -184,25 +184,25 @@ Field definitions, validation rules, and required properties for `vm/profiles/<i
 After adding or changing profiles/tools:
 
 ```bash
-npm run check
+pnpm check
 ```
 
 If you changed profiles, the overlay, or runners:
 
 ```bash
-npm run setup
+pnpm setup
 ```
 
 If you changed tool code, the LLM provider, i18n catalogs, or frontend code:
 
 ```bash
-npm run build
+pnpm build
 ```
 
 For a complete local environment:
 
 ```bash
-npm run prepare:local
+pnpm prepare:local
 ```
 
 ## Checklist
@@ -214,5 +214,5 @@ npm run prepare:local
 - Commands use quoting and limits.
 - Outputs have timeout and maximum size.
 - The tool has i18n text if it is shown to the user/model.
-- `npm run check` passes.
+- `pnpm check` passes.
 - After profile changes, the VM boots and **Run checks** does not report missing packages/tools.

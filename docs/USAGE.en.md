@@ -33,11 +33,11 @@ To use a prebuilt runtime, you only need:
 
 To prepare the project from the repository, you also need:
 
-- Node.js 18+.
-- Linux. macOS requires GNU-compatible `tar`, `stat`, and `cpio`, plus the ext2 tools, to be installed and available on `PATH`; the default BSD utilities do not support every option used by `npm run setup`.
+- Node.js 26.8.1 and pnpm 11.24.0, pinned respectively in `.nvmrc` / `.node-version` and `packageManager`.
+- Linux. macOS requires GNU-compatible `tar`, `stat`, and `cpio`, plus the ext2 tools, to be installed and available on `PATH`; the default BSD utilities do not support every option used by `pnpm setup`.
 - Docker to build the included Alpine profiles.
 - System tools: `tar`, `cpio`, `gzip`, `zstd`, `xz`, `curl`, `coreutils`, `e2fsprogs`, `find`, `awk`, `grep`, and `sed`.
-- An Internet connection for the base runtime assets, Alpine packages, and profile wordlists downloaded by `npm run setup`.
+- An Internet connection for the base runtime assets, Alpine packages, and profile wordlists downloaded by `pnpm setup`.
 - 1-2 GB of free space for the v86 runtime, initramfs, profiles, and sparse disks.
 
 On Debian/Ubuntu:
@@ -70,14 +70,14 @@ For reference, `qwen3-tools-onnx-q4` (`onnx-community/Qwen3-0.6B-ONNX`, q4/WebGP
 ```bash
 git clone https://github.com/Len4m/browser-agent-v86-poc.git
 cd browser-agent-v86-poc
-npm install
-npm run prepare:local
-npm start
+pnpm install
+pnpm prepare:local
+pnpm start
 ```
 
 Open `http://127.0.0.1:5173/`.
 
-`npm run prepare:local` runs `setup` followed by `build`. The VM will not start correctly until the generated assets exist in `public/v86/`, `public/vendor/`, and `public/assets/`.
+`pnpm prepare:local` runs `setup` followed by `build`. The VM will not start correctly until the generated assets exist in `public/v86/`, `public/vendor/`, and `public/assets/`.
 
 ## First run
 
@@ -89,7 +89,7 @@ Open `http://127.0.0.1:5173/`.
 
 Press **Run checks** at any time to validate headers, assets, serial channels, runners, network, and tools as applicable.
 
-Generated profiles are listed in `/v86/images/profiles/index.json`. If they do not appear, run `npm run setup`.
+Generated profiles are listed in `/v86/images/profiles/index.json`. If they do not appear, run `pnpm setup`.
 
 ## VM, profiles, and disks
 
@@ -106,7 +106,7 @@ The **Free / manual** option uses the default kernel and initramfs and allows RA
 Disks:
 
 - `RAM / initramfs`: the system lives in memory; changes are lost on shutdown unless saved in a snapshot.
-- `hda 250 MB`, `hda 512 MB`, `hda 1 GB`: raw ext2 images created by `npm run setup`.
+- `hda 250 MB`, `hda 512 MB`, `hda 1 GB`: raw ext2 images created by `pnpm setup`.
 - HDA disks are data disks that the VM mounts at `/mnt/hda`; the system still boots from initramfs.
 - Snapshots save RAM, CPU, and v86 state, but do not include changes persisted to HDA disks.
 
@@ -125,12 +125,12 @@ The runners installed in the initramfs come from:
 - `vm/overlay/common/usr/local/bin/ba-serial1-runner`
 - `vm/overlay/common/usr/local/bin/ba-serial2-console-runner`
 
-Both guest runners use Python 3. Every profile in `vm/profiles/*.json` must include the `python3` package; `npm run check` and the profile builder fail if it is missing.
+Both guest runners use Python 3. Every profile in `vm/profiles/*.json` must include the `python3` package; `pnpm check` and the profile builder fail if it is missing.
 
 After changing profiles, the overlay, runners, or initramfs scripts, run:
 
 ```bash
-npm run setup
+pnpm setup
 ```
 
 Quick validation inside the VM:
@@ -149,7 +149,7 @@ Supported backends:
 - **Transformers.js**: runs in a dedicated browser worker. WebGPU is recommended; some models can fall back to WASM if WebGPU fails.
 - **Ollama HTTP**: the browser connects directly to the local endpoint, `http://127.0.0.1:11434` by default.
 
-Available models are declared in `data/llm-models.json`; `npm run build` bundles that catalog into the frontend.
+Available models are declared in `data/llm-models.json`; `pnpm build` bundles that catalog into the frontend.
 The catalog prioritizes models with evidence of tool-calling support in `Transformers.js + AI SDK`; experimental entries are intended for local validation before being treated as recommended.
 
 Usage notes:
@@ -183,18 +183,18 @@ Recommended flow:
 
 | Command | Purpose |
 | --- | --- |
-| `npm install` | Installs npm dependencies; does not generate heavy assets |
-| `npm run prepare:local` | Runs `setup` and `build` to create a usable local environment |
-| `npm run setup` | Downloads/copies base assets and generates the initramfs, profiles, and disks |
-| `npm run build` | Bundles the model catalog and generates the LLM worker/bridge and frontend bundle; requires `setup` to have run at least once |
-| `npm run build:prod` | Generates the minified production runtime: minified JS/CSS and cache hashes |
-| `npm run check` | Runs TypeScript, lint, unit tests, and repository/asset integrity checks |
-| `npm run clean` | Removes `build/` and generated build outputs from `public/` |
-| `npm run clean:runtime` | Removes the heavy runtime generated by `setup`: `public/vendor/` and `public/v86/` |
-| `npm run clean:all` | Cleans both build outputs and the runtime |
-| `npm start` | Serves `public/` through `server.mjs` at `127.0.0.1:5173` |
+| `pnpm install` | Installs the project dependencies; does not generate heavy assets |
+| `pnpm prepare:local` | Runs `setup` and `build` to create a usable local environment |
+| `pnpm setup` | Downloads/copies base assets and generates the initramfs, profiles, and disks |
+| `pnpm build` | Bundles the model catalog and generates the LLM worker/bridge and frontend bundle; requires `setup` to have run at least once |
+| `pnpm build:prod` | Generates the minified production runtime: minified JS/CSS and cache hashes |
+| `pnpm check` | Runs TypeScript, lint, unit tests, and repository/asset integrity checks |
+| `pnpm clean` | Removes `build/` and generated build outputs from `public/` |
+| `pnpm clean:runtime` | Removes the heavy runtime generated by `setup`: `public/vendor/` and `public/v86/` |
+| `pnpm clean:all` | Cleans both build outputs and the runtime |
+| `pnpm start` | Serves `public/` through `server.mjs` at `127.0.0.1:5173` |
 
-Regenerate with `npm run setup` after changing:
+Regenerate with `pnpm setup` after changing:
 
 - `vm/profiles/*.json`
 - `vm/overlay/common/`
@@ -203,7 +203,7 @@ Regenerate with `npm run setup` after changing:
 
 VM profiles must keep `python3` in `packages`, because the guest serial runners depend on Python 3.
 
-Regenerate with `npm run build` after changing:
+Regenerate with `pnpm build` after changing:
 
 - `src/browser/`
 - `src/web/index.html`
@@ -215,20 +215,20 @@ Regenerate with `npm run build` after changing:
 
 | Source | Output | Regenerate with |
 | --- | --- | --- |
-| `src/browser/`, `data/llm-models.json`, `src/web/index.html`, `src/web/styles/` | `public/index.html`, `public/style.css`, `public/styles/`, `public/assets/app.js`, `public/assets/ai-sdk-bridge.mjs` | `npm run build` |
-| `src/web/styles/` | `public/assets/app.css` | `npm run build:prod` |
-| `src/browser/chat/provider/ai-sdk/` | `public/assets/chat/` | `npm run build` |
-| `vm/profiles/*.json`, `vm/overlay/common/` | `build/profiles/`, `public/v86/images/profiles/` | `npm run setup` |
-| v86, xterm, DOMPurify, streaming-markdown, BIOS, and Alpine base | `public/vendor/`, `public/v86/build/`, `public/v86/bios/`, `public/v86/images/` | `npm run setup` |
-| Local HDA disks | `public/v86/disks/` | `npm run setup` |
+| `src/browser/`, `data/llm-models.json`, `src/web/index.html`, `src/web/styles/` | `public/index.html`, `public/style.css`, `public/styles/`, `public/assets/app.js`, `public/assets/ai-sdk-bridge.mjs` | `pnpm build` |
+| `src/web/styles/` | `public/assets/app.css` | `pnpm build:prod` |
+| `src/browser/chat/provider/ai-sdk/` | `public/assets/chat/` | `pnpm build` |
+| `vm/profiles/*.json`, `vm/overlay/common/` | `build/profiles/`, `public/v86/images/profiles/` | `pnpm setup` |
+| v86, xterm, DOMPurify, streaming-markdown, BIOS, and Alpine base | `public/vendor/`, `public/v86/build/`, `public/v86/bios/`, `public/v86/images/` | `pnpm setup` |
+| Local HDA disks | `public/v86/disks/` | `pnpm setup` |
 
 ## Cleaning
 
-Use `npm run clean` during normal development. It removes `build/` and generated build outputs from `public/`: `index.html`, `style.css`, `styles/`, `locales/` (copied from `src/web/`), JS bundles, and `assets/chat/`. It does not remove `public/vendor/`, `public/v86/`, or the static files tracked by Git (`favicon.ico`, icons, `robots.txt`, etc.).
+Use `pnpm clean` during normal development. It removes `build/` and generated build outputs from `public/`: `index.html`, `style.css`, `styles/`, `locales/` (copied from `src/web/`), JS bundles, and `assets/chat/`. It does not remove `public/vendor/`, `public/v86/`, or the static files tracked by Git (`favicon.ico`, icons, `robots.txt`, etc.).
 
-Use `npm run clean:runtime` to force regeneration of the heavy runtime: vendors, v86, BIOS, initramfs, profiles, and disks. Then run `npm run setup` or `npm run prepare:local` before starting the VM.
+Use `pnpm clean:runtime` to force regeneration of the heavy runtime: vendors, v86, BIOS, initramfs, profiles, and disks. Then run `pnpm setup` or `pnpm prepare:local` before starting the VM.
 
-Use `npm run clean:all` to clean both groups.
+Use `pnpm clean:all` to clean both groups.
 
 ## Runtime zip
 
@@ -237,8 +237,8 @@ The static runtime is the `public/` directory. A complete package containing eve
 Create the zip:
 
 ```bash
-npm run prepare:local
-npm run check
+pnpm prepare:local
+pnpm check
 cd public
 zip -r ../browser-agent-v86-poc-runtime-public.zip .
 ```
@@ -260,13 +260,13 @@ The final server must send COOP/COEP/CORP headers and support `Range`. `public/_
 For the official demo's public build:
 
 ```bash
-npm run build:prod
+pnpm build:prod
 ```
 
 `build:prod` uses `https://browseragent.icu/` as `BA_PUBLIC_SITE_URL` by default. For another domain:
 
 ```bash
-BA_PUBLIC_SITE_URL=https://your-domain.example/ npm run build:prod
+BA_PUBLIC_SITE_URL=https://your-domain.example/ pnpm build:prod
 ```
 
 This value is used for `canonical`, `og:url`, and absolute Open Graph/Twitter image URLs. If a non-production build runs without this variable, the HTML remains portable by using origin-relative URLs.
@@ -274,7 +274,7 @@ This value is used for `canonical`, `og:url`, and absolute Open Graph/Twitter im
 Package the runtime with the local server included:
 
 ```bash
-zip -r browser-agent-v86-poc-local-server.zip public server.mjs package.json package-lock.json
+zip -r browser-agent-v86-poc-local-server.zip public server.mjs package.json pnpm-lock.yaml pnpm-workspace.yaml
 ```
 
 Usage:
@@ -282,16 +282,16 @@ Usage:
 ```bash
 unzip browser-agent-v86-poc-local-server.zip -d destination/
 cd destination
-npm install
-npm start
+pnpm install
+pnpm start
 ```
 
 ## Common issues
 
-- **VM does not start**: run `npm run prepare:local`, then `npm run check`.
-- **Profiles do not appear**: `/v86/images/profiles/index.json` is missing; run `npm run setup`.
-- **You changed the initramfs, runners, or profiles**: run `npm run setup` and start a new VM.
-- **HDA disk does not mount**: verify that `public/v86/disks/alpine-hda-*.img` exists; `npm run setup` creates these images.
+- **VM does not start**: run `pnpm prepare:local`, then `pnpm check`.
+- **Profiles do not appear**: `/v86/images/profiles/index.json` is missing; run `pnpm setup`.
+- **You changed the initramfs, runners, or profiles**: run `pnpm setup` and start a new VM.
+- **HDA disk does not mount**: verify that `public/v86/disks/alpine-hda-*.img` exists; `pnpm setup` creates these images.
 - **Tools or checks affect the visible console**: validate `/dev/ttyS1`, `/dev/ttyS2`, and the `ba-serial1-runner` / `ba-serial2-console-runner` processes.
 - **An xterm console becomes desynchronized**: use refresh; it clears the local xterm and sends `Ctrl+L` to the active shell.
 - **Local LLM fails because of WebGPU**: try a WASM model or a smaller model; some paths attempt a WASM fallback.

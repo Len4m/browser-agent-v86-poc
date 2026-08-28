@@ -1,4 +1,4 @@
-// Built to public/assets/chat/workers/llm-browser-ai.worker.mjs via npm run build
+// Built to public/assets/chat/workers/llm-browser-ai.worker.mjs via pnpm build
 import { TransformersJSWorkerHandler } from "@browser-ai/transformers-js";
 
 const handler = new TransformersJSWorkerHandler();

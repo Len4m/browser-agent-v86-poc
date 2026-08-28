@@ -398,7 +398,7 @@ writeFileSync(join(outDir, "README.md"), [
   "- [LLM model catalog](llm-models.md)",
   "- [VM profile](vm-profile.md)",
   "",
-  "Regenerate with `npm run docs:schemas`.",
+  "Regenerate with `pnpm docs:schemas`.",
   "",
 ].join("\n"));
 

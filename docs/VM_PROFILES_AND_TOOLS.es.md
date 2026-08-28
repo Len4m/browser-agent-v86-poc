@@ -18,7 +18,7 @@ La union entre ambos contratos es:
 - `scripts/check/vm-profiles.mjs` valida que las tools existen y que el perfil incluye los paquetes requeridos.
 - En runtime, `tool-registry.ts` vuelve a filtrar tools incompatibles con el perfil activo.
 
-Las definiciones de campos, reglas de validación y propiedades obligatorias de `vm/profiles/<id>.json` están en la [referencia del schema de perfil VM](schema-reference/vm-profile.md) (**en inglés**; generada desde `vm/profiles/profile.schema.json` con `npm run docs:schemas`).
+Las definiciones de campos, reglas de validación y propiedades obligatorias de `vm/profiles/<id>.json` están en la [referencia del schema de perfil VM](schema-reference/vm-profile.md) (**en inglés**; generada desde `vm/profiles/profile.schema.json` con `pnpm docs:schemas`).
 
 ## Añadir un perfil VM
 
@@ -104,17 +104,17 @@ Las definiciones de campos, reglas de validación y propiedades obligatorias de 
 8. Valida el perfil.
 
    ```bash
-   npm run check
+   pnpm check
    ```
 
    Este comando comprueba schema, ids duplicados, `python3`, `allowedTools` desconocidas y `requiredPackages` faltantes. Consulta la [referencia del schema](schema-reference/vm-profile.md) (**en inglés**) si necesitas el detalle de cada campo.
 
 9. Genera los assets del perfil.
 
-   Usa `npm run setup` como ruta normal. Valida todos los perfiles, prepara assets base, genera las imagenes de perfiles, actualiza `public/v86/images/profiles/index.json` y crea los discos HDA locales.
+   Usa `pnpm setup` como ruta normal. Valida todos los perfiles, prepara assets base, genera las imagenes de perfiles, actualiza `public/v86/images/profiles/index.json` y crea los discos HDA locales.
 
    ```bash
-   npm run setup
+   pnpm setup
    ```
 
    Comando para generar un solo perfil:
@@ -184,25 +184,25 @@ Las definiciones de campos, reglas de validación y propiedades obligatorias de 
 Despues de añadir o cambiar perfiles/tools:
 
 ```bash
-npm run check
+pnpm check
 ```
 
 Si cambiaste perfiles, overlay o runners:
 
 ```bash
-npm run setup
+pnpm setup
 ```
 
 Si cambiaste codigo de tools, provider LLM, catalogos i18n o frontend:
 
 ```bash
-npm run build
+pnpm build
 ```
 
 Para dejar un entorno local completo:
 
 ```bash
-npm run prepare:local
+pnpm prepare:local
 ```
 
 ## Checklist
@@ -214,5 +214,5 @@ npm run prepare:local
 - Los comandos usan quoting y limites.
 - Las salidas tienen timeout y tamaño maximo.
 - La tool tiene textos i18n si se muestra al usuario/modelo.
-- `npm run check` pasa.
+- `pnpm check` pasa.
 - Tras cambios de perfil, la VM arranca y **Comprobar** no muestra paquetes/tools faltantes.

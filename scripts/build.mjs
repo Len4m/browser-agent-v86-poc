@@ -26,7 +26,7 @@ const missingSetupAssets = requiredSetupAssets.filter((file) => {
 if (missingSetupAssets.length) {
   console.error("Faltan assets de runtime generados por setup:");
   for (const file of missingSetupAssets) console.error(`  - ${file}`);
-  console.error("Ejecuta primero: npm run setup");
+  console.error("Ejecuta primero: pnpm setup");
   process.exit(1);
 }
 
