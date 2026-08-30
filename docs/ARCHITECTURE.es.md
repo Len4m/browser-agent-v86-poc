@@ -4,7 +4,7 @@
 
 La aplicación es un frontend **TypeScript + ESM + esbuild** servido desde `public/`. El navegador carga `public/index.html`, vendors globales mínimos y el bundle principal `public/assets/app.js` como módulo; ese bundle importa bajo demanda el bridge ESM del AI SDK.
 
-La VM corre con **v86** y Alpine x86. La capa LLM usa **AI SDK v6** con backends Transformers.js y Ollama. Las tools del agente se ejecutan dentro de la VM por un canal serial separado de la consola visible.
+La VM corre con **v86** y Alpine x86. La capa LLM usa **AI SDK v7** y **Browser AI v3** con backends Transformers.js y Ollama. Las tools del agente se ejecutan dentro de la VM por un canal serial separado de la consola visible.
 
 ## Vista general
 
@@ -27,7 +27,7 @@ flowchart LR
     UI["UI<br/>public/index.html + app.js"]
     Chat["💬 Chat LLM"]
     Xterm["⌨️ xterm.js<br/>hasta 4 pestañas"]
-    AiSdk["AI SDK v6<br/>bridge + ai-sdk-browser.mjs"]
+    AiSdk["AI SDK v7<br/>bridge + ai-sdk-browser.mjs"]
     Worker["Transformers.js worker"]
     V86["🖥️ v86 emulator"]
 
@@ -261,8 +261,9 @@ sendChat()
   -> buildAiSdkTools()
   -> getAiSdk().runAgentStreamTurn()
     -> streamText()
-    -> stopWhen(stepCountIs(maxSteps))
+    -> stopWhen(isStepCount(maxSteps))
     -> prepareStep()
+    -> toolApproval() / reanudación si hace falta
   -> tool.execute()
   -> llmToolExecutor.runTool()
   -> execVm()
@@ -272,9 +273,12 @@ sendChat()
 
 Detalles importantes:
 
-- `prepareStep` oculta tools devolviendo `tools: {}` cuando el turno no necesita VM o cuando el paso posterior debe sintetizar en prosa.
+- `prepareStep` oculta tools mediante `activeTools: []` cuando el turno no necesita VM o cuando el paso posterior debe sintetizar en prosa.
 - En el primer paso con tools, `prepareStep` puede restringir `activeTools` al subconjunto permitido.
-- El runner usa el loop de AI SDK (`streamText` + `stopWhen(stepCountIs)`), pero contiene una síntesis de respaldo si hubo tool work y la respuesta textual falta, parece un plan de tool o falla el paso de síntesis del SDK.
+- El runner usa el loop de AI SDK (`streamText` + `stopWhen(isStepCount)`). Si recibe `tool-approval-request`, consulta la UI y reanuda con `responseMessages` más un único mensaje `tool-approval-response`; estos mensajes solo viven durante el turno.
+- La política nativa de aprobación combina tools activas, nivel de riesgo y autonomía. Una denegación no invoca `execute()`, no crea artefactos y no vuelve a mostrar el modal para la misma operación durante el turno.
+- Las ejecuciones de tools se serializan por turno para proteger el canal `serial1`, aunque AI SDK entregue varias llamadas en paralelo.
+- El runner conserva una síntesis de respaldo si hubo tool work y la respuesta textual falta, parece un plan de tool o falla el paso de síntesis del SDK.
 - El middleware de Transformers.js elimina `toolChoice` para compatibilidad con ese backend.
 - El razonamiento (thinking) se configura por modelo en `data/llm-models.json` (campo `thinking`: `mode` y, para Transformers.js, `extract`). En Transformers.js se extrae con `extractReasoningMiddleware` usando `extract`; en Ollama se recibe como `message.thinking` nativo. En chat se muestra con el conmutador del panel LLM cuando el modo lo permite. Se transmite en streaming y no se conserva en memoria ni como respuesta final.
 - Ollama se llama desde el navegador, no desde la VM. El endpoint por defecto es `http://127.0.0.1:11434`.
@@ -287,8 +291,8 @@ El sistema de tools se divide entre definiciones, politica de perfil y ejecucion
 - Los perfiles VM exponen tools mediante `allowedTools`. Esa lista es la fuente de verdad de politica en perfiles generados, y su orden se usa como prioridad por defecto cuando la UI/modelo limita las tools visibles.
 - `requiredPackages` conecta cada tool con los paquetes Alpine que necesita. `scripts/check/vm-profiles.mjs` valida tools desconocidas y paquetes ausentes; en runtime tambien se filtran tools que el perfil activo no puede soportar.
 - `runtimeChecks` declara los comandos minimos que prueban la disponibilidad real de una tool en la VM. El panel **Comprobar** los obtiene del registry segun `allowedTools`; el check de paquetes instalados del perfil sigue separado.
-- La ejecucion pasa por normalizacion de argumentos, confirmacion opcional por riesgo, precondiciones de VM/serial, `buildCommand()`, `execVm(..., targetTools: true)` en `serial1`, formateo de resultado y almacenamiento como artifact.
-- Si una tool necesita un ejecutable concreto, mantener alineados los comandos de build/validacion del perfil, `runtimeChecks` y los tests. Por ejemplo, `web.nikto.quick` depende de Nikto y paquetes Perl SSL pero ejecuta `nikto.pl` mediante `timeout`; `alpine-pentest-web` tambien expone un symlink `nikto` para uso manual.
+- La ejecucion pasa por aprobación nativa del AI SDK cuando el riesgo lo exige y, después de aprobar, por normalización de argumentos, precondiciones de VM/serial, `buildCommand()`, `execVm(..., targetTools: true)` en `serial1`, formateo de resultado y almacenamiento como artifact.
+- Si una tool necesita un ejecutable concreto, mantener alineados los comandos de build/validacion del perfil, `runtimeChecks` y los tests. Por ejemplo, `web_nikto_quick` depende de Nikto y paquetes Perl SSL pero ejecuta `nikto.pl` mediante `timeout`; `alpine-pentest-web` tambien expone un symlink `nikto` para uso manual.
 
 Archivos clave:
 

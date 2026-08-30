@@ -71,11 +71,11 @@ Field definitions, validation rules, and required properties for `vm/profiles/<i
 
    ```json
    "allowedTools": [
-     "vm.fs.list",
-     "vm.fs.read",
-     "vm.cmd.which",
-     "web.curl.head",
-     "net.ip.status"
+     "vm_fs_list",
+     "vm_fs_read",
+     "vm_cmd_which",
+     "web_curl_head",
+     "net_ip_status"
    ]
    ```
 
@@ -135,10 +135,10 @@ Field definitions, validation rules, and required properties for `vm/profiles/<i
 
    Names follow the `area.name.action` style, for example:
 
-   - `vm.fs.read`
-   - `web.curl.head`
-   - `net.nmap.quick`
-   - `web.nikto.quick`
+   - `vm_fs_read`
+   - `web_curl_head`
+   - `net_nmap_quick`
+   - `web_nikto_quick`
 
 3. Declare the package contract.
 
@@ -177,7 +177,7 @@ Field definitions, validation rules, and required properties for `vm/profiles/<i
    - `runtimeChecks` in the tool definition when that availability should appear in **Run checks**.
    - Tests if the contract is delicate.
 
-   Current example: `web.nikto.quick` declares `requiredPackages` for Nikto and the Perl SSL modules, but runs `nikto.pl` through `timeout`. The `alpine-pentest-web` profile creates a `nikto` symlink for manual use and the tool validates availability with `runtimeChecks`.
+   Current example: `web_nikto_quick` declares `requiredPackages` for Nikto and the Perl SSL modules, but runs `nikto.pl` through `timeout`. The `alpine-pentest-web` profile creates a `nikto` symlink for manual use and the tool validates availability with `runtimeChecks`.
 
 ## Recommended Validation
 

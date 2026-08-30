@@ -4,7 +4,7 @@
 
 The application is a **TypeScript + ESM + esbuild** frontend served from `public/`. The browser loads `public/index.html`, a minimal set of globally loaded vendor libraries, and the main `public/assets/app.js` bundle as a module. That bundle imports the AI SDK ESM bridge on demand.
 
-The VM runs **v86** and Alpine x86. The LLM layer uses **AI SDK v6** with Transformers.js and Ollama backends. Agent tools execute inside the VM through a serial channel separate from the visible console.
+The VM runs **v86** and Alpine x86. The LLM layer uses **AI SDK v7** and **Browser AI v3** with Transformers.js and Ollama backends. Agent tools execute inside the VM through a serial channel separate from the visible console.
 
 ## Overview
 
@@ -27,7 +27,7 @@ flowchart LR
     UI["UI<br/>public/index.html + app.js"]
     Chat["💬 LLM chat"]
     Xterm["⌨️ xterm.js<br/>up to 4 tabs"]
-    AiSdk["AI SDK v6<br/>bridge + ai-sdk-browser.mjs"]
+    AiSdk["AI SDK v7<br/>bridge + ai-sdk-browser.mjs"]
     Worker["Transformers.js worker"]
     V86["🖥️ v86 emulator"]
 
@@ -261,8 +261,9 @@ sendChat()
   -> buildAiSdkTools()
   -> getAiSdk().runAgentStreamTurn()
     -> streamText()
-    -> stopWhen(stepCountIs(maxSteps))
+    -> stopWhen(isStepCount(maxSteps))
     -> prepareStep()
+    -> toolApproval() / resume when required
   -> tool.execute()
   -> llmToolExecutor.runTool()
   -> execVm()
@@ -272,9 +273,12 @@ sendChat()
 
 Important details:
 
-- `prepareStep` hides tools by returning `tools: {}` when the turn does not need the VM or when a later step must synthesize prose.
+- `prepareStep` hides tools through `activeTools: []` when the turn does not need the VM or when a later step must synthesize prose.
 - In the first step with tools, `prepareStep` can restrict `activeTools` to the permitted subset.
-- The runner uses the AI SDK loop (`streamText` + `stopWhen(stepCountIs)`), but includes a fallback synthesis when tools ran and the text response is missing, resembles a tool plan, or the SDK synthesis step fails.
+- The runner uses the AI SDK loop (`streamText` + `stopWhen(isStepCount)`). When it receives `tool-approval-request`, it asks the UI and resumes with `responseMessages` plus one `tool-approval-response` message; those structured messages live only for the current turn.
+- Native approval policy combines active tools, risk level, and autonomy. A denial never invokes `execute()`, creates no artifact, and does not reopen the modal for the same operation during the turn.
+- Tool executions are serialized per turn to protect the `serial1` channel even when AI SDK presents several calls in parallel.
+- The runner keeps a fallback synthesis when tools ran and the text response is missing, resembles a tool plan, or the SDK synthesis step fails.
 - The Transformers.js middleware removes `toolChoice` for compatibility with that backend.
 - Reasoning (thinking) is configured per model in `data/llm-models.json` (the `thinking` field: `mode` and, for Transformers.js, `extract`). Transformers.js extracts it with `extractReasoningMiddleware` using `extract`; Ollama receives it as native `message.thinking`. Chat displays it through the LLM panel toggle when the mode allows it. It is streamed and is not retained in memory or as the final response.
 - Ollama is called from the browser, not the VM. The default endpoint is `http://127.0.0.1:11434`.
@@ -287,8 +291,8 @@ The tool system is split between tool definitions, profile policy, and runtime e
 - VM profiles expose tools through `allowedTools`. That list is the policy source of truth for generated profiles, and its order is used as the default priority when the UI/model limits visible tools.
 - `requiredPackages` links each tool to the Alpine packages it needs. `scripts/check/vm-profiles.mjs` validates unknown tools and missing packages; runtime also filters tools that the active profile cannot support.
 - `runtimeChecks` declares the minimal commands that prove a tool is actually available in the VM. The **Run checks** panel gets them from the registry according to `allowedTools`; the profile package-installed check stays separate.
-- Execution flows through argument normalization, optional risk confirmation, VM/serial preconditions, `buildCommand()`, `execVm(..., targetTools: true)` on `serial1`, result formatting, and artifact storage.
-- If a tool needs a specific executable name, keep the profile build/validation commands, `runtimeChecks`, and tests aligned. For example, `web.nikto.quick` depends on Nikto plus Perl SSL packages but executes `nikto.pl` through `timeout`; `alpine-pentest-web` also exposes a `nikto` symlink for manual use.
+- Execution flows through native AI SDK approval when required by risk and, after approval, argument normalization, VM/serial preconditions, `buildCommand()`, `execVm(..., targetTools: true)` on `serial1`, result formatting, and artifact storage.
+- If a tool needs a specific executable name, keep the profile build/validation commands, `runtimeChecks`, and tests aligned. For example, `web_nikto_quick` depends on Nikto plus Perl SSL packages but executes `nikto.pl` through `timeout`; `alpine-pentest-web` also exposes a `nikto` symlink for manual use.
 
 Key files:
 

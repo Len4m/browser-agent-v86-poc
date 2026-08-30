@@ -71,11 +71,11 @@ Las definiciones de campos, reglas de validación y propiedades obligatorias de 
 
    ```json
    "allowedTools": [
-     "vm.fs.list",
-     "vm.fs.read",
-     "vm.cmd.which",
-     "web.curl.head",
-     "net.ip.status"
+     "vm_fs_list",
+     "vm_fs_read",
+     "vm_cmd_which",
+     "web_curl_head",
+     "net_ip_status"
    ]
    ```
 
@@ -135,10 +135,10 @@ Las definiciones de campos, reglas de validación y propiedades obligatorias de 
 
    Los nombres siguen el estilo `area.nombre.accion`, por ejemplo:
 
-   - `vm.fs.read`
-   - `web.curl.head`
-   - `net.nmap.quick`
-   - `web.nikto.quick`
+   - `vm_fs_read`
+   - `web_curl_head`
+   - `net_nmap_quick`
+   - `web_nikto_quick`
 
 3. Declara el contrato de paquetes.
 
@@ -177,7 +177,7 @@ Las definiciones de campos, reglas de validación y propiedades obligatorias de 
    - `runtimeChecks` en la propia definicion de tool si esa disponibilidad debe aparecer en **Comprobar**.
    - Tests si el contrato es delicado.
 
-   Ejemplo actual: `web.nikto.quick` declara `requiredPackages` para Nikto y los modulos Perl SSL, pero ejecuta `nikto.pl` mediante `timeout`. El perfil `alpine-pentest-web` crea un symlink `nikto` para uso manual y la tool valida su disponibilidad con `runtimeChecks`.
+   Ejemplo actual: `web_nikto_quick` declara `requiredPackages` para Nikto y los modulos Perl SSL, pero ejecuta `nikto.pl` mediante `timeout`. El perfil `alpine-pentest-web` crea un symlink `nikto` para uso manual y la tool valida su disponibilidad con `runtimeChecks`.
 
 ## Validacion recomendada
 
