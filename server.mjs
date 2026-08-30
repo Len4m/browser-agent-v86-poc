@@ -139,6 +139,6 @@ const server = createServer((req, res) => {
 
 server.listen(port, ip, () => {
   console.log(`Browser Agent v86 POC: http://${ip}:${port}`);
-  console.log("1) pnpm setup   # descarga v86/Alpine y crea discos");
-  console.log("2) pnpm start       # arranca servidor local");
+  console.log("1) pnpm prepare:local  # prepares v86/Alpine and builds bundles / prepara v86/Alpine y compila los bundles");
+  console.log("2) pnpm start          # starts the local server / arranca el servidor local");
 });
