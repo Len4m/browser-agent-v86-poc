@@ -105,7 +105,7 @@ export function syncWsButton(): void {
   const button = $("connect-ws");
   if (!button) return;
 
-  const connected = isWsConnected();
+  const connected = isWsConnected() || Boolean(state.wsRetryTimer);
   setDisabled(button, state.wsConnecting);
   button.textContent = state.wsConnecting
     ? t("common.connectingEllipsis")

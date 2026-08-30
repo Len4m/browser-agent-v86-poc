@@ -162,38 +162,15 @@ Artifacts are actual tool results saved by the **LLM** panel so they do not floo
 
 ## wsnic networking
 
-`wsnic` emulates the VM’s NIC over WebSockets and links it to a virtual network on your machine (local Docker service).
+VM networking is optional and offers three types:
 
-The **WS network** panel connects the browser to that service. The UI calls it a local proxy for simplicity, but it behaves more like an access point or bridge for the VM network.
+- **Local Docker WS**: the default. The UI shows the Docker commands and lets you enable Internet with `-i` or keep an isolated network between VMs/tabs without `-i`.
+- **Public relay**: uses `wss://relay.widgetry.org/`. It is shared, limited, and has no SLA or privacy or availability guarantees.
+- **Custom**: accepts a `ws://` or `wss://` URL. With WSS, the browser validates the certificate, hostname, and trust chain.
 
-When connected, wsnic gives the VM outbound network access to the Internet and to networks reachable from the host where you run the Docker container. This means the VM may be able to reach local network resources from that host if the host network configuration allows it.
+The URL is editable only under **Custom**. **Test** checks the handshake, **Connect / Disconnect** controls the connection, and unexpected interruptions use progressive reconnection. Chrome may require local-network permission for `127.0.0.1`.
 
-With networking available, you can also install Alpine packages inside the VM with `apk`, for example `apk add htop`. Remember that changes made in RAM/initramfs are lost on shutdown unless you save/restore state through the snapshot flow.
-
-- **URL** points to the proxy WebSocket endpoint.
-- **Connect / Disconnect** opens or closes the connection.
-- After connecting, the app tries to configure networking inside the VM when it is ready.
-- Header and panel badges show whether wsnic is disconnected, connecting, connected, or has encountered an error.
-
-Once the wsnic container is running, the panel is connected, and the VM network is configured, the VM has Internet and network access (`curl`, `apk`, chat tools, etc.). This normal use case does not require a host route.
-
-Google Chrome and other Chromium-based browsers may show a local-network access permission prompt when connecting to wsnic on `127.0.0.1`. Allow it so the page can open the local WebSocket connection.
-
-Command shown by the UI to start local wsnic:
-
-```bash
-docker rm -f browser-agent-wsnic 2>/dev/null || true; docker run -d --name browser-agent-wsnic --restart unless-stopped --cap-add=NET_ADMIN --device /dev/net/tun:/dev/net/tun --sysctl net.ipv4.ip_forward=1 --sysctl net.ipv4.conf.all.forwarding=1 --sysctl net.ipv4.conf.default.forwarding=1 -p 127.0.0.1:8086:8086 chschnell86/wsnic -i
-```
-
-Command to stop it:
-
-```bash
-docker rm -f browser-agent-wsnic
-```
-
-Networking is optional. Without wsnic, the VM can still work locally, but it will not have real outbound network access.
-
-Testing has mainly covered a local wsnic instance on the same machine as the browser. Remote wsnic endpoints still need further validation; expose one only in a controlled environment because it provides network connectivity to the VM.
+See [USAGE.en.md](USAGE.en.md#ws-network) for secure setup.
 
 ### Optional: access from the host (Linux)
 

@@ -24,6 +24,9 @@ import {
   restoreSnapshotFromFile,
   runCommandFromInput,
   saveSnapshot,
+  selectWsPreset,
+  syncWsEndpointControls,
+  testWsEndpoint,
   toggleDiskInVm,
 } from "../vm/operations";
 import { loadProfiles, updateDiskHint, updateProfileHint } from "../vm/profile-config";
@@ -199,6 +202,12 @@ export function initBootstrap(): void {
   $("connect-ws")?.addEventListener("click", () => {
     void connectWs();
   });
+  $("test-ws")?.addEventListener("click", () => {
+    void testWsEndpoint();
+  });
+  $("ws-preset")?.addEventListener("change", selectWsPreset);
+  $("ws-url")?.addEventListener("input", syncWsEndpointControls);
+  $("ws-enable-internet")?.addEventListener("change", syncWsEndpointControls);
   $("copy-docker-command")?.addEventListener("click", (event) => {
     void copyDockerCommand(event);
   });
@@ -220,6 +229,7 @@ export function initBootstrap(): void {
   syncPowerButtons();
   syncDiskCheckButton();
   syncSnapshotButtons();
+  syncWsEndpointControls();
   syncWsButton();
   syncChecksButton();
   $("command-form")?.addEventListener("submit", (event) => {

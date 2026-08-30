@@ -183,17 +183,32 @@
       <details class="panel small collapsible-panel">
         <summary class="panel-title"><h2 data-i18n="ws.title">ws.title</h2><span id="ws-detail" class="badge" data-i18n="ws.detail.pending">ws.detail.pending</span></summary>
         <div class="collapsible-panel-body">
+          <label class="field-label" for="ws-preset" data-i18n="ws.preset.label">ws.preset.label</label>
+          <select id="ws-preset">
+            <option value="local-ws" data-i18n="ws.preset.localWs">ws.preset.localWs</option>
+            <option value="public-relay" data-i18n="ws.preset.publicRelay">ws.preset.publicRelay</option>
+            <option value="custom" data-i18n="ws.preset.custom">ws.preset.custom</option>
+          </select>
           <div class="row">
             <input id="ws-url" value="ws://127.0.0.1:8086/wsnic" />
             <button id="connect-ws" data-i18n="common.connect" data-i18n-attr="title:vm.controls.ws.connect.title">common.connect</button>
+            <button id="test-ws" type="button" class="secondary" data-i18n="ws.test.button" data-i18n-attr="title:ws.test.title">ws.test.button</button>
           </div>
+          <div id="ws-public-warning" class="ws-endpoint-warning" hidden data-i18n="ws.warning.publicRelay">ws.warning.publicRelay</div>
+          <div id="ws-custom-note" class="ws-endpoint-note" hidden data-i18n="ws.warning.custom">ws.warning.custom</div>
+          <a id="ws-cert-check" class="ws-cert-check" href="#" target="_blank" rel="noopener noreferrer" hidden data-i18n="ws.certificate.check">ws.certificate.check</a>
           <div id="ws-origin-notice" class="local-service-origin-warning" hidden></div>
-          <div class="ws-help ws-help-inline">
+          <div id="ws-local-help" class="ws-help ws-help-inline">
             <div class="ws-help-title" data-i18n="ws.help.title">ws.help.title</div>
+            <label class="ws-internet-option" for="ws-enable-internet">
+              <input id="ws-enable-internet" type="checkbox" checked />
+              <span data-i18n="ws.local.enableInternet">ws.local.enableInternet</span>
+            </label>
+            <p class="ws-help-note ws-isolated-note" data-i18n="ws.local.isolatedNote">ws.local.isolatedNote</p>
             <p class="ws-help-note" data-i18n="ws.help.openBg">ws.help.openBg</p>
             <div class="docker-help-box">
               <button id="copy-docker-command" type="button" class="secondary copy-command" data-copy-target="docker-command">⧉</button>
-              <pre><code id="docker-command">docker rm -f browser-agent-wsnic 2&gt;/dev/null || true; docker run -d --name browser-agent-wsnic --restart unless-stopped --cap-add=NET_ADMIN --device /dev/net/tun:/dev/net/tun --sysctl net.ipv4.ip_forward=1 --sysctl net.ipv4.conf.all.forwarding=1 --sysctl net.ipv4.conf.default.forwarding=1 -p 127.0.0.1:8086:8086 chschnell86/wsnic -i</code></pre>
+              <pre><code id="docker-command">docker rm -f browser-agent-wsnic 2&gt;/dev/null || true; docker run -d --name browser-agent-wsnic --restart unless-stopped --cap-add=NET_ADMIN --device /dev/net/tun:/dev/net/tun -p 127.0.0.1:8086:8086 chschnell86/wsnic -i</code></pre>
             </div>
             <p class="ws-help-note" data-i18n="ws.help.close">ws.help.close</p>
             <div class="docker-help-box">

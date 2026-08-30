@@ -2,10 +2,12 @@
 
 import { $, state } from "../app/state";
 import { t } from "../app/i18n";
+import { validateWsUrl, type WsValidationError } from "./ws-network-config";
 
-interface AssetCheckResult {
+export interface AssetCheckResult {
   ok: boolean;
   detail: string;
+  category?: "connected" | "validation" | "timeout" | "tls" | "connection" | "closed";
 }
 
 interface AbortableOptions {
@@ -214,6 +216,14 @@ export async function checkAsset(url: string, { signal = null }: AbortableOption
   }
 }
 
+export function wsValidationErrorDetail(error: WsValidationError | undefined): string {
+  if (error === "empty") return t("ws.error.empty");
+  if (error === "scheme") return t("ws.error.scheme");
+  if (error === "credentials") return t("ws.error.credentials");
+  if (error === "mixedContent") return t("ws.error.mixedContent");
+  return t("ws.error.invalid");
+}
+
 export function checkWsRelayEndpoint(url: string, timeoutMs = 1600): Promise<AssetCheckResult> {
   return new Promise((resolve) => {
     if (!window.WebSocket) {
@@ -221,13 +231,14 @@ export function checkWsRelayEndpoint(url: string, timeoutMs = 1600): Promise<Ass
       return;
     }
 
-    if (!/^wss?:\/\//.test(url || "")) {
-      resolve({ ok: false, detail: t("checks.detail.wsInvalidUrl") });
+    const validation = validateWsUrl(url, window.location.protocol);
+    if (!validation.ok) {
+      resolve({ ok: false, detail: wsValidationErrorDetail(validation.error), category: "validation" });
       return;
     }
 
     if (state.wsSocket?.readyState === WebSocket.OPEN && state.wsSocket.url === url) {
-      resolve({ ok: true, detail: t("checks.detail.wsAlreadyConnected") });
+      resolve({ ok: true, detail: t("checks.detail.wsAlreadyConnected"), category: "connected" });
       return;
     }
 
@@ -235,7 +246,7 @@ export function checkWsRelayEndpoint(url: string, timeoutMs = 1600): Promise<Ass
     let settled = false;
     let timer = 0;
 
-    const finish = (ok: boolean, detail: string): void => {
+    const finish = (ok: boolean, detail: string, category: AssetCheckResult["category"]): void => {
       if (settled) return;
       settled = true;
       window.clearTimeout(timer);
@@ -244,20 +255,32 @@ export function checkWsRelayEndpoint(url: string, timeoutMs = 1600): Promise<Ass
       } catch {
         // Closing a probe socket is best-effort.
       }
-      resolve({ ok, detail });
+      resolve({ ok, detail, category });
     };
 
-    timer = window.setTimeout(() => finish(false, t("common.noResponse")), timeoutMs);
+    timer = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      try {
+        socket?.close();
+      } catch {
+        // Closing a timed-out probe socket is best-effort.
+      }
+      resolve({ ok: false, detail: t("common.noResponse"), category: "timeout" });
+    }, timeoutMs);
 
     try {
-      socket = new WebSocket(url);
-      socket.onopen = (): void => finish(true, t("checks.detail.wsConnectOk"));
-      socket.onerror = (): void => finish(false, t("checks.detail.wsConnectionError"));
+      socket = new WebSocket(validation.url);
+      socket.onopen = (): void => finish(true, t("checks.detail.wsConnectOk"), "connected");
+      socket.onerror = (): void => {
+        const isTls = validation.url.startsWith("wss://");
+        finish(false, isTls ? t("ws.error.tlsProbable") : t("checks.detail.wsConnectionError"), isTls ? "tls" : "connection");
+      };
       socket.onclose = (): void => {
-        if (!settled) finish(false, t("common.closed"));
+        if (!settled) finish(false, t("common.closed"), "closed");
       };
     } catch (error) {
-      finish(false, messageFromUnknown(error));
+      finish(false, messageFromUnknown(error), "connection");
     }
   });
 }

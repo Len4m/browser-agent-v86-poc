@@ -160,7 +160,7 @@
 body.agent-busy #vm-lock-overlay { display: flex; }
 .vm-options { display: grid; grid-template-columns: repeat(3, minmax(120px, 1fr)); gap: 10px; margin: 0 0 12px; padding: 10px; border-radius: 14px; background: #f8fafc; border: 1px solid #e2e8f0; }
 .vm-options label { display: grid; gap: 4px; color: #475569; font-size: 12px; font-weight: 700; }
-.vm-options select { width: 100%; border: 1px solid #cbd5e1; border-radius: 10px; padding: 8px 10px; background: #fff; color: #0f172a; font-size: 13px; }
+.vm-options select, #ws-preset { width: 100%; border: 1px solid #cbd5e1; border-radius: 10px; padding: 8px 10px; background: #fff; color: #0f172a; font-size: 13px; }
 #vm-profile-hint, .vm-profile-hint { grid-column: 2 / -1; color: #64748b; font-size: 10px; line-height: 1.25; font-weight: 500; margin: 0; align-self: center; }
 #vm-disk-hint { grid-column: 1 / -1; color: #64748b; font-size: 12px; line-height: 1.4; }
 
@@ -200,12 +200,30 @@ button:disabled, input:disabled { opacity: .55; cursor: not-allowed; }
 .checks-panel .checks-toolbar button { width: 100%; }
 .ws-help { margin-top: 12px; border-top: 1px solid #e2e8f0; padding-top: 10px; }
 .ws-help summary { cursor: pointer; font-size: 12px; font-weight: 800; color: #334155; }
+.ws-internet-option { display: flex; align-items: center; gap: 7px; margin: 0 0 4px; color: #334155; font-size: 12px; font-weight: 700; }
+.ws-internet-option input { width: auto; margin: 0; }
+.ws-isolated-note { font-size: 11px; }
 .docker-help-box { position: relative; margin-top: 8px; }
 .ws-help pre { margin: 0; max-height: 150px; overflow: auto; border-radius: 12px; background: #020617; color: #e2e8f0; padding: 10px 42px 10px 10px; font-size: 11px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
 button.copy-command { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; padding: 0; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; line-height: 1; opacity: .82; background: rgba(255,255,255,.94); color: #334155; }
 button.copy-command:hover { opacity: 1; background: #fff; }
 .copy-status { min-height: 16px; margin-top: 5px; color: #047857; font-size: 11px; font-weight: 800; text-align: right; }
-#ws-url { font-size: 13px; }
+#ws-preset { width: 100%; margin-bottom: 8px; }
+#ws-url { min-width: 0; font-size: 13px; }
+#ws-url[readonly] { background: #f8fafc; color: #64748b; cursor: default; }
+.ws-endpoint-warning,
+.ws-endpoint-note {
+  margin-top: 8px;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  background: #fffbeb;
+  color: #92400e;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.ws-endpoint-note { border-color: #93c5fd; background: #eff6ff; color: #1e40af; }
+.ws-cert-check { margin-top: 7px; font-size: 12px; font-weight: 700; }
 .local-service-origin-warning {
   margin-top: 8px;
   border: 1px solid #f59e0b;

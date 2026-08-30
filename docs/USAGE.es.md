@@ -164,20 +164,19 @@ Notas de uso:
 
 ## Red WS
 
-La red de la VM es opcional y usa un proxy local `wsnic`. La UI muestra comandos Docker para abrir y cerrar el contenedor.
+La red es opcional. Usa **Probar** para comprobar el handshake y **Conectar** para activar el endpoint; DHCP, DNS y tráfico se validan después desde la VM.
 
-Endpoint por defecto:
+### Local Docker WS
 
-```txt
-ws://127.0.0.1:8086/wsnic
-```
+Es la opción predeterminada (`ws://127.0.0.1:8086/wsnic`). Ejecuta el comando Docker mostrado en la UI. Con `-i` permite acceso al host e Internet; sin `-i`, las VMs/pestañas solo pueden comunicarse entre sí por la red virtual.
 
-Flujo recomendado:
+### Relay público
 
-1. Arranca el contenedor `wsnic` con el comando de la UI.
-2. Pulsa **Conectar** en el panel **Red WS**.
-3. Arranca la VM o espera a que la UI configure la red si ya estaba arrancada.
-4. Valida con **Comprobar** o con comandos como `curl -I https://example.com` dentro de la VM.
+Usa el endpoint fijo `wss://relay.widgetry.org/`. Es un relay experimental, compartido, limitado y sin SLA ni garantías de privacidad, disponibilidad o estabilidad. No envíes información sensible ni hagas pruebas de carga.
+
+### Personalizado
+
+Permite introducir cualquier URL válida `ws://` o `wss://`. Para WSS usa un certificado público válido y la cadena completa, directamente con wsnic/stunnel en `8087` o terminando TLS con Caddy, Nginx o Traefik en `443`. No expongas `ws://` a Internet, no uses certificados autofirmados ni desactives la seguridad del navegador.
 
 ## Scripts
 

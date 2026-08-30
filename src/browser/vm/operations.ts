@@ -3,6 +3,7 @@
 import {
   $,
   DOCKER_WSNIC_COMMAND,
+  DOCKER_WSNIC_ISOLATED_COMMAND,
   NL,
   VM_DISK_MOUNT_COMMAND,
   VM_DISK_UNMOUNT_COMMAND,
@@ -27,6 +28,7 @@ import {
 import { backgroundToolsApi } from "./background-tools-serial1";
 import { getVmRuntimeConfig, getWsRelayUrl, type VmRuntimeConfig } from "./profile-config";
 import {
+  checkWsRelayEndpoint,
   downloadArrayBuffer,
   formatBytes,
   nextPaint,
@@ -34,7 +36,15 @@ import {
   setLoading,
   timestampForFilename,
   v86SaveState,
+  wsValidationErrorDetail,
 } from "./runtime-assets";
+import {
+  getWsRetryDelay,
+  PUBLIC_RELAY_URL,
+  urlForWsPreset,
+  validateWsUrl,
+  type WsPreset,
+} from "./ws-network-config";
 
 export interface ExecVmOptions {
   lock?: boolean;
@@ -261,13 +271,21 @@ async function configureNetworkInVm(): Promise<void> {
   if (result.stdout) logTool(`${NL}${result.stdout}${NL}`);
   if (result.stderr) logTool(`${NL}[network stderr] ${result.stderr}${NL}`);
 
-  const ok = result.stdout.includes("HTTP_BROWSER_AGENT_OK") || result.stdout.includes("bytes from");
+  const isolatedLocal = $<HTMLSelectElement>("ws-preset")?.value === "local-ws"
+    && $<HTMLInputElement>("ws-enable-internet")?.checked === false;
+  const ok = result.stdout.includes("DHCP_OK")
+    && (isolatedLocal || (result.stdout.includes("DNS_UDP_OK") && result.stdout.includes("TCP_OK")));
   state.networkConfigured = ok;
   state.networkConfiguring = false;
 
   if (ok) {
-    setBadge($("ws-detail"), t("net.badge.connectedVm"), "good");
-    logTool(`[network] ${t("net.connectionVerified")}${NL}`);
+    if (isolatedLocal) {
+      setBadge($("ws-detail"), t("net.badge.isolatedVm"), "good");
+      logTool(`[network] ${t("net.isolatedVerified")}${NL}`);
+    } else {
+      setBadge($("ws-detail"), t("net.badge.connectedVm"), "good");
+      logTool(`[network] ${t("net.connectionVerified")}${NL}`);
+    }
   } else {
     setBadge($("ws-detail"), t("net.badge.wsnicOkNoNet"), "warn");
     logTool(`[network] ${t("net.wsnicRespondsNotConfigured")}${NL}`);
@@ -320,6 +338,103 @@ export function maybeConfigureNetwork(): void {
   void configureNetworkInVm();
 }
 
+export function syncWsEndpointControls(): void {
+  const input = $<HTMLInputElement>("ws-url");
+  const preset = $<HTMLSelectElement>("ws-preset");
+  const url = input?.value.trim() || "";
+  const selected = (preset?.value || "local-ws") as WsPreset;
+  const publicWarning = $("ws-public-warning");
+  const customNote = $("ws-custom-note");
+  const certCheck = $<HTMLAnchorElement>("ws-cert-check");
+  const localHelp = $("ws-local-help");
+  const internetAccess = $<HTMLInputElement>("ws-enable-internet");
+  const dockerCommand = $("docker-command");
+  if (input) {
+    input.readOnly = selected !== "custom";
+    if (selected === "custom") input.dataset.customUrl = input.value;
+  }
+  if (publicWarning) publicWarning.hidden = selected !== "public-relay";
+  if (customNote) customNote.hidden = selected !== "custom";
+  if (localHelp) localHelp.hidden = selected !== "local-ws";
+  if (dockerCommand) {
+    dockerCommand.textContent = internetAccess?.checked === false
+      ? DOCKER_WSNIC_ISOLATED_COMMAND
+      : DOCKER_WSNIC_COMMAND;
+  }
+  const validation = validateWsUrl(url);
+  if (certCheck) {
+    const showCertificate = validation.ok && validation.url.startsWith("wss://");
+    certCheck.hidden = !showCertificate;
+    if (showCertificate) certCheck.href = `https://${new URL(validation.url).host}/`;
+  }
+}
+
+export function selectWsPreset(): void {
+  const select = $<HTMLSelectElement>("ws-preset");
+  const input = $<HTMLInputElement>("ws-url");
+  if (!select || !input) return;
+  const selected = select.value as WsPreset;
+  if (selected === "custom") {
+    input.value = input.dataset.customUrl || "";
+  } else {
+    if (!input.readOnly) input.dataset.customUrl = input.value;
+    input.value = urlForWsPreset(selected);
+  }
+  syncWsEndpointControls();
+}
+
+export async function testWsEndpoint(): Promise<void> {
+  const button = $<HTMLButtonElement>("test-ws");
+  if (button) button.disabled = true;
+  setBadge($("ws-detail"), t("ws.test.testing"), "warn");
+  try {
+    const result = await checkWsRelayEndpoint(getWsRelayUrl(), 6000);
+    setBadge($("ws-detail"), result.detail, result.ok ? "good" : "bad");
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+function clearWsRetry(resetAttempt = true): void {
+  if (state.wsRetryTimer) window.clearTimeout(state.wsRetryTimer);
+  state.wsRetryTimer = 0;
+  if (resetAttempt) state.wsRetryAttempt = 0;
+}
+
+function scheduleWsReconnect(url: string): void {
+  if (state.wsManualDisconnect || state.wsRetryTimer) return;
+  const maxAttempts = 6;
+  if (state.wsRetryAttempt >= maxAttempts) {
+    setBadge($("badge-ws"), t("ws.badge.error"), "bad");
+    setBadge($("ws-detail"), t("ws.reconnect.exhausted"), "bad");
+    syncWsButton();
+    return;
+  }
+
+  const attempt = state.wsRetryAttempt + 1;
+  const delay = getWsRetryDelay(state.wsRetryAttempt);
+  state.wsRetryAttempt = attempt;
+  setBadge($("badge-ws"), t("ws.badge.reconnecting"), "warn");
+  setBadge($("ws-detail"), t("ws.reconnect.scheduled", {
+    attempt,
+    max: maxAttempts,
+    seconds: Math.max(1, Math.round(delay / 1000)),
+  }), "warn");
+  state.wsRetryTimer = window.setTimeout(() => {
+    state.wsRetryTimer = 0;
+    const current = validateWsUrl(getWsRelayUrl(), window.location.protocol);
+    if (state.wsManualDisconnect || !current.ok || current.url !== url) return;
+    if (!navigator.onLine) {
+      state.wsRetryAttempt -= 1;
+      setBadge($("ws-detail"), t("ws.reconnect.offline"), "warn");
+      scheduleWsReconnect(url);
+      return;
+    }
+    void openWs(url);
+  }, delay);
+  syncWsButton();
+}
+
 async function confirmWsDisconnect(): Promise<boolean> {
   const result = await showBaModal({
     title: t("ws.disconnect.title"),
@@ -334,7 +449,9 @@ async function confirmWsDisconnect(): Promise<boolean> {
 }
 
 async function disconnectWs({ confirmDisconnect = true }: { confirmDisconnect?: boolean } = {}): Promise<void> {
-  if (!state.wsSocket && !state.wsConnecting) {
+  if (!state.wsSocket && !state.wsConnecting && !state.wsRetryTimer) {
+    state.wsManualDisconnect = true;
+    clearWsRetry();
     state.networkAutoRequested = false;
     state.networkConfigured = false;
     state.networkConfiguring = false;
@@ -350,6 +467,8 @@ async function disconnectWs({ confirmDisconnect = true }: { confirmDisconnect?: 
   }
 
   const socket = state.wsSocket;
+  state.wsManualDisconnect = true;
+  clearWsRetry();
   state.wsSocket = null;
   state.wsConnecting = false;
   state.networkAutoRequested = false;
@@ -368,13 +487,7 @@ async function disconnectWs({ confirmDisconnect = true }: { confirmDisconnect?: 
   syncWsButton();
 }
 
-export async function connectWs(): Promise<void> {
-  if (isWsConnected()) {
-    await disconnectWs({ confirmDisconnect: true });
-    return;
-  }
-
-  const url = getWsRelayUrl();
+function openWs(url: string): void {
   if (isPublishedOrigin()) {
     logTool(`${NL}[network] ${t("net.localPermissionNotice", { url })}${NL}`);
   }
@@ -392,6 +505,12 @@ export async function connectWs(): Promise<void> {
 
   try {
     const socket = new WebSocket(url);
+    let retryScheduled = false;
+    const retry = (): void => {
+      if (retryScheduled) return;
+      retryScheduled = true;
+      scheduleWsReconnect(url);
+    };
     const timeout = window.setTimeout(() => {
       if (state.wsSocket === socket) state.wsSocket = null;
       state.wsConnecting = false;
@@ -400,15 +519,18 @@ export async function connectWs(): Promise<void> {
       } catch {
         // Closing a timed-out probe socket is best-effort.
       }
-      setBadge($("badge-ws"), t("ws.badge.disconnected"), "");
+      setBadge($("badge-ws"), t("ws.badge.error"), "bad");
       setBadge($("ws-detail"), t("common.noResponse"), "warn");
       syncWsButton();
-    }, 1800);
+      retry();
+    }, 6000);
 
     socket.onopen = (): void => {
       window.clearTimeout(timeout);
+      clearWsRetry();
       state.wsSocket = socket;
       state.wsConnecting = false;
+      state.wsManualDisconnect = false;
       state.networkAutoRequested = true;
       state.networkConfigured = false;
       setBadge($("badge-ws"), t("ws.badge.connected"), "good");
@@ -422,8 +544,9 @@ export async function connectWs(): Promise<void> {
       if (state.wsSocket === socket) state.wsSocket = null;
       state.wsConnecting = false;
       setBadge($("badge-ws"), t("ws.badge.error"), "bad");
-      setBadge($("ws-detail"), t("common.cannotConnect"), "bad");
+      setBadge($("ws-detail"), url.startsWith("wss://") ? t("ws.error.tlsProbable") : t("common.cannotConnect"), "bad");
       syncWsButton();
+      retry();
     };
     socket.onclose = (): void => {
       window.clearTimeout(timeout);
@@ -432,16 +555,53 @@ export async function connectWs(): Promise<void> {
       state.networkAutoRequested = false;
       state.networkConfigured = false;
       state.networkConfiguring = false;
-      setBadge($("badge-ws"), t("ws.badge.disconnected"), "");
-      setBadge($("ws-detail"), t("common.closed"), "");
-      syncWsButton();
+      if (state.wsManualDisconnect) {
+        setBadge($("badge-ws"), t("ws.badge.disconnected"), "");
+        setBadge($("ws-detail"), t("common.closed"), "");
+        syncWsButton();
+      } else {
+        retry();
+      }
     };
   } catch (error) {
     state.wsConnecting = false;
     setBadge($("badge-ws"), t("ws.badge.error"), "bad");
     setBadge($("ws-detail"), errorMessage(error), "bad");
     syncWsButton();
+    scheduleWsReconnect(url);
   }
+}
+
+async function confirmPublicRelay(): Promise<boolean> {
+  const result = await showBaModal({
+    title: t("ws.publicRelay.title"),
+    message: t("ws.publicRelay.message"),
+    detail: t("ws.publicRelay.detail"),
+    buttons: [
+      { id: "cancel", label: t("common.cancel"), variant: "secondary", cancel: true },
+      { id: "connect", label: t("common.connect"), variant: "primary" },
+    ],
+  });
+  return result === "connect";
+}
+
+export async function connectWs(): Promise<void> {
+  if (isWsConnected() || state.wsRetryTimer) {
+    await disconnectWs({ confirmDisconnect: true });
+    return;
+  }
+
+  const validation = validateWsUrl(getWsRelayUrl(), window.location.protocol);
+  if (!validation.ok) {
+    setBadge($("badge-ws"), t("ws.badge.error"), "bad");
+    setBadge($("ws-detail"), wsValidationErrorDetail(validation.error), "bad");
+    return;
+  }
+  if (validation.url === PUBLIC_RELAY_URL && !(await confirmPublicRelay())) return;
+
+  state.wsManualDisconnect = false;
+  clearWsRetry();
+  openWs(validation.url);
 }
 
 export async function saveSnapshot(): Promise<void> {

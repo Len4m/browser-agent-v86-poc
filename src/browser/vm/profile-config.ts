@@ -4,6 +4,7 @@ import { $, state } from "../app/state";
 import { t, tn } from "../app/i18n";
 import { appEvents } from "../core/events";
 import { formatBytes } from "./runtime-assets";
+import { LOCAL_WS_URL } from "./ws-network-config";
 
 export interface VmProfile {
   id: string;
@@ -182,8 +183,8 @@ export async function loadProfiles(): Promise<void> {
 }
 
 export function getWsRelayUrl(): string {
-  const value = $<HTMLInputElement>("ws-url")?.value.trim();
-  return value || "ws://127.0.0.1:8086/wsnic";
+  const input = $<HTMLInputElement>("ws-url");
+  return input ? input.value.trim() : LOCAL_WS_URL;
 }
 
 export function getVmRuntimeConfig(): VmRuntimeConfig {
