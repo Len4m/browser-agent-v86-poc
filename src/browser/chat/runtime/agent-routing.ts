@@ -31,7 +31,7 @@ const NEUTRAL_TOOL_RULES: HeuristicRule[] = [
   { id: "explicit-command", pattern: /\b(curl|wget|httpx|nmap|ffuf|nikto|dig|openssl|whoami|which|uname|ifconfig|netstat|ss)\b/i },
   { id: "ip-command", pattern: /\bip\s+(?:a|addr|address|route|link|neigh)\b/i },
   { id: "absolute-path", pattern: /(?:^|\s)\/(?:etc|var|home|tmp|usr|bin|sbin|opt|root|run|proc|sys)(?:\/[\w.-]+)*\b/i },
-  { id: "explicit-tool-name", pattern: /\b(?:vm|web|net|tls)\.[a-z0-9_.]+\b/i },
+  { id: "explicit-tool-name", pattern: /\b(?:vm|web|net|tls)_[a-z0-9_]+\b/i },
   { id: "serial-device", pattern: /\b(?:serial[0-9]+|ttyS[0-9]+)\b/i },
 ];
 
@@ -73,7 +73,7 @@ function isLikelyToolPlanText(text: unknown): boolean {
   const sample = textValue(text);
   if (!sample) return false;
   if (/```(?:tool[_-]?call|json)/i.test(sample)) return true;
-  return /"(?:name|tool)"\s*:\s*"(?:vm|web|net|tls)\.[A-Za-z0-9_.]+"/.test(sample);
+  return /"(?:name|tool)"\s*:\s*"(?:vm|web|net|tls)_[A-Za-z0-9_]+"/.test(sample);
 }
 
 function matchRule(sample: string, rules: HeuristicRule[]): HeuristicRule | null {
@@ -83,7 +83,7 @@ function matchRule(sample: string, rules: HeuristicRule[]): HeuristicRule | null
 function matchesActiveToolName(sample: string, activeToolNames: string[] = []): boolean {
   const lower = sample.toLowerCase();
   return activeToolNames
-    .filter((name) => typeof name === "string" && name.includes("."))
+    .filter((name) => typeof name === "string" && name.includes("_"))
     .some((name) => lower.includes(name.toLowerCase()));
 }
 

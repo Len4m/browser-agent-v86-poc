@@ -2,7 +2,7 @@
  * Middleware AI SDK: convierte JSON de tools en texto → eventos tool-call del provider.
  */
 
-import type { LanguageModelMiddleware } from "ai";
+import { extractReasoningMiddleware, type LanguageModelMiddleware } from "ai";
 import { parseTextToolCalls, looksLikeTextToolPlan, type ParsedTextToolCall } from "./text-tool-parser";
 
 type WrapGenerateInput = Parameters<NonNullable<LanguageModelMiddleware["wrapGenerate"]>>[0];
@@ -12,9 +12,11 @@ type GenerateContent = GenerateResult["content"][number];
 type StreamResult = Awaited<ReturnType<WrapStreamInput["doStream"]>>;
 type StreamChunk = StreamResult["stream"] extends ReadableStream<infer Chunk> ? Chunk : never;
 type FinishChunk = Extract<StreamChunk, { type: "finish" }>;
+type TextEndChunk = Extract<StreamChunk, { type: "text-end" }>;
 type ProviderUsage = FinishChunk["usage"];
 type ProviderMetadata = FinishChunk extends { providerMetadata?: infer Metadata } ? Metadata : never;
 type CallParams = WrapStreamInput["params"];
+const TOOL_SYNTAX_LOOKBEHIND = 8;
 
 interface NamedToolLike {
   name?: unknown;
@@ -34,7 +36,35 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-/** Formato LanguageModelV3 que espera el AI SDK (asLanguageModelUsage). */
+function isTransformersThinkingEnabled(params: CallParams): boolean {
+  if (!isRecord(params?.providerOptions)) return false;
+  const options = params.providerOptions["transformers-js"];
+  return isRecord(options) && options.enableThinking === true;
+}
+
+export function transformersReasoningMiddleware({
+  tagName,
+  startWithReasoning = false,
+  separator,
+}: {
+  tagName: string;
+  startWithReasoning?: boolean;
+  separator?: string;
+}): LanguageModelMiddleware {
+  const forParams = (params: CallParams): LanguageModelMiddleware => extractReasoningMiddleware({
+    tagName,
+    startWithReasoning: startWithReasoning && isTransformersThinkingEnabled(params),
+    ...(separator !== undefined ? { separator } : {}),
+  });
+
+  return {
+    specificationVersion: "v4",
+    wrapGenerate: (options) => forParams(options.params).wrapGenerate!(options),
+    wrapStream: (options) => forParams(options.params).wrapStream!(options),
+  };
+}
+
+/** Formato LanguageModelV4 que espera el AI SDK. */
 function defaultProviderUsage(): ProviderUsage {
   return {
     inputTokens: {
@@ -99,6 +129,15 @@ function streamTextDelta(chunk: unknown): string {
   return typeof text === "string" ? text : "";
 }
 
+function potentialTextToolStart(text: string, fromIndex: number): number {
+  const candidates = [text.indexOf("{", fromIndex), text.indexOf("`", fromIndex)];
+  const callIndex = text.toLowerCase().indexOf("call:", fromIndex);
+  if (callIndex >= 0) candidates.push(callIndex);
+  return candidates.reduce((first, index) => (
+    index >= 0 && (first < 0 || index < first) ? index : first
+  ), -1);
+}
+
 function enqueueProviderChunk(
   controller: TransformStreamDefaultController<StreamChunk>,
   chunk: Record<string, unknown>,
@@ -134,26 +173,6 @@ function emitTextToolCall(
   });
 }
 
-function tryInjectToolCallsFromText({
-  text,
-  allowedToolNames,
-  controller,
-  usage,
-  providerMetadata,
-}: {
-  text: string;
-  allowedToolNames: string[];
-  controller: TransformStreamDefaultController<StreamChunk>;
-  usage?: ProviderUsage;
-  providerMetadata?: ProviderMetadata;
-}): boolean {
-  if (!text?.trim() || !allowedToolNames.length) return false;
-  const { toolCalls } = parseTextToolCalls(text, { allowedToolNames });
-  if (!toolCalls.length) return false;
-  emitTextToolCall(controller, toolCalls[0], usage, providerMetadata);
-  return true;
-}
-
 /**
  */
 function withoutToolChoice(params: CallParams): CallParams {
@@ -167,7 +186,7 @@ export function transformersTextToolMiddleware({
   parseTextTools = true,
 }: { stripToolChoice?: boolean; parseTextTools?: boolean } = {}): LanguageModelMiddleware {
   return {
-    specificationVersion: "v3",
+    specificationVersion: "v4",
     wrapGenerate: async ({ doGenerate, params, model }) => {
       const generate = () => stripToolChoice ? model.doGenerate(withoutToolChoice(params)) : doGenerate();
       const allowedToolNames = getAllowedToolNames(params);
@@ -208,13 +227,29 @@ export function transformersTextToolMiddleware({
 
       const { stream: baseStream, ...rest } = await stream();
       let accumulated = "";
-      let toolCallEmitted = false;
+      let emittedTextLength = 0;
+      let nativeToolSequenceSeen = false;
+      let syntheticToolCallEmitted = false;
       let suppressText = false;
-      let pendingFinish: FinishChunk | null = null;
+      let activeTextId = "text-recovered";
+      let pendingTextEnd: TextEndChunk | null = null;
+
+      function flushBufferedText(controller: TransformStreamDefaultController<StreamChunk>): void {
+        const buffered = accumulated.slice(emittedTextLength);
+        if (!buffered) return;
+        enqueueProviderChunk(controller, {
+          type: "text-delta",
+          id: activeTextId,
+          delta: buffered,
+        });
+        emittedTextLength = accumulated.length;
+      }
 
       const transformed = baseStream.pipeThrough(
         new TransformStream<StreamChunk, StreamChunk>({
           transform(chunk, controller) {
+            if (syntheticToolCallEmitted) return;
+
             if (
               chunk.type === "reasoning-start"
               || chunk.type === "reasoning-delta"
@@ -224,19 +259,29 @@ export function transformersTextToolMiddleware({
               return;
             }
 
-            if (toolCallEmitted) {
-              // El modelo base puede emitir otro finish (stop) tras el nuestro (tool-calls).
-              if (chunk.type === "text-delta" || chunk.type === "finish") return;
+            if (nativeToolSequenceSeen) {
               controller.enqueue(chunk);
               return;
             }
 
-            if (chunk.type === "tool-call") {
-              toolCallEmitted = true;
+            if (
+              chunk.type === "tool-call"
+              || chunk.type === "tool-input-start"
+              || chunk.type === "tool-input-delta"
+              || chunk.type === "tool-input-end"
+            ) {
+              nativeToolSequenceSeen = true;
+              flushBufferedText(controller);
+              if (pendingTextEnd) {
+                controller.enqueue(pendingTextEnd);
+                pendingTextEnd = null;
+              }
               controller.enqueue(chunk);
               return;
             }
-            if (chunk.type === "tool-input-start" || chunk.type === "tool-input-delta" || chunk.type === "tool-input-end") {
+
+            if (chunk.type === "text-start") {
+              activeTextId = chunk.id;
               controller.enqueue(chunk);
               return;
             }
@@ -247,46 +292,51 @@ export function transformersTextToolMiddleware({
               if (!suppressText && looksLikeTextToolPlan(accumulated)) {
                 suppressText = true;
               }
-              if (suppressText) {
-                if (
-                  tryInjectToolCallsFromText({
-                    text: accumulated,
-                    allowedToolNames,
-                    controller,
-                    usage: pendingFinish?.usage,
-                    providerMetadata: pendingFinish?.providerMetadata,
-                  })
-                ) {
-                  toolCallEmitted = true;
-                }
-                return;
+              if (suppressText) return;
+
+              const candidateStart = potentialTextToolStart(accumulated, emittedTextLength);
+              const safeEnd = candidateStart >= 0
+                ? candidateStart
+                : Math.max(emittedTextLength, accumulated.length - TOOL_SYNTAX_LOOKBEHIND);
+              const safeText = accumulated.slice(emittedTextLength, safeEnd);
+              if (safeText) {
+                enqueueProviderChunk(controller, {
+                  type: "text-delta",
+                  id: activeTextId,
+                  delta: safeText,
+                });
+                emittedTextLength = safeEnd;
               }
-              controller.enqueue(chunk);
               return;
             }
 
-            if (chunk.type === "finish" && !toolCallEmitted) {
-              pendingFinish = chunk;
-              if (
-                tryInjectToolCallsFromText({
-                  text: accumulated,
-                  allowedToolNames,
-                  controller,
-                  usage: chunk.usage,
-                  providerMetadata: chunk.providerMetadata,
-                })
-              ) {
-                toolCallEmitted = true;
+            if (chunk.type === "text-end" && emittedTextLength < accumulated.length) {
+              pendingTextEnd = chunk;
+              return;
+            }
+
+            if (chunk.type === "finish") {
+              const fallbackCall = accumulated.trim()
+                ? parseTextToolCalls(accumulated, { allowedToolNames }).toolCalls[0]
+                : undefined;
+              if (fallbackCall) {
+                if (pendingTextEnd) controller.enqueue(pendingTextEnd);
+                pendingTextEnd = null;
+                emitTextToolCall(controller, fallbackCall, chunk.usage, chunk.providerMetadata);
+                syntheticToolCallEmitted = true;
                 return;
               }
-              if (suppressText && accumulated.trim()) {
-                // No parseable tool: devolver texto acumulado una vez
+              const recoveredText = accumulated.slice(emittedTextLength);
+              if (recoveredText) {
+                // Recupera la ventana de detección cuando no contenía una tool.
                 enqueueProviderChunk(controller, {
                   type: "text-delta",
-                  id: "text-recovered",
-                  delta: accumulated,
+                  id: activeTextId,
+                  delta: recoveredText,
                 });
               }
+              if (pendingTextEnd) controller.enqueue(pendingTextEnd);
+              pendingTextEnd = null;
               controller.enqueue(chunk);
               return;
             }

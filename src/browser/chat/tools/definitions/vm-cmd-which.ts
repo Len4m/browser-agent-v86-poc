@@ -4,9 +4,9 @@ import { captureCommand, standardFormat, summaryCouldNot, summaryHeadTarget, tex
 import type { ToolDefinition } from "../types";
 
 export const toolDefinition: ToolDefinition = {
-  name: "vm.cmd.which", get label() { return t("tools.name.vm.cmd.which"); }, riskLevel: 1, category: "vm.system",
+  name: "vm_cmd_which", get label() { return t("tools.name.vm_cmd_which"); }, riskLevel: 1, category: "vm.system",
   requiresVm: true, requiresConsole: true, timeoutMs: 8000, maxOutputBytes: 12000,
-  get description() { return t("tools.desc.vm.cmd.which"); },
+  get description() { return t("tools.desc.vm_cmd_which"); },
   get promptDescription() { return toolPrompt(this.label, '{"commands":["curl","nmap"]}'); },
   buildInputSchema(z) {
     return z.object({

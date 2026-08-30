@@ -12,17 +12,17 @@
     "python3"
   ],
   "allowedTools": [
-    "vm.python.exec",
-    "vm.sh.exec",
-    "vm.fs.list",
-    "vm.fs.read",
-    "vm.fs.write",
-    "vm.cmd.which",
-    "web.curl.head",
-    "vm.sys.info",
-    "vm.console.status",
-    "vm.pkg.info",
-    "web.curl.fetch_text"
+    "vm_python_exec",
+    "vm_sh_exec",
+    "vm_fs_list",
+    "vm_fs_read",
+    "vm_fs_write",
+    "vm_cmd_which",
+    "web_curl_head",
+    "vm_sys_info",
+    "vm_console_status",
+    "vm_pkg_info",
+    "web_curl_fetch_text"
   ],
   "firstBootCommands": [
     "update-ca-certificates >/tmp/update-ca-certificates.log 2>&1 || true"

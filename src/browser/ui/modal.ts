@@ -16,6 +16,7 @@ interface ShowModalOptions {
   detail?: string;
   buttons?: ModalButton[];
   closeOnBackdrop?: boolean;
+  abortSignal?: AbortSignal;
 }
 
 interface ShowModalPanelOptions {
@@ -23,6 +24,7 @@ interface ShowModalPanelOptions {
   onMount?: (bodyEl: HTMLElement) => void;
   buttons?: ModalButton[];
   closeOnBackdrop?: boolean;
+  abortSignal?: AbortSignal;
 }
 
 interface ModalLayoutElements {
@@ -81,14 +83,29 @@ function messageFromError(error: unknown): string {
   return "Error";
 }
 
+function modalAbortError(signal?: AbortSignal): Error {
+  const reason = signal ? signal.reason as unknown : undefined;
+  const message = reason instanceof Error
+    ? reason.message
+    : typeof reason === "string" && reason
+      ? reason
+      : "The operation was aborted";
+  const error = new Error(message);
+  error.name = "AbortError";
+  return error;
+}
+
 export function showBaModal({
   title = t("modal.confirmTitle"),
   message = "",
   detail = "",
   buttons = [],
   closeOnBackdrop = false,
+  abortSignal,
 }: ShowModalOptions = {}): Promise<string> {
-  return new Promise((resolve) => {
+  if (abortSignal?.aborted) return Promise.reject(modalAbortError(abortSignal));
+
+  return new Promise((resolve, reject) => {
     const overlay = $("ba-modal-overlay");
     const titleEl = $("ba-modal-title");
     const messageEl = $("ba-modal-message");
@@ -96,8 +113,17 @@ export function showBaModal({
     const bodyEl = $("ba-modal-body");
     const actionsEl = $("ba-modal-actions");
     const iconEl = overlay?.querySelector<HTMLElement>(".ba-modal-icon") || null;
+    const normalizedButtons = normalizeModalButtons(buttons);
     if (!overlay || !titleEl || !messageEl || !detailEl || !actionsEl) {
-      resolve(window.confirm(`${title}\n\n${message}${detail ? `\n\n${detail}` : ""}`) ? "confirm" : "cancel");
+      const cancelButton = normalizedButtons.find((button) => button.cancel)
+        || normalizedButtons.find((button) => button.id === "cancel")
+        || normalizedButtons[0];
+      const confirmButton = normalizedButtons.find((button) => button !== cancelButton)
+        || normalizedButtons.at(-1)
+        || cancelButton;
+      resolve(window.confirm(`${title}\n\n${message}${detail ? `\n\n${detail}` : ""}`)
+        ? confirmButton.id
+        : cancelButton.id);
       return;
     }
     const modalOverlay = overlay;
@@ -108,20 +134,27 @@ export function showBaModal({
     const modalActionsEl = actionsEl;
     const modalIconEl = iconEl;
 
-    const normalizedButtons = normalizeModalButtons(buttons);
     let settled = false;
+    let focusTimer: number | null = null;
     const previousFocus = document.activeElement;
 
-    function cleanup(result: string): void {
+    function cleanup(result: string, error?: Error): void {
       if (settled) return;
       settled = true;
       modalOverlay.classList.remove("show", "ba-modal-panel-mode");
       modalOverlay.setAttribute("aria-hidden", "true");
       document.removeEventListener("keydown", onKeyDown);
       modalOverlay.removeEventListener("pointerdown", onBackdropPointerDown);
+      abortSignal?.removeEventListener("abort", onAbort);
+      if (focusTimer !== null) window.clearTimeout(focusTimer);
       resetBaModalLayout({ messageEl: modalMessageEl, detailEl: modalDetailEl, bodyEl: modalBodyEl, iconEl: modalIconEl });
       focusElement(previousFocus);
-      resolve(result);
+      if (error) reject(error);
+      else resolve(result);
+    }
+
+    function onAbort(): void {
+      cleanup("cancel", modalAbortError(abortSignal));
     }
 
     function onKeyDown(event: KeyboardEvent): void {
@@ -148,7 +181,8 @@ export function showBaModal({
     modalOverlay.setAttribute("aria-hidden", "false");
     document.addEventListener("keydown", onKeyDown);
     modalOverlay.addEventListener("pointerdown", onBackdropPointerDown);
-    window.setTimeout(() => {
+    abortSignal?.addEventListener("abort", onAbort, { once: true });
+    focusTimer = window.setTimeout(() => {
       const preferred = modalActionsEl.querySelector(".ba-modal-button.danger, .ba-modal-button.primary") || modalActionsEl.querySelector("button");
       focusElement(preferred);
     }, 0);
@@ -160,8 +194,11 @@ export function showBaModalPanel({
   onMount,
   buttons = [{ id: "close", label: t("common.done"), variant: "primary" }],
   closeOnBackdrop = true,
+  abortSignal,
 }: ShowModalPanelOptions = {}): Promise<string> {
-  return new Promise((resolve) => {
+  if (abortSignal?.aborted) return Promise.reject(modalAbortError(abortSignal));
+
+  return new Promise((resolve, reject) => {
     const overlay = $("ba-modal-overlay");
     const titleEl = $("ba-modal-title");
     const messageEl = $("ba-modal-message");
@@ -183,18 +220,26 @@ export function showBaModalPanel({
 
     const normalizedButtons = normalizeModalButtons(buttons);
     let settled = false;
+    let focusTimer: number | null = null;
     const previousFocus = document.activeElement;
 
-    function cleanup(result: string): void {
+    function cleanup(result: string, error?: Error): void {
       if (settled) return;
       settled = true;
       modalOverlay.classList.remove("show", "ba-modal-panel-mode");
       modalOverlay.setAttribute("aria-hidden", "true");
       document.removeEventListener("keydown", onKeyDown);
       modalOverlay.removeEventListener("pointerdown", onBackdropPointerDown);
+      abortSignal?.removeEventListener("abort", onAbort);
+      if (focusTimer !== null) window.clearTimeout(focusTimer);
       resetBaModalLayout({ messageEl: modalMessageEl, detailEl: modalDetailEl, bodyEl: modalBodyEl, iconEl: modalIconEl });
       focusElement(previousFocus);
-      resolve(result);
+      if (error) reject(error);
+      else resolve(result);
+    }
+
+    function onAbort(): void {
+      cleanup("close", modalAbortError(abortSignal));
     }
 
     function onKeyDown(event: KeyboardEvent): void {
@@ -233,7 +278,8 @@ export function showBaModalPanel({
     modalOverlay.setAttribute("aria-hidden", "false");
     document.addEventListener("keydown", onKeyDown);
     modalOverlay.addEventListener("pointerdown", onBackdropPointerDown);
-    window.setTimeout(() => {
+    abortSignal?.addEventListener("abort", onAbort, { once: true });
+    focusTimer = window.setTimeout(() => {
       const preferred = modalBodyEl.querySelector("input:not([disabled])") || modalActionsEl.querySelector("button");
       focusElement(preferred);
     }, 0);

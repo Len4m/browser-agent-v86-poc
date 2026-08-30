@@ -4,11 +4,11 @@ import { captureCommand, standardFormat, textValue, toolPrompt } from "../shared
 import type { ToolDefinition } from "../types";
 
 export const toolDefinition: ToolDefinition = {
-  name: "vm.python.exec", get label() { return t("tools.name.vm.python.exec"); }, riskLevel: 3, category: "vm.exec",
+  name: "vm_python_exec", get label() { return t("tools.name.vm_python_exec"); }, riskLevel: 3, category: "vm.exec",
   requiresVm: true, requiresConsole: true, timeoutMs: 25000, maxOutputBytes: 32768,
   requiredPackages: ["python3"],
   runtimeChecks: [{ label: "python3", command: "command -v python3" }],
-  get description() { return t("tools.desc.vm.python.exec"); },
+  get description() { return t("tools.desc.vm_python_exec"); },
   get promptDescription() { return toolPrompt(this.label, '{"code":"print(\'hi\')"}'); },
   buildInputSchema(z) {
     return z.object({

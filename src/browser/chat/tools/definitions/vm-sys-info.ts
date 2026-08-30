@@ -3,9 +3,9 @@ import { captureCommand, standardFormat, summaryCouldNot, toolPrompt } from "../
 import type { ToolDefinition } from "../types";
 
 export const toolDefinition: ToolDefinition = {
-  name: "vm.sys.info", get label() { return t("tools.name.vm.sys.info"); }, riskLevel: 1, category: "vm.system",
+  name: "vm_sys_info", get label() { return t("tools.name.vm_sys_info"); }, riskLevel: 1, category: "vm.system",
   requiresVm: true, requiresConsole: true, timeoutMs: 10000, maxOutputBytes: 24000,
-  get description() { return t("tools.desc.vm.sys.info"); },
+  get description() { return t("tools.desc.vm_sys_info"); },
   get promptDescription() { return toolPrompt(this.label, "{}"); },
   buildInputSchema(z) { return z.object({}); },
   normalizeArgs() { return {}; },

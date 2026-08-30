@@ -8,9 +8,9 @@ function normalizeReadArgs(args: ToolArgs = {}): ToolArgs {
 }
 
 export const toolDefinition: ToolDefinition = {
-  name: "vm.fs.read", get label() { return t("tools.name.vm.fs.read"); }, riskLevel: 1, category: "vm.fs",
+  name: "vm_fs_read", get label() { return t("tools.name.vm_fs_read"); }, riskLevel: 1, category: "vm.fs",
   requiresVm: true, requiresConsole: true, timeoutMs: 12000, maxOutputBytes: 32768,
-  get description() { return t("tools.desc.vm.fs.read"); },
+  get description() { return t("tools.desc.vm_fs_read"); },
   get promptDescription() { return toolPrompt(this.label, '{"path":"/ruta/archivo","maxBytes":8192}'); },
   buildInputSchema(z) {
     return z.object({

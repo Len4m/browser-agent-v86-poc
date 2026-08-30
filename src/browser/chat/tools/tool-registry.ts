@@ -7,7 +7,7 @@ import { t } from "../../app/i18n";
 import { backgroundToolsApi } from "../../vm/background-tools-serial1";
 import { getSelectedProfile, type VmProfile } from "../../vm/profile-config";
 import { TOOL_DEFINITIONS } from "virtual:ba-tools";
-import { isRecord, textValue, toToolArgs } from "./shared";
+import { isRecord, normalizeToolName, textValue, toToolArgs } from "./shared";
 import type {
   LlmToolRegistryApi,
   NormalizedToolCall,
@@ -42,17 +42,17 @@ export const llmToolRegistry: LlmToolRegistryApi = (() => {
   ];
 
   const MANUAL_TOOL_NAMES = [
-    "vm.python.exec",
-    "vm.sh.exec",
-    "vm.fs.list",
-    "vm.fs.read",
-    "vm.fs.write",
-    "vm.cmd.which",
-    "web.curl.head",
-    "vm.sys.info",
-    "vm.console.status",
-    "vm.pkg.info",
-    "web.curl.fetch_text",
+    "vm_python_exec",
+    "vm_sh_exec",
+    "vm_fs_list",
+    "vm_fs_read",
+    "vm_fs_write",
+    "vm_cmd_which",
+    "web_curl_head",
+    "vm_sys_info",
+    "vm_console_status",
+    "vm_pkg_info",
+    "web_curl_fetch_text",
   ];
 
   const PROFILE_TOOL_NAMES: Record<string, string[]> = {
@@ -93,7 +93,7 @@ export const llmToolRegistry: LlmToolRegistryApi = (() => {
     if (profileId === "manual") return MANUAL_TOOL_NAMES;
     const profile = profileForId(profileId);
     if (!profile || !Array.isArray(profile.allowedTools)) return [];
-    return profile.allowedTools.map((name) => textValue(name).trim()).filter(Boolean);
+    return profile.allowedTools.map(normalizeToolName).filter(Boolean);
   }
 
   function hasRequiredPackages(tool: ToolDefinition, profileId: string): boolean {
@@ -118,13 +118,13 @@ export const llmToolRegistry: LlmToolRegistryApi = (() => {
     if (!ctx.toolsConsoleAvailable) throw new Error(t("tools.error.toolsConsoleMissing"));
     // Las tools del agente LLM van por serial1, no por serial0/consola visible.
     // state.agentBusy solo marca bloqueo de la consola principal (snapshot, comandos manuales, etc.)
-    // y no debe impedir vm.fs.* mientras el modelo planifica en GPU.
+    // y no debe impedir vm_fs_* mientras el modelo planifica en GPU.
     if (ctx.backgroundToolBusy) throw new Error(t("tools.error.serial1Busy"));
     if (ctx.pendingCommand) throw new Error(t("tools.error.serial0Pending"));
     return ctx;
   }
 
-  function getTool(name: unknown): ToolDefinition | undefined { return TOOLS[textValue(name)]; }
+  function getTool(name: unknown): ToolDefinition | undefined { return TOOLS[normalizeToolName(name)]; }
 
   function toolMetadata(tool: ToolDefinition): ToolMetadata {
     return {

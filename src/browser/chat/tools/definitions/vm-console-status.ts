@@ -3,9 +3,9 @@ import { captureCommand, standardFormat, summaryCouldNot, toolPrompt } from "../
 import type { ToolDefinition } from "../types";
 
 export const toolDefinition: ToolDefinition = {
-  name: "vm.console.status", get label() { return t("common.xtermConsoleStatus"); }, riskLevel: 1, category: "vm.system",
+  name: "vm_console_status", get label() { return t("common.xtermConsoleStatus"); }, riskLevel: 1, category: "vm.system",
   requiresVm: true, requiresConsole: true, timeoutMs: 8000, maxOutputBytes: 16000,
-  get description() { return t("tools.desc.vm.console.status"); },
+  get description() { return t("tools.desc.vm_console_status"); },
   get promptDescription() { return toolPrompt(this.label, "{}"); },
   buildInputSchema(z) { return z.object({}); },
   normalizeArgs() { return {}; },

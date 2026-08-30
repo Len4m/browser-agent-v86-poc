@@ -7,22 +7,22 @@ import webProfile from "../../vm/profiles/alpine-pentest-web.json";
 import { state } from "../../src/browser/app/state";
 import { llmNativeToolsPolicy } from "../../src/browser/chat/tools/native-tools-policy";
 import { llmToolRegistry } from "../../src/browser/chat/tools/tool-registry";
-import type { AiSdkSchemaLike, AiSdkZodLike } from "../../src/browser/chat/provider/ai-sdk-runtime";
+import type { AiSdkObjectSchemaLike, AiSdkZodLike } from "../../src/browser/chat/provider/ai-sdk-runtime";
 import type { LlmModelConfig } from "../../src/browser/chat/state/chat-state";
 import { TOOL_DEFINITIONS } from "virtual:ba-tools";
 
 const manualTools = [
-  "vm.python.exec",
-  "vm.sh.exec",
-  "vm.fs.list",
-  "vm.fs.read",
-  "vm.fs.write",
-  "vm.cmd.which",
-  "web.curl.head",
-  "vm.sys.info",
-  "vm.console.status",
-  "vm.pkg.info",
-  "web.curl.fetch_text",
+  "vm_python_exec",
+  "vm_sh_exec",
+  "vm_fs_list",
+  "vm_fs_read",
+  "vm_fs_write",
+  "vm_cmd_which",
+  "web_curl_head",
+  "vm_sys_info",
+  "vm_console_status",
+  "vm_pkg_info",
+  "web_curl_fetch_text",
 ];
 
 function installProfiles(): void {
@@ -80,8 +80,8 @@ test("native tool defaults use profile priority and model quantity limit", () =>
   };
 
   assert.deepEqual(llmNativeToolsPolicy.getDefaultToolNames(model, "alpine-base"), [
-    "vm.python.exec",
-    "vm.sh.exec",
+    "vm_python_exec",
+    "vm_sh_exec",
   ]);
 });
 
@@ -98,29 +98,58 @@ test("native active tools are resolved in profile priority order and capped", ()
     },
   };
   store.set("ba.llm.nativeTools.ordered-model", JSON.stringify([
-    "web.httpx.probe",
-    "web.curl.head",
-    "vm.sh.exec",
-    "vm.python.exec",
+    "web_httpx_probe",
+    "web_curl_head",
+    "vm_sh_exec",
+    "vm_python_exec",
   ]));
 
   assert.deepEqual(llmNativeToolsPolicy.resolveActiveToolNames(model, "alpine-pentest-web"), [
-    "vm.python.exec",
-    "vm.sh.exec",
-    "web.curl.head",
+    "vm_python_exec",
+    "vm_sh_exec",
+    "web_curl_head",
   ]);
   assert.deepEqual(
     llmNativeToolsPolicy.setActiveToolNames(model, [
-      "web.httpx.probe",
-      "vm.sh.exec",
-      "web.curl.head",
+      "web_httpx_probe",
+      "vm_sh_exec",
+      "web_curl_head",
     ], "alpine-pentest-web"),
     [
-      "vm.sh.exec",
-      "web.curl.head",
-      "web.httpx.probe",
+      "vm_sh_exec",
+      "web_curl_head",
+      "web_httpx_probe",
     ],
   );
+});
+
+test("legacy dotted tool names are normalized at profile and storage boundaries", () => {
+  const store = installLocalStorage();
+  state.profiles = [{
+    ...baseProfile,
+    id: "legacy-names",
+    allowedTools: ["vm.fs.read", "web.curl.head"],
+  }];
+  const model: LlmModelConfig = {
+    id: "legacy-model",
+    engine: "transformersjs",
+    agent: {
+      maxSteps: 2,
+      maxNativeTools: 2,
+      toolCalling: "fair",
+    },
+  };
+  store.set("ba.llm.nativeTools.legacy-model", JSON.stringify(["web.curl.head", "vm.fs.read"]));
+
+  assert.deepEqual(llmToolRegistry.listToolNames({ profileId: "legacy-names" }), [
+    "vm_fs_read",
+    "web_curl_head",
+  ]);
+  assert.deepEqual(llmNativeToolsPolicy.resolveActiveToolNames(model, "legacy-names"), [
+    "vm_fs_read",
+    "web_curl_head",
+  ]);
+  assert.equal(llmToolRegistry.getTool("vm.fs.read")?.name, "vm_fs_read");
 });
 
 test("tools missing required profile packages are not exposed", () => {
@@ -128,13 +157,13 @@ test("tools missing required profile packages are not exposed", () => {
     ...baseProfile,
     id: "missing-packages",
     packages: [],
-    allowedTools: ["web.curl.head", "vm.sh.exec"],
+    allowedTools: ["web_curl_head", "vm_sh_exec"],
   }];
 
-  assert.deepEqual(llmToolRegistry.listToolNames({ profileId: "missing-packages" }), ["vm.sh.exec"]);
+  assert.deepEqual(llmToolRegistry.listToolNames({ profileId: "missing-packages" }), ["vm_sh_exec"]);
   assert.deepEqual(
     llmToolRegistry.listToolNames({ profileId: "missing-packages", includeUnavailable: true }),
-    ["web.curl.head", "vm.sh.exec"],
+    ["web_curl_head", "vm_sh_exec"],
   );
   assert.deepEqual(llmToolRegistry.listToolRuntimeChecks({ profileId: "missing-packages" }), []);
   assert.deepEqual(
@@ -174,7 +203,7 @@ test("tool runtime checks are derived from allowed tool definitions", () => {
 });
 
 test("Nikto tool uses the nikto.pl profile contract", () => {
-  const tool = llmToolRegistry.getTool("web.nikto.quick");
+  const tool = llmToolRegistry.getTool("web_nikto_quick");
   assert.ok(tool);
   const normalizeArgs = tool.normalizeArgs;
   if (typeof normalizeArgs !== "function") throw new Error("Nikto tool must normalize args");
@@ -194,7 +223,7 @@ test("Nikto tool uses the nikto.pl profile contract", () => {
 });
 
 test("HTTPX tool uses the profile httpx command directly", () => {
-  const tool = llmToolRegistry.getTool("web.httpx.probe");
+  const tool = llmToolRegistry.getTool("web_httpx_probe");
   assert.ok(tool);
   const normalizeArgs = tool.normalizeArgs;
   if (typeof normalizeArgs !== "function") throw new Error("HTTPX tool must normalize args");
@@ -217,7 +246,7 @@ test("HTTPX tool uses the profile httpx command directly", () => {
 });
 
 test("each tool definition owns its AI SDK input schema", () => {
-  const fakeSchema: AiSdkSchemaLike = {
+  const fakeSchema: AiSdkObjectSchemaLike = {
     describe() { return fakeSchema; },
     optional() { return fakeSchema; },
     nullable() { return fakeSchema; },

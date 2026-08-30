@@ -19,6 +19,25 @@ export function textValue(value: unknown, fallback = ""): string {
   return fallback;
 }
 
+export function normalizeToolName(value: unknown): string {
+  return textValue(value).trim().replaceAll(".", "_");
+}
+
+export function abortError(signal?: AbortSignal): Error {
+  const reason = signal?.reason as unknown;
+  const error = new Error(reason instanceof Error
+    ? reason.message
+    : typeof reason === "string" && reason
+      ? reason
+      : "The operation was aborted");
+  error.name = "AbortError";
+  return error;
+}
+
+export function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw abortError(signal);
+}
+
 export function toToolArgs(value: unknown): ToolArgs {
   if (!isRecord(value)) return {};
   const out: ToolArgs = {};

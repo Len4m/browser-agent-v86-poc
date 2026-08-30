@@ -43,12 +43,12 @@ test("native tool prompt lists selected active tools instead of profile prefix",
 
   const prompt = llmContextBudget.buildAgentTurnPrompt("usa httpx contra https://example.com", {
     nativeTools: true,
-    activeToolNames: ["web.httpx.probe", "vm.sh.exec"],
+    activeToolNames: ["web_httpx_probe", "vm_sh_exec"],
   });
   const system = prompt.system || "";
 
-  assert.match(system, /Herramientas activas \(2\): web\.httpx\.probe, vm\.sh\.exec/);
-  assert.doesNotMatch(system, /Herramientas activas \(\d+\): vm\.python\.exec/);
+  assert.match(system, /Herramientas activas \(2\): web_httpx_probe, vm_sh_exec/);
+  assert.doesNotMatch(system, /Herramientas activas \(\d+\): vm_python_exec/);
 });
 
 test("network tool names route fair models into the VM tool loop", () => {
@@ -67,10 +67,10 @@ test("tool fallback heuristic is language-neutral and only matches objective too
   assert.equal(llmAgentRouting.userRequestLikelyNeedsVm("run httpx against https://example.com"), true);
   assert.equal(llmAgentRouting.userRequestLikelyNeedsVm("lee /etc/os-release"), true);
   assert.equal(llmAgentRouting.userRequestLikelyNeedsVm("check 192.168.1.10 con nmap"), true);
-  assert.equal(llmAgentRouting.userRequestLikelyNeedsVm("quiero usar web.httpx.probe"), true);
+  assert.equal(llmAgentRouting.userRequestLikelyNeedsVm("quiero usar web_httpx_probe"), true);
 
-  const activeTool = llmAgentRouting.resolveToolNeedHeuristic("ejecuta vm.fs.read", {
-    activeToolNames: ["vm.fs.read"],
+  const activeTool = llmAgentRouting.resolveToolNeedHeuristic("ejecuta vm_fs_read", {
+    activeToolNames: ["vm_fs_read"],
   });
   assert.equal(activeTool.matched, true);
   assert.equal(activeTool.rule, "active-tool-name");
@@ -83,6 +83,7 @@ test("verified small transformers models can self-select tools before heuristic 
   const granite350 = llmModels.find((model) => model.id === "granite-4.0-350m-onnx-web-fp16");
 
   assert.equal(qwen3?.agent?.toolCalling, "good");
+  assert.equal(qwen3?.thinking?.extract?.startWithReasoning, true);
   assert.equal(qwen25?.agent?.toolCalling, "weak");
   assert.equal(qwen25?.agent?.selfSelectTools, true);
   assert.equal(qwen25?.agent?.maxNativeTools, 2);

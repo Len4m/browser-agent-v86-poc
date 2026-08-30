@@ -4,9 +4,9 @@ import { captureCommand, standardFormat, summaryCouldNot, textValue, toolPrompt 
 import type { ToolDefinition } from "../types";
 
 export const toolDefinition: ToolDefinition = {
-  name: "vm.pkg.info", get label() { return t("tools.name.vm.pkg.info"); }, riskLevel: 1, category: "vm.system",
+  name: "vm_pkg_info", get label() { return t("tools.name.vm_pkg_info"); }, riskLevel: 1, category: "vm.system",
   requiresVm: true, requiresConsole: true, timeoutMs: 10000, maxOutputBytes: 24000,
-  get description() { return t("tools.desc.vm.pkg.info"); },
+  get description() { return t("tools.desc.vm_pkg_info"); },
   get promptDescription() { return toolPrompt(this.label, '{"filter":"curl"}'); },
   buildInputSchema(z) {
     return z.object({

@@ -3,15 +3,24 @@
 
 import { state } from "../../app/state";
 import { t } from "../../app/i18n";
-import { getAiSdk, type AiSdkSchemaLike, type AiSdkZodLike } from "../provider/ai-sdk-runtime";
+import {
+  getAiSdk,
+  type AiSdkSchemaLike,
+  type AiSdkToolExecutionOptions,
+  type AiSdkZodLike,
+} from "../provider/ai-sdk-runtime";
 import { llmArtifacts, type LlmArtifact } from "../runtime/artifact-store";
 import { llmResourceGovernor } from "../runtime/resource-governor";
-import { isRecord, textValue, toToolArgs } from "./shared";
+import { isRecord, textValue, throwIfAborted, toToolArgs } from "./shared";
 import { llmToolExecutor } from "./tool-executor";
 import { llmToolRegistry } from "./tool-registry";
-import type { NormalizedToolCall, ToolDefinition, ToolExecutionResult } from "./types";
+import type {
+  NormalizedToolCall,
+  ToolDefinition,
+  ToolExecutionResult,
+} from "./types";
 
-interface BuildAiSdkToolsOptions {
+export interface BuildAiSdkToolsOptions {
   userText?: string;
   source?: string;
   onToolStart?: (event: { toolCall: NormalizedToolCall; toolDef: ToolDefinition }) => void | Promise<void>;
@@ -34,6 +43,24 @@ interface AiToolOutput {
   sizeBytes: number;
   truncated: boolean;
   modelText: string;
+}
+
+interface SerialToolQueue {
+  run: <T>(task: () => Promise<T>, abortSignal?: AbortSignal) => Promise<T>;
+}
+
+export function createSerialToolQueue(): SerialToolQueue {
+  let tail: Promise<void> = Promise.resolve();
+  return {
+    run<T>(task: () => Promise<T>, abortSignal?: AbortSignal): Promise<T> {
+      const scheduled = tail.then(async () => {
+        throwIfAborted(abortSignal);
+        return task();
+      });
+      tail = scheduled.then(() => undefined, () => undefined);
+      return scheduled;
+    },
+  };
 }
 
 function activeRuntimeProfileId(): string {
@@ -80,10 +107,10 @@ function buildModelText(toolCall: NormalizedToolCall, toolResult: ToolExecutionR
 function buildToolOutputSchema(z: AiSdkZodLike): AiSdkSchemaLike {
   return z.object({
     ok: z.boolean(),
-    code: z.number().nullable?.() || z.number(),
+    code: z.number().nullable(),
     tool: z.string(),
     summary: z.string(),
-    artifactId: z.string().nullable?.() || z.string(),
+    artifactId: z.string().nullable(),
     sizeBytes: z.number(),
     truncated: z.boolean(),
     modelText: z.string(),
@@ -110,12 +137,13 @@ export function buildAiSdkTools({
     ? allowedToolNames.filter((name) => available.has(name))
     : availableToolNames;
   const tools: Record<string, unknown> = {};
+  const executionQueue = createSerialToolQueue();
 
   for (const toolName of toolNamesToRegister) {
     const toolDef = llmToolRegistry.getTool(toolName);
     if (!toolDef) continue;
 
-    const schema = toolDef.buildInputSchema?.(z) || z.object({}).passthrough?.() || z.object({});
+    const schema = toolDef.buildInputSchema?.(z) || z.object({}).passthrough();
     const description = [toolDef.label, toolDef.promptDescription || toolDef.description].filter(Boolean).join(" - ");
 
     tools[toolDef.name] = sdk.tool({
@@ -129,38 +157,48 @@ export function buildAiSdkTools({
           value: modelText || t("tools.error.noModelOutput"),
         };
       },
-      async execute(args): Promise<AiToolOutput> {
+      async execute(args, { toolCallId, abortSignal }: AiSdkToolExecutionOptions): Promise<AiToolOutput> {
         const toolCall: NormalizedToolCall = {
           type: "tool_call",
+          toolCallId,
           tool: toolDef.name,
           arguments: toToolArgs(args),
           reason: t("tools.exec.reasonModelRequest", { name: toolDef.name }),
           riskLevel: toolDef.riskLevel,
         };
 
-        await onToolStart?.({ toolCall, toolDef });
+        return executionQueue.run(async () => {
+          throwIfAborted(abortSignal);
+          await onToolStart?.({ toolCall, toolDef });
 
-        llmResourceGovernor.start("tool", toolDef.name);
-        let toolResult: ToolExecutionResult;
-        try {
-          toolResult = await llmToolExecutor.runTool(toolCall, { source, allowedToolNames: toolNamesToRegister });
-        } finally {
-          llmResourceGovernor.finish("tool");
-        }
+          llmResourceGovernor.start("tool", toolDef.name);
+          let toolResult: ToolExecutionResult;
+          try {
+            toolResult = await llmToolExecutor.runTool(toolCall, {
+              source,
+              allowedToolNames: toolNamesToRegister,
+              toolCallId,
+              abortSignal,
+            });
+          } finally {
+            llmResourceGovernor.finish("tool");
+          }
+          throwIfAborted(abortSignal);
 
-        const artifact = llmArtifacts.storeToolResult(toolCall, toolResult, { userText, source });
-        await onToolEnd?.({ toolCall, toolResult, artifact, toolDef });
+          const artifact = llmArtifacts.storeToolResult(toolCall, toolResult, { userText, source });
+          await onToolEnd?.({ toolCall, toolResult, artifact, toolDef });
 
-        return {
-          ok: Boolean(toolResult.ok),
-          code: Number.isFinite(Number(toolResult.code)) ? Number(toolResult.code) : null,
-          tool: toolDef.name,
-          summary: toolResult.summary || toolResult.stderr || "",
-          artifactId: artifact.id,
-          sizeBytes: Number(artifact.sizeBytes || 0),
-          truncated: Boolean(toolResult.truncated || artifact.truncated),
-          modelText: buildModelText(toolCall, toolResult, artifact),
-        };
+          return {
+            ok: Boolean(toolResult.ok),
+            code: Number.isFinite(Number(toolResult.code)) ? Number(toolResult.code) : null,
+            tool: toolDef.name,
+            summary: toolResult.summary || toolResult.stderr || "",
+            artifactId: artifact.id,
+            sizeBytes: Number(artifact.sizeBytes || 0),
+            truncated: Boolean(toolResult.truncated || artifact.truncated),
+            modelText: buildModelText(toolCall, toolResult, artifact),
+          };
+        }, abortSignal);
       },
     });
   }

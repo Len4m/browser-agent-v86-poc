@@ -1,4 +1,10 @@
-import type { AiSdkSchemaLike, AiSdkZodLike } from "../provider/ai-sdk-runtime";
+import type {
+  AiSdkApprovalDecision,
+  AiSdkApprovalRequest,
+  AiSdkSchemaLike,
+  AiSdkToolApprovalStatus,
+  AiSdkZodLike,
+} from "../provider/ai-sdk-runtime";
 
 export type ToolArgValue =
   | string
@@ -84,6 +90,7 @@ export interface RuntimeToolContext {
 
 export interface NormalizedToolCall {
   type: "tool_call";
+  toolCallId?: string;
   tool: string;
   arguments: ToolArgs;
   reason: string;
@@ -115,10 +122,24 @@ export interface LlmToolRegistryApi {
 export interface RunToolOptions {
   source?: string;
   allowedToolNames?: string[] | null;
+  toolCallId?: string;
+  abortSignal?: AbortSignal;
+}
+
+export interface ToolApprovalPolicyOptions {
+  allowedToolNames?: string[] | null;
+  deniedOperationKeys?: ReadonlySet<string> | readonly string[] | null;
+}
+
+export interface RequestToolApprovalOptions {
+  abortSignal?: AbortSignal;
 }
 
 export interface ToolExecutorApi {
   getAutonomyMaxLevel: () => number;
   setAutonomyMaxLevel: (level: unknown) => number;
+  getToolOperationKey: (toolCall: unknown) => string;
+  getToolApprovalStatus: (toolCall: unknown, options?: ToolApprovalPolicyOptions) => AiSdkToolApprovalStatus;
+  requestToolApproval: (request: AiSdkApprovalRequest, options?: RequestToolApprovalOptions) => Promise<AiSdkApprovalDecision>;
   runTool: (toolCall: unknown, options?: RunToolOptions) => Promise<ToolExecutionResult>;
 }

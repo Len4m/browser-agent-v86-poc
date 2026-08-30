@@ -371,8 +371,8 @@ function buildDeterministicToolTitle(toolCall: ChatToolCall | NormalizedToolCall
   const summary = plainText(toolResult?.summary).trim();
   if (summary) return summary;
 
-  if (tool === "vm.fs.read") return path ? t("chat.ui.title.fileReadPath", { path }) : t("chat.ui.title.fileRead");
-  if (tool === "vm.fs.list") return path ? t("chat.ui.title.fileListPath", { path }) : t("chat.ui.title.fileList");
+  if (tool === "vm_fs_read") return path ? t("chat.ui.title.fileReadPath", { path }) : t("chat.ui.title.fileRead");
+  if (tool === "vm_fs_list") return path ? t("chat.ui.title.fileListPath", { path }) : t("chat.ui.title.fileList");
   return toolDef?.label || tool || t("chat.ui.title.toolResult");
 }
 

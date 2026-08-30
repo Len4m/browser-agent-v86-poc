@@ -1,6 +1,7 @@
 /**
  * Parsea tool calls escritos como texto (weak local models).
- * Extiende los patrones de @browser-ai/transformers-js (```tool_call) con ```json y JSON suelto.
+ * Complementa @browser-ai/transformers-js con ```json, JSON suelto y el
+ * formato plano call:name{...}, que Browser AI solo interpreta delimitado.
  */
 
 export type ToolArguments = Record<string, unknown>;
@@ -44,22 +45,53 @@ function normalizeArgs(raw: unknown): ToolArguments {
 
 function finalizeArgs(toolName: string, args: ToolArguments): ToolArguments | null {
   const out: ToolArguments = { ...args };
-  if (toolName === "vm.fs.list") {
+  if (toolName === "vm_fs_list") {
     if (!out.path || typeof out.path !== "string") return null;
     if (!out.maxEntries || Number(out.maxEntries) <= 0) out.maxEntries = 120;
   }
-  if (toolName === "vm.fs.read") {
+  if (toolName === "vm_fs_read") {
     if (!out.path || typeof out.path !== "string") return null;
     if (!out.maxBytes || Number(out.maxBytes) <= 0) out.maxBytes = 8192;
   }
   return out;
 }
 
+function toolCallFields(call: Record<string, unknown>): {
+  name: unknown;
+  args: unknown;
+} {
+  const functionCall = isRecord(call.function) ? call.function : null;
+  return {
+    name: call.name ?? call.toolName ?? call.tool ?? functionCall?.name,
+    args: call.arguments
+      ?? call.parameters
+      ?? call.args
+      ?? call.input
+      ?? functionCall?.arguments,
+  };
+}
+
+function nestedToolCalls(call: Record<string, unknown>): unknown[] {
+  const many: unknown = call.tool_calls ?? call.toolCalls;
+  const one: unknown = call.tool_call ?? call.toolCall;
+  const nested: unknown[] = Array.isArray(many) ? many as unknown[] : [];
+  if (one !== undefined) nested.push(one);
+  return nested;
+}
+
+function looksLikeToolCallObject(call: unknown): call is Record<string, unknown> {
+  if (!isRecord(call)) return false;
+  const { name } = toolCallFields(call);
+  return (typeof name === "string" && name.length > 0)
+    || nestedToolCalls(call).some(looksLikeToolCallObject);
+}
+
 function pushCall(calls: ParsedTextToolCall[], call: unknown): void {
   if (!isRecord(call)) return;
-  const rawName = call.name ?? call.toolName;
+  for (const nested of nestedToolCalls(call)) pushCall(calls, nested);
+  const { name: rawName, args: rawArgs } = toolCallFields(call);
   if (!rawName || typeof rawName !== "string") return;
-  const args = finalizeArgs(rawName, normalizeArgs(call.arguments ?? call.parameters));
+  const args = finalizeArgs(rawName, normalizeArgs(rawArgs));
   if (!args) return;
   const rawId = call.id ?? call.toolCallId;
   calls.push({
@@ -69,39 +101,26 @@ function pushCall(calls: ParsedTextToolCall[], call: unknown): void {
   });
 }
 
-function parseScalarArg(raw: string): unknown {
-  const value = raw.trim();
-  if (!value) return "";
-  if (value === "true") return true;
-  if (value === "false") return false;
-  if (value === "null") return null;
-  if ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("'") && value.endsWith("'"))) {
-    return value.slice(1, -1);
-  }
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : value;
-}
-
-function parseInlineArgs(text: string, separator: ":" | "="): ToolArguments {
+function parseCallColonArgs(text: string): ToolArguments {
   const args: ToolArguments = {};
   for (const pair of text.split(",")) {
-    const idx = pair.indexOf(separator);
-    if (idx <= 0) continue;
-    const key = pair.slice(0, idx).trim();
+    const separator = pair.indexOf(":");
+    if (separator <= 0) continue;
+    const key = pair.slice(0, separator).trim();
+    const raw = pair.slice(separator + 1).trim();
     if (!key) continue;
-    args[key] = parseScalarArg(pair.slice(idx + 1));
+    if (/^(?:true|false)$/i.test(raw)) args[key] = raw.toLowerCase() === "true";
+    else if (raw === "null") args[key] = null;
+    else if (raw && Number.isFinite(Number(raw))) args[key] = Number(raw);
+    else args[key] = raw.replace(/^(['"])(.*)\1$/, "$2");
   }
   return args;
 }
 
-function pushNamedCall(calls: ParsedTextToolCall[], toolName: string, args: ToolArguments): void {
-  const finalized = finalizeArgs(toolName, args);
-  if (!finalized) return;
-  calls.push({
-    toolCallId: generateToolCallId(),
-    toolName,
-    args: finalized,
-  });
+function parseCallColon(text: string, calls: ParsedTextToolCall[]): void {
+  for (const match of text.matchAll(/call:([A-Za-z0-9_-]+)\{([^}]*)\}/g)) {
+    pushCall(calls, { name: match[1], arguments: parseCallColonArgs(match[2] || "") });
+  }
 }
 
 function findMatchingBrace(text: string, openIndex: number): number {
@@ -158,51 +177,25 @@ function parseJsonPayload(payload: string, calls: ParsedTextToolCall[]): void {
 }
 
 function parseFencedBlocks(text: string, calls: ParsedTextToolCall[]): void {
-  const fenceRe = /```(?:tool[_-]?call|json)\s*([\s\S]*?)```/gi;
+  const fenceRe = /```json\s*([\s\S]*?)```/gi;
   for (const match of text.matchAll(fenceRe)) {
     parseJsonPayload(match[1] || "", calls);
-  }
-}
-
-function parseTaggedBlocks(text: string, calls: ParsedTextToolCall[]): void {
-  const tagRe = /<tool_call>\s*([\s\S]*?)\s*<\/tool_call>|<\|tool_call>\s*([\s\S]*?)\s*<tool_call\|>/gi;
-  for (const match of text.matchAll(tagRe)) {
-    parseJsonPayload(match[1] || match[2] || "", calls);
-  }
-}
-
-function parseInlineCalls(text: string, calls: ParsedTextToolCall[]): void {
-  const pythonRe = /\[([\w.-]+)\(([^)]*)\)\]/g;
-  for (const match of text.matchAll(pythonRe)) {
-    pushNamedCall(calls, match[1] || "", parseInlineArgs(match[2] || "", "="));
-  }
-
-  const callColonRe = /call:([\w.-]+)\{([^}]*)\}/g;
-  for (const match of text.matchAll(callColonRe)) {
-    pushNamedCall(calls, match[1] || "", parseInlineArgs(match[2] || "", ":"));
   }
 }
 
 function parseLooseToolObjects(text: string, calls: ParsedTextToolCall[]): void {
   let searchFrom = 0;
   while (searchFrom < text.length) {
-    const nameIdx = text.indexOf('"name"', searchFrom);
-    if (nameIdx === -1) break;
-    const open = text.lastIndexOf("{", nameIdx);
-    if (open === -1) {
-      searchFrom = nameIdx + 6;
-      continue;
-    }
+    const open = text.indexOf("{", searchFrom);
+    if (open === -1) break;
     const close = findMatchingBrace(text, open);
     if (close === -1) {
-      searchFrom = nameIdx + 6;
+      searchFrom = open + 1;
       continue;
     }
     try {
       const obj: unknown = JSON.parse(text.slice(open, close + 1));
-      if (isRecord(obj) && obj.name && (obj.arguments !== undefined || obj.parameters !== undefined)) {
-        pushCall(calls, obj);
-      }
+      if (looksLikeToolCallObject(obj)) pushCall(calls, obj);
     } catch {
       // Ignore malformed loose JSON.
     }
@@ -214,8 +207,7 @@ export function parseTextToolCalls(text: string, options: ParseTextToolCallsOpti
   const raw = String(text || "");
   const calls: ParsedTextToolCall[] = [];
   parseFencedBlocks(raw, calls);
-  parseTaggedBlocks(raw, calls);
-  parseInlineCalls(raw, calls);
+  parseCallColon(raw, calls);
   parseLooseToolObjects(raw, calls);
 
   const seen = new Set<string>();
@@ -235,28 +227,20 @@ export function parseTextToolCalls(text: string, options: ParseTextToolCallsOpti
     : deduped;
 
   let textContent = raw
-    .replace(/```(?:tool[_-]?call|json)\s*[\s\S]*?```/gi, "")
-    .replace(/<tool_call>\s*[\s\S]*?\s*<\/tool_call>/gi, "")
-    .replace(/<\|tool_call>\s*[\s\S]*?\s*<tool_call\|>/gi, "")
-    .replace(/\[[\w.-]+\([^)]*\)\]/g, "")
-    .replace(/call:[\w.-]+\{[^}]*\}/g, "");
+    .replace(/```json\s*[\s\S]*?```/gi, "")
+    .replace(/call:[A-Za-z0-9_-]+\{[^}]*\}/g, "");
   let searchFrom = 0;
   while (searchFrom < textContent.length) {
-    const nameIdx = textContent.indexOf('"name"', searchFrom);
-    if (nameIdx === -1) break;
-    const open = textContent.lastIndexOf("{", nameIdx);
-    if (open === -1) {
-      searchFrom = nameIdx + 6;
-      continue;
-    }
+    const open = textContent.indexOf("{", searchFrom);
+    if (open === -1) break;
     const close = findMatchingBrace(textContent, open);
     if (close === -1) {
-      searchFrom = nameIdx + 6;
+      searchFrom = open + 1;
       continue;
     }
     try {
       const obj: unknown = JSON.parse(textContent.slice(open, close + 1));
-      if (isRecord(obj) && obj.name && (obj.arguments !== undefined || obj.parameters !== undefined)) {
+      if (looksLikeToolCallObject(obj)) {
         textContent = textContent.slice(0, open) + textContent.slice(close + 1);
         searchFrom = open;
         continue;
@@ -264,7 +248,7 @@ export function parseTextToolCalls(text: string, options: ParseTextToolCallsOpti
     } catch {
       // Ignore malformed loose JSON while cleaning display text.
     }
-    searchFrom = nameIdx + 6;
+    searchFrom = open + 1;
   }
   textContent = textContent.replace(/\n{2,}/g, "\n").trim();
 
@@ -281,9 +265,9 @@ export function looksLikeTextToolPlan(text: string): boolean {
     || /<\|tool_call>/i.test(s)
     || /\[[\w.-]+\([^)]*$/i.test(s)
     || /call:[\w.-]+\{[^}]*$/i.test(s)
-    || /^\s*\{\s*"name"\s*:\s*"(vm|web|net|tls)\./m.test(s)
-    || /^\s*\{\s*"(?:name|tool)"\s*:\s*"(?:vm|web|net|tls)(?:\.|$)/m.test(s)
-    || /"(?:name|tool)"\s*:\s*"(?:vm|web|net|tls)\.[^"]*/i.test(s)
+    || /^\s*\{\s*"name"\s*:\s*"(vm|web|net|tls)_/m.test(s)
+    || /^\s*\{\s*"(?:name|tool)"\s*:\s*"(?:vm|web|net|tls)(?:_|$)/m.test(s)
+    || /"(?:name|tool)"\s*:\s*"(?:vm|web|net|tls)_[^"]*/i.test(s)
     || /"(?:arguments|parameters)"\s*:\s*\{[^}]*$/i.test(s)
-    || /\{\s*"name"\s*:\s*"(vm|web|net|tls)\.[^"]+"\s*,\s*"(?:arguments|parameters)"/.test(s);
+    || /\{\s*"name"\s*:\s*"(vm|web|net|tls)_[^"]+"\s*,\s*"(?:arguments|parameters)"/.test(s);
 }

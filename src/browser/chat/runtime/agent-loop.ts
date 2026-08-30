@@ -6,12 +6,22 @@ import { state } from "../../app/state";
 import { t } from "../../app/i18n";
 import { originApi } from "../../app/origin-awareness";
 import { appEvents } from "../../core/events";
-import { addMessage } from "../../vm/runtime-assets";
+import { addMessage, throwIfAborted } from "../../vm/runtime-assets";
 import { backgroundToolsApi } from "../../vm/background-tools-serial1";
 import { detectLLMCapabilities, type LlmCapabilities } from "../state/capabilities";
 import { getLlmState, llmEventsApi, llmModelOptions, llmModelRequiresWebGPU, llmModelShortLabel, type LlmModelConfig, type LlmState } from "../state/chat-state";
-import { getAiSdk, getAiSdkReady, type AiSdkBridgeApi, type AiSdkRunAgentStreamTurnResult } from "../provider/ai-sdk-runtime";
+import {
+  getAiSdk,
+  getAiSdkReady,
+  type AiSdkApprovalDecision,
+  type AiSdkApprovalRequest,
+  type AiSdkBridgeApi,
+  type AiSdkRunAgentStreamTurnResult,
+  type AiSdkToolCall,
+} from "../provider/ai-sdk-runtime";
 import { buildAiSdkTools } from "../tools/ai-tools";
+import { llmToolExecutor } from "../tools/tool-executor";
+import { llmToolRegistry } from "../tools/tool-registry";
 import { llmToolResultPolicy } from "./tool-result-policy";
 import { llmArtifacts, type LlmArtifact } from "./artifact-store";
 import { llmResourceGovernor } from "./resource-governor";
@@ -119,8 +129,11 @@ const NATIVE_TOOL_STREAM_SKIP = new Set([
   "tool-error",
   "tool-output-available",
   "tool-output-error",
-  "step-start",
-  "step-finish",
+  "tool-approval-request",
+  "tool-approval-response",
+  "tool-output-denied",
+  "start-step",
+  "finish-step",
 ]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -202,7 +215,7 @@ function agentDebugStreamPart(part: unknown, extra = ""): void {
   if (type === "text-delta") {
     streamDeltaLogCount += 1;
     const sample = streamPartSample(part);
-    const interesting = /[{`]|tool|vm\.|arguments|name"/i.test(sample);
+    const interesting = /[{`]|tool|vm_|arguments|name"/i.test(sample);
     if (streamDeltaLogCount <= 2 || interesting || streamDeltaLogCount % 10 === 0) {
       agentDebug("stream", `text-delta #${streamDeltaLogCount}${extra}`, summary);
     }
@@ -211,11 +224,17 @@ function agentDebugStreamPart(part: unknown, extra = ""): void {
   agentDebug("stream", `${type || "?"}${extra}`, summary);
 }
 
-function throwIfAborted(abortSignal?: AbortSignal): void {
-  if (!abortSignal?.aborted) return;
-  const error = new Error(t("common.operationCancelled"));
-  error.name = "AbortError";
-  throw error;
+function normalizeAiSdkToolCall(toolCall: AiSdkToolCall, reason = ""): NormalizedToolCall {
+  const normalized = llmToolRegistry.normalizeToolCall({
+    type: "tool_call",
+    tool: toolCall.toolName,
+    arguments: toolCall.input as unknown,
+    reason,
+  });
+  return {
+    ...normalized,
+    toolCallId: toolCall.toolCallId,
+  };
 }
 
 function isAbortError(error: unknown): boolean {
@@ -275,7 +294,6 @@ function stopActiveTurn(): void {
   activeTurnGeneration += 1;
   activeTurnAbortController?.abort();
   activeTurnAbortController = null;
-  getAiSdk()?.abortActive?.();
   backgroundToolsApi.cancelPending(t("bgtools.reason.user"));
   const llm = getLlmState();
   if (llm) llm.generating = false;
@@ -425,12 +443,8 @@ async function handleToolUiAfterExecute({
   throwIfAborted(abortSignal);
   appendToolResultToBubble(bubble, toolResult, artifact);
 
-  const llm = ensureLlmState();
   if (toolResult.cancelled) {
     const answer = t("common.toolCancelledByUser");
-    llm.messages.push({ role: "user", content: userText });
-    llm.messages.push({ role: "assistant", content: answer });
-    llm.messages = llm.messages.slice(-8);
     return { toolResult, artifact, answer };
   }
 
@@ -446,12 +460,6 @@ async function handleToolUiAfterExecute({
     answer = await renderDeterministicToolAnswer(toolCall, toolResult, artifact, bubble);
   }
 
-  llm.messages.push({ role: "user", content: userText });
-  llm.messages.push({
-    role: "assistant",
-    content: `Herramienta ${toolCall.tool} ejecutada. Artefacto ${artifact?.id || "sin-id"}.`,
-  });
-  llm.messages = llm.messages.slice(-8);
   return { toolResult, artifact, answer, decision };
 }
 
@@ -565,9 +573,65 @@ async function runAgentTurn({
   initialStream.bubble.setAttribute("aria-busy", "true");
 
   const toolBubbles = new Map<string, HTMLElement>();
-  const toolUiKeys = new WeakMap<object, string>();
+  const deniedOperationKeys = new Set<string>();
   const turnState: { lastToolUi: ToolUiResult | null } = { lastToolUi: null };
   let toolSeq = 0;
+
+  function toolUiKey(toolCall: NormalizedToolCall): string {
+    toolCall.toolCallId ||= `${toolCall.tool}-${++toolSeq}`;
+    return toolCall.toolCallId;
+  }
+
+  function renderToolState(toolCall: NormalizedToolCall, stateText: string): HTMLElement {
+    const key = toolUiKey(toolCall);
+    let bubble = toolBubbles.get(key);
+    if (!bubble) {
+      bubble = createAssistantMessageShell("ba-llm-tool-step");
+      toolBubbles.set(key, bubble);
+    }
+    renderToolCallBubble(bubble, toolCall, stateText);
+    return bubble;
+  }
+
+  function beginApprovalUi(request: AiSdkApprovalRequest): NormalizedToolCall {
+    const toolCall = normalizeAiSdkToolCall(request.toolCall, request.reason);
+    toolPhaseSeen = true;
+    if (showThinking) {
+      floatingThinkingBlock = detachThinkingBlock(streamRef.bubble) || floatingThinkingBlock;
+    }
+    removeAssistantMessage(streamRef.bubble);
+    renderToolState(toolCall, t("chat.tool.awaitingApprovalState"));
+    setChatTailIndicator(t("chat.tool.awaitingApprovalState"));
+    return toolCall;
+  }
+
+  async function finishDeniedApproval(
+    request: AiSdkApprovalRequest,
+    decision: AiSdkApprovalDecision,
+    toolCall = normalizeAiSdkToolCall(request.toolCall, request.reason),
+  ): Promise<void> {
+    const reason = decision.reason || t("common.toolCancelledByUser");
+    const bubble = renderToolState(toolCall, t("chat.tool.awaitingApprovalState"));
+    const toolResult: ToolExecutionResult = {
+      id: `tool-denied-${request.approvalId}`,
+      ok: false,
+      cancelled: true,
+      code: 130,
+      stdout: "",
+      stderr: reason,
+      summary: reason,
+      toolCall,
+    };
+    appendToolResultToBubble(bubble, toolResult, null);
+    toolPhaseSeen = true;
+    turnState.lastToolUi = {
+      toolResult,
+      artifact: null,
+      answer: reason,
+    };
+    await createResponseStream("ba-llm-synthesis-after-tool");
+    setChatTailIndicator(t("chat.spinner.finalResponse"));
+  }
 
   let maxSteps = modelConfig.agent?.maxSteps || 2;
   if (toolCallingMode === "weak") maxSteps = 1;
@@ -585,11 +649,8 @@ async function runAgentTurn({
             floatingThinkingBlock = detachThinkingBlock(streamRef.bubble) || floatingThinkingBlock;
           }
           removeAssistantMessage(streamRef.bubble);
-          const key = `${toolCall.tool}-${++toolSeq}`;
-          const toolBubble = createAssistantMessageShell("ba-llm-tool-step");
-          renderToolCallBubble(toolBubble, toolCall, t("chat.tool.executingState"));
-          toolBubbles.set(key, toolBubble);
-          toolUiKeys.set(toolCall, key);
+          toolPhaseSeen = true;
+          renderToolState(toolCall, t("chat.tool.executingState"));
           setChatTailIndicator(t("chat.spinner.executingTool", { tool: toolCall.tool || "tool" }));
         },
         async onToolEnd({ toolCall, toolResult, artifact }) {
@@ -601,8 +662,8 @@ async function runAgentTurn({
             artifactId: artifact?.id,
           });
           toolPhaseSeen = true;
-          const key = toolUiKeys.get(toolCall) || `${toolCall.tool}-${toolSeq}`;
-          const toolBubble = toolBubbles.get(key) || createAssistantMessageShell("ba-llm-tool-step");
+          const toolBubble = toolBubbles.get(toolUiKey(toolCall))
+            || renderToolState(toolCall, t("chat.tool.executingState"));
           turnState.lastToolUi = await handleToolUiAfterExecute({
             userText,
             toolCall,
@@ -618,6 +679,30 @@ async function runAgentTurn({
     : {};
   const registeredToolNames = Object.keys(tools);
   const sentActiveToolNames = activeToolNames.filter((name) => registeredToolNames.includes(name));
+  const toolApproval = ({ toolCall }: { toolCall: AiSdkToolCall }) => llmToolExecutor.getToolApprovalStatus(toolCall, {
+    allowedToolNames: sentActiveToolNames,
+    deniedOperationKeys,
+  });
+  async function onToolApprovalRequest(request: AiSdkApprovalRequest): Promise<AiSdkApprovalDecision> {
+    throwIfAborted(abortSignal);
+    const operationKey = llmToolExecutor.getToolOperationKey(request.toolCall);
+    beginApprovalUi(request);
+    if (deniedOperationKeys.has(operationKey)) {
+      const repeatedDenial: AiSdkApprovalDecision = {
+        type: "tool-approval-response",
+        approvalId: request.approvalId,
+        approved: false,
+        reason: t("common.toolCancelledByUser"),
+      };
+      return repeatedDenial;
+    }
+    const decision = await llmToolExecutor.requestToolApproval(request, { abortSignal });
+    throwIfAborted(abortSignal);
+    if (!decision.approved) {
+      deniedOperationKeys.add(operationKey);
+    }
+    return decision;
+  }
   agentDebug("tools", "selección vs tools enviadas", {
     selected: activeToolNames,
     registered: registeredToolNames,
@@ -653,7 +738,7 @@ async function runAgentTurn({
     const runnerOutput = await sdk.runAgentStreamTurn({
       model: sdk.getActiveModel(),
       modelConfig,
-      system: streamPrompt.system,
+      instructions: streamPrompt.system,
       messages: streamPrompt.messages,
       tools: useToolLoop ? tools : undefined,
       maxSteps: turnMaxSteps,
@@ -666,9 +751,11 @@ async function runAgentTurn({
       toolCalling: toolCallingMode,
       activeToolNames: sentActiveToolNames,
       abortSignal,
-      onStepFinish(event) {
+      toolApproval,
+      onToolApprovalRequest,
+      onStepEnd(event) {
         const entry = isRecord(event) ? event : {};
-        agentDebug("step", "onStepFinish", {
+        agentDebug("step", "onStepEnd", {
           stepNumber: entry.stepNumber,
           finishReason: entry.finishReason,
           toolCalls: arrayLength(entry.toolCalls),
@@ -680,8 +767,26 @@ async function runAgentTurn({
           keys: Object.keys(entry).slice(0, 16),
         });
       },
-      onStreamPart(part) {
+      async onStreamPart(part) {
         const type = streamPartType(part);
+        if (part.type === "tool-approval-response" && part.approved === false) {
+          const { approvalId, toolCall } = part;
+          if (approvalId && toolCall) {
+            const request: AiSdkApprovalRequest = {
+              type: "tool-approval-request",
+              approvalId,
+              toolCall,
+              reason: textValue(part.reason) || undefined,
+            };
+            const normalized = beginApprovalUi(request);
+            await finishDeniedApproval(request, {
+              type: "tool-approval-response",
+              approvalId,
+              approved: false,
+              reason: textValue(part.reason) || t("common.toolCancelledByUser"),
+            }, normalized);
+          }
+        }
         if (nativeToolsMode && NATIVE_TOOL_STREAM_SKIP.has(type)) {
           agentDebugStreamPart(part, " (skip UI, native)");
           if ((type === "tool-call" || type === "tool-input-start") && streamRef.mdHost) {
@@ -881,7 +986,6 @@ async function handleUserMessage(userText: string): Promise<void> {
     llm.lastError = message;
     if (isRecoverableGpuMemoryError(message)) {
       llmResourceGovernor.markGpuMemoryPressure();
-      getAiSdk()?.abortActive?.();
       unloadModel();
     }
     llmEventsApi.emit("status", { text: t("chat.status.errorLlmTools"), tone: "bad" });
@@ -911,7 +1015,6 @@ function clearHistory(): void {
 
 function unloadModel(): void {
   const sdk = getAiSdk();
-  sdk?.abortActive?.();
   sdk?.unloadModel?.();
   const llm = ensureLlmState();
   llm.loaded = false;

@@ -2,9 +2,8 @@
 export {
   tool,
   wrapLanguageModel,
-  extractReasoningMiddleware,
 } from "ai";
-export { transformersWorker } from "./transformers-worker-model";
+export { transformersJS } from "@browser-ai/transformers-js";
 export { z } from "zod";
 export { ollamaBrowser } from "./ollama-browser-model";
 export {
@@ -12,4 +11,7 @@ export {
   textChunkFromStreamPart,
   reasoningChunkFromStreamPart,
 } from "./browser-agent-runner";
-export { transformersTextToolMiddleware } from "./transformers-text-tool-middleware";
+export {
+  transformersReasoningMiddleware,
+  transformersTextToolMiddleware,
+} from "./transformers-text-tool-middleware";

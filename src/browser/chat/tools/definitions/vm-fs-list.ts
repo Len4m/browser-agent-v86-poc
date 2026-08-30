@@ -8,9 +8,9 @@ function normalizeListArgs(args: ToolArgs = {}): ToolArgs {
 }
 
 export const toolDefinition: ToolDefinition = {
-  name: "vm.fs.list", get label() { return t("tools.name.vm.fs.list"); }, riskLevel: 1, category: "vm.fs",
+  name: "vm_fs_list", get label() { return t("tools.name.vm_fs_list"); }, riskLevel: 1, category: "vm.fs",
   requiresVm: true, requiresConsole: true, timeoutMs: 12000, maxOutputBytes: 32768,
-  get description() { return t("tools.desc.vm.fs.list"); },
+  get description() { return t("tools.desc.vm_fs_list"); },
   get promptDescription() { return toolPrompt(this.label, '{"path":"/ruta","maxEntries":120}'); },
   buildInputSchema(z) {
     return z.object({

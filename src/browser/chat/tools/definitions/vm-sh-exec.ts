@@ -21,9 +21,9 @@ function normalizeShellCommand(value: unknown): string {
 }
 
 export const toolDefinition: ToolDefinition = {
-  name: "vm.sh.exec", get label() { return t("tools.name.vm.sh.exec"); }, riskLevel: 3, category: "vm.exec",
+  name: "vm_sh_exec", get label() { return t("tools.name.vm_sh_exec"); }, riskLevel: 3, category: "vm.exec",
   requiresVm: true, requiresConsole: true, timeoutMs: 30000, maxOutputBytes: 32768,
-  get description() { return t("tools.desc.vm.sh.exec"); },
+  get description() { return t("tools.desc.vm_sh_exec"); },
   get promptDescription() { return toolPrompt(this.label, '{"command":"uname -a","timeoutMs":10000,"maxOutputBytes":8192}', t("tools.prompt.onlyIfNoSpecific")); },
   buildInputSchema(z) {
     return z.object({

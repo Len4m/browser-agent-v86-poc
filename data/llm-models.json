@@ -165,7 +165,8 @@
     "thinking": {
       "mode": "optional",
       "extract": {
-        "tagName": "think"
+        "tagName": "think",
+        "startWithReasoning": true
       }
     },
     "contextPreset": "browser-tools-sm",
@@ -187,7 +188,8 @@
     "thinking": {
       "mode": "optional",
       "extract": {
-        "tagName": "think"
+        "tagName": "think",
+        "startWithReasoning": true
       }
     },
     "contextPreset": "browser-tools-sm",

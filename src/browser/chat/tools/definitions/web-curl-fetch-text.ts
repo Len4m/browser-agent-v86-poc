@@ -70,14 +70,14 @@ function buildCurlFetchTextCommand(args: ToolArgs): string {
 }
 
 export const toolDefinition: ToolDefinition = {
-  name: "web.curl.fetch_text", get label() { return t("tools.name.web.curl.fetch_text"); }, riskLevel: 2, category: "web.http",
+  name: "web_curl_fetch_text", get label() { return t("tools.name.web_curl_fetch_text"); }, riskLevel: 2, category: "web.http",
   requiresVm: true, requiresConsole: true, timeoutMs: 35000, maxOutputBytes: 32768,
   requiredPackages: ["curl", "python3"],
   runtimeChecks: [
     { label: "curl", command: "command -v curl" },
     { label: "python3", command: "command -v python3" },
   ],
-  get description() { return t("tools.desc.web.curl.fetch_text"); },
+  get description() { return t("tools.desc.web_curl_fetch_text"); },
   get promptDescription() { return toolPrompt(this.label, '{"url":"https://example.com","maxBytes":8192}'); },
   buildInputSchema(z) {
     return z.object({

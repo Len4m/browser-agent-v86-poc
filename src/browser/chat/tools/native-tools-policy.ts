@@ -4,6 +4,7 @@
 
 import { state } from "../../app/state";
 import { getLlmState, llmEventsApi, llmModelOptions, type LlmModelConfig } from "../state/chat-state";
+import { normalizeToolName } from "./shared";
 import { llmToolRegistry } from "./tool-registry";
 
 const STORAGE_PREFIX = "ba.llm.nativeTools.";
@@ -72,7 +73,7 @@ function listAvailableToolNames(_modelConfig?: LlmModelConfig | null, profileId 
 }
 
 function filterProfileOrdered(names: string[], modelConfig?: LlmModelConfig | null, profileId = getProfileId()): string[] {
-  const selected = new Set(names);
+  const selected = new Set(names.map(normalizeToolName));
   return listAvailableToolNames(modelConfig, profileId).filter((name) => selected.has(name));
 }
 
@@ -85,7 +86,7 @@ function loadStored(modelId: string): string[] | null {
     const raw = localStorage.getItem(`${STORAGE_PREFIX}${modelId}`);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? parsed.map((item) => textValue(item)).filter(Boolean) : null;
+    return Array.isArray(parsed) ? parsed.map(normalizeToolName).filter(Boolean) : null;
   } catch {
     return null;
   }
@@ -127,12 +128,13 @@ function toggleToolName(modelConfig: LlmModelConfig | null | undefined, name: st
   const max = getMaxNativeTools(cfg);
   const current = resolveActiveToolNames(cfg, profileId);
   let next: string[];
+  const normalizedName = normalizeToolName(name);
   if (enabled) {
-    if (current.includes(name)) return current;
+    if (current.includes(normalizedName)) return current;
     if (current.length >= max) return current;
-    next = [...current, name];
+    next = [...current, normalizedName];
   } else {
-    next = current.filter((item) => item !== name);
+    next = current.filter((item) => item !== normalizedName);
   }
   return setActiveToolNames(cfg, next, profileId);
 }

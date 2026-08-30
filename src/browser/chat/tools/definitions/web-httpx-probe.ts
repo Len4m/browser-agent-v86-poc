@@ -21,11 +21,11 @@ function buildHttpxProbeCommand(args: ToolArgs): string {
 }
 
 export const toolDefinition: ToolDefinition = {
-  name: "web.httpx.probe", get label() { return t("tools.name.web.httpx.probe"); }, riskLevel: 3, category: "web.http",
+  name: "web_httpx_probe", get label() { return t("tools.name.web_httpx_probe"); }, riskLevel: 3, category: "web.http",
   requiresVm: true, requiresConsole: true, timeoutMs: 45000, maxOutputBytes: 24000,
   requiredPackages: ["httpx"],
   runtimeChecks: [{ label: "httpx", command: HTTPX_RUNTIME_CHECK }],
-  get description() { return t("tools.desc.web.httpx.probe"); },
+  get description() { return t("tools.desc.web_httpx_probe"); },
   get promptDescription() { return toolPrompt(this.label, '{"url":"https://example.com","rate":10,"threads":2,"techDetect":false}'); },
   buildInputSchema(z) {
     return z.object({

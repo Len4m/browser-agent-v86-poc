@@ -152,14 +152,14 @@ function buildFfufLightCommand(args: ToolArgs): string {
 }
 
 export const toolDefinition: ToolDefinition = {
-  name: "web.ffuf.dir_light", get label() { return t("tools.name.web.ffuf.dir_light"); }, riskLevel: 3, category: "web.fuzz",
+  name: "web_ffuf_dir_light", get label() { return t("tools.name.web_ffuf_dir_light"); }, riskLevel: 3, category: "web.fuzz",
   requiresVm: true, requiresConsole: true, timeoutMs: 1230000, maxOutputBytes: 24000,
   requiredPackages: ["ffuf", "python3"],
   runtimeChecks: [
     { label: "ffuf", command: "command -v ffuf" },
     { label: "python3", command: "command -v python3" },
   ],
-  get description() { return t("tools.desc.web.ffuf.dir_light"); },
+  get description() { return t("tools.desc.web_ffuf_dir_light"); },
   get promptDescription() { return toolPrompt(this.label, '{"url":"http://host/FUZZ","wordlist":"common","threads":2,"rate":10}', t("tools.prompt.ffufNoOptionalDefaults")); },
   buildInputSchema(z) {
     return z.object({

@@ -306,9 +306,9 @@ function inferTags(toolCall: ArtifactToolCall | NormalizedToolCall | null | unde
   const tags = new Set(["tool", "vm"]);
   const tool = textValue(toolCall?.tool);
   if (tool) tags.add(tool);
-  if (tool.startsWith("vm.fs.")) tags.add("file-system");
-  if (tool === "vm.fs.read") tags.add("file-read");
-  if (tool === "vm.fs.list") tags.add("file-list");
+  if (tool.startsWith("vm_fs_")) tags.add("file-system");
+  if (tool === "vm_fs_read") tags.add("file-read");
+  if (tool === "vm_fs_list") tags.add("file-list");
   const path = toolCall?.arguments?.path;
   if (path) tags.add(textValue(path));
   if (/\.html?$/i.test(textValue(path))) tags.add("html");
@@ -523,9 +523,9 @@ function formatArtifactForModel(artifact: LlmArtifact | null | undefined, { maxC
   const payload = artifact.modelText || artifact.compactText || artifact.stdout || artifact.stderr || "";
   const body = truncateMiddle(payload, maxChars);
   const path = artifact.args.path ? textValue(artifact.args.path) : "resultado de tool";
-  const label = artifact.tool === "vm.fs.read"
+  const label = artifact.tool === "vm_fs_read"
     ? `Contenido real leído de ${path}`
-    : artifact.tool === "vm.fs.list"
+    : artifact.tool === "vm_fs_list"
       ? `Listado real de ${path}`
       : `Salida real de ${artifact.tool || "tool"}`;
 

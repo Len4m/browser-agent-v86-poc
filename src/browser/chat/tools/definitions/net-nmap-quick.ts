@@ -21,11 +21,11 @@ function normalizePortList(value: unknown): string {
 }
 
 export const toolDefinition: ToolDefinition = {
-  name: "net.nmap.quick", get label() { return t("tools.name.net.nmap.quick"); }, riskLevel: 3, category: "net.scan",
+  name: "net_nmap_quick", get label() { return t("tools.name.net_nmap_quick"); }, riskLevel: 3, category: "net.scan",
   requiresVm: true, requiresConsole: true, timeoutMs: 70000, maxOutputBytes: 32768,
   requiredPackages: ["nmap"],
   runtimeChecks: [{ label: "nmap", command: "command -v nmap" }],
-  get description() { return t("tools.desc.net.nmap.quick"); },
+  get description() { return t("tools.desc.net_nmap_quick"); },
   get promptDescription() { return toolPrompt(this.label, '{"target":"192.168.1.10","ports":"80,443,8000"}'); },
   buildInputSchema(z) {
     return z.object({

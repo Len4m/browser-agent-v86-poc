@@ -1,21 +1,28 @@
 /**
  * Turno de agente unificado sobre AI SDK (streamText + stopWhen + prepareStep).
- * Sin quickInfer, plan weak ni segunda pasada de sintesis: el loop es el de la libreria.
+ * El loop principal es el de la libreria; solo se reanuda para approvals y
+ * mantiene una sintesis de contingencia cuando un modelo local no la produce.
  */
 
 import {
+  isStepCount,
   streamText,
-  stepCountIs,
   type FinishReason,
+  type GenerateTextStepEndEvent,
   type LanguageModel,
   type ModelMessage,
-  type OnStepFinishEvent,
   type PrepareStepFunction,
   type StepResult,
   type TextStreamPart,
   type ToolSet,
 } from "ai";
 import { initI18n, t } from "../../../app/i18n";
+import type {
+  AiSdkApprovalDecision,
+  AiSdkApprovalRequest,
+  AiSdkToolApprovalCallback,
+  AiSdkToolApprovalRequestHandler,
+} from "../ai-sdk-runtime";
 import { looksLikeTextToolPlan } from "./text-tool-parser";
 
 type StreamPhase = "main" | "synthesis";
@@ -36,7 +43,7 @@ interface LlmModelConfig {
 export interface RunAgentStreamTurnOptions {
   model: LanguageModel;
   modelConfig?: LlmModelConfig | null;
-  system?: string;
+  instructions?: string;
   messages: ModelMessage[];
   tools?: ToolSet;
   maxSteps?: number;
@@ -49,8 +56,10 @@ export interface RunAgentStreamTurnOptions {
   toolCalling?: "weak" | "fair" | "good";
   activeToolNames?: string[] | null;
   abortSignal?: AbortSignal;
-  onStreamPart?: (part: AgentStreamPart) => void;
-  onStepFinish?: (event: OnStepFinishEvent<ToolSet>) => PromiseLike<void> | void;
+  toolApproval?: AiSdkToolApprovalCallback;
+  onToolApprovalRequest?: AiSdkToolApprovalRequestHandler;
+  onStreamPart?: (part: AgentStreamPart) => PromiseLike<void> | void;
+  onStepEnd?: (event: GenerateTextStepEndEvent<ToolSet>) => PromiseLike<void> | void;
 }
 
 export interface RunAgentStreamTurnResult {
@@ -171,24 +180,6 @@ function toolOutputToText(output: unknown): string {
   }
 }
 
-function collectToolResultText(steps: AgentStep[] = []): string {
-  const chunks: string[] = [];
-  for (const step of steps) {
-    for (const result of step.toolResults) {
-      const output = toolOutputToText(result.output);
-      if (!output.trim()) continue;
-      chunks.push([
-        `Tool: ${result.toolName || "tool"}`,
-        `Tool call id: ${result.toolCallId || "sin-id"}`,
-        "---BEGIN_TOOL_PAYLOAD---",
-        output,
-        "---END_TOOL_PAYLOAD---",
-      ].join("\n"));
-    }
-  }
-  return chunks.join("\n\n");
-}
-
 function buildExplicitToolSynthesisMessages({
   messages = [],
   toolResultText = "",
@@ -216,13 +207,23 @@ function buildExplicitToolSynthesisMessages({
   ];
 }
 
+interface ConsumedStream {
+  text: string;
+  approvalRequests: AiSdkApprovalRequest[];
+}
+
+function approvalRequestFromStreamPart(part: TextStreamPart<ToolSet>): AiSdkApprovalRequest | null {
+  return part.type === "tool-approval-request" && part.isAutomatic !== true ? part : null;
+}
+
 async function consumeTextStream(
   result: AgentStreamResult,
-  { onStreamPart, phase = "main" }: { onStreamPart?: (part: AgentStreamPart) => void; phase?: StreamPhase } = {},
-): Promise<string> {
+  { onStreamPart, phase = "main" }: { onStreamPart?: (part: AgentStreamPart) => PromiseLike<void> | void; phase?: StreamPhase } = {},
+): Promise<ConsumedStream> {
   let text = "";
+  const approvalRequests: AiSdkApprovalRequest[] = [];
   try {
-    for await (const part of result.fullStream) {
+    for await (const part of result.stream) {
       if (isRecord(part) && part.type === "error") {
         emitDiagnostic("stream error part", {
           phase,
@@ -230,12 +231,14 @@ async function consumeTextStream(
           keys: Object.keys(part).slice(0, 12),
         });
       }
-      onStreamPart?.({ ...part, phase });
+      await onStreamPart?.({ ...part, phase });
+      const approvalRequest = approvalRequestFromStreamPart(part);
+      if (approvalRequest) approvalRequests.push(approvalRequest);
       const chunk = textChunkFromStreamPart(part);
       if (chunk) text += chunk;
     }
   } catch (error) {
-    emitDiagnostic("fullStream threw", {
+    emitDiagnostic("stream threw", {
       phase,
       error: errorDetails(error),
       textLenBeforeError: text.length,
@@ -254,7 +257,7 @@ async function consumeTextStream(
       // The stream itself is the primary source; text is a fallback.
     }
   }
-  return text;
+  return { text, approvalRequests };
 }
 
 function resolveProviderOptions(modelConfig: LlmModelConfig | null, { enableThinking = false }: { enableThinking?: boolean } = {}): AgentProviderOptions | undefined {
@@ -267,10 +270,38 @@ function resolveProviderOptions(modelConfig: LlmModelConfig | null, { enableThin
   };
 }
 
+function throwIfAborted(signal: AbortSignal): void {
+  if (!signal.aborted) return;
+  const error = new Error(t("common.operationCancelled"));
+  error.name = "AbortError";
+  throw error;
+}
+
+function collectToolResultTextFromMessages(messages: unknown): string[] {
+  if (!Array.isArray(messages)) return [];
+  const chunks: string[] = [];
+  for (const message of messages) {
+    if (!isRecord(message) || message.role !== "tool" || !Array.isArray(message.content)) continue;
+    for (const part of message.content) {
+      if (!isRecord(part) || part.type !== "tool-result") continue;
+      const output = toolOutputToText(part.output);
+      if (!output.trim()) continue;
+      chunks.push([
+        `Tool: ${textFromUnknown(part.toolName) || "tool"}`,
+        `Tool call id: ${textFromUnknown(part.toolCallId) || "sin-id"}`,
+        "---BEGIN_TOOL_PAYLOAD---",
+        output,
+        "---END_TOOL_PAYLOAD---",
+      ].join("\n"));
+    }
+  }
+  return chunks;
+}
+
 export async function runAgentStreamTurn({
   model,
   modelConfig = null,
-  system,
+  instructions,
   messages,
   tools = {},
   maxSteps = 2,
@@ -283,29 +314,17 @@ export async function runAgentStreamTurn({
   toolCalling = "fair",
   activeToolNames = null,
   abortSignal,
+  toolApproval,
+  onToolApprovalRequest,
   onStreamPart,
-  onStepFinish,
+  onStepEnd,
 }: RunAgentStreamTurnOptions): Promise<RunAgentStreamTurnResult> {
   if (!model) throw new Error("No hay modelo AI SDK cargado.");
 
   const providerOptions = resolveProviderOptions(modelConfig, { enableThinking });
 
-  const controller = new AbortController();
-  let onParentAbort: (() => void) | null = null;
-  if (abortSignal) {
-    if (abortSignal.aborted) {
-      controller.abort(abortSignal.reason);
-    } else {
-      onParentAbort = (): void => controller.abort(abortSignal.reason);
-      abortSignal.addEventListener("abort", onParentAbort, { once: true });
-    }
-  }
-  const signal = controller.signal;
-  if (signal.aborted) {
-    const error = new Error(t("common.operationCancelled"));
-    error.name = "AbortError";
-    throw error;
-  }
+  const signal = abortSignal || new AbortController().signal;
+  throwIfAborted(signal);
 
   const rawToolEntries = Object.entries(tools);
   const allToolKeys = rawToolEntries.map(([name]) => name);
@@ -317,55 +336,115 @@ export async function runAgentStreamTurn({
   const toolEntries = useToolsThisTurn
     ? rawToolEntries.filter(([name]) => activeTools.includes(name))
     : [];
-  const noTools: ToolSet = {};
   const toolDefs: ToolSet | undefined = useToolsThisTurn ? Object.fromEntries(toolEntries) : undefined;
 
-  const prepareStep: PrepareStepFunction<ToolSet> = ({ stepNumber }) => {
-    if (!useToolsThisTurn) {
-      return { tools: noTools };
-    }
-    // Modelos debiles: un paso de tool y luego sintesis. Modelos fair pueden
-    // encadenar una segunda tool si el AI SDK lo decide; good mantiene el loop.
-    if (toolCalling === "weak" && stepNumber > 0) {
-      return { tools: noTools };
-    }
-    if (toolCalling === "fair" && stepNumber > 1) {
-      return { tools: noTools };
-    }
-    if (activeTools.length > 0) {
-      return { activeTools };
-    }
-    return {};
-  };
-
-  const result = streamText({
-    model,
-    system: system || undefined,
-    messages: messages || [],
-    tools: toolDefs,
-    stopWhen: stepCountIs(Math.max(1, Number(maxSteps) || 2)),
-    maxOutputTokens: maxTokens,
-    temperature,
-    topP,
-    abortSignal: signal,
-    prepareStep,
-    onStepFinish,
-    providerOptions,
-  });
-
+  const stepLimit = Math.max(1, Number(maxSteps) || 2);
+  const workingMessages: ModelMessage[] = [...(messages || [])];
   let fullText = "";
-  let steps: AgentStep[] = [];
+  const steps: AgentStep[] = [];
+  const toolResultChunks = new Set<string>();
+  let completedSteps = 0;
+  let result: AgentStreamResult | null = null;
+  let sawToolWork = false;
   try {
-    fullText = await consumeTextStream(result, { onStreamPart, phase: "main" });
-    try {
-      steps = await result.steps;
-    } catch (error) {
-      emitDiagnostic("result.steps failed", {
-        error: errorDetails(error),
-        fullTextLen: fullText.length,
+    // Cada aprobacion manual termina la llamada actual. Los mensajes de esas
+    // rondas se conservan solo aqui y se reanudan con una respuesta de tool.
+    for (let round = 0; round <= stepLimit + 1; round += 1) {
+      throwIfAborted(signal);
+      const stepOffset = completedSteps;
+      const remainingSteps = stepLimit - completedSteps;
+      const finalResponseOnly = remainingSteps <= 0;
+      const prepareStep: PrepareStepFunction<ToolSet> = ({ stepNumber }) => {
+        const absoluteStep = stepOffset + stepNumber;
+        if (!useToolsThisTurn || finalResponseOnly) return { activeTools: [] };
+        // Modelos debiles: un paso de tool y luego sintesis. Modelos fair
+        // pueden encadenar una segunda tool; good mantiene el loop completo.
+        if (toolCalling === "weak" && absoluteStep > 0) return { activeTools: [] };
+        if (toolCalling === "fair" && absoluteStep > 1) return { activeTools: [] };
+        if (activeTools.length > 0) return { activeTools };
+        return {};
+      };
+
+      const currentResult = streamText({
+        model,
+        instructions: instructions || undefined,
+        messages: workingMessages,
+        tools: toolDefs,
+        toolApproval: useToolsThisTurn ? toolApproval : undefined,
+        stopWhen: isStepCount(Math.max(1, remainingSteps)),
+        maxOutputTokens: maxTokens,
+        temperature,
+        topP,
+        abortSignal: signal,
+        prepareStep,
+        onStepEnd,
+        providerOptions,
       });
-      steps = [];
+      result = currentResult;
+
+      const consumed = await consumeTextStream(currentResult, { onStreamPart, phase: "main" });
+
+      let roundSteps: AgentStep[] = [];
+      try {
+        roundSteps = await currentResult.steps;
+      } catch (error) {
+        emitDiagnostic("result.steps failed", {
+          error: errorDetails(error),
+          fullTextLen: consumed.text.length,
+          round,
+        });
+      }
+      steps.push(...roundSteps);
+      completedSteps += roundSteps.length;
+      sawToolWork ||= consumed.approvalRequests.length > 0 || roundSteps.some(
+        (step) => step.toolCalls.length > 0 || step.toolResults.length > 0,
+      );
+      const responseMessages = await currentResult.responseMessages;
+      for (const chunk of collectToolResultTextFromMessages(responseMessages)) {
+        toolResultChunks.add(chunk);
+      }
+
+      if (consumed.approvalRequests.length === 0) {
+        fullText = consumed.text;
+        break;
+      }
+
+      if (!onToolApprovalRequest) {
+        throw new Error("Se recibio una solicitud de aprobacion sin un manejador configurado.");
+      }
+      if (round >= stepLimit + 1) {
+        throw new Error("Se supero el limite de rondas de aprobacion de herramientas.");
+      }
+
+      workingMessages.push(...responseMessages);
+      const approvalResponses: AiSdkApprovalDecision[] = [];
+      for (const request of consumed.approvalRequests) {
+        throwIfAborted(signal);
+        const decision = await onToolApprovalRequest(request);
+        throwIfAborted(signal);
+        if (
+          !isRecord(decision)
+          || decision.type !== "tool-approval-response"
+          || decision.approvalId !== request.approvalId
+          || typeof decision.approved !== "boolean"
+        ) {
+          throw new Error(`Respuesta de aprobacion invalida para ${request.toolCall.toolName}.`);
+        }
+        approvalResponses.push({
+          type: "tool-approval-response",
+          approvalId: request.approvalId,
+          approved: decision.approved,
+          ...(decision.reason ? { reason: decision.reason } : {}),
+        });
+      }
+      workingMessages.push({
+        role: "tool",
+        content: approvalResponses,
+      });
     }
+
+    if (!result) throw new Error("AI SDK no produjo ninguna ronda de respuesta.");
+
     const lastStep = steps[steps.length - 1];
     if (lastStep?.finishReason === "error") {
       emitDiagnostic("step finished with error", {
@@ -377,9 +456,7 @@ export async function runAgentStreamTurn({
       });
     }
 
-    const hadToolWork = steps.some(
-      (step) => step.toolCalls.length > 0 || step.toolResults.length > 0,
-    );
+    const hadToolWork = sawToolWork || toolResultChunks.size > 0;
     const needsSynthesis = useToolsThisTurn
       && hadToolWork
       && (!fullText.trim() || looksLikeTextToolPlan(fullText));
@@ -390,17 +467,17 @@ export async function runAgentStreamTurn({
       if (looksLikeTextToolPlan(fullText)) {
         fullText = "";
       }
-      const toolResultText = collectToolResultText(steps);
+      const toolResultText = [...toolResultChunks].join("\n\n");
       const continuationMessages = toolResultText
         ? buildExplicitToolSynthesisMessages({ messages, toolResultText })
-        : (steps[steps.length - 1]?.response.messages ?? messages);
+        : messages;
       const synthMaxOutputTokens = Number.isFinite(Number(synthesisMaxTokens)) && Number(synthesisMaxTokens) > 0
         ? Number(synthesisMaxTokens)
         : Math.min(Number(maxTokens) || 256, 320);
       try {
         const synth = streamText({
           model,
-          system: [
+          instructions: [
             t("prompt.synth.youAre"),
             t("prompt.synth.toolExecuted"),
             t("prompt.synth.proseOnly"),
@@ -413,11 +490,12 @@ export async function runAgentStreamTurn({
           abortSignal: signal,
           providerOptions,
         });
-        const synthText = await consumeTextStream(synth, { onStreamPart, phase: "synthesis" });
-        if (synthText.trim() && !looksLikeTextToolPlan(synthText)) {
-          fullText = synthText.trim();
+        const synthesized = await consumeTextStream(synth, { onStreamPart, phase: "synthesis" });
+        if (synthesized.text.trim() && !looksLikeTextToolPlan(synthesized.text)) {
+          fullText = synthesized.text.trim();
         }
       } catch (error) {
+        if (isAbortError(error)) throw error;
         emitDiagnostic("explicit synthesis failed", {
           error: errorDetails(error),
           steps: steps.length,
@@ -437,19 +515,13 @@ export async function runAgentStreamTurn({
       throw new Error(`Inferencia local fallo (memoria GPU agotada o WebGPU invalido): ${msg}`);
     }
     throw error;
-  } finally {
-    if (onParentAbort && abortSignal) {
-      try {
-        abortSignal.removeEventListener("abort", onParentAbort);
-      } catch {
-        // Parent signal cleanup is best-effort.
-      }
-    }
   }
 
   const hadToolWork = steps.some(
     (step) => step.toolCalls.length > 0 || step.toolResults.length > 0,
-  );
+  ) || sawToolWork || toolResultChunks.size > 0;
+
+  if (!result) throw new Error("AI SDK no produjo ninguna respuesta.");
 
   return {
     text: fullText,

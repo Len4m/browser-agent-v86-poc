@@ -8,10 +8,10 @@
 import type { LanguageModel } from "ai";
 import { t } from "../../../app/i18n";
 
-type LanguageModelV3 = Extract<LanguageModel, { specificationVersion: "v3" }>;
-type CallOptions = Parameters<LanguageModelV3["doGenerate"]>[0];
-type GenerateResult = Awaited<ReturnType<LanguageModelV3["doGenerate"]>>;
-type StreamResult = Awaited<ReturnType<LanguageModelV3["doStream"]>>;
+type LanguageModelV4 = Extract<LanguageModel, { specificationVersion: "v4" }>;
+type CallOptions = Parameters<LanguageModelV4["doGenerate"]>[0];
+type GenerateResult = Awaited<ReturnType<LanguageModelV4["doGenerate"]>>;
+type StreamResult = Awaited<ReturnType<LanguageModelV4["doStream"]>>;
 type StreamChunk = StreamResult["stream"] extends ReadableStream<infer Chunk> ? Chunk : never;
 type ProviderUsage = GenerateResult["usage"];
 type ProviderContent = GenerateResult["content"][number];
@@ -25,7 +25,7 @@ export interface OllamaBrowserOptions {
   think?: boolean;
 }
 
-export type OllamaBrowserModel = LanguageModelV3 & {
+export type OllamaBrowserModel = LanguageModelV4 & {
   availability: () => Promise<"available">;
   createSessionWithProgress: (
     onProgress?: (event: { status: "ready"; model: string; progress: number }) => void,
@@ -158,10 +158,6 @@ function outputToText(output: unknown): string {
   return JSON.stringify(output);
 }
 
-function sanitizeToolName(name: unknown): string {
-  return textValue(name).replace(/[^A-Za-z0-9_-]/g, "__");
-}
-
 function convertPromptToOllamaMessages(prompt: CallOptions["prompt"] = []): OllamaChatMessage[] {
   const messages: OllamaChatMessage[] = [];
   for (const message of prompt) {
@@ -181,7 +177,7 @@ function convertPromptToOllamaMessages(prompt: CallOptions["prompt"] = []): Olla
           id: part.toolCallId,
           type: "function" as const,
           function: {
-            name: sanitizeToolName(part.toolName),
+            name: part.toolName,
             arguments: parseJsonMaybe(part.input),
           },
         });
@@ -199,7 +195,7 @@ function convertPromptToOllamaMessages(prompt: CallOptions["prompt"] = []): Olla
         .map((part) => ({
           role: "tool" as const,
           tool_call_id: part.toolCallId,
-          name: sanitizeToolName(part.toolName),
+          name: part.toolName,
           content: outputToText(part.output),
         }))
         .filter((part) => part.content);
@@ -209,35 +205,28 @@ function convertPromptToOllamaMessages(prompt: CallOptions["prompt"] = []): Olla
   return messages.filter((message) => message.content || message.tool_calls?.length);
 }
 
-function convertToolsToOllama(tools: CallOptions["tools"] = []): { tools: OllamaFunctionTool[]; nameMap: Map<string, string> } {
-  const nameMap = new Map<string, string>();
+function convertToolsToOllama(tools: CallOptions["tools"] = []): OllamaFunctionTool[] {
   const ollamaTools: OllamaFunctionTool[] = [];
   for (const item of tools || []) {
     if (!isRecord(item) || item.type !== "function") continue;
     const name = textValue(item.name);
     if (!name) continue;
-    const safeName = sanitizeToolName(name);
-    nameMap.set(safeName, name);
     ollamaTools.push({
       type: "function",
       function: {
-        name: safeName,
-        description: [
-          textValue(item.description),
-          name !== safeName ? `Original Browser Agent tool name: ${name}.` : "",
-        ].filter(Boolean).join(" "),
+        name,
+        description: textValue(item.description),
         parameters: item.inputSchema || { type: "object", properties: {} },
       },
     });
   }
-  return { tools: ollamaTools, nameMap };
+  return ollamaTools;
 }
 
-function mapOllamaToolCall(call: unknown, nameMap: Map<string, string>): OllamaToolCall {
+function mapOllamaToolCall(call: unknown): OllamaToolCall {
   const callRecord = isRecord(call) ? call : {};
   const fn = isRecord(callRecord.function) ? callRecord.function : callRecord;
-  const rawName = textValue(fn.name) || textValue(callRecord.name);
-  const toolName = nameMap.get(rawName) || rawName;
+  const toolName = textValue(fn.name) || textValue(callRecord.name);
   const args = parseJsonMaybe(fn.arguments ?? callRecord.arguments);
   return {
     toolCallId: textValue(callRecord.id) || `call_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
@@ -296,7 +285,6 @@ interface CallChatOptions {
 
 interface CallChatResult {
   response: Response;
-  nameMap: Map<string, string>;
   requestBody: Record<string, unknown>;
 }
 
@@ -340,7 +328,7 @@ export function ollamaBrowser(modelId: string, options: OllamaBrowserOptions = {
     abortSignal,
     stream,
   }: CallChatOptions): Promise<CallChatResult> {
-    const { tools: ollamaTools, nameMap } = convertToolsToOllama(tools);
+    const ollamaTools = convertToolsToOllama(tools);
     const requestBody: Record<string, unknown> = {
       model: modelId,
       messages: convertPromptToOllamaMessages(prompt),
@@ -370,11 +358,11 @@ export function ollamaBrowser(modelId: string, options: OllamaBrowserOptions = {
       const text = await response.text().catch(() => "");
       throw new Error(`Ollama /api/chat HTTP ${response.status}: ${text || response.statusText}`);
     }
-    return { response, nameMap, requestBody };
+    return { response, requestBody };
   }
 
   const model: OllamaBrowserModel = {
-    specificationVersion: "v3",
+    specificationVersion: "v4",
     provider: "ollama-browser",
     modelId,
     supportedUrls: {},
@@ -391,7 +379,7 @@ export function ollamaBrowser(modelId: string, options: OllamaBrowserOptions = {
     },
 
     async doGenerate(options2): Promise<GenerateResult> {
-      const { response, nameMap, requestBody } = await callChat({ ...options2, stream: false });
+      const { response, requestBody } = await callChat({ ...options2, stream: false });
       const data = asOllamaChatResponse(await response.json());
       if (data.error) throw new Error(errorMessage(data.error));
 
@@ -401,8 +389,8 @@ export function ollamaBrowser(modelId: string, options: OllamaBrowserOptions = {
       const text = textValue(data.message?.content);
       if (text) content.push({ type: "text", text });
 
-      const toolCalls = ollamaToolCalls(data.message?.tool_calls).map((call) => mapOllamaToolCall(call, nameMap));
-      for (const call of toolCalls.slice(0, 1)) {
+      const toolCalls = ollamaToolCalls(data.message?.tool_calls).map(mapOllamaToolCall);
+      for (const call of toolCalls) {
         content.push({
           type: "tool-call",
           toolCallId: call.toolCallId,
@@ -425,7 +413,7 @@ export function ollamaBrowser(modelId: string, options: OllamaBrowserOptions = {
     },
 
     async doStream(options2): Promise<StreamResult> {
-      const { response, nameMap, requestBody } = await callChat({ ...options2, stream: true });
+      const { response, requestBody } = await callChat({ ...options2, stream: true });
       const stream = new ReadableStream<StreamChunk>({
         async start(controller) {
           enqueueProviderChunk(controller, { type: "stream-start", warnings: [] });
@@ -472,7 +460,7 @@ export function ollamaBrowser(modelId: string, options: OllamaBrowserOptions = {
             const delta = textValue(data.message?.content);
             if (delta) emitText(delta);
             for (const call of ollamaToolCalls(data.message?.tool_calls)) {
-              toolCalls.push(mapOllamaToolCall(call, nameMap));
+              toolCalls.push(mapOllamaToolCall(call));
             }
             if (data.done) lastDone = data;
           };
@@ -491,25 +479,25 @@ export function ollamaBrowser(modelId: string, options: OllamaBrowserOptions = {
 
             if (reasoningStarted) enqueueProviderChunk(controller, { type: "reasoning-end", id: reasoningId });
             if (textStarted) enqueueProviderChunk(controller, { type: "text-end", id: textId });
-            const firstToolCall = toolCalls[0];
-            if (firstToolCall) {
-              enqueueProviderChunk(controller, { type: "tool-input-start", id: firstToolCall.toolCallId, toolName: firstToolCall.toolName });
-              enqueueProviderChunk(controller, { type: "tool-input-delta", id: firstToolCall.toolCallId, delta: firstToolCall.input });
-              enqueueProviderChunk(controller, { type: "tool-input-end", id: firstToolCall.toolCallId });
+            for (const toolCall of toolCalls) {
+              enqueueProviderChunk(controller, { type: "tool-input-start", id: toolCall.toolCallId, toolName: toolCall.toolName });
+              enqueueProviderChunk(controller, { type: "tool-input-delta", id: toolCall.toolCallId, delta: toolCall.input });
+              enqueueProviderChunk(controller, { type: "tool-input-end", id: toolCall.toolCallId });
               enqueueProviderChunk(controller, {
                 type: "tool-call",
-                toolCallId: firstToolCall.toolCallId,
-                toolName: firstToolCall.toolName,
-                input: firstToolCall.input,
+                toolCallId: toolCall.toolCallId,
+                toolName: toolCall.toolName,
+                input: toolCall.input,
                 providerExecuted: false,
               });
             }
+            const hasToolCalls = toolCalls.length > 0;
             const doneRecord = asOllamaChatResponse(lastDone);
             enqueueProviderChunk(controller, {
               type: "finish",
               finishReason: {
-                unified: firstToolCall ? "tool-calls" : "stop",
-                raw: textValue(doneRecord.done_reason) || (firstToolCall ? "tool-calls" : "stop"),
+                unified: hasToolCalls ? "tool-calls" : "stop",
+                raw: textValue(doneRecord.done_reason) || (hasToolCalls ? "tool-calls" : "stop"),
               },
               usage: usageFromOllama(doneRecord),
             });

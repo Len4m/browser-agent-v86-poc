@@ -9,26 +9,26 @@ import type { AiSdkBridgeApi, AiSdkRunAgentStreamTurnOptions, AiSdkRunAgentStrea
 import {
   tool,
   wrapLanguageModel,
-  extractReasoningMiddleware,
-  transformersWorker,
+  transformersJS,
   ollamaBrowser,
   z,
   runAgentStreamTurn,
   textChunkFromStreamPart,
   reasoningChunkFromStreamPart,
+  transformersReasoningMiddleware,
   transformersTextToolMiddleware,
 } from "./chat/ai-sdk-browser.mjs";
 
-type LanguageModelV3 = Extract<LanguageModel, { specificationVersion: "v3" }>;
+type LanguageModelV4 = Extract<LanguageModel, { specificationVersion: "v4" }>;
 
-type BrowserSessionLanguageModel = LanguageModelV3 & {
+type BrowserSessionLanguageModel = LanguageModelV4 & {
   availability?: () => Promise<string>;
   createSessionWithProgress?: (onProgress?: (progress: unknown) => void) => Promise<unknown>;
 };
 
 interface ActiveModelHandle {
   base: BrowserSessionLanguageModel;
-  model: LanguageModelV3;
+  model: LanguageModelV4;
   modelConfig: LlmModelConfig;
 }
 
@@ -36,12 +36,15 @@ interface LoadModelOptions {
   onProgress?: (detail: Record<string, unknown>) => void;
 }
 
+type TransformersSettings = NonNullable<Parameters<typeof transformersJS>[1]>;
+type TransformersDevice = Extract<TransformersSettings["device"], string>;
+type TransformersDtype = Extract<TransformersSettings["dtype"], string>;
+
 void initI18n();
 
 let workerUrl: URL | null = null;
 let activeWorker: Worker | null = null;
 let activeModelHandle: ActiveModelHandle | null = null;
-let activeAbortController: AbortController | null = null;
 
 function textValue(value: unknown): string {
   if (typeof value === "string") return value;
@@ -54,9 +57,16 @@ function messageText(value: unknown): string {
   return textValue(value);
 }
 
-function mapDtype(dtype: unknown): string {
+function mapDevice(device: unknown): TransformersDevice {
+  const value = (textValue(device) || "webgpu").toLowerCase();
+  const supported: TransformersDevice[] = ["auto", "cpu", "gpu", "webgpu", "wasm", "cuda", "dml", "coreml", "webnn", "webnn-npu", "webnn-gpu", "webnn-cpu"];
+  return supported.includes(value as TransformersDevice) ? value as TransformersDevice : "webgpu";
+}
+
+function mapDtype(dtype: unknown): TransformersDtype {
   const value = (textValue(dtype) || "auto").toLowerCase();
-  if (["auto", "fp32", "fp16", "q8", "q4", "q4f16"].includes(value)) return value;
+  const supported: TransformersDtype[] = ["auto", "fp32", "fp16", "q8", "q4", "q4f16", "int8", "uint8", "bnb4", "q2", "q2f16", "q1", "q1f16"];
+  if (supported.includes(value as TransformersDtype)) return value as TransformersDtype;
   return "auto";
 }
 
@@ -160,29 +170,29 @@ function shouldUseReasoningMiddleware(modelConfig: LlmModelConfig): boolean {
   return true;
 }
 
-function wrapAgentModel(baseModel: LanguageModelV3, modelConfig: LlmModelConfig): LanguageModelV3 {
+function wrapAgentModel(baseModel: LanguageModelV4, modelConfig: LlmModelConfig): LanguageModelV4 {
   const engine = modelConfig?.engine || "transformersjs";
-  const toolCalling = modelConfig?.agent?.toolCalling || "fair";
-  const parseTextTools = engine === "transformersjs" && (toolCalling === "weak" || toolCalling === "fair");
   const extract = modelConfig?.thinking?.extract;
   let model = baseModel;
   if (shouldUseReasoningMiddleware(modelConfig) && extract?.tagName) {
     model = wrapLanguageModel({
       model,
-      middleware: extractReasoningMiddleware({
+      middleware: transformersReasoningMiddleware({
         tagName: extract.tagName,
         ...(extract.startWithReasoning !== undefined ? { startWithReasoning: extract.startWithReasoning } : {}),
         ...(extract.separator !== undefined ? { separator: extract.separator } : {}),
       }),
     });
   }
-  model = wrapLanguageModel({
-    model,
-    middleware: transformersTextToolMiddleware({
-      stripToolChoice: engine === "transformersjs",
-      parseTextTools,
-    }),
-  });
+  if (engine === "transformersjs") {
+    model = wrapLanguageModel({
+      model,
+      middleware: transformersTextToolMiddleware({
+        stripToolChoice: true,
+        parseTextTools: true,
+      }),
+    });
+  }
   return model;
 }
 
@@ -193,29 +203,30 @@ function resolveOllamaEndpoint(): string {
   ).replace(/\/+$/g, "");
 }
 
-function createModel(modelConfig: LlmModelConfig): LanguageModelV3 {
+function createModel(modelConfig: LlmModelConfig): LanguageModelV4 {
   if (!modelConfig?.model) throw new Error("Modelo no configurado.");
 
   let base: BrowserSessionLanguageModel;
   let runtime: NonNullable<LlmModelConfig["runtime"]>;
   if (modelConfig.engine === "ollama") {
     terminateActiveWorker();
+    const endpoint = resolveOllamaEndpoint();
     base = ollamaBrowser(modelConfig.model, {
-      endpoint: resolveOllamaEndpoint(),
+      endpoint,
       think: typeof modelConfig.thinking?.generate === "boolean" ? modelConfig.thinking.generate : undefined,
     });
     runtime = {
       provider: "ollama",
       device: "remote",
       dtype: "host",
-      endpoint: resolveOllamaEndpoint(),
+      endpoint,
       worker: false,
     };
   } else {
-    const device = modelConfig.device || "webgpu";
+    const device = mapDevice(modelConfig.device);
     const dtype = mapDtype(modelConfig.dtype);
     const disposeGenerationCacheBeforeGenerate = device === "webgpu" && modelConfig.reuseGenerationCache !== true;
-    base = transformersWorker(modelConfig.model, {
+    base = transformersJS(modelConfig.model, {
       device,
       dtype,
       worker: createWorker({ disposeGenerationCacheBeforeGenerate }),
@@ -252,8 +263,8 @@ function buildWasmFallbackConfig(modelConfig: LlmModelConfig): LlmModelConfig | 
   };
 }
 
-async function loadModel(modelConfig: LlmModelConfig, { onProgress }: LoadModelOptions = {}): Promise<LanguageModelV3> {
-  async function loadWithConfig(config: LlmModelConfig): Promise<LanguageModelV3> {
+async function loadModel(modelConfig: LlmModelConfig, { onProgress }: LoadModelOptions = {}): Promise<LanguageModelV4> {
+  async function loadWithConfig(config: LlmModelConfig): Promise<LanguageModelV4> {
     const model = createModel(config);
     // wrapLanguageModel solo envuelve doGenerate/doStream; sesión y descarga viven en el modelo base.
     const sessionModel = activeModelHandle?.base;
@@ -265,7 +276,7 @@ async function loadModel(modelConfig: LlmModelConfig, { onProgress }: LoadModelO
         : t("chat.error.transformersUnavailable"));
     }
 
-    if (availability === "downloadable" || availability !== "available") {
+    if (availability !== "available") {
       await sessionModel?.createSessionWithProgress?.((progress: unknown) => {
         onProgress?.({
           status: "progress",
@@ -325,13 +336,11 @@ async function loadModel(modelConfig: LlmModelConfig, { onProgress }: LoadModelO
 }
 
 function unloadModel(): void {
-  activeAbortController?.abort();
-  activeAbortController = null;
   activeModelHandle = null;
   terminateActiveWorker();
 }
 
-function getActiveModel(): LanguageModelV3 | null {
+function getActiveModel(): LanguageModelV4 | null {
   return activeModelHandle?.model || null;
 }
 
@@ -352,11 +361,6 @@ function isGpuInferenceFailure(message: unknown): boolean {
   if (isNonFallbackLoadFailure(msg)) return false;
   // No usar RuntimeError: genérico — provoca fallback WASM en fallos de descarga/init transitorios.
   return /out of device memory|VK_ERROR_OUT_OF_DEVICE_MEMORY|WebGPU validation failed|Invalid Buffer|Device lost|failed to call OrtRun|CreateBuffer|null function|function signature mismatch|unaligned accesses|Instance reference no longer exists|memoria GPU agotada|WebGPU inválido|shader[- ]?f16|f16 not supported/i.test(msg);
-}
-
-function abortActive(): void {
-  activeAbortController?.abort();
-  activeAbortController = null;
 }
 
 function createAiSdkTool(config: AiSdkToolConfig): unknown {
@@ -387,5 +391,4 @@ export const aiSdkApi = {
   runAgentStreamTurn: runBridgeAgentStreamTurn,
   textChunkFromStreamPart,
   reasoningChunkFromStreamPart,
-  abortActive,
 } satisfies AiSdkBridgeApi;

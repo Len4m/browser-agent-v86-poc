@@ -1,10 +1,23 @@
+import type {
+  ToolApprovalConfiguration,
+  ToolApprovalRequestOutput,
+  ToolApprovalResponse,
+  ToolApprovalStatus,
+  ToolExecutionOptions,
+  ToolSet,
+  TextStreamPart,
+  TypedToolCall,
+} from "ai";
 import type { LlmModelConfig } from "../state/chat-state";
 
 export interface AiSdkSchemaLike {
   describe: (text: string) => AiSdkSchemaLike;
   optional: () => AiSdkSchemaLike;
-  nullable?: () => AiSdkSchemaLike;
-  passthrough?: () => AiSdkSchemaLike;
+  nullable: () => AiSdkSchemaLike;
+}
+
+export interface AiSdkObjectSchemaLike extends AiSdkSchemaLike {
+  passthrough: () => AiSdkObjectSchemaLike;
 }
 
 export interface AiSdkZodLike {
@@ -12,7 +25,7 @@ export interface AiSdkZodLike {
   number: () => AiSdkSchemaLike;
   boolean: () => AiSdkSchemaLike;
   array: (schema: AiSdkSchemaLike) => AiSdkSchemaLike;
-  object: (shape: Record<string, AiSdkSchemaLike>) => AiSdkSchemaLike;
+  object: (shape: Record<string, AiSdkSchemaLike>) => AiSdkObjectSchemaLike;
 }
 
 export interface AiSdkToolConfig {
@@ -20,13 +33,25 @@ export interface AiSdkToolConfig {
   inputSchema: AiSdkSchemaLike;
   outputSchema: AiSdkSchemaLike;
   toModelOutput: (args: { output?: unknown }) => { type: "text"; value: string };
-  execute: (args: unknown) => Promise<unknown>;
+  execute: (args: unknown, options: AiSdkToolExecutionOptions) => Promise<unknown>;
 }
+
+export type AiSdkToolExecutionOptions = ToolExecutionOptions<unknown>;
+export type AiSdkToolCall = TypedToolCall<ToolSet>;
+export type AiSdkToolApprovalStatus = ToolApprovalStatus;
+export type AiSdkToolApprovalCallback = ToolApprovalConfiguration<ToolSet, unknown>;
+export type AiSdkApprovalRequest = ToolApprovalRequestOutput<ToolSet>;
+export type AiSdkApprovalDecision = ToolApprovalResponse;
+export type AiSdkStreamPart = TextStreamPart<ToolSet> & { phase: "main" | "synthesis" };
+
+export type AiSdkToolApprovalRequestHandler = (
+  request: AiSdkApprovalRequest,
+) => AiSdkApprovalDecision | PromiseLike<AiSdkApprovalDecision>;
 
 export interface AiSdkRunAgentStreamTurnOptions {
   model: unknown;
   modelConfig?: LlmModelConfig | null;
-  system?: string;
+  instructions?: string;
   messages: unknown[];
   tools?: Record<string, unknown>;
   maxSteps?: number;
@@ -39,8 +64,10 @@ export interface AiSdkRunAgentStreamTurnOptions {
   toolCalling?: "weak" | "fair" | "good";
   activeToolNames?: string[] | null;
   abortSignal?: AbortSignal;
-  onStreamPart?: (part: unknown) => void;
-  onStepFinish?: (event: unknown) => PromiseLike<void> | void;
+  toolApproval?: AiSdkToolApprovalCallback;
+  onToolApprovalRequest?: AiSdkToolApprovalRequestHandler;
+  onStreamPart?: (part: AiSdkStreamPart) => PromiseLike<void> | void;
+  onStepEnd?: (event: unknown) => PromiseLike<void> | void;
 }
 
 export interface AiSdkRunAgentStreamTurnResult {
@@ -52,7 +79,6 @@ export interface AiSdkRunAgentStreamTurnResult {
 export interface AiSdkBridgeApi {
   z: AiSdkZodLike;
   tool: (config: AiSdkToolConfig) => unknown;
-  abortActive: () => void;
   unloadModel: () => void;
   loadModel: (modelConfig: LlmModelConfig, options?: { onProgress?: (detail: Record<string, unknown>) => void }) => Promise<void>;
   getActiveModel: () => unknown;
