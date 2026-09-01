@@ -151,9 +151,6 @@ function buildLLMPanelHtml(): string {
             <label id="ba-llm-reasoning-start-wrap" class="ba-llm-field ba-llm-thinking-toggle"><input id="ba-llm-start-reasoning" type="checkbox" /><span>startWithReasoning</span></label>
             <div class="ba-llm-row ba-llm-profile-actions">
               <button id="ba-llm-profile-reset" type="button" class="secondary" data-i18n="panel.llm.profile.reset">Restore defaults</button>
-              <button id="ba-llm-profile-export" type="button" class="secondary" data-i18n="panel.llm.profile.export">Export profiles</button>
-              <button id="ba-llm-profile-import" type="button" class="secondary" data-i18n="panel.llm.profile.import">Import profiles</button>
-              <input id="ba-llm-profile-file" type="file" accept="application/json,.json" hidden />
             </div>
           </div>
         </details>

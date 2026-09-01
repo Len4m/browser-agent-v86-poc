@@ -238,6 +238,7 @@ function mountPanel(): void {
   discovery.bind();
   profiles.bind();
   discovery.initialize();
+  profiles.sync();
   syncSourceVisibility();
   syncToolPolicyUi();
   updateAvailableToolsUi();

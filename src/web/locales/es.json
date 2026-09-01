@@ -446,8 +446,6 @@
   "panel.llm.profile.current": "perfil actual",
   "panel.llm.profile.advanced": "Configuración avanzada",
   "panel.llm.profile.basic": "Configuración del agente",
-  "panel.llm.profile.export": "Exportar perfiles",
-  "panel.llm.profile.import": "Importar perfiles",
   "panel.llm.profile.manual": "manual",
   "panel.llm.profile.quality": "Capacidad de tool calling",
   "panel.llm.profile.reset": "Restaurar defaults",

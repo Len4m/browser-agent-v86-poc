@@ -4,7 +4,7 @@
 
 import { state } from "../../app/state";
 import { defaultModelConfig, getLlmState, getSelectedLlmModel, llmEventsApi, type LlmModelConfig } from "../state/chat-state";
-import { saveProfile } from "../models/model-profiles";
+import { saveLastProfile } from "../models/model-profiles";
 import { normalizeToolName } from "./shared";
 import { llmToolRegistry } from "./tool-registry";
 
@@ -95,7 +95,7 @@ function setActiveToolNames(modelConfig: LlmModelConfig | null | undefined, name
   if (cfg.profile) {
     cfg.profile.activeToolNames = clean;
     if (cfg.agent) cfg.agent.activeToolNames = clean;
-    saveProfile(localStorage, cfg.profile);
+    saveLastProfile(localStorage, cfg.profile);
   }
   syncStateNativeTools(clean);
   llmEventsApi.emit("native-tools", { names: clean, max, modelId: cfg.id });

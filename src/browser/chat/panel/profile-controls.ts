@@ -1,10 +1,5 @@
 import {
   defaultProfile,
-  exportProfiles,
-  importProfiles,
-  loadProfiles,
-  PROFILES_STORAGE_KEY,
-  saveProfile,
   validateProfile,
 } from "../models/model-profiles";
 import type {
@@ -19,7 +14,7 @@ import {
   selectLlmModel,
   type LlmModelConfig,
 } from "../state/chat-state";
-import { errorMessage, inputById, selectById, textValue } from "./dom-utils";
+import { inputById, selectById, textValue } from "./dom-utils";
 import { ensureLlmState, getSelectedModel } from "./state-utils";
 
 interface ProfileControlsHooks {
@@ -59,7 +54,8 @@ export function createProfileControls(hooks: ProfileControlsHooks): ProfileContr
 
     const dtype = selectById("ba-llm-dtype");
     if (dtype) {
-      const dtypes = ["auto", ...(config.inspection?.availableDtypes || [])];
+      const dtypes = ["auto", profile.dtype, ...(config.inspection?.availableDtypes || [])]
+        .filter((value): value is string => Boolean(value));
       dtype.replaceChildren(...[...new Set(dtypes)].map((value) => new Option(value, value)));
       dtype.value = profile.dtype || "auto";
     }
@@ -125,7 +121,6 @@ export function createProfileControls(hooks: ProfileControlsHooks): ProfileContr
       return;
     }
     if (ensureLlmState().loaded) llmAgent.unloadModel();
-    saveProfile(localStorage, profile);
     const config = registerModelProfile(profile, current.inspection || null);
     selectLlmModel(config);
     hooks.onModelChanged(config);
@@ -135,34 +130,9 @@ export function createProfileControls(hooks: ProfileControlsHooks): ProfileContr
     const current = getSelectedModel();
     const profile = defaultProfile(current.engine, current.model || "");
     const config = registerModelProfile(profile, current.inspection || null);
-    saveProfile(localStorage, profile);
     selectLlmModel(config);
     sync(config);
     hooks.onModelChanged(config);
-  }
-
-  function exportStored(): void {
-    const content = JSON.stringify(exportProfiles(loadProfiles(localStorage)), null, 2);
-    const url = URL.createObjectURL(new Blob([content], { type: "application/json" }));
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "browser-agent-llm-profiles.json";
-    anchor.click();
-    URL.revokeObjectURL(url);
-  }
-
-  async function importStored(file: File): Promise<void> {
-    const value: unknown = JSON.parse(await file.text());
-    const existing = loadProfiles(localStorage);
-    let result = importProfiles(value, existing, false);
-    if (result.conflicts.length && window.confirm(`Overwrite ${result.conflicts.length} existing profiles?`)) {
-      result = importProfiles(value, existing, true);
-    }
-    localStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(result.profiles));
-    hooks.setStatus(
-      `Imported ${result.imported}; invalid ${result.invalid}; skipped ${result.conflicts.length}`,
-      result.invalid ? "warn" : "good",
-    );
   }
 
   function bind(): void {
@@ -174,12 +144,6 @@ export function createProfileControls(hooks: ProfileControlsHooks): ProfileContr
     ];
     for (const id of ids) document.getElementById(id)?.addEventListener("change", saveFromUi);
     document.getElementById("ba-llm-profile-reset")?.addEventListener("click", reset);
-    document.getElementById("ba-llm-profile-export")?.addEventListener("click", exportStored);
-    document.getElementById("ba-llm-profile-import")?.addEventListener("click", () => inputById("ba-llm-profile-file")?.click());
-    inputById("ba-llm-profile-file")?.addEventListener("change", (event) => {
-      const file = event.target instanceof HTMLInputElement ? event.target.files?.[0] : null;
-      if (file) void importStored(file).catch((error) => hooks.setStatus(errorMessage(error), "bad"));
-    });
   }
 
   return { bind, sync };

@@ -3,19 +3,16 @@ import assert from "node:assert/strict";
 import {
   defaultProfile,
   effectiveMaxSteps,
-  exportProfiles,
   HF_RECENTS_STORAGE_KEY,
-  importProfiles,
+  LAST_PROFILE_STORAGE_KEY,
   loadHfRecents,
-  loadProfiles,
-  PROFILES_STORAGE_KEY,
+  loadLastProfile,
   recordHfRecent,
   resolveProfile,
-  saveProfile,
+  saveLastProfile,
   validateProfile,
   type StorageLike,
 } from "../../src/browser/chat/models/model-profiles";
-import { modelKey } from "../../src/browser/chat/models/model-types";
 
 class MemoryStorage implements StorageLike {
   values = new Map<string, string>();
@@ -64,12 +61,15 @@ test("weak and fair cap effective tool steps", () => {
   assert.equal(effectiveMaxSteps({ toolCalling: "good", maxSteps: 8 }), 8);
 });
 
-test("profiles persist by stable engine:model key and include tool selection", () => {
+test("only the last selected model configuration is persisted", () => {
   const storage = new MemoryStorage();
-  const profile = { ...defaultProfile("ollama", "qwen:4b"), activeToolNames: ["vm.shell.exec"] };
-  saveProfile(storage, profile);
-  assert.deepEqual(loadProfiles(storage)[modelKey("ollama", "qwen:4b")], profile);
-  assert.match(storage.getItem(PROFILES_STORAGE_KEY) || "", /vm\.shell\.exec/);
+  const first = { ...defaultProfile("ollama", "qwen:4b"), activeToolNames: ["vm.shell.exec"] };
+  const last = defaultProfile("transformersjs", "org/model");
+  saveLastProfile(storage, first);
+  assert.deepEqual(loadLastProfile(storage), first);
+  saveLastProfile(storage, last);
+  assert.deepEqual(loadLastProfile(storage), last);
+  assert.equal(JSON.parse(storage.getItem(LAST_PROFILE_STORAGE_KEY) || "null").modelId, "org/model");
 });
 
 test("profile validation enforces enums and clamps numeric limits", () => {
@@ -80,20 +80,6 @@ test("profile validation enforces enums and clamps numeric limits", () => {
   assert.equal(valid?.temperature, 2);
   assert.equal(valid?.topP, 1);
   assert.equal(validateProfile({ ...profile, toolStrategy: "magic" }), null);
-});
-
-test("versioned import rejects invalid roots, reports invalid entries and protects conflicts", () => {
-  const original = defaultProfile("ollama", "same:tag");
-  const incoming = defaultProfile("transformersjs", "org/new");
-  assert.throws(() => importProfiles({ schemaVersion: 2, profiles: [] }, {}), /root schema/);
-  const result = importProfiles(
-    { schemaVersion: 1, profiles: [incoming, { nope: true }, { ...original, temperature: 0.5 }] },
-    { [modelKey(original.engine, original.modelId)]: original },
-  );
-  assert.equal(result.imported, 1);
-  assert.equal(result.invalid, 1);
-  assert.deepEqual(result.conflicts, [modelKey(original.engine, original.modelId)]);
-  assert.deepEqual(exportProfiles(result.profiles), { schemaVersion: 1, profiles: [original, incoming] });
 });
 
 test("HF recents are saved only when explicitly recorded and capped to twenty", () => {

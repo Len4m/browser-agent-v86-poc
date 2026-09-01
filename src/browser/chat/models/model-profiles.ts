@@ -3,26 +3,16 @@ import type {
   LlmUserProfile,
   ModelInspection,
   OllamaThinkMode,
-  ProfilesExportV1,
   ToolCallingQuality,
   ToolStrategy,
 } from "./model-types";
-import { modelKey } from "./model-types";
 
-export const PROFILES_STORAGE_KEY = "ba.llm.profiles.v1";
+export const LAST_PROFILE_STORAGE_KEY = "ba.llm.lastProfile.v1";
 export const HF_RECENTS_STORAGE_KEY = "ba.llm.hfRecents.v1";
-export const PROFILE_SCHEMA_VERSION = 1 as const;
 
 export interface StorageLike {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
-}
-
-export interface ImportProfilesResult {
-  profiles: Record<string, LlmUserProfile>;
-  imported: number;
-  invalid: number;
-  conflicts: string[];
 }
 
 const TOOL_STRATEGIES = new Set<ToolStrategy>(["off", "heuristic", "model-first"]);
@@ -187,67 +177,18 @@ export function effectiveMaxSteps(profile: Pick<LlmUserProfile, "toolCalling" | 
   return profile.maxSteps;
 }
 
-export function loadProfiles(storage: StorageLike): Record<string, LlmUserProfile> {
+export function loadLastProfile(storage: StorageLike): LlmUserProfile | null {
   try {
-    const value = record(JSON.parse(storage.getItem(PROFILES_STORAGE_KEY) || "{}"));
-    if (!value) return {};
-    const profiles: Record<string, LlmUserProfile> = {};
-    for (const candidate of Object.values(value)) {
-      const profile = validateProfile(candidate);
-      if (profile) profiles[modelKey(profile.engine, profile.modelId)] = profile;
-    }
-    return profiles;
+    return validateProfile(JSON.parse(storage.getItem(LAST_PROFILE_STORAGE_KEY) || "null"));
   } catch {
-    return {};
+    return null;
   }
 }
 
-export function saveProfile(storage: StorageLike, profile: LlmUserProfile): void {
+export function saveLastProfile(storage: StorageLike, profile: LlmUserProfile): void {
   const valid = validateProfile(profile);
   if (!valid) throw new Error("Invalid LLM profile");
-  const profiles = loadProfiles(storage);
-  profiles[modelKey(valid.engine, valid.modelId)] = valid;
-  storage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(profiles));
-}
-
-export function exportProfiles(profiles: Record<string, LlmUserProfile>): ProfilesExportV1 {
-  return {
-    schemaVersion: PROFILE_SCHEMA_VERSION,
-    profiles: Object.values(profiles).flatMap((profile) => {
-      const valid = validateProfile(profile);
-      return valid ? [valid] : [];
-    }),
-  };
-}
-
-export function importProfiles(
-  value: unknown,
-  existing: Record<string, LlmUserProfile>,
-  overwrite = false,
-): ImportProfilesResult {
-  const root = record(value);
-  if (!root || root.schemaVersion !== PROFILE_SCHEMA_VERSION || !Array.isArray(root.profiles)) {
-    throw new Error("Invalid LLM profiles root schema");
-  }
-  const profiles = { ...existing };
-  const conflicts: string[] = [];
-  let imported = 0;
-  let invalid = 0;
-  for (const candidate of root.profiles) {
-    const profile = validateProfile(candidate);
-    if (!profile) {
-      invalid += 1;
-      continue;
-    }
-    const key = modelKey(profile.engine, profile.modelId);
-    if (profiles[key] && !overwrite) {
-      conflicts.push(key);
-      continue;
-    }
-    profiles[key] = profile;
-    imported += 1;
-  }
-  return { profiles, imported, invalid, conflicts };
+  storage.setItem(LAST_PROFILE_STORAGE_KEY, JSON.stringify(valid));
 }
 
 export function loadHfRecents(storage: StorageLike): string[] {

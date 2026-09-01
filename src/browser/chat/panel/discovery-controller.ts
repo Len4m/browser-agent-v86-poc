@@ -14,7 +14,7 @@ import {
 } from "../models/model-discovery";
 import type { DiscoveredModel, LlmEngine, LlmUserProfile, ModelInspection } from "../models/model-types";
 import { modelKey } from "../models/model-types";
-import { loadHfRecents, loadProfiles, recordHfRecent } from "../models/model-profiles";
+import { loadHfRecents, recordHfRecent } from "../models/model-profiles";
 import { chooseTransformersRuntime } from "../models/transformers-inspection";
 import { getAiSdkReady } from "../provider/ai-sdk-runtime";
 import { llmAgent } from "../runtime/agent-loop";
@@ -58,8 +58,6 @@ const ACTION_CONTROL_SELECTOR = [
   "#ba-llm-thinking-tag",
   "#ba-llm-start-reasoning",
   "#ba-llm-profile-reset",
-  "#ba-llm-profile-import",
-  "#ba-llm-profile-file",
 ].join(",");
 
 export interface DiscoveryController {
@@ -373,7 +371,6 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
         gated: false,
         metadata: { manual: true },
       };
-      const savedProfile = loadProfiles(localStorage)[item.key];
       let inspection: ModelInspection;
       let selection: Partial<LlmUserProfile> = {};
       try {
@@ -393,7 +390,7 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
         selection = { device: "auto", dtype: "auto" };
       }
       if (generation !== inspectionGeneration) return getSelectedModel();
-      const config = registerDiscoveredModel(item, inspection, savedProfile ? null : selection);
+      const config = registerDiscoveredModel(item, inspection, selection);
       selectLlmModel(config);
       setSelectedKey("transformersjs", item.key);
       hooks.onModelSelected(config);
@@ -499,10 +496,19 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
   }
 
   function initialize(): void {
+    const selected = getSelectedLlmModel();
+    if (selected?.engine === "transformersjs") {
+      selectedHfKey = selected.id;
+      const manual = inputById("ba-llm-custom-model");
+      if (manual) manual.value = selected.model || "";
+    } else if (selected?.engine === "ollama") {
+      selectedOllamaKey = selected.id;
+    }
     hfResults = recentModels();
     renderList(elementById("ba-llm-hf-results"), hfResults);
     renderRecents();
-    void refreshHf();
+    if (selected?.engine === "ollama") void refreshOllama();
+    else void refreshHf();
   }
 
   function render(): void {

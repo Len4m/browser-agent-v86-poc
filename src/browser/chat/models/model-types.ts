@@ -65,11 +65,6 @@ export interface LlmUserProfile {
   ollamaThink?: OllamaThinkMode;
 }
 
-export interface ProfilesExportV1 {
-  schemaVersion: 1;
-  profiles: LlmUserProfile[];
-}
-
 export function modelKey(engine: LlmEngine, modelId: string): string {
   return `${engine}:${modelId.trim()}`;
 }

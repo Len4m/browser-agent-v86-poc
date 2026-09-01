@@ -4,7 +4,7 @@ import { t } from "../../app/i18n";
 import { appEvents } from "../../core/events";
 import type { DiscoveredModel, LlmEngine, LlmUserProfile, ModelInspection, ToolStrategy } from "../models/model-types";
 import { modelKey } from "../models/model-types";
-import { defaultProfile, loadProfiles, resolveProfile } from "../models/model-profiles";
+import { defaultProfile, loadLastProfile, resolveProfile, saveLastProfile } from "../models/model-profiles";
 
 export interface LlmAgentMeta {
   maxSteps: number;
@@ -123,8 +123,8 @@ interface LlmEventsApi {
 const dynamicModels = new Map<string, LlmModelConfig>();
 let llmState: LlmState | null = null;
 
-function storageProfiles(): Record<string, LlmUserProfile> {
-  try { return loadProfiles(window.localStorage); } catch { return {}; }
+function storedProfile(): LlmUserProfile | null {
+  try { return loadLastProfile(window.localStorage); } catch { return null; }
 }
 
 function thinkGenerate(profile: LlmUserProfile): LlmThinkingMeta["generate"] {
@@ -210,8 +210,11 @@ export function registerDiscoveredModel(
   inspection: ModelInspection | null = null,
   selection: Partial<LlmUserProfile> | null = null,
 ): LlmModelConfig {
-  const saved = storageProfiles()[discovered.key];
-  const profile = resolveProfile(discovered.engine, discovered.modelId, inspection, saved, selection);
+  const lastProfile = storedProfile();
+  const saved = lastProfile && modelKey(lastProfile.engine, lastProfile.modelId) === discovered.key
+    ? lastProfile
+    : null;
+  const profile = resolveProfile(discovered.engine, discovered.modelId, inspection, saved, saved ? null : selection);
   const config = modelConfigFromProfile(profile, discovered, inspection);
   dynamicModels.set(config.id, config);
   return config;
@@ -229,6 +232,9 @@ export function getSelectedLlmModel(): LlmModelConfig | null { return findLlmMod
 
 export function selectLlmModel(config: LlmModelConfig): void {
   dynamicModels.set(config.id, config);
+  if (config.profile) {
+    try { saveLastProfile(window.localStorage, config.profile); } catch { /* Storage may be unavailable. */ }
+  }
   if (llmState) {
     llmState.selectedModelId = config.id;
     llmState.settings.nativeToolNames = [...(config.agent?.activeToolNames || [])];
@@ -267,6 +273,9 @@ export function llmModelShortLabel(model: LlmModelConfig): string { return llmMo
 export function llmModelRequiresWebGPU(model: LlmModelConfig | null | undefined): boolean { return model?.engine === "transformersjs" && model.device === "webgpu"; }
 
 function createInitialLlmState(): LlmState {
+  const restoredProfile = storedProfile();
+  const restoredModel = restoredProfile ? modelConfigFromProfile(restoredProfile) : null;
+  if (restoredModel) dynamicModels.set(restoredModel.id, restoredModel);
   return {
     version: "v9.39.0-dynamic-models",
     providerName: "dynamic",
@@ -275,7 +284,7 @@ function createInitialLlmState(): LlmState {
     loaded: false,
     loading: false,
     generating: false,
-    selectedModelId: "",
+    selectedModelId: restoredModel?.id || "",
     activeModel: null,
     capabilities: null,
     capabilitiesChecked: false,
@@ -290,8 +299,8 @@ function createInitialLlmState(): LlmState {
     settings: {
       toolAutonomyMaxLevel: Number(window.localStorage.getItem("ba.llm.toolAutonomyMaxLevel") || "1"),
       maxToolStepsPerTurn: 4,
-      nativeToolNames: [],
-      showThinking: false,
+      nativeToolNames: [...(restoredModel?.agent?.activeToolNames || [])],
+      showThinking: Boolean(restoredProfile?.showThinking),
       systemPrompt: [t("prompt.system.role"), t("prompt.system.realData"), t("prompt.system.toolFallback"), t("prompt.system.artifacts"), t("prompt.system.style")].join(" "),
     },
   };
