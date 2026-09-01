@@ -4,7 +4,7 @@ import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const forwardedArgs = process.argv.slice(2).filter((arg) => ["--minify", "--sourcemap"].includes(arg));
+const forwardedArgs = process.argv.slice(2).filter((arg) => ["--minify", "--sourcemap", "--analyze"].includes(arg));
 const root = fileURLToPath(new URL("..", import.meta.url));
 const requiredSetupAssets = [
   "public/vendor/xterm/xterm.css",

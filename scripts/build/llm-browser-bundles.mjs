@@ -20,6 +20,7 @@ const root = fileURLToPath(new URL("../..", import.meta.url));
 const tsconfigPath = join(root, "tsconfig.json");
 const minify = process.env.BA_MINIFY === "1" || process.argv.includes("--minify");
 const sourcemap = process.env.BA_SOURCEMAP === "1" || process.argv.includes("--sourcemap");
+const analyze = process.argv.includes("--analyze");
 const browserOutFile = join(root, "public/assets/chat/ai-sdk-browser.mjs");
 const workerOutFile = join(root, "public/assets/chat/workers/llm-browser-ai.worker.mjs");
 const transformersStubNamespace = "ba-transformers-main-thread-stub";
@@ -209,6 +210,13 @@ async function main() {
   });
 
   assertRuntimePlacement(browserBuild, workerBuild);
+
+  if (analyze) {
+    console.log("\nMain-thread bundle composition:\n");
+    console.log(await esbuild.analyzeMetafile(browserBuild.metafile));
+    console.log("\nWorker bundle composition:\n");
+    console.log(await esbuild.analyzeMetafile(workerBuild.metafile));
+  }
 
   console.log(`LLM AI SDK bundles written (${minify ? "minified" : "dev"}, sourcemap ${sourcemap ? "on" : "off"}).`);
   console.log(`  public/assets/chat/ai-sdk-browser.mjs ${sizeSummary(browserOutFile)}`);
