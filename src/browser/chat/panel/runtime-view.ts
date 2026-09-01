@@ -215,7 +215,6 @@ export function createRuntimeView(hooks: RuntimeViewHooks): RuntimeView {
     if (warnings) {
       const warningLabel = (message: string): string => {
         if (/tool/i.test(message)) return t("panel.llm.warning.toolsUnknown");
-        if (/thinking|reasoning/i.test(message)) return t("panel.llm.warning.thinkingUnknown");
         if (/chat.?template/i.test(message)) return t("panel.llm.warning.chatTemplate");
         if (/onnx/i.test(message)) return t("panel.llm.warning.onnx");
         if (/inspect|validat/i.test(message)) return t("panel.llm.warning.unvalidated");

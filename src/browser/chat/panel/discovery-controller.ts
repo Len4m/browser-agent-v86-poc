@@ -416,7 +416,6 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
         capabilities: details.capabilities,
         warnings: [
           ...(details.capabilities.tools ? [] : ["Ollama does not announce tool support; the user profile remains authoritative."]),
-          ...(details.capabilities.thinking ? [] : ["Ollama does not announce thinking support."]),
         ],
         inspected: true,
       };

@@ -87,7 +87,6 @@ export async function inspectTransformersModel(
   if (!files.some((file) => file.endsWith(".onnx") || file.includes(".onnx_"))) warnings.push("No ONNX model file was resolved.");
   if (!chatTemplate) warnings.push("No chat template was declared.");
   if (capabilities.tools !== true) warnings.push("Tool calling is not declared; the user profile will be used.");
-  if (capabilities.thinking !== true) warnings.push("Thinking is not declared; extraction remains configurable.");
   return {
     modelId: normalized,
     availableDtypes,

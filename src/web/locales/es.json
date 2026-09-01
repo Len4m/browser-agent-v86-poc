@@ -501,7 +501,6 @@
   "panel.llm.warning.chatTemplate": "Sin plantilla de chat",
   "panel.llm.warning.inspectionError": "Error de inspección",
   "panel.llm.warning.onnx": "Archivos ONNX incompletos",
-  "panel.llm.warning.thinkingUnknown": "Thinking no anunciado",
   "panel.llm.warning.toolsUnknown": "Tools no anunciadas",
   "panel.llm.warning.unvalidated": "Carga sin validar",
   "panel.llm.status.checkingGpu": "Comprobando GPU…",
