@@ -5,6 +5,7 @@
 import type { LanguageModel } from "ai";
 import { initI18n, t } from "../../app/i18n";
 import type { LlmModelConfig } from "../state/chat-state";
+import type { ModelInspection } from "../models/model-types";
 import type { AiSdkBridgeApi, AiSdkRunAgentStreamTurnOptions, AiSdkRunAgentStreamTurnResult, AiSdkToolConfig } from "./ai-sdk-runtime";
 import {
   tool,
@@ -161,6 +162,56 @@ function createWorker({ disposeGenerationCacheBeforeGenerate = false }: { dispos
   return activeWorker;
 }
 
+function workerBundleUrl(): URL {
+  workerUrl ||= new URL("./chat/workers/llm-browser-ai.worker.mjs", import.meta.url);
+  return new URL(workerUrl.href);
+}
+
+function createInspectionWorker(): Worker {
+  const worker = new Worker(workerBundleUrl(), { type: "module" });
+  worker.addEventListener("message", (event) => forwardWorkerDiagnostic(event.data));
+  return worker;
+}
+
+async function inspectModel(
+  modelId: string,
+  { dtype, timeoutMs = 120_000 }: { dtype?: string; timeoutMs?: number } = {},
+): Promise<ModelInspection> {
+  const normalized = modelId.trim();
+  if (!normalized) throw new Error("Modelo no configurado.");
+  unloadModel();
+  const worker = createInspectionWorker();
+  const requestId = globalThis.crypto?.randomUUID?.() || `inspect-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  try {
+    return await new Promise<ModelInspection>((resolve, reject) => {
+      const timeout = window.setTimeout(() => reject(new Error("Model inspection timed out")), timeoutMs);
+      const finish = (callback: () => void): void => {
+        window.clearTimeout(timeout);
+        callback();
+      };
+      worker.addEventListener("message", (event) => {
+        const value = isRecord(event.data) ? event.data : null;
+        if (!value || value.status !== "model-inspection" || value.requestId !== requestId) return;
+        if (typeof value.error === "string") {
+          finish(() => reject(new Error(value.error as string)));
+          return;
+        }
+        if (!isRecord(value.result)) {
+          finish(() => reject(new Error("Model inspection returned an invalid result")));
+          return;
+        }
+        finish(() => resolve(value.result as unknown as ModelInspection));
+      });
+      worker.addEventListener("error", (event) => {
+        finish(() => reject(event.error || new Error(event.message || "Model inspection worker failed")));
+      }, { once: true });
+      worker.postMessage({ type: "inspect-model", requestId, modelId: normalized, dtype });
+    });
+  } finally {
+    worker.terminate();
+  }
+}
+
 function shouldUseReasoningMiddleware(modelConfig: LlmModelConfig): boolean {
   const thinking = modelConfig?.thinking;
   if (!thinking?.enabled || !thinking?.extract?.tagName) return false;
@@ -213,7 +264,7 @@ function createModel(modelConfig: LlmModelConfig): LanguageModelV4 {
     const endpoint = resolveOllamaEndpoint();
     base = ollamaBrowser(modelConfig.model, {
       endpoint,
-      think: typeof modelConfig.thinking?.generate === "boolean" ? modelConfig.thinking.generate : undefined,
+      think: modelConfig.thinking?.generate,
     });
     runtime = {
       provider: "ollama",
@@ -252,12 +303,12 @@ function createModel(modelConfig: LlmModelConfig): LanguageModelV4 {
 
 function buildWasmFallbackConfig(modelConfig: LlmModelConfig): LlmModelConfig | null {
   if ((modelConfig?.engine || "transformersjs") !== "transformersjs") return null;
-  if ((modelConfig.device || "webgpu") !== "webgpu") return null;
+  if ((modelConfig.device || "auto") !== "auto") return null;
   return {
     ...modelConfig,
     id: `${modelConfig.id || "custom-transformersjs"}-wasm-fallback`,
     device: "wasm",
-    dtype: typeof modelConfig.wasmDtype === "string" ? modelConfig.wasmDtype : "auto",
+    dtype: typeof modelConfig.wasmDtype === "string" ? modelConfig.wasmDtype : "q8",
     fallbackFrom: modelConfig.id || modelConfig.model,
     fallbackReason: "webgpu-runtime-failure",
   };
@@ -384,6 +435,7 @@ export const aiSdkApi = {
   tool: createAiSdkTool,
   z: z as unknown as AiSdkBridgeApi["z"],
   loadModel: loadBridgeModel,
+  inspectModel,
   unloadModel,
   getActiveModel,
   getActiveModelConfig,

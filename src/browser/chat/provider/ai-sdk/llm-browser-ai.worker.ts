@@ -1,5 +1,7 @@
 // Built to public/assets/chat/workers/llm-browser-ai.worker.mjs via pnpm build
 import { TransformersJSWorkerHandler } from "@browser-ai/transformers-js";
+import { ModelRegistry } from "@huggingface/transformers";
+import { inspectTransformersModel, type ModelRegistryLike } from "../../models/transformers-inspection";
 
 const handler = new TransformersJSWorkerHandler();
 type WorkerHandlerMessage = Parameters<TransformersJSWorkerHandler["onmessage"]>[0];
@@ -70,6 +72,30 @@ function isGenerateMessage(message: unknown): boolean {
     && (message as Record<string, unknown>).type === "generate";
 }
 
+function inspectionMessage(message: unknown): { requestId: string; modelId: string; dtype?: string } | null {
+  if (typeof message !== "object" || message === null) return null;
+  const value = message as Record<string, unknown>;
+  if (value.type !== "inspect-model" || typeof value.requestId !== "string" || typeof value.modelId !== "string") return null;
+  return {
+    requestId: value.requestId,
+    modelId: value.modelId,
+    dtype: typeof value.dtype === "string" ? value.dtype : undefined,
+  };
+}
+
+async function inspectModel(message: { requestId: string; modelId: string; dtype?: string }): Promise<void> {
+  try {
+    const result = await inspectTransformersModel(ModelRegistry as unknown as ModelRegistryLike, message.modelId, { dtype: message.dtype });
+    self.postMessage({ status: "model-inspection", requestId: message.requestId, result });
+  } catch (error) {
+    self.postMessage({
+      status: "model-inspection",
+      requestId: message.requestId,
+      error: errorMessage(error),
+    });
+  }
+}
+
 async function disposeGenerationCache(message: unknown): Promise<void> {
   if (!disposeGenerationCacheBeforeGenerate || !isGenerateMessage(message)) return;
   const cacheHandler = handler as unknown as WorkerHandlerWithGenerationCache;
@@ -115,6 +141,11 @@ self.addEventListener("unhandledrejection", (event) => {
 
 self.onmessage = async (msg: MessageEvent<unknown>) => {
   try {
+    const inspection = inspectionMessage(msg.data);
+    if (inspection) {
+      await inspectModel(inspection);
+      return;
+    }
     await disposeGenerationCache(msg.data);
     handler.onmessage(msg as WorkerHandlerMessage);
   } catch (error) {

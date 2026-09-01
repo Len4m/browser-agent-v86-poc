@@ -22,7 +22,7 @@ type LocalNetworkRequestInit = RequestInit & {
 
 export interface OllamaBrowserOptions {
   endpoint?: string;
-  think?: boolean;
+  think?: boolean | "low" | "medium" | "high" | "max";
 }
 
 export type OllamaBrowserModel = LanguageModelV4 & {
@@ -305,7 +305,9 @@ function ollamaToolCalls(value: unknown): unknown[] {
 
 export function ollamaBrowser(modelId: string, options: OllamaBrowserOptions = {}): OllamaBrowserModel {
   const endpoint = normalizeEndpoint(options.endpoint);
-  const think = typeof options.think === "boolean" ? options.think : undefined;
+  const think = typeof options.think === "boolean" || ["low", "medium", "high", "max"].includes(String(options.think))
+    ? options.think
+    : undefined;
 
   async function assertAvailable(): Promise<void> {
     const tags = await fetchJson<{ models?: Array<{ name?: string; model?: string }> }>(endpoint, "/api/tags", {

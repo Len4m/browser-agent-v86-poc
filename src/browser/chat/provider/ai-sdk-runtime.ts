@@ -9,6 +9,7 @@ import type {
   TypedToolCall,
 } from "ai";
 import type { LlmModelConfig } from "../state/chat-state";
+import type { ModelInspection } from "../models/model-types";
 
 export interface AiSdkSchemaLike {
   describe: (text: string) => AiSdkSchemaLike;
@@ -80,6 +81,7 @@ export interface AiSdkBridgeApi {
   z: AiSdkZodLike;
   tool: (config: AiSdkToolConfig) => unknown;
   unloadModel: () => void;
+  inspectModel: (modelId: string, options?: { dtype?: string; timeoutMs?: number }) => Promise<ModelInspection>;
   loadModel: (modelConfig: LlmModelConfig, options?: { onProgress?: (detail: Record<string, unknown>) => void }) => Promise<void>;
   getActiveModel: () => unknown;
   getActiveModelConfig: () => LlmModelConfig | null;
