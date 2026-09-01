@@ -1,19 +1,19 @@
-// Browser Agent v86 - LLM state.
-// The model catalog is imported as typed data and runtime state is owned by
-// this module.
+// Browser Agent v86 - dynamic LLM state.
 
 import { t } from "../../app/i18n";
 import { appEvents } from "../../core/events";
-import llmModelsRaw from "../../../../data/llm-models.json";
+import type { DiscoveredModel, LlmEngine, LlmUserProfile, ModelInspection, ToolStrategy } from "../models/model-types";
+import { modelKey } from "../models/model-types";
+import { defaultProfile, loadProfiles, resolveProfile } from "../models/model-profiles";
 
-interface LlmAgentMeta {
+export interface LlmAgentMeta {
   maxSteps: number;
   maxNativeTools: number;
   toolCalling: "weak" | "fair" | "good";
+  toolStrategy?: ToolStrategy;
   selfSelectTools?: boolean;
+  activeToolNames?: string[];
 }
-
-type LlmAgentInput = Partial<LlmAgentMeta>;
 
 interface LlmReasoningExtract {
   tagName: string;
@@ -22,11 +22,8 @@ interface LlmReasoningExtract {
 }
 
 interface LlmThinkingMeta {
-  // Catalog input.
-  mode?: "off" | "optional" | "on";
-  // Derived runtime fields (filled by mergeThinkingMeta).
   enabled?: boolean;
-  generate?: boolean;
+  generate?: boolean | "low" | "medium" | "high" | "max";
   extract?: LlmReasoningExtract;
 }
 
@@ -49,27 +46,25 @@ export interface LlmContextPolicy {
 
 export interface LlmModelConfig {
   id: string;
-  engine: string;
-  notes?: string[];
-  ramGB?: number;
-  vramGB?: number;
-  sizeLabel?: string;
+  engine: LlmEngine;
   model?: string;
+  label?: string;
+  sizeLabel?: string;
+  sizeBytes?: number;
   device?: string;
   dtype?: string;
-  custom?: boolean;
-  requiresShaderF16?: boolean;
-  agentProfile?: string;
+  wasmDtype?: string;
   temperature?: number;
   topP?: number;
   contextWindowTokens?: number;
   reuseGenerationCache?: boolean;
-  contextPreset?: string;
-  contextOverride?: LlmContextPolicy;
   contextPolicy?: LlmContextPolicy;
-  agentOverride?: LlmAgentInput;
-  agent?: LlmAgentInput | LlmAgentMeta;
+  agent?: LlmAgentMeta;
   thinking?: LlmThinkingMeta;
+  profile?: LlmUserProfile;
+  inspection?: ModelInspection | null;
+  discovered?: DiscoveredModel | null;
+  capabilities?: unknown;
   runtime?: {
     provider?: string;
     endpoint?: string;
@@ -116,227 +111,41 @@ export interface LlmState {
 }
 
 type LlmEventType =
-  | "artifact"
-  | "artifact-clear"
-  | "artifact-context"
-  | "artifact-remove"
-  | "capabilities"
-  | "context"
-  | "native-tools"
-  | "progress"
-  | "resource"
-  | "status"
-  | "tool-done"
-  | "tool-error"
-  | "tool-policy"
-  | "tool-start";
+  | "artifact" | "artifact-clear" | "artifact-context" | "artifact-remove"
+  | "capabilities" | "context" | "native-tools" | "progress" | "resource"
+  | "status" | "tool-done" | "tool-error" | "tool-policy" | "tool-start";
 
 interface LlmEventsApi {
   emit: (type: LlmEventType, detail?: Record<string, unknown>) => void;
   on: (type: LlmEventType, listener: (detail: Record<string, unknown>) => void) => () => void;
 }
 
-function transformersContextPolicy(policy: LlmContextPolicy): LlmContextPolicy {
-  return {
-    contextWindowTokens: 4096,
-    maxHistoryMessages: 1,
-    ...policy,
-  };
-}
-
-const CONTEXT_POLICY_PRESETS: Record<string, LlmContextPolicy> = {
-  "browser-tools-sm": transformersContextPolicy({
-    safeInputTokens: 1100,
-    maxSystemChars: 780,
-    maxRuntimeChars: 300,
-    maxHistoryChars: 350,
-    maxToolResultChars: 1800,
-    maxToolResultCharsForSynthesis: 1000,
-  }),
-  "browser-tools-md": transformersContextPolicy({
-    safeInputTokens: 1250,
-    maxSystemChars: 820,
-    maxRuntimeChars: 320,
-    maxHistoryChars: 550,
-    maxToolResultChars: 2200,
-    maxToolResultCharsForSynthesis: 1300,
-  }),
-  "browser-tools-xs": transformersContextPolicy({
-    safeInputTokens: 1050,
-    maxSystemChars: 740,
-    maxRuntimeChars: 280,
-    maxHistoryChars: 320,
-    maxToolResultChars: 1600,
-    maxToolResultCharsForSynthesis: 900,
-  }),
-  "browser-tools-lg": transformersContextPolicy({
-    safeInputTokens: 1350,
-    maxSystemChars: 860,
-    maxRuntimeChars: 340,
-    maxHistoryChars: 650,
-    maxToolResultChars: 2400,
-    maxToolResultCharsForSynthesis: 1400,
-  }),
-  "browser-tools-xl": transformersContextPolicy({
-    safeInputTokens: 1400,
-    maxSystemChars: 900,
-    maxRuntimeChars: 360,
-    maxHistoryChars: 700,
-    maxToolResultChars: 2600,
-    maxToolResultCharsForSynthesis: 1500,
-  }),
-  "browser-chat-fallback": transformersContextPolicy({
-    safeInputTokens: 900,
-    maxSystemChars: 560,
-    maxRuntimeChars: 220,
-    maxHistoryMessages: 0,
-    maxHistoryChars: 0,
-    maxToolResultChars: 0,
-    maxToolResultCharsForSynthesis: 0,
-  }),
-};
-
-const rawModels = llmModelsRaw as unknown as LlmModelConfig[];
+const dynamicModels = new Map<string, LlmModelConfig>();
 let llmState: LlmState | null = null;
 
-function defaultAgentMeta(model: LlmModelConfig): LlmAgentMeta {
-  if (model.engine === "ollama") {
-    return {
-      maxSteps: 4,
-      maxNativeTools: 10,
-      toolCalling: "good",
-    };
-  }
-  if (model.agentProfile === "tools-weak") {
-    return {
-      maxSteps: 1,
-      maxNativeTools: 1,
-      toolCalling: "weak",
-    };
-  }
-  if (model.agentProfile === "tools-light-good") {
-    return {
-      maxSteps: 3,
-      maxNativeTools: 4,
-      toolCalling: "good",
-    };
-  }
-  if (model.agentProfile === "tools-good") {
-    return {
-      maxSteps: 3,
-      maxNativeTools: 10,
-      toolCalling: "good",
-    };
-  }
-  if (model.agentProfile === "tools-fair") {
-    return {
-      maxSteps: 3,
-      maxNativeTools: 5,
-      toolCalling: "fair",
-    };
-  }
-  return {
-    maxSteps: 3,
-    maxNativeTools: 5,
-    toolCalling: "fair",
-  };
+function storageProfiles(): Record<string, LlmUserProfile> {
+  try { return loadProfiles(window.localStorage); } catch { return {}; }
 }
 
-function mergeAgentMeta(model: LlmModelConfig): LlmAgentMeta {
-  const base = defaultAgentMeta(model);
-  const override = model.agentOverride || {};
-  return {
-    ...base,
-    ...override,
-  };
+function thinkGenerate(profile: LlmUserProfile): LlmThinkingMeta["generate"] {
+  if (profile.engine !== "ollama") return profile.transformersThinking?.enabled;
+  if (profile.ollamaThink === "auto") return undefined;
+  if (profile.ollamaThink === "off") return false;
+  if (profile.ollamaThink === "on") return true;
+  return profile.ollamaThink;
 }
 
-const LOW_TEMPERATURE_PROFILES = new Set(["tools-good", "tools-fair"]);
-
-function defaultSampling(model: LlmModelConfig): { temperature: number; topP: number } {
-  const temperature = model.agentProfile && LOW_TEMPERATURE_PROFILES.has(model.agentProfile) ? 0.1 : 0.15;
-  return { temperature, topP: 0.85 };
-}
-
-function mergeThinkingMeta(model: LlmModelConfig): LlmThinkingMeta {
-  const mode = model.thinking?.mode;
-  const extract = model.thinking?.extract;
-  return {
-    enabled: mode === "optional" || mode === "on",
-    generate: mode === undefined ? undefined : mode === "on",
-    extract: extract?.tagName
-      ? {
-          tagName: extract.tagName,
-          startWithReasoning: extract.startWithReasoning,
-          separator: extract.separator,
-        }
-      : undefined,
-  };
-}
-
-function llmEngineLabel(engine: unknown): string {
-  return engine === "ollama" ? "Ollama local HTTP" : "Transformers.js v4";
-}
-
-function llmModelName(model: LlmModelConfig): string {
-  const value = typeof model.model === "string" && model.model.trim() ? model.model.trim() : "custom";
-  return model.engine === "ollama" ? value : value.split("/").pop() || value;
-}
-
-function llmTransformersDeviceLabel(model: Pick<LlmModelConfig, "engine" | "device" | "runtime">): string {
-  if (model.engine !== "transformersjs") return "";
-  const device = model.runtime?.device || model.device || "webgpu";
-  if (device === "wasm") return t("common.wasm");
-  if (device === "webgpu") return t("checks.item.webgpu");
-  return device;
-}
-
-export function llmEngineMetaLabel(model: LlmModelConfig): string {
-  const base = llmEngineLabel(model.engine);
-  if (model.engine !== "transformersjs") return base;
-  return `${base} · ${llmTransformersDeviceLabel(model)}`;
-}
-
-export function llmModelLabel(model: LlmModelConfig): string {
-  const base = `${model.engine === "ollama" ? "Ollama" : "Transformers.js"} · ${llmModelName(model)}`;
-  if (model.engine !== "transformersjs") return base;
-  return `${base} · ${llmTransformersDeviceLabel(model)}`;
-}
-
-export function llmModelShortLabel(model: LlmModelConfig): string {
-  return llmModelName(model);
-}
-
-export function llmModelRequiresWebGPU(model: LlmModelConfig | null | undefined): boolean {
-  return (model?.engine || "transformersjs") === "transformersjs" && (model?.device || "webgpu") === "webgpu";
-}
-
-const customModels: LlmModelConfig[] = [
-  {
-    id: "custom-ollama",
-    engine: "ollama",
-    model: "",
-    custom: true,
-    contextWindowTokens: 8192,
-  },
-  {
-    id: "custom-transformersjs",
-    engine: "transformersjs",
-    model: "",
-    dtype: "auto",
-    custom: true,
-  },
-];
-
-function defaultContextMeta(model: LlmModelConfig): Pick<LlmModelConfig, "contextWindowTokens" | "contextPolicy"> {
-  const contextWindowTokens = Number(model.contextWindowTokens) || (model.engine === "ollama" ? 8192 : 4096);
-  if (model.engine === "ollama") {
-    return {
-      contextWindowTokens,
-      contextPolicy: {
+export function modelConfigFromProfile(
+  profile: LlmUserProfile,
+  discovered: DiscoveredModel | null = null,
+  inspection: ModelInspection | null = null,
+): LlmModelConfig {
+  const contextWindowTokens = profile.contextWindowTokens;
+  const enginePolicy: LlmContextPolicy = profile.engine === "ollama"
+    ? {
         contextWindowTokens,
-        safeInputTokens: Math.min(6000, Math.max(2400, contextWindowTokens - 2200)),
-        reservedOutputTokens: 2048,
+        safeInputTokens: profile.safeInputTokens,
+        reservedOutputTokens: profile.maxOutputTokens,
         maxSystemChars: 2600,
         maxRuntimeChars: 1200,
         maxHistoryMessages: 8,
@@ -344,40 +153,129 @@ function defaultContextMeta(model: LlmModelConfig): Pick<LlmModelConfig, "contex
         maxToolResultChars: 20000,
         maxToolResultCharsForSynthesis: 8000,
         maxArtifacts: 4,
-      },
-    };
-  }
+      }
+    : {
+        contextWindowTokens,
+        safeInputTokens: profile.safeInputTokens,
+        reservedOutputTokens: profile.maxOutputTokens,
+        maxSystemChars: 900,
+        maxRuntimeChars: 420,
+        maxHistoryMessages: 2,
+        maxHistoryChars: 1000,
+        maxToolResultChars: 2400,
+        maxToolResultCharsForSynthesis: 1400,
+        maxArtifacts: 1,
+      };
   return {
+    id: modelKey(profile.engine, profile.modelId),
+    engine: profile.engine,
+    model: profile.modelId,
+    label: discovered?.label || profile.modelId,
+    sizeBytes: inspection?.downloadSizeBytes || discovered?.sizeBytes,
+    device: profile.device,
+    dtype: profile.dtype,
+    temperature: profile.temperature,
+    topP: profile.topP,
     contextWindowTokens,
-    contextPolicy: { contextWindowTokens, safeInputTokens: 1800 },
+    reuseGenerationCache: profile.reuseGenerationCache,
+    contextPolicy: {
+      ...enginePolicy,
+      maxOutputTokens: profile.maxOutputTokens,
+      maxNewTokensForPlan: profile.maxNewTokensForPlan,
+    },
+    agent: {
+      maxSteps: profile.maxSteps,
+      maxNativeTools: profile.maxNativeTools,
+      toolCalling: profile.toolCalling,
+      toolStrategy: profile.toolStrategy,
+      selfSelectTools: profile.toolStrategy === "model-first",
+      activeToolNames: profile.activeToolNames,
+    },
+    thinking: {
+      enabled: profile.engine === "ollama" ? profile.ollamaThink !== "off" : profile.transformersThinking?.enabled,
+      generate: thinkGenerate(profile),
+      extract: profile.engine === "transformersjs" && profile.transformersThinking?.tagName
+        ? { tagName: profile.transformersThinking.tagName, startWithReasoning: profile.transformersThinking.startWithReasoning }
+        : undefined,
+    },
+    profile,
+    inspection,
+    discovered,
+    capabilities: inspection?.capabilities,
   };
 }
 
-function withModelCapabilities(model: LlmModelConfig): LlmModelConfig {
-  const ctx = defaultContextMeta(model);
-  const preset = typeof model.contextPreset === "string" ? CONTEXT_POLICY_PRESETS[model.contextPreset] : null;
-  const sampling = defaultSampling(model);
-  return {
-    ...model,
-    temperature: model.temperature ?? sampling.temperature,
-    topP: model.topP ?? sampling.topP,
-    contextWindowTokens: model.contextWindowTokens ?? ctx.contextWindowTokens,
-    contextPolicy: { ...(ctx.contextPolicy || {}), ...(preset || {}), ...(model.contextOverride || {}) },
-    agent: mergeAgentMeta(model),
-    thinking: mergeThinkingMeta(model),
-  };
+export function registerDiscoveredModel(
+  discovered: DiscoveredModel,
+  inspection: ModelInspection | null = null,
+  selection: Partial<LlmUserProfile> | null = null,
+): LlmModelConfig {
+  const saved = storageProfiles()[discovered.key];
+  const profile = resolveProfile(discovered.engine, discovered.modelId, inspection, saved, selection);
+  const config = modelConfigFromProfile(profile, discovered, inspection);
+  dynamicModels.set(config.id, config);
+  return config;
 }
 
-function createInitialLlmState(models: LlmModelConfig[]): LlmState {
+export function registerModelProfile(profile: LlmUserProfile, inspection: ModelInspection | null = null): LlmModelConfig {
+  const config = modelConfigFromProfile(profile, null, inspection);
+  dynamicModels.set(config.id, config);
+  return config;
+}
+
+export function getLlmModels(): LlmModelConfig[] { return [...dynamicModels.values()]; }
+export function findLlmModel(id: string | null | undefined): LlmModelConfig | null { return id ? dynamicModels.get(id) || null : null; }
+export function getSelectedLlmModel(): LlmModelConfig | null { return findLlmModel(llmState?.selectedModelId) || llmState?.activeModel || null; }
+
+export function selectLlmModel(config: LlmModelConfig): void {
+  dynamicModels.set(config.id, config);
+  if (llmState) {
+    llmState.selectedModelId = config.id;
+    llmState.settings.nativeToolNames = [...(config.agent?.activeToolNames || [])];
+    llmState.settings.showThinking = Boolean(config.profile?.showThinking);
+  }
+  llmEventsApi.emit("status", { selectedModelId: config.id });
+}
+
+export function defaultModelConfig(engine: LlmEngine, modelId: string): LlmModelConfig {
+  return modelConfigFromProfile(defaultProfile(engine, modelId));
+}
+
+function llmEngineLabel(engine: unknown): string { return engine === "ollama" ? "Ollama local HTTP" : "Transformers.js v4"; }
+function llmModelName(model: LlmModelConfig): string {
+  const name = model.model || "";
+  return model.engine === "ollama" ? name : name.split("/").pop() || name;
+}
+
+function llmTransformersDeviceLabel(model: Pick<LlmModelConfig, "engine" | "device" | "runtime">): string {
+  if (model.engine !== "transformersjs") return "";
+  const device = model.runtime?.device || model.device || "auto";
+  if (device === "wasm") return t("common.wasm");
+  if (device === "webgpu") return t("checks.item.webgpu");
+  return device;
+}
+
+export function llmEngineMetaLabel(model: LlmModelConfig): string {
+  const base = llmEngineLabel(model.engine);
+  return model.engine === "transformersjs" ? `${base} · ${llmTransformersDeviceLabel(model)}` : base;
+}
+export function llmModelLabel(model: LlmModelConfig): string {
+  const base = `${model.engine === "ollama" ? "Ollama" : "Transformers.js"} · ${llmModelName(model)}`;
+  return model.engine === "transformersjs" ? `${base} · ${llmTransformersDeviceLabel(model)}` : base;
+}
+export function llmModelShortLabel(model: LlmModelConfig): string { return llmModelName(model); }
+export function llmModelRequiresWebGPU(model: LlmModelConfig | null | undefined): boolean { return model?.engine === "transformersjs" && model.device === "webgpu"; }
+
+function createInitialLlmState(): LlmState {
   return {
-    version: "v9.38.0-ai-sdk-browser",
-    providerName: "transformersjs",
-    providerLabel: "AI SDK + Transformers.js",
+    version: "v9.39.0-dynamic-models",
+    providerName: "dynamic",
+    providerLabel: "AI SDK + dynamic local models",
     available: true,
     loaded: false,
     loading: false,
     generating: false,
-    selectedModelId: models.find((model) => model.engine === "transformersjs")?.id || models[0]?.id || "",
+    selectedModelId: "",
     activeModel: null,
     capabilities: null,
     capabilitiesChecked: false,
@@ -390,45 +288,19 @@ function createInitialLlmState(models: LlmModelConfig[]): LlmState {
     contextArtifactId: null,
     lastError: "",
     settings: {
-      // Maximum security level the agent may run without confirmation.
-      // 1 = safe reads inside the VM; higher levels are reserved for future tools.
       toolAutonomyMaxLevel: Number(window.localStorage.getItem("ba.llm.toolAutonomyMaxLevel") || "1"),
       maxToolStepsPerTurn: 4,
       nativeToolNames: [],
       showThinking: false,
-      systemPrompt: [
-        t("prompt.system.role"),
-        t("prompt.system.realData"),
-        t("prompt.system.toolFallback"),
-        t("prompt.system.artifacts"),
-        t("prompt.system.style"),
-      ].join(" "),
+      systemPrompt: [t("prompt.system.role"), t("prompt.system.realData"), t("prompt.system.toolFallback"), t("prompt.system.artifacts"), t("prompt.system.style")].join(" "),
     },
   };
 }
 
-export const llmModels: LlmModelConfig[] = rawModels.map(withModelCapabilities);
-export const llmCustomModels: LlmModelConfig[] = customModels.map(withModelCapabilities);
-export const llmModelOptions: LlmModelConfig[] = [...llmModels, ...llmCustomModels];
-
-function appLlmEventName(type: LlmEventType): `llm:${LlmEventType}` {
-  return `llm:${type}`;
-}
-
+function appLlmEventName(type: LlmEventType): `llm:${LlmEventType}` { return `llm:${type}`; }
 export const llmEventsApi: LlmEventsApi = {
-  emit(type, detail = {}) {
-    appEvents.emit(appLlmEventName(type), detail);
-  },
-  on(type, listener) {
-    return appEvents.on(appLlmEventName(type), listener);
-  },
+  emit(type, detail = {}) { appEvents.emit(appLlmEventName(type), detail); },
+  on(type, listener) { return appEvents.on(appLlmEventName(type), listener); },
 };
-
-export function getLlmState(): LlmState | null {
-  return llmState;
-}
-
-export function installLlmState(): void {
-  if (llmState) return;
-  llmState = createInitialLlmState(llmModels);
-}
+export function getLlmState(): LlmState | null { return llmState; }
+export function installLlmState(): void { llmState ||= createInitialLlmState(); }

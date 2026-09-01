@@ -81,7 +81,7 @@ test("Ollama discovery exposes every installed model and objective details", asy
     return jsonResponse({
       capabilities: ["completion", "tools", "thinking"],
       template: "{{ .Tools }}",
-      parameters: "temperature 0.2",
+      parameters: "temperature 0.2\nnum_ctx 16384",
       model_info: { "qwen.context_length": 32768 },
     });
   };
@@ -89,7 +89,7 @@ test("Ollama discovery exposes every installed model and objective details", asy
   assert.deepEqual(models.map((model) => model.modelId), ["qwen:latest", "plain:1b"]);
   const details = await inspectOllamaModel(fetcher, "http://localhost:11434/", models[0]);
   assert.deepEqual(details.capabilities, { chat: true, tools: true, thinking: true, vision: false });
-  assert.equal(details.contextWindowTokens, 32768);
+  assert.equal(details.contextWindowTokens, 16384);
   assert.equal(requests[1].init?.method, "POST");
   assert.equal(requests[1].init?.body, JSON.stringify({ model: "qwen:latest" }));
 });

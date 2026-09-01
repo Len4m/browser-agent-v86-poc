@@ -4,7 +4,7 @@
 // and derives max output from the remaining room.
 
 import { t } from "../../app/i18n";
-import { getLlmState, llmModelOptions, type LlmContextPolicy, type LlmModelConfig } from "../state/chat-state";
+import { defaultModelConfig, getLlmState, getSelectedLlmModel, type LlmContextPolicy, type LlmModelConfig } from "../state/chat-state";
 import { llmArtifacts, type LlmArtifact } from "./artifact-store";
 import { llmResourceGovernor } from "./resource-governor";
 import { llmToolRegistry } from "../tools/tool-registry";
@@ -115,10 +115,7 @@ function getRawPolicy(modelConfig: LlmModelConfig | null = getModelConfig()): Co
   };
 }
 
-const FALLBACK_MODEL: LlmModelConfig = {
-  id: "custom-transformersjs",
-  engine: "transformersjs",
-};
+const FALLBACK_MODEL: LlmModelConfig = defaultModelConfig("transformersjs", "");
 
 function textValue(value: unknown): string {
   if (typeof value === "string") return value;
@@ -143,8 +140,7 @@ function messageFromUnknown(value: unknown): ChatMessage | null {
 function getModelConfig(): LlmModelConfig {
   const llmState = getLlmState();
   return llmState?.activeModel
-    || llmModelOptions.find((item) => item.id === llmState?.selectedModelId)
-    || llmModelOptions[0]
+    || getSelectedLlmModel()
     || FALLBACK_MODEL;
 }
 

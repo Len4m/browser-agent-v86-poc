@@ -9,7 +9,37 @@ import { appEvents } from "../../core/events";
 import { showBaModal, showBaModalPanel } from "../../ui/modal";
 import { getSelectedProfile, type VmProfile } from "../../vm/profile-config";
 import { ensureLLMCapabilities, syncLLMCapabilityBadges, type LlmCapabilities } from "../state/capabilities";
-import { getLlmState, llmEngineMetaLabel, llmEventsApi, llmModelOptions, llmModelRequiresWebGPU, llmModelShortLabel, llmModels, type LlmModelConfig } from "../state/chat-state";
+import {
+  defaultModelConfig,
+  findLlmModel,
+  getLlmModels,
+  getLlmState,
+  getSelectedLlmModel,
+  llmEngineMetaLabel,
+  llmEventsApi,
+  llmModelRequiresWebGPU,
+  llmModelShortLabel,
+  registerDiscoveredModel,
+  registerModelProfile,
+  selectLlmModel,
+  type LlmModelConfig,
+} from "../state/chat-state";
+import { discoverOllamaModels, HfModelSearchService, inspectOllamaModel } from "../models/model-discovery";
+import type { DiscoveredModel, LlmEngine, LlmUserProfile, ModelInspection, OllamaThinkMode, ToolCallingQuality, ToolStrategy } from "../models/model-types";
+import { modelKey } from "../models/model-types";
+import {
+  defaultProfile,
+  exportProfiles,
+  importProfiles,
+  loadHfRecents,
+  loadProfiles,
+  PROFILES_STORAGE_KEY,
+  recordHfRecent,
+  saveProfile,
+  validateProfile,
+} from "../models/model-profiles";
+import { chooseTransformersRuntime } from "../models/transformers-inspection";
+import { getAiSdkReady } from "../provider/ai-sdk-runtime";
 import { llmAgent } from "../runtime/agent-loop";
 import { llmArtifacts, type LlmArtifactSummary } from "../runtime/artifact-store";
 import { llmContextBudget } from "../runtime/context-budget";
@@ -20,11 +50,6 @@ import { llmToolRegistry } from "../tools/tool-registry";
 import type { LlmToolRegistryApi, ToolMetadata } from "../tools/types";
 import { llmPanelCapabilities } from "./capabilities-view";
 import { llmPanelTemplate } from "./template";
-
-interface CompatibleFallbackOptions {
-  noWebGPU?: boolean;
-  noF16?: boolean;
-}
 
 interface ProgressDetail {
   status?: string;
@@ -67,6 +92,10 @@ interface NativeToolsPickerState {
 
 const fmt = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 1 });
 let initialized = false;
+const hfSearch = new HfModelSearchService();
+let hfNextUrl: string | null = null;
+let hfResults: DiscoveredModel[] = [];
+let ollamaResults: DiscoveredModel[] = [];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -158,50 +187,341 @@ function findLLMPanelBody(): HTMLElement | null {
 
 function getSelectedModel(): LlmModelConfig {
   const select = selectedModelSelect();
-  return llmModelOptions.find((item) => item.id === select?.value)
-    || llmModelOptions[0]
-    || { id: "custom-transformersjs", engine: "transformersjs" };
-}
-
-function compatibleFallbackFor(model: LlmModelConfig, { noWebGPU = false, noF16 = false }: CompatibleFallbackOptions = {}): LlmModelConfig {
-  if (noWebGPU) {
-    return llmModels.find((item) => item.engine === "transformersjs" && item.device === "wasm")
-      || llmModels.find((item) => item.device === "wasm")
-      || model;
-  }
-  if (!noF16 || !model.requiresShaderF16) return model;
-  const baseId = model.id.replace(/-q4f16$/, "-q4");
-  return llmModels.find((item) => item.id === baseId)
-    || llmModels.find((item) => item.engine === model.engine && item.model === model.model && item.device === "webgpu" && !item.requiresShaderF16)
-    || llmModels.find((item) => item.engine === "transformersjs" && item.device === "webgpu" && !item.requiresShaderF16)
-    || llmModels.find((item) => item.engine === "transformersjs" && item.device === "wasm")
-    || llmModels[0]
-    || model;
+  return findLlmModel(select?.value) || getSelectedLlmModel() || defaultModelConfig("transformersjs", "");
 }
 
 function updateModelOptionCompatibility(caps: LlmCapabilities | null): void {
+  const selected = getSelectedModel();
+  const dtype = document.getElementById("ba-llm-dtype");
+  if (dtype instanceof HTMLSelectElement) {
+    for (const option of Array.from(dtype.options)) {
+      option.disabled = Boolean(caps && !caps.shaderF16 && /f16/i.test(option.value));
+    }
+  }
+  if (caps && !caps.webgpu && selected.engine === "transformersjs" && selected.device === "webgpu") {
+    setStatus(t("panel.llm.status.requiresWebgpu"), "warn");
+  }
+}
+
+function selectElement(id: string): HTMLSelectElement | null {
+  const element = document.getElementById(id);
+  return element instanceof HTMLSelectElement ? element : null;
+}
+
+function setDiscoveryError(id: string, message = ""): void {
+  const element = document.getElementById(id);
+  if (!element) return;
+  element.textContent = message;
+  element.hidden = !message;
+}
+
+function formatDiscoveredModel(model: DiscoveredModel): string {
+  const details = isRecord(model.metadata.details) ? model.metadata.details : {};
+  const suffix = [
+    textValue(details.parameter_size),
+    textValue(details.quantization_level),
+    bytesLabel(model.sizeBytes),
+    model.downloads === undefined ? "" : `${model.downloads.toLocaleString()} ↓`,
+  ].filter(Boolean).join(" · ");
+  return suffix ? `${model.label} · ${suffix}` : model.label;
+}
+
+function renderDiscoveryOptions(select: HTMLSelectElement | null, models: DiscoveredModel[]): void {
+  if (!select) return;
+  const previous = select.value;
+  select.replaceChildren(...models.map((model) => {
+    const option = document.createElement("option");
+    option.value = model.key;
+    option.textContent = formatDiscoveredModel(model);
+    return option;
+  }));
+  if (models.some((model) => model.key === previous)) select.value = previous;
+}
+
+function renderRecents(): void {
+  const element = document.getElementById("ba-llm-hf-recents");
+  if (!element) return;
+  const recents = loadHfRecents(localStorage);
+  element.textContent = recents.length ? `Recent: ${recents.join(" · ")}` : "";
+}
+
+function recentDiscoveredModels(): DiscoveredModel[] {
+  return loadHfRecents(localStorage).map((modelId) => ({
+    key: modelKey("transformersjs", modelId),
+    engine: "transformersjs",
+    modelId,
+    label: `Recent · ${modelId}`,
+    private: false,
+    gated: false,
+    metadata: { recent: true },
+  }));
+}
+
+async function refreshHfModels({ append = false, force = false }: { append?: boolean; force?: boolean } = {}): Promise<void> {
+  const search = inputById("ba-llm-hf-search")?.value || "";
+  const results = selectElement("ba-llm-hf-results");
+  const more = document.getElementById("ba-llm-hf-more");
+  setDisabled(results, true);
+  setDiscoveryError("ba-llm-hf-error");
+  if (force) hfSearch.clearCache();
+  try {
+    const page = await hfSearch.search(search, append ? hfNextUrl : null);
+    const pageModels = append ? page.models : [...recentDiscoveredModels(), ...page.models];
+    hfResults = append
+      ? [...hfResults, ...pageModels.filter((model) => !hfResults.some((item) => item.key === model.key))]
+      : pageModels.filter((model, index, list) => list.findIndex((item) => item.key === model.key) === index);
+    hfNextUrl = page.nextUrl;
+    renderDiscoveryOptions(results, hfResults);
+    if (more instanceof HTMLButtonElement) more.hidden = !hfNextUrl;
+  } catch (error) {
+    if ((error as { name?: string })?.name !== "AbortError") setDiscoveryError("ba-llm-hf-error", errorMessage(error));
+  } finally {
+    setDisabled(results, false);
+  }
+}
+
+function ollamaEndpoint(): string {
+  return (inputById("ba-llm-ollama-endpoint")?.value
+    || localStorage.getItem("ba.llm.ollama.endpoint")
+    || "http://127.0.0.1:11434").trim().replace(/\/+$/g, "");
+}
+
+async function refreshOllamaModels(): Promise<void> {
+  const select = selectElement("ba-llm-ollama-models");
+  setDisabled(select, true);
+  setDiscoveryError("ba-llm-ollama-error");
+  try {
+    ollamaResults = await discoverOllamaModels(fetch, ollamaEndpoint());
+    renderDiscoveryOptions(select, ollamaResults);
+  } catch (error) {
+    ollamaResults = [];
+    renderDiscoveryOptions(select, []);
+    setDiscoveryError("ba-llm-ollama-error", errorMessage(error));
+  } finally {
+    setDisabled(select, false);
+  }
+}
+
+function refreshRegisteredModelSelect(config?: LlmModelConfig): void {
   const select = selectedModelSelect();
   if (!select) return;
+  select.innerHTML = llmPanelTemplate.modelOptionsHtml();
+  select.value = config?.id || ensureLlmState().selectedModelId;
+}
 
-  const noWebGPU = Boolean(caps && !caps.webgpu);
-  const noF16 = Boolean(caps && caps.webgpu && !caps.shaderF16);
-  for (const option of Array.from(select.options)) {
-    const model = llmModelOptions.find((item) => item.id === option.value);
-    if (!model) continue;
-    const needsWebGPU = llmModelRequiresWebGPU(model);
-    const disabled = Boolean((noWebGPU && needsWebGPU) || (noF16 && model.requiresShaderF16));
-    option.disabled = disabled;
-  }
+function failedInspection(modelId: string, error: unknown): ModelInspection {
+  return {
+    modelId,
+    availableDtypes: [],
+    files: [],
+    capabilities: { chat: null, tools: null, thinking: null, vision: null },
+    warnings: ["Inspection failed. Loading with dtype:auto has not been validated."],
+    inspected: false,
+    error: errorMessage(error),
+  };
+}
 
-  const selected = getSelectedModel();
-  const selectedNeedsWebGPU = llmModelRequiresWebGPU(selected);
-  if ((noWebGPU && selectedNeedsWebGPU) || (noF16 && selected.requiresShaderF16)) {
-    const fallback = compatibleFallbackFor(selected, { noWebGPU, noF16 });
-    select.value = fallback.id;
-    ensureLlmState().selectedModelId = fallback.id;
-    updateSelectedModelCard();
-    setStatus(noWebGPU ? t("panel.llm.status.switchedWasm") : t("panel.llm.status.switchedQ4"), "warn");
+async function selectTransformersModel(modelId: string, discovered?: DiscoveredModel): Promise<LlmModelConfig> {
+  const normalized = modelId.trim();
+  if (!normalized.includes("/")) throw new Error("Use a Hugging Face repository ID such as organization/model");
+  const item = discovered || {
+    key: modelKey("transformersjs", normalized),
+    engine: "transformersjs" as const,
+    modelId: normalized,
+    label: normalized,
+    private: false,
+    gated: false,
+    metadata: { manual: true },
+  };
+  let inspection: ModelInspection;
+  let selection: Partial<LlmUserProfile> = {};
+  try {
+    const sdk = await getAiSdkReady();
+    if (!sdk) throw new Error("AI SDK bridge is unavailable");
+    inspection = await sdk.inspectModel(normalized);
+    const caps = await ensureLLMCapabilities({ source: "model-inspection" });
+    const runtime = chooseTransformersRuntime(inspection.availableDtypes, { webgpu: caps.webgpu, shaderF16: caps.shaderF16 });
+    selection = { device: runtime.device, dtype: runtime.dtype };
+    if (runtime.dtype !== inspection.selectedDtype && runtime.dtype !== "auto") {
+      inspection = await sdk.inspectModel(normalized, { dtype: runtime.dtype });
+    }
+  } catch (error) {
+    inspection = failedInspection(normalized, error);
+    selection = { device: "auto", dtype: "auto" };
   }
+  const config = registerDiscoveredModel(item, inspection, selection);
+  selectLlmModel(config);
+  refreshRegisteredModelSelect(config);
+  syncProfileUi(config);
+  updateSelectedModelCard();
+  return config;
+}
+
+async function selectOllamaDiscovered(model: DiscoveredModel): Promise<LlmModelConfig> {
+  const details = await inspectOllamaModel(fetch, ollamaEndpoint(), model);
+  const inspection: ModelInspection = {
+    modelId: model.modelId,
+    availableDtypes: [],
+    files: [],
+    contextWindowTokens: details.contextWindowTokens,
+    chatTemplate: details.template,
+    capabilities: details.capabilities,
+    warnings: [
+      ...(details.capabilities.tools ? [] : ["Ollama does not announce tool support; the user profile remains authoritative."]),
+      ...(details.capabilities.thinking ? [] : ["Ollama does not announce thinking support."]),
+    ],
+    inspected: true,
+  };
+  const config = registerDiscoveredModel(model, inspection);
+  selectLlmModel(config);
+  refreshRegisteredModelSelect(config);
+  syncProfileUi(config);
+  updateSelectedModelCard();
+  return config;
+}
+
+function selectedDiscoverySource(): LlmEngine {
+  return selectElement("ba-llm-source")?.value === "ollama" ? "ollama" : "transformersjs";
+}
+
+async function ensureDiscoverySelection(): Promise<LlmModelConfig> {
+  const source = selectedDiscoverySource();
+  if (source === "ollama") {
+    const key = selectElement("ba-llm-ollama-models")?.value;
+    const model = ollamaResults.find((item) => item.key === key);
+    if (!model) throw new Error("Select an installed Ollama model");
+    if (getSelectedLlmModel()?.id === model.key) return getSelectedLlmModel() as LlmModelConfig;
+    return await selectOllamaDiscovered(model);
+  }
+  const manual = inputById("ba-llm-custom-model")?.value.trim();
+  const key = selectElement("ba-llm-hf-results")?.value;
+  const model = hfResults.find((item) => item.key === key);
+  const modelId = manual || model?.modelId || "";
+  if (!modelId) throw new Error("Select a Hub result or enter a repository ID");
+  if (getSelectedLlmModel()?.model === modelId) return getSelectedLlmModel() as LlmModelConfig;
+  return await selectTransformersModel(modelId, manual ? undefined : model);
+}
+
+function numericInput(id: string, fallback: number): number {
+  const value = Number(inputById(id)?.value);
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function syncProfileUi(config = getSelectedModel()): void {
+  const profile = config.profile;
+  if (!profile) return;
+  const setValue = (id: string, value: unknown): void => {
+    const element = document.getElementById(id);
+    if (element instanceof HTMLInputElement || element instanceof HTMLSelectElement) element.value = String(value ?? "");
+  };
+  setValue("ba-llm-tool-strategy", profile.toolStrategy);
+  setValue("ba-llm-tool-calling", profile.toolCalling);
+  setValue("ba-llm-max-steps", profile.maxSteps);
+  setValue("ba-llm-max-tools", profile.maxNativeTools);
+  setValue("ba-llm-temperature", profile.temperature);
+  setValue("ba-llm-top-p", profile.topP);
+  setValue("ba-llm-context-window", profile.contextWindowTokens);
+  setValue("ba-llm-safe-input", profile.safeInputTokens);
+  setValue("ba-llm-max-output", profile.maxOutputTokens);
+  setValue("ba-llm-max-plan", profile.maxNewTokensForPlan);
+  setValue("ba-llm-device", profile.device || "auto");
+  const dtype = selectElement("ba-llm-dtype");
+  if (dtype) {
+    const dtypes = ["auto", ...(config.inspection?.availableDtypes || [])];
+    dtype.replaceChildren(...[...new Set(dtypes)].map((value) => new Option(value, value)));
+    dtype.value = profile.dtype || "auto";
+  }
+  const think = selectElement("ba-llm-think-mode");
+  if (think) {
+    const options = profile.engine === "ollama" ? ["auto", "off", "on", "low", "medium", "high", "max"] : ["off", "on"];
+    think.replaceChildren(...options.map((value) => new Option(value, value)));
+    think.value = profile.engine === "ollama" ? profile.ollamaThink || "auto" : (profile.transformersThinking?.enabled ? "on" : "off");
+  }
+  const checked = (id: string, value: boolean): void => { const input = inputById(id); if (input) input.checked = value; };
+  checked("ba-llm-show-thinking", profile.showThinking);
+  checked("ba-llm-reuse-cache", Boolean(profile.reuseGenerationCache));
+  checked("ba-llm-start-reasoning", Boolean(profile.transformersThinking?.startWithReasoning));
+  setValue("ba-llm-thinking-tag", profile.transformersThinking?.tagName || "think");
+  for (const id of ["ba-llm-device-wrap", "ba-llm-dtype-wrap", "ba-llm-cache-wrap", "ba-llm-tag-wrap", "ba-llm-reasoning-start-wrap"]) {
+    const element = document.getElementById(id);
+    if (element instanceof HTMLElement) element.hidden = profile.engine !== "transformersjs";
+  }
+}
+
+function profileFromUi(config: LlmModelConfig): LlmUserProfile | null {
+  const current = config.profile || defaultProfile(config.engine, config.model || "");
+  const thinkMode = selectElement("ba-llm-think-mode")?.value || "off";
+  return validateProfile({
+    ...current,
+    toolStrategy: selectElement("ba-llm-tool-strategy")?.value as ToolStrategy,
+    toolCalling: selectElement("ba-llm-tool-calling")?.value as ToolCallingQuality,
+    maxSteps: numericInput("ba-llm-max-steps", current.maxSteps),
+    maxNativeTools: numericInput("ba-llm-max-tools", current.maxNativeTools),
+    temperature: numericInput("ba-llm-temperature", current.temperature),
+    topP: numericInput("ba-llm-top-p", current.topP),
+    contextWindowTokens: numericInput("ba-llm-context-window", current.contextWindowTokens),
+    safeInputTokens: numericInput("ba-llm-safe-input", current.safeInputTokens),
+    maxOutputTokens: numericInput("ba-llm-max-output", current.maxOutputTokens),
+    maxNewTokensForPlan: numericInput("ba-llm-max-plan", current.maxNewTokensForPlan),
+    showThinking: Boolean(inputById("ba-llm-show-thinking")?.checked),
+    device: selectElement("ba-llm-device")?.value || "auto",
+    dtype: selectElement("ba-llm-dtype")?.value || "auto",
+    reuseGenerationCache: Boolean(inputById("ba-llm-reuse-cache")?.checked),
+    transformersThinking: current.engine === "transformersjs" ? {
+      enabled: thinkMode === "on",
+      tagName: inputById("ba-llm-thinking-tag")?.value.trim() || "think",
+      startWithReasoning: Boolean(inputById("ba-llm-start-reasoning")?.checked),
+    } : undefined,
+    ollamaThink: current.engine === "ollama" ? thinkMode as OllamaThinkMode : undefined,
+  });
+}
+
+function saveProfileFromUi(): void {
+  const current = getSelectedModel();
+  const profile = profileFromUi(current);
+  if (!profile) {
+    setStatus("Invalid model profile", "bad");
+    return;
+  }
+  if (ensureLlmState().loaded) llmAgent.unloadModel();
+  saveProfile(localStorage, profile);
+  const config = registerModelProfile(profile, current.inspection || null);
+  selectLlmModel(config);
+  refreshRegisteredModelSelect(config);
+  updateSelectedModelCard();
+  updateNativeToolsPickerUi();
+}
+
+function resetCurrentProfile(): void {
+  const current = getSelectedModel();
+  const profile = defaultProfile(current.engine, current.model || "");
+  const config = registerModelProfile(profile, current.inspection || null);
+  saveProfile(localStorage, profile);
+  selectLlmModel(config);
+  refreshRegisteredModelSelect(config);
+  syncProfileUi(config);
+  updateSelectedModelCard();
+}
+
+function exportStoredProfiles(): void {
+  const content = JSON.stringify(exportProfiles(loadProfiles(localStorage)), null, 2);
+  const url = URL.createObjectURL(new Blob([content], { type: "application/json" }));
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "browser-agent-llm-profiles.json";
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+async function importStoredProfiles(file: File): Promise<void> {
+  const value: unknown = JSON.parse(await file.text());
+  const existing = loadProfiles(localStorage);
+  let result = importProfiles(value, existing, false);
+  if (result.conflicts.length && window.confirm(`Overwrite ${result.conflicts.length} existing profiles?`)) {
+    result = importProfiles(value, existing, true);
+  }
+  localStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(result.profiles));
+  setStatus(`Imported ${result.imported}; invalid ${result.invalid}; skipped ${result.conflicts.length}`, result.invalid ? "warn" : "good");
 }
 
 function setStatus(text: string, tone = ""): void {
@@ -371,11 +691,9 @@ function setProgress(detail: ProgressDetail | null, force = false): void {
 
 function syncThinkingToggleUi(): void {
   const model = getSelectedModel();
-  const wrap = document.getElementById("ba-llm-thinking-wrap");
   const input = document.getElementById("ba-llm-show-thinking");
-  if (!wrap || !(input instanceof HTMLInputElement)) return;
+  if (!(input instanceof HTMLInputElement)) return;
   const enabled = Boolean(model.thinking?.enabled);
-  wrap.hidden = !enabled;
   if (!enabled) {
     input.checked = false;
     const llm = getLlmState();
@@ -501,26 +819,6 @@ function createArtifactResourceRow(summary: LlmArtifactSummary): HTMLDivElement 
   return row;
 }
 
-function llmNoteLabel(code: string): string {
-  switch (code) {
-    case "tools-primary":
-      return t("panel.llm.note.toolsPrimary");
-    case "tools-validated":
-      return t("panel.llm.note.toolsValidated");
-    case "chat-only":
-      return t("panel.llm.note.chatOnly");
-    case "moe":
-      return t("panel.llm.note.moe");
-    default:
-      return "";
-  }
-}
-
-function llmModelDescription(model: LlmModelConfig): string {
-  const notes = Array.isArray(model.notes) ? model.notes : [];
-  return notes.map((note) => llmNoteLabel(String(note))).filter(Boolean).join(" · ");
-}
-
 function createMetaItem(key: string, value: unknown): HTMLSpanElement {
   const item = document.createElement("span");
   const label = document.createElement("b");
@@ -540,26 +838,30 @@ function updateSelectedModelCard(): void {
 
   if (title) title.textContent = llmModelShortLabel(model);
   if (desc) {
-    const descText = llmModelDescription(model);
+    const capabilities = model.inspection?.capabilities;
+    const descText = capabilities
+      ? `chat: ${capabilities.chat ?? "unknown"} · tools: ${capabilities.tools ?? "unknown"} · thinking: ${capabilities.thinking ?? "unknown"} · vision: ${capabilities.vision ?? "unknown"}`
+      : "";
     desc.textContent = descText;
     desc.hidden = !descText;
   }
-  if (repo) repo.textContent = model.custom ? t("panel.llm.model.repoCustomHint") : model.model || "";
+  if (repo) repo.textContent = model.model || "";
   if (meta) {
     const loaded = Boolean(getLlmState()?.loaded);
     const entries: Array<[string, unknown] | null> = [
       loaded ? [t("panel.llm.meta.backendLoaded"), activeBackendLabel(model) || "—"] : null,
       loaded ? null : [t("panel.llm.meta.engine"), llmEngineMetaLabel(model)],
-      [t("panel.llm.meta.download"), model.sizeLabel || "—"],
+      [t("panel.llm.meta.download"), bytesLabel(model.sizeBytes) || "—"],
       loaded ? null : [t("panel.llm.meta.quantization"), model.dtype || "—"],
-      typeof model.ramGB === "number" ? [t("panel.llm.meta.ram"), `${model.ramGB} GB`] : null,
-      typeof model.vramGB === "number" ? [t("panel.llm.meta.vram"), `${model.vramGB} GB`] : null,
+      ["context", model.contextWindowTokens || "—"],
       [t("panel.llm.meta.tools"), model.agent?.toolCalling || "—"],
       [t("panel.llm.meta.reasoning"), model.thinking?.enabled ? t("common.yes") : t("common.no")],
     ];
     const items = entries.filter((entry): entry is [string, unknown] => Boolean(entry)).map(([key, value]) => createMetaItem(key, value));
     meta.replaceChildren(...items);
   }
+  const warnings = document.getElementById("ba-llm-model-warnings");
+  if (warnings) warnings.textContent = [...(model.inspection?.warnings || []), ...(model.inspection?.error ? [model.inspection.error] : [])].join(" · ");
   syncThinkingToggleUi();
   syncWorkerUnloadButton();
 }
@@ -577,38 +879,22 @@ async function checkCapabilities(options: { force?: boolean } = {}): Promise<Llm
 }
 
 function syncCustomVisibility(): void {
-  const select = selectedModelSelect();
-  const customWrap = document.getElementById("ba-llm-custom-wrap");
-  const ollamaEndpointWrap = document.getElementById("ba-llm-ollama-endpoint-wrap");
+  const source = selectedDiscoverySource();
+  const hf = document.getElementById("ba-llm-hf-discovery");
+  const ollama = document.getElementById("ba-llm-ollama-discovery");
+  if (hf instanceof HTMLElement) hf.hidden = source !== "transformersjs";
+  if (ollama instanceof HTMLElement) ollama.hidden = source !== "ollama";
   const selected = getSelectedModel();
-  if (customWrap) {
-    customWrap.hidden = !selected.custom;
-    const text = selected.engine === "ollama"
-      ? t("panel.llm.custom.ollamaLabel")
-      : t("panel.llm.field.customModel");
-    if (customWrap.firstChild?.nodeType === Node.TEXT_NODE) customWrap.firstChild.nodeValue = text;
-  }
-  const customInput = inputById("ba-llm-custom-model");
-  if (customInput) {
-    customInput.placeholder = selected.engine === "ollama"
-      ? "qwen3.5:4b"
-      : "onnx-community/Llama-3.2-1B-Instruct-ONNX";
-  }
-  if (ollamaEndpointWrap) {
-    const isOllama = selected.engine === "ollama";
-    ollamaEndpointWrap.hidden = !isOllama;
-    const input = inputById("ba-llm-ollama-endpoint");
-    if (input && !input.value) {
-      input.value = localStorage.getItem("ba.llm.ollama.endpoint") || "http://127.0.0.1:11434";
-    }
+  const endpoint = inputById("ba-llm-ollama-endpoint");
+  if (endpoint && !endpoint.value) {
+    endpoint.value = localStorage.getItem("ba.llm.ollama.endpoint") || "http://127.0.0.1:11434";
   }
   const ollamaOriginNotice = document.getElementById("ba-llm-ollama-origin-notice");
   if (ollamaOriginNotice) {
-    const show = Boolean(selected.engine === "ollama" && originApi.isPublishedOrigin());
+    const show = Boolean(source === "ollama" && originApi.isPublishedOrigin());
     ollamaOriginNotice.hidden = !show;
     if (show) ollamaOriginNotice.textContent = originApi.localServiceWarningText("ollama");
   }
-  if (select) ensureLlmState().selectedModelId = select.value;
   updateSelectedModelCard();
   updateResourceLines();
   setProgress(null, true);
@@ -617,8 +903,6 @@ function syncCustomVisibility(): void {
   const needsWebGPU = llmModelRequiresWebGPU(selected);
   if (needsWebGPU && caps && !caps.webgpu) {
     setStatus(t("panel.llm.status.requiresWebgpu"), "warn");
-  } else if (selected.requiresShaderF16 && caps?.webgpu && !caps.shaderF16) {
-    setStatus(t("common.requiresShaderF16"), "warn");
   } else if (selected.engine === "ollama") {
     setStatus(t("panel.llm.status.requiresOllama"), "warn");
   } else if (selected.device === "wasm") {
@@ -663,10 +947,10 @@ function getSelectedModelForTools(): LlmModelConfig {
   const llm = getLlmState();
   if (llm?.loaded && llm.activeModel) return llm.activeModel;
   const select = selectedModelSelect();
-  return llmModelOptions.find((item) => item.id === select?.value)
+  return findLlmModel(select?.value)
     || llm?.activeModel
-    || llmModelOptions[0]
-    || { id: "custom-transformersjs", engine: "transformersjs" };
+    || getSelectedLlmModel()
+    || defaultModelConfig("transformersjs", "");
 }
 
 function getNativeToolsPickerState(): NativeToolsPickerState {
@@ -932,8 +1216,9 @@ async function handleLoadClick(): Promise<void> {
   const llm = ensureLlmState();
   try {
     setButtonBusy(true);
-    setProgress({ status: "init", model: getSelectedModel().model || "" }, true);
-    const selected = getSelectedModel();
+    setProgress({ status: "init", model: "" }, true);
+    const selected = await ensureDiscoverySelection();
+    setProgress({ status: "init", model: selected.model || "" }, true);
     const caps = await checkCapabilities();
     if (llmModelRequiresWebGPU(selected) && !caps.webgpu) return;
     setStatus(selected.engine === "ollama"
@@ -941,6 +1226,10 @@ async function handleLoadClick(): Promise<void> {
       : (selected.device === "wasm" ? t("panel.llm.status.loadingWasm") : t("panel.llm.status.loadingModel")), "warn");
     llm.loading = true;
     await llmAgent.loadSelectedModel();
+    if (selected.engine === "transformersjs" && selected.model) {
+      recordHfRecent(localStorage, selected.model);
+      renderRecents();
+    }
     setProgress({ status: "done" }, true);
   } catch (error) {
     llm.lastError = errorMessage(error);
@@ -1005,10 +1294,52 @@ function mountPanel(): void {
   select.value = llm.selectedModelId;
   select.addEventListener("change", () => {
     if (llm.loaded) llmAgent.unloadModel();
-    ensureLlmState().selectedModelId = select.value;
+    const config = findLlmModel(select.value);
+    if (config) selectLlmModel(config);
+    syncProfileUi(config || getSelectedModel());
     syncCustomVisibility();
     updateNativeToolsPickerUi();
   });
+  const source = selectElement("ba-llm-source");
+  source?.addEventListener("change", () => {
+    if (llm.loaded) llmAgent.unloadModel();
+    syncCustomVisibility();
+    if (source.value === "ollama") void refreshOllamaModels();
+  });
+  inputById("ba-llm-hf-search")?.addEventListener("input", () => { void refreshHfModels(); });
+  document.getElementById("ba-llm-hf-refresh")?.addEventListener("click", () => { void refreshHfModels({ force: true }); });
+  document.getElementById("ba-llm-hf-more")?.addEventListener("click", () => { if (hfNextUrl) void refreshHfModels({ append: true }); });
+  selectElement("ba-llm-hf-results")?.addEventListener("change", () => {
+    const key = selectElement("ba-llm-hf-results")?.value;
+    const model = hfResults.find((item) => item.key === key);
+    const manual = inputById("ba-llm-custom-model");
+    if (manual) manual.value = "";
+    if (model) void selectTransformersModel(model.modelId, model).catch((error) => setDiscoveryError("ba-llm-hf-error", errorMessage(error)));
+  });
+  document.getElementById("ba-llm-ollama-refresh")?.addEventListener("click", () => { void refreshOllamaModels(); });
+  selectElement("ba-llm-ollama-models")?.addEventListener("change", () => {
+    const key = selectElement("ba-llm-ollama-models")?.value;
+    const model = ollamaResults.find((item) => item.key === key);
+    if (model) void selectOllamaDiscovered(model).catch((error) => setDiscoveryError("ba-llm-ollama-error", errorMessage(error)));
+  });
+  const profileControlIds = [
+    "ba-llm-tool-strategy", "ba-llm-tool-calling", "ba-llm-max-steps", "ba-llm-max-tools",
+    "ba-llm-think-mode", "ba-llm-show-thinking", "ba-llm-temperature", "ba-llm-top-p",
+    "ba-llm-context-window", "ba-llm-safe-input", "ba-llm-max-output", "ba-llm-max-plan",
+    "ba-llm-device", "ba-llm-dtype", "ba-llm-reuse-cache", "ba-llm-thinking-tag", "ba-llm-start-reasoning",
+  ];
+  for (const id of profileControlIds) document.getElementById(id)?.addEventListener("change", saveProfileFromUi);
+  document.getElementById("ba-llm-profile-reset")?.addEventListener("click", resetCurrentProfile);
+  document.getElementById("ba-llm-profile-export")?.addEventListener("click", exportStoredProfiles);
+  document.getElementById("ba-llm-profile-import")?.addEventListener("click", () => inputById("ba-llm-profile-file")?.click());
+  inputById("ba-llm-profile-file")?.addEventListener("change", (event) => {
+    const file = event.target instanceof HTMLInputElement ? event.target.files?.[0] : null;
+    if (file) void importStoredProfiles(file).catch((error) => setStatus(errorMessage(error), "bad"));
+  });
+  hfResults = recentDiscoveredModels();
+  renderDiscoveryOptions(selectElement("ba-llm-hf-results"), hfResults);
+  renderRecents();
+  void refreshHfModels();
   syncCustomVisibility();
   syncToolPolicyUi();
   updateAvailableToolsUi();
@@ -1050,9 +1381,10 @@ function mountPanel(): void {
     const value = (input?.value || "").trim().replace(/\/+$/g, "");
     if (value) localStorage.setItem("ba.llm.ollama.endpoint", value);
     else localStorage.removeItem("ba.llm.ollama.endpoint");
-    if (llm.loaded && getSelectedModel().engine === "ollama") {
+    if (llm.loaded) {
       llmAgent.unloadModel();
     }
+    void refreshOllamaModels();
     syncCustomVisibility();
   });
 

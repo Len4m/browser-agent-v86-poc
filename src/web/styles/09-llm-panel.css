@@ -76,6 +76,29 @@
   gap: 0.55rem;
 }
 
+.ba-llm-discovery {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  background: #f8fbff;
+}
+
+.ba-llm-discovery[hidden] {
+  display: none;
+}
+
+.ba-llm-discovery select[size] {
+  min-height: 9.5rem;
+  padding: 0.3rem;
+}
+
+.ba-llm-collapsible-body {
+  display: grid;
+  gap: 0.65rem;
+}
+
 .ba-llm-field {
   display: grid;
   gap: 0.4rem;

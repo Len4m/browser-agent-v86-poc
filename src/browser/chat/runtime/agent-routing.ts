@@ -1,6 +1,7 @@
 // Browser Agent v86 - LLM agent routing heuristics.
 
 import { getLlmState, type LlmModelConfig } from "../state/chat-state";
+import type { ToolStrategy } from "../models/model-types";
 import { llmNativeToolsPolicy } from "../tools/native-tools-policy";
 
 interface ToolNeedHeuristicOptions {
@@ -20,6 +21,13 @@ interface AgentRoutingApi {
   isLikelyToolPlanText: (text: unknown) => boolean;
   resolveToolNeedHeuristic: (userText: unknown, options?: ToolNeedHeuristicOptions) => ToolNeedHeuristicResult;
   userRequestLikelyNeedsVm: (userText: unknown, options?: ToolNeedHeuristicOptions) => boolean;
+  resolveToolRoute: (strategy: ToolStrategy, heuristicMatched: boolean, toolsAvailable: boolean) => ToolRoute;
+}
+
+interface ToolRoute {
+  useToolLoop: boolean;
+  modelMayChooseTools: boolean;
+  heuristicFallback: boolean;
 }
 
 interface HeuristicRule {
@@ -104,6 +112,16 @@ function userRequestLikelyNeedsVm(userText: unknown, options: ToolNeedHeuristicO
   return resolveToolNeedHeuristic(userText, options).matched;
 }
 
+function resolveToolRoute(strategy: ToolStrategy, heuristicMatched: boolean, toolsAvailable: boolean): ToolRoute {
+  if (!toolsAvailable || strategy === "off") {
+    return { useToolLoop: false, modelMayChooseTools: false, heuristicFallback: false };
+  }
+  if (strategy === "heuristic") {
+    return { useToolLoop: heuristicMatched, modelMayChooseTools: false, heuristicFallback: heuristicMatched };
+  }
+  return { useToolLoop: true, modelMayChooseTools: true, heuristicFallback: false };
+}
+
 export const llmAgentRouting: AgentRoutingApi = {
   flattenErrorMessage,
   isRecoverableGpuMemoryError,
@@ -112,4 +130,5 @@ export const llmAgentRouting: AgentRoutingApi = {
   isLikelyToolPlanText,
   resolveToolNeedHeuristic,
   userRequestLikelyNeedsVm,
+  resolveToolRoute,
 };

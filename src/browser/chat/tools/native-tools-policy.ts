@@ -3,21 +3,12 @@
 // the LLM panel through direct ESM imports.
 
 import { state } from "../../app/state";
-import { getLlmState, llmEventsApi, llmModelOptions, type LlmModelConfig } from "../state/chat-state";
+import { defaultModelConfig, getLlmState, getSelectedLlmModel, llmEventsApi, type LlmModelConfig } from "../state/chat-state";
+import { saveProfile } from "../models/model-profiles";
 import { normalizeToolName } from "./shared";
 import { llmToolRegistry } from "./tool-registry";
 
-const STORAGE_PREFIX = "ba.llm.nativeTools.";
-
-const FALLBACK_MODEL: LlmModelConfig = {
-  id: "custom-transformersjs",
-  engine: "transformersjs",
-  agent: {
-    maxSteps: 3,
-    maxNativeTools: 4,
-    toolCalling: "fair",
-  },
-};
+const FALLBACK_MODEL: LlmModelConfig = defaultModelConfig("transformersjs", "");
 
 export interface NativeToolsPolicyApi {
   getMaxNativeTools: (modelConfig?: LlmModelConfig | null) => number;
@@ -56,8 +47,7 @@ function getModelConfig(modelConfig?: LlmModelConfig | null): LlmModelConfig {
   const llmState = getLlmState();
   return modelConfig
     || llmState?.activeModel
-    || llmModelOptions.find((model) => model.id === llmState?.selectedModelId)
-    || llmModelOptions[0]
+    || getSelectedLlmModel()
     || FALLBACK_MODEL;
 }
 
@@ -81,21 +71,6 @@ function getDefaultToolNames(modelConfig?: LlmModelConfig | null, profileId = ge
   return listAvailableToolNames(modelConfig, profileId).slice(0, getMaxNativeTools(modelConfig));
 }
 
-function loadStored(modelId: string): string[] | null {
-  try {
-    const raw = localStorage.getItem(`${STORAGE_PREFIX}${modelId}`);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? parsed.map(normalizeToolName).filter(Boolean) : null;
-  } catch {
-    return null;
-  }
-}
-
-function saveStored(modelId: string, names: string[]): void {
-  localStorage.setItem(`${STORAGE_PREFIX}${modelId}`, JSON.stringify(names));
-}
-
 function syncStateNativeTools(names: string[]): void {
   const llmState = getLlmState();
   if (llmState?.settings) llmState.settings.nativeToolNames = names;
@@ -104,10 +79,10 @@ function syncStateNativeTools(names: string[]): void {
 function resolveActiveToolNames(modelConfig?: LlmModelConfig | null, profileId = getProfileId()): string[] {
   const cfg = getModelConfig(modelConfig);
   const max = getMaxNativeTools(cfg);
-  const stored = loadStored(cfg.id);
-  const out = (stored === null
-    ? listAvailableToolNames(cfg, profileId)
-    : filterProfileOrdered(stored, cfg, profileId)
+  const configured = cfg.profile?.activeToolNames || cfg.agent?.activeToolNames || [];
+  const out = (configured.length
+    ? filterProfileOrdered(configured, cfg, profileId)
+    : listAvailableToolNames(cfg, profileId)
   ).slice(0, max);
   syncStateNativeTools(out);
   return out;
@@ -117,7 +92,11 @@ function setActiveToolNames(modelConfig: LlmModelConfig | null | undefined, name
   const cfg = getModelConfig(modelConfig);
   const max = getMaxNativeTools(cfg);
   const clean = filterProfileOrdered(names, cfg, profileId).slice(0, max);
-  saveStored(cfg.id, clean);
+  if (cfg.profile) {
+    cfg.profile.activeToolNames = clean;
+    if (cfg.agent) cfg.agent.activeToolNames = clean;
+    saveProfile(localStorage, cfg.profile);
+  }
   syncStateNativeTools(clean);
   llmEventsApi.emit("native-tools", { names: clean, max, modelId: cfg.id });
   return clean;

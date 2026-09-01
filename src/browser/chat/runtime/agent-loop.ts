@@ -9,7 +9,7 @@ import { appEvents } from "../../core/events";
 import { addMessage, throwIfAborted } from "../../vm/runtime-assets";
 import { backgroundToolsApi } from "../../vm/background-tools-serial1";
 import { detectLLMCapabilities, type LlmCapabilities } from "../state/capabilities";
-import { getLlmState, llmEventsApi, llmModelOptions, llmModelRequiresWebGPU, llmModelShortLabel, type LlmModelConfig, type LlmState } from "../state/chat-state";
+import { defaultModelConfig, getLlmState, getSelectedLlmModel, llmEventsApi, llmModelRequiresWebGPU, llmModelShortLabel, type LlmModelConfig, type LlmState } from "../state/chat-state";
 import {
   getAiSdk,
   getAiSdkReady,
@@ -118,6 +118,7 @@ const {
   resolveNativeToolNames,
   isLikelyToolPlanText,
   resolveToolNeedHeuristic,
+  resolveToolRoute,
 } = llmAgentRouting;
 
 const NATIVE_TOOL_STREAM_SKIP = new Set([
@@ -244,13 +245,7 @@ function isAbortError(error: unknown): boolean {
 }
 
 function getToolCallingMode(modelConfig: LlmModelConfig | null | undefined): ToolCallingMode {
-  return modelConfig?.agent?.toolCalling || "fair";
-}
-
-function canModelChooseToolsWithoutHeuristic(modelConfig: LlmModelConfig | null | undefined): boolean {
-  if (typeof modelConfig?.agent?.selfSelectTools === "boolean") return modelConfig.agent.selfSelectTools;
-  const mode = getToolCallingMode(modelConfig);
-  return modelConfig?.engine === "ollama" || mode === "good";
+  return modelConfig?.agent?.toolCalling || "good";
 }
 
 function buildEmptyResponseMessage({
@@ -320,16 +315,7 @@ function bindChatSubmitButton(): void {
 }
 
 function getSelectedModelConfig(): LlmModelConfig {
-  const llm = ensureLlmState();
-  const selected = llmModelOptions.find((item) => item.id === llm.selectedModelId) || llmModelOptions[0];
-  if (!selected) return { id: "custom-transformersjs", engine: "transformersjs" };
-  if (!selected.custom) return { ...selected };
-
-  const customInput = document.getElementById("ba-llm-custom-model");
-  return {
-    ...selected,
-    model: customInput instanceof HTMLInputElement ? customInput.value.trim() || selected.model : selected.model,
-  };
+  return { ...(getSelectedLlmModel() || defaultModelConfig("transformersjs", "")) };
 }
 
 function modelRequiresUnavailableF16(modelConfig: LlmModelConfig, capabilities: LlmCapabilities | null): boolean {
@@ -494,13 +480,12 @@ async function runAgentTurn({
   const referencedArtifact = attachedArtifact
     || llmToolResultPolicy.selectArtifactForUserText(userText)
     || null;
-  const nativeToolsMode = shouldEnableNativeTools({ referencedArtifact });
+  const toolStrategy = modelConfig.agent?.toolStrategy || "model-first";
+  const nativeToolsMode = toolStrategy !== "off" && shouldEnableNativeTools({ referencedArtifact });
   const activeToolNames = nativeToolsMode ? resolveNativeToolNames(modelConfig) : [];
-  const modelMayChooseTools = canModelChooseToolsWithoutHeuristic(modelConfig);
   const toolNeedHeuristic = resolveToolNeedHeuristic(userText, { activeToolNames });
   const needsVm = toolNeedHeuristic.matched;
-  const heuristicFallback = !modelMayChooseTools && needsVm;
-  const useToolLoop = nativeToolsMode && (modelMayChooseTools || heuristicFallback);
+  const { modelMayChooseTools, heuristicFallback, useToolLoop } = resolveToolRoute(toolStrategy, needsVm, nativeToolsMode);
   const toolCallingMode = getToolCallingMode(modelConfig);
   const routeMode = !useToolLoop
     ? "chat"

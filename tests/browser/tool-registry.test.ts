@@ -8,7 +8,8 @@ import { state } from "../../src/browser/app/state";
 import { llmNativeToolsPolicy } from "../../src/browser/chat/tools/native-tools-policy";
 import { llmToolRegistry } from "../../src/browser/chat/tools/tool-registry";
 import type { AiSdkObjectSchemaLike, AiSdkZodLike } from "../../src/browser/chat/provider/ai-sdk-runtime";
-import type { LlmModelConfig } from "../../src/browser/chat/state/chat-state";
+import { modelConfigFromProfile, type LlmModelConfig } from "../../src/browser/chat/state/chat-state";
+import { defaultProfile } from "../../src/browser/chat/models/model-profiles";
 import { TOOL_DEFINITIONS } from "virtual:ba-tools";
 
 const manualTools = [
@@ -87,22 +88,13 @@ test("native tool defaults use profile priority and model quantity limit", () =>
 
 test("native active tools are resolved in profile priority order and capped", () => {
   installProfiles();
-  const store = installLocalStorage();
-  const model: LlmModelConfig = {
-    id: "ordered-model",
-    engine: "transformersjs",
-    agent: {
-      maxSteps: 2,
-      maxNativeTools: 3,
-      toolCalling: "fair",
-    },
-  };
-  store.set("ba.llm.nativeTools.ordered-model", JSON.stringify([
-    "web_httpx_probe",
-    "web_curl_head",
-    "vm_sh_exec",
-    "vm_python_exec",
-  ]));
+  installLocalStorage();
+  const profile = defaultProfile("transformersjs", "org/ordered-model");
+  profile.maxSteps = 2;
+  profile.maxNativeTools = 3;
+  profile.toolCalling = "fair";
+  profile.activeToolNames = ["web_httpx_probe", "web_curl_head", "vm_sh_exec", "vm_python_exec"];
+  const model = modelConfigFromProfile(profile);
 
   assert.deepEqual(llmNativeToolsPolicy.resolveActiveToolNames(model, "alpine-pentest-web"), [
     "vm_python_exec",
@@ -124,22 +116,18 @@ test("native active tools are resolved in profile priority order and capped", ()
 });
 
 test("legacy dotted tool names are normalized at profile and storage boundaries", () => {
-  const store = installLocalStorage();
+  installLocalStorage();
   state.profiles = [{
     ...baseProfile,
     id: "legacy-names",
     allowedTools: ["vm.fs.read", "web.curl.head"],
   }];
-  const model: LlmModelConfig = {
-    id: "legacy-model",
-    engine: "transformersjs",
-    agent: {
-      maxSteps: 2,
-      maxNativeTools: 2,
-      toolCalling: "fair",
-    },
-  };
-  store.set("ba.llm.nativeTools.legacy-model", JSON.stringify(["web.curl.head", "vm.fs.read"]));
+  const profile = defaultProfile("transformersjs", "org/legacy-model");
+  profile.maxSteps = 2;
+  profile.maxNativeTools = 2;
+  profile.toolCalling = "fair";
+  profile.activeToolNames = ["web.curl.head", "vm.fs.read"];
+  const model = modelConfigFromProfile(profile);
 
   assert.deepEqual(llmToolRegistry.listToolNames({ profileId: "legacy-names" }), [
     "vm_fs_read",

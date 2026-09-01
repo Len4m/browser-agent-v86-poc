@@ -191,6 +191,12 @@ function findContextWindow(modelInfo: Record<string, unknown>): number | undefin
   return undefined;
 }
 
+function parameterContextWindow(parameters: string): number | undefined {
+  const match = parameters.match(/(?:^|\n)\s*num_ctx\s+([0-9]+)/i);
+  const value = match ? Number(match[1]) : NaN;
+  return Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
 export async function inspectOllamaModel(
   fetcher: FetchLike,
   endpoint: string,
@@ -210,6 +216,7 @@ export async function inspectOllamaModel(
     ? body.capabilities.filter((item): item is string => typeof item === "string")
     : [];
   const template = text(body.template);
+  const parameters = text(body.parameters);
   const modelInfo = isRecord(body.model_info) ? body.model_info : {};
   const templateText = template.toLowerCase();
   return {
@@ -220,9 +227,9 @@ export async function inspectOllamaModel(
       thinking: capabilities.includes("thinking") || /(?:thinking|reasoning)/.test(templateText),
       vision: capabilities.includes("vision"),
     },
-    contextWindowTokens: findContextWindow(modelInfo),
+    contextWindowTokens: parameterContextWindow(parameters) || findContextWindow(modelInfo),
     template: template || undefined,
-    parameters: text(body.parameters) || undefined,
+    parameters: parameters || undefined,
     raw: body,
   };
 }

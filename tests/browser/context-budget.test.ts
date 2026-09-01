@@ -4,7 +4,8 @@ import test from "node:test";
 import esCatalog from "../../src/web/locales/es.json";
 import { state } from "../../src/browser/app/state";
 import { setLang } from "../../src/browser/app/i18n";
-import { llmModelOptions, llmModels } from "../../src/browser/chat/state/chat-state";
+import { modelConfigFromProfile } from "../../src/browser/chat/state/chat-state";
+import { defaultProfile } from "../../src/browser/chat/models/model-profiles";
 import { llmAgentRouting } from "../../src/browser/chat/runtime/agent-routing";
 import { llmContextBudget } from "../../src/browser/chat/runtime/context-budget";
 import webProfile from "../../vm/profiles/alpine-pentest-web.json";
@@ -76,40 +77,38 @@ test("tool fallback heuristic is language-neutral and only matches objective too
   assert.equal(activeTool.rule, "active-tool-name");
 });
 
-test("verified small transformers models can self-select tools before heuristic fallback", () => {
-  const qwen3 = llmModels.find((model) => model.id === "qwen3-tools-onnx-q4f16");
-  const qwen25 = llmModels.find((model) => model.id === "qwen2.5-coder-0.5b-instruct-q4");
-  const glm = llmModels.find((model) => model.id === "glm-edge-1.5b-chat-onnx-q4f16");
-  const granite350 = llmModels.find((model) => model.id === "granite-4.0-350m-onnx-web-fp16");
-
-  assert.equal(qwen3?.agent?.toolCalling, "good");
-  assert.equal(qwen3?.thinking?.extract?.startWithReasoning, true);
-  assert.equal(qwen25?.agent?.toolCalling, "weak");
-  assert.equal(qwen25?.agent?.selfSelectTools, true);
-  assert.equal(qwen25?.agent?.maxNativeTools, 2);
-  assert.equal(glm?.agent?.toolCalling, "fair");
-  assert.equal(granite350?.agent?.toolCalling, "fair");
+test("off, heuristic and model-first route tools as configured", () => {
+  assert.deepEqual(llmAgentRouting.resolveToolRoute("off", true, true), {
+    useToolLoop: false, modelMayChooseTools: false, heuristicFallback: false,
+  });
+  assert.deepEqual(llmAgentRouting.resolveToolRoute("heuristic", false, true), {
+    useToolLoop: false, modelMayChooseTools: false, heuristicFallback: false,
+  });
+  assert.deepEqual(llmAgentRouting.resolveToolRoute("heuristic", true, true), {
+    useToolLoop: true, modelMayChooseTools: false, heuristicFallback: true,
+  });
+  assert.deepEqual(llmAgentRouting.resolveToolRoute("model-first", false, true), {
+    useToolLoop: true, modelMayChooseTools: true, heuristicFallback: false,
+  });
 });
 
-test("model context presets expand to the same runtime policy fields", () => {
-  const qwen3 = llmModels.find((model) => model.id === "qwen3-tools-onnx-q4f16");
-  const qwen25 = llmModels.find((model) => model.id === "qwen2.5-coder-0.5b-instruct-q4");
-  const glm = llmModels.find((model) => model.id === "glm-edge-1.5b-chat-onnx-q4f16");
-  const granite350 = llmModels.find((model) => model.id === "granite-4.0-350m-onnx-web-fp16");
-  const lfm2 = llmModels.find((model) => model.id === "lfm2-tool-1.2b-onnx-fp16");
-  const fallback = llmModels.find((model) => model.id === "gemma-3-270m-it-onnx-wasm-fallback");
-  const custom = llmModelOptions.find((model) => model.id === "custom-transformersjs");
+test("generic user profiles drive agent and context policy without model IDs", () => {
+  const transformers = defaultProfile("transformersjs", "any/repository");
+  transformers.toolCalling = "weak";
+  transformers.maxNativeTools = 2;
+  transformers.safeInputTokens = 1200;
+  transformers.maxNewTokensForPlan = 384;
+  transformers.transformersThinking = { enabled: true, tagName: "reason", startWithReasoning: true };
+  const config = modelConfigFromProfile(transformers);
 
-  assert.equal(qwen3?.contextWindowTokens, 4096);
-  assert.equal(qwen3?.contextPreset, "browser-tools-sm");
-  assert.equal(qwen3?.contextPolicy?.safeInputTokens, 1100);
-  assert.equal(qwen3?.contextPolicy?.maxNewTokensForPlan, 384);
-  assert.equal(qwen25?.contextPolicy?.safeInputTokens, 1100);
-  assert.equal(qwen25?.contextPolicy?.maxNewTokensForPlan, undefined);
-  assert.equal(glm?.contextPreset, "browser-tools-md");
-  assert.equal(glm?.contextPolicy?.maxToolResultChars, 2200);
-  assert.equal(granite350?.contextPolicy?.maxRuntimeChars, 280);
-  assert.equal(lfm2?.contextPolicy?.maxToolResultCharsForSynthesis, 1400);
-  assert.equal(fallback?.contextPolicy?.maxHistoryMessages, 0);
-  assert.equal(custom?.contextPolicy?.safeInputTokens, 1800);
+  assert.equal(config.agent?.toolStrategy, "model-first");
+  assert.equal(config.agent?.toolCalling, "weak");
+  assert.equal(config.agent?.maxNativeTools, 2);
+  assert.equal(config.thinking?.extract?.tagName, "reason");
+  assert.equal(config.contextPolicy?.safeInputTokens, 1200);
+  assert.equal(config.contextPolicy?.maxNewTokensForPlan, 384);
+
+  const ollama = modelConfigFromProfile({ ...defaultProfile("ollama", "any:tag"), contextWindowTokens: 32768 });
+  assert.equal(ollama.contextPolicy?.contextWindowTokens, 32768);
+  assert.equal(ollama.contextPolicy?.maxArtifacts, 4);
 });
