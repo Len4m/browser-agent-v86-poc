@@ -945,11 +945,10 @@ async function handleUserMessage(userText: string): Promise<void> {
 
     if (isStaleTurn(turnGeneration)) return;
 
+    const assistantContent = text || lastToolUi?.answer || "";
+
     llm.messages.push({ role: "user", content: userText });
-    llm.messages.push({
-      role: "assistant",
-      content: text || lastToolUi?.answer || "",
-    });
+    if (assistantContent.trim()) llm.messages.push({ role: "assistant", content: assistantContent });
     llm.messages = llm.messages.slice(-8);
 
     llmEventsApi.emit("status", { text: lastToolUi ? t("chat.status.toolExecuted") : t("chat.status.localModelReady"), tone: "good" });
