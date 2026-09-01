@@ -122,7 +122,7 @@ Toda la copy de UI vive en catálogos JSON (`src/web/locales/*.json`) y el códi
 
 Fuente y salidas generadas del LLM:
 
-- `data/llm-models.json`: catálogo fuente importado por `src/browser/chat/state/chat-state.ts` e integrado en `public/assets/app.js`.
+- `src/browser/chat/models/`: descubrimiento e inspección runtime, selección de dtype según hardware y perfiles versionados del usuario. El build no contiene un inventario de modelos ni consulta APIs externas de modelos.
 - `public/assets/chat/ai-sdk-browser.mjs`, generado desde `src/browser/chat/provider/ai-sdk/entry.ts`.
 - `public/assets/chat/workers/llm-browser-ai.worker.mjs`, generado desde `src/browser/chat/provider/ai-sdk/llm-browser-ai.worker.ts`.
 - `public/assets/ai-sdk-bridge.mjs`, generado desde `src/browser/chat/provider/ai-sdk-bridge.ts`.
@@ -280,7 +280,7 @@ Detalles importantes:
 - Las ejecuciones de tools se serializan por turno para proteger el canal `serial1`, aunque AI SDK entregue varias llamadas en paralelo.
 - El runner conserva una síntesis de respaldo si hubo tool work y la respuesta textual falta, parece un plan de tool o falla el paso de síntesis del SDK.
 - El middleware de Transformers.js elimina `toolChoice` para compatibilidad con ese backend.
-- El razonamiento (thinking) se configura por modelo en `data/llm-models.json` (campo `thinking`: `mode` y, para Transformers.js, `extract`). En Transformers.js se extrae con `extractReasoningMiddleware` usando `extract`; en Ollama se recibe como `message.thinking` nativo. En chat se muestra con el conmutador del panel LLM cuando el modo lo permite. Se transmite en streaming y no se conserva en memoria ni como respuesta final.
+- El razonamiento (thinking) se configura en cada perfil local del usuario. Transformers.js puede extraer un tag configurable con `extractReasoningMiddleware`; Ollama acepta un booleano o nivel de esfuerzo soportado y devuelve `message.thinking` nativo. Se transmite en streaming y no se conserva en memoria ni como respuesta final.
 - Ollama se llama desde el navegador, no desde la VM. El endpoint por defecto es `http://127.0.0.1:11434`.
 
 ### Contrato de tools y perfiles
@@ -321,7 +321,6 @@ Archivos clave:
 
 `scripts/check.mjs` ejecuta:
 
-- `scripts/check/llm-models.mjs`
 - `scripts/check/vm-profiles.mjs`
 - `scripts/check/frontend-manifest.mjs`
 - `scripts/check/js-syntax.mjs`
@@ -348,7 +347,7 @@ Archivos clave:
 2. El código de aplicación debe importarse desde `src/browser/main.ts` o desde módulos importados por este.
 3. Nuevo CSS en `src/web/styles/` y `@import` desde `src/web/styles/style.css`.
 4. Nuevas librerías browser vía `package.json` + script de copia/bundle, no copiadas a mano en `public/vendor/`.
-5. Añadir modelos nuevos a `data/llm-models.json` y reconstruir los assets generados con `pnpm build`.
+5. No añadir modelos hardcodeados al runtime. La compatibilidad y el comportamiento del agente deben descubrirse o configurarse mediante el perfil de usuario por modelo.
 6. Nueva tool como modulo de definicion en `src/browser/chat/tools/definitions/`; mantener alineados nombre literal, `requiredPackages`, `allowedTools` de perfiles, checks y tests.
 7. Cambios en perfiles, overlay o runners requieren `pnpm setup`.
 8. Cambios en provider AI SDK o worker requieren `pnpm build`.

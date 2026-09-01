@@ -200,10 +200,13 @@ async function inspectModel(
           finish(() => reject(new Error("Model inspection returned an invalid result")));
           return;
         }
-        finish(() => resolve(value.result as unknown as ModelInspection));
+        finish(() => resolve(value.result as ModelInspection));
       });
       worker.addEventListener("error", (event) => {
-        finish(() => reject(event.error || new Error(event.message || "Model inspection worker failed")));
+        const reason = event.error instanceof Error
+          ? event.error
+          : new Error(event.message || "Model inspection worker failed");
+        finish(() => reject(reason));
       }, { once: true });
       worker.postMessage({ type: "inspect-model", requestId, modelId: normalized, dtype });
     });

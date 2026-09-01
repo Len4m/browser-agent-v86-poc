@@ -1,7 +1,7 @@
 // Built to public/assets/chat/workers/llm-browser-ai.worker.mjs via pnpm build
 import { TransformersJSWorkerHandler } from "@browser-ai/transformers-js";
 import { ModelRegistry } from "@huggingface/transformers";
-import { inspectTransformersModel, type ModelRegistryLike } from "../../models/transformers-inspection";
+import { inspectTransformersModel } from "../../models/transformers-inspection";
 
 const handler = new TransformersJSWorkerHandler();
 type WorkerHandlerMessage = Parameters<TransformersJSWorkerHandler["onmessage"]>[0];
@@ -85,7 +85,7 @@ function inspectionMessage(message: unknown): { requestId: string; modelId: stri
 
 async function inspectModel(message: { requestId: string; modelId: string; dtype?: string }): Promise<void> {
   try {
-    const result = await inspectTransformersModel(ModelRegistry as unknown as ModelRegistryLike, message.modelId, { dtype: message.dtype });
+    const result = await inspectTransformersModel(ModelRegistry, message.modelId, { dtype: message.dtype });
     self.postMessage({ status: "model-inspection", requestId: message.requestId, result });
   } catch (error) {
     self.postMessage({

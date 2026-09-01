@@ -87,7 +87,7 @@ export async function searchHfModels(fetcher: FetchLike, options: HfSearchOption
   const url = options.nextUrl || buildHfSearchUrl(options.query);
   const response = await fetcher(url, { signal: options.signal, headers: { Accept: "application/json" } });
   if (!response.ok) throw responseError(response, "Hugging Face");
-  const body = await response.json();
+  const body: unknown = await response.json();
   if (!Array.isArray(body)) throw new Error("Hugging Face returned an invalid model list");
   return {
     models: body.flatMap((value) => {
@@ -113,24 +113,26 @@ export class HfModelSearchService {
   search(query = "", nextUrl: string | null = null): Promise<DiscoveryPage> {
     const cacheKey = nextUrl || buildHfSearchUrl(query);
     const cached = this.cache.get(cacheKey);
-    if (cached && cached.expires > this.now()) return Promise.resolve(cached.page);
+    if (cached && cached.expires > this.now()) {
+      this.cancel();
+      return Promise.resolve(cached.page);
+    }
     this.cancel();
     this.controller = new AbortController();
     const controller = this.controller;
     return new Promise((resolve, reject) => {
       this.rejectPending = reject;
-      this.timer = setTimeout(async () => {
+      this.timer = setTimeout(() => {
         this.timer = null;
-        try {
-          const page = await searchHfModels(this.fetcher, { query, nextUrl, signal: controller.signal });
+        void searchHfModels(this.fetcher, { query, nextUrl, signal: controller.signal }).then((page) => {
           if (this.cache.size >= 20) this.cache.delete(this.cache.keys().next().value as string);
           this.cache.set(cacheKey, { expires: this.now() + 5 * 60_000, page });
           this.rejectPending = null;
           resolve(page);
-        } catch (error) {
+        }).catch((error: unknown) => {
           this.rejectPending = null;
-          reject(error);
-        }
+          reject(error instanceof Error ? error : new Error(String(error)));
+        });
       }, nextUrl ? 0 : this.debounceMs);
     });
   }

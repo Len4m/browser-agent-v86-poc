@@ -149,13 +149,16 @@ Supported backends:
 - **Transformers.js**: runs in a dedicated browser worker. WebGPU is recommended; some models can fall back to WASM if WebGPU fails.
 - **Ollama HTTP**: the browser connects directly to the local endpoint, `http://127.0.0.1:11434` by default.
 
-Available models are declared in `data/llm-models.json`; `pnpm build` bundles that catalog into the frontend.
-The catalog prioritizes models with evidence of tool-calling support in `Transformers.js + AI SDK`; experimental entries are intended for local validation before being treated as recommended.
+Models are discovered at runtime. Transformers.js searches public, non-gated `text-generation` repositories tagged `transformers.js` on the Hugging Face Hub; Ollama lists every model installed at the configured endpoint. A repository ID can also be entered manually for Transformers.js.
+
+Hub search is remote and paginated. Successful Transformers.js loads appear in **Recent**, so they and saved profiles remain usable when the Hub API is unavailable. Selecting a Transformers.js repository inspects its ONNX files, dtypes, declared context, chat template, and tool/thinking signals in the existing inference worker. Selecting an Ollama model requests `/api/show` for its capabilities and context.
+
+The basic and advanced sections are user policy, not recommendations. Unknown capabilities produce warnings but do not disable the agent. Profiles are stored under `ba.llm.profiles.v1`; the last 20 successful Hub repositories use `ba.llm.hfRecents.v1`. Profile export/import is schema-versioned and excludes recents, caches, chat history, and the Ollama endpoint.
 
 Usage notes:
 
 - Chat is disabled until you load a backend/model.
-- The **Show model reasoning (thinking)** toggle in the LLM panel displays reasoning when the model declares it in the catalog. Reasoning text is streamed but is not saved as the final response or retained in memory.
+- The LLM panel stores editable agent, tool, context, dtype/device, sampling, and thinking settings per `engine:model`. Reasoning text is streamed but is not saved as the final response or retained in memory.
 - Tool results are stored as artifacts in the LLM panel: you can preview them, attach them to the next message, or delete them. Attachments respect the model's context budget and are omitted when there is not enough room.
 - The first Transformers.js model load may download large files, which the browser can cache.
 - WebGPU is the recommended path for tools with Transformers.js. The WASM fallback exists for basic chat in browsers without WebGPU, but should not be considered reliable for tool calling; use a browser with compatible WebGPU or Ollama when you need tools.
@@ -185,7 +188,7 @@ Accepts any valid `ws://` or `wss://` URL. For WSS, use a valid public certifica
 | `pnpm install` | Installs the project dependencies; does not generate heavy assets |
 | `pnpm prepare:local` | Runs `setup` and `build` to create a usable local environment |
 | `pnpm setup` | Downloads/copies base assets and generates the initramfs, profiles, and disks |
-| `pnpm build` | Bundles the model catalog and generates the LLM worker/bridge and frontend bundle; requires `setup` to have run at least once |
+| `pnpm build` | Generates the LLM worker/bridge and frontend bundle; it does not query model APIs and requires `setup` to have run at least once |
 | `pnpm build:prod` | Generates the minified production runtime: minified JS/CSS and cache hashes |
 | `pnpm check` | Runs TypeScript, lint, unit tests, and repository/asset integrity checks |
 | `pnpm clean` | Removes `build/` and generated build outputs from `public/` |
@@ -207,14 +210,13 @@ Regenerate with `pnpm build` after changing:
 - `src/browser/`
 - `src/web/index.html`
 - `src/web/styles/`
-- `data/llm-models.json`
 - The AI SDK provider or LLM worker
 
 ## Generated artifacts
 
 | Source | Output | Regenerate with |
 | --- | --- | --- |
-| `src/browser/`, `data/llm-models.json`, `src/web/index.html`, `src/web/styles/` | `public/index.html`, `public/style.css`, `public/styles/`, `public/assets/app.js`, `public/assets/ai-sdk-bridge.mjs` | `pnpm build` |
+| `src/browser/`, `src/web/index.html`, `src/web/styles/` | `public/index.html`, `public/style.css`, `public/styles/`, `public/assets/app.js`, `public/assets/ai-sdk-bridge.mjs` | `pnpm build` |
 | `src/web/styles/` | `public/assets/app.css` | `pnpm build:prod` |
 | `src/browser/chat/provider/ai-sdk/` | `public/assets/chat/` | `pnpm build` |
 | `vm/profiles/*.json`, `vm/overlay/common/` | `build/profiles/`, `public/v86/images/profiles/` | `pnpm setup` |

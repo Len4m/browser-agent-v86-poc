@@ -122,7 +122,7 @@ All UI copy lives in JSON catalogs (`src/web/locales/*.json`), and code only ref
 
 LLM source and generated outputs:
 
-- `data/llm-models.json`: source catalog imported by `src/browser/chat/state/chat-state.ts` and bundled into `public/assets/app.js`.
+- `src/browser/chat/models/`: runtime discovery, inspection, hardware dtype selection, and versioned user profiles. The build contains no model inventory and does not query external model APIs.
 - `public/assets/chat/ai-sdk-browser.mjs`, generated from `src/browser/chat/provider/ai-sdk/entry.ts`.
 - `public/assets/chat/workers/llm-browser-ai.worker.mjs`, generated from `src/browser/chat/provider/ai-sdk/llm-browser-ai.worker.ts`.
 - `public/assets/ai-sdk-bridge.mjs`, generated from `src/browser/chat/provider/ai-sdk-bridge.ts`.
@@ -280,7 +280,7 @@ Important details:
 - Tool executions are serialized per turn to protect the `serial1` channel even when AI SDK presents several calls in parallel.
 - The runner keeps a fallback synthesis when tools ran and the text response is missing, resembles a tool plan, or the SDK synthesis step fails.
 - The Transformers.js middleware removes `toolChoice` for compatibility with that backend.
-- Reasoning (thinking) is configured per model in `data/llm-models.json` (the `thinking` field: `mode` and, for Transformers.js, `extract`). Transformers.js extracts it with `extractReasoningMiddleware` using `extract`; Ollama receives it as native `message.thinking`. Chat displays it through the LLM panel toggle when the mode allows it. It is streamed and is not retained in memory or as the final response.
+- Reasoning (thinking) is configured in each local user profile. Transformers.js can extract a configurable tag with `extractReasoningMiddleware`; Ollama accepts a boolean or supported effort level and returns native `message.thinking`. It is streamed and is not retained in memory or as the final response.
 - Ollama is called from the browser, not the VM. The default endpoint is `http://127.0.0.1:11434`.
 
 ### Tool and profile contract
@@ -321,7 +321,6 @@ Key files:
 
 `scripts/check.mjs` runs:
 
-- `scripts/check/llm-models.mjs`
 - `scripts/check/vm-profiles.mjs`
 - `scripts/check/frontend-manifest.mjs`
 - `scripts/check/js-syntax.mjs`
@@ -348,7 +347,7 @@ Key files:
 2. Application code must be imported from `src/browser/main.ts` or from modules imported by it.
 3. Add new CSS under `src/web/styles/` and `@import` it from `src/web/styles/style.css`.
 4. Add new browser libraries through `package.json` plus a copy/bundle script; do not copy them manually into `public/vendor/`.
-5. Add new models to `data/llm-models.json` and rebuild the generated assets with `pnpm build`.
+5. Do not add hardcoded runtime models. Model compatibility and agent behavior must be discoverable or configurable through the per-model user profile.
 6. Add new tools as definition modules in `src/browser/chat/tools/definitions/`; keep the literal name, `requiredPackages`, profile `allowedTools`, checks, and tests aligned.
 7. Changes to profiles, the overlay, or runners require `pnpm setup`.
 8. Changes to the AI SDK provider or worker require `pnpm build`.

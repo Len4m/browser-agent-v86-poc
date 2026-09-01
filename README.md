@@ -81,7 +81,6 @@ Do not open `index.html` through `file://`. `pnpm start` already serves `public/
 
 ```txt
 public/                    # browser-served root; generated outputs and static assets
-data/                      # model catalog and structured data used by the build
 src/browser/               # frontend TypeScript source
 src/web/                   # source HTML template and CSS
 scripts/                   # main scripts and internal build/setup/check/clean steps

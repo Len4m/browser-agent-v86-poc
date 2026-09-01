@@ -149,13 +149,16 @@ Backends soportados:
 - **Transformers.js**: corre en el navegador con worker propio. WebGPU es lo recomendado; algunos modelos pueden caer a WASM si WebGPU falla.
 - **Ollama HTTP**: el navegador llama directamente al endpoint local, por defecto `http://127.0.0.1:11434`.
 
-Los modelos disponibles se declaran en `data/llm-models.json`; `pnpm build` integra ese catálogo en el frontend.
-El catálogo prioriza modelos con evidencia de tool calling en `Transformers.js + AI SDK`; las entradas experimentales sirven para validación local antes de tratarlas como recomendadas.
+Los modelos se descubren en runtime. Transformers.js busca repositorios públicos no gated de `text-generation` etiquetados `transformers.js` en Hugging Face Hub; Ollama lista todos los modelos instalados en el endpoint configurado. También se puede introducir manualmente un ID de repositorio para Transformers.js.
+
+La búsqueda del Hub es remota y paginada. Las cargas correctas de Transformers.js aparecen en **Recientes**, por lo que siguen disponibles junto con los perfiles guardados cuando la API del Hub falla. Al seleccionar un repositorio, el worker de inferencia existente inspecciona ficheros ONNX, dtypes, contexto declarado, chat template y señales de tools/thinking. Al seleccionar un modelo Ollama se consulta `/api/show` para obtener capacidades y contexto.
+
+Los bloques básico y avanzado representan la política del usuario, no recomendaciones. Una capacidad desconocida produce avisos, pero no desactiva el agente. Los perfiles se guardan en `ba.llm.profiles.v1` y los últimos 20 repositorios del Hub cargados correctamente en `ba.llm.hfRecents.v1`. La exportación/importación está versionada y excluye recientes, cachés, historial de chat y endpoint Ollama.
 
 Notas de uso:
 
 - El chat está deshabilitado hasta que cargues un backend/modelo.
-- El conmutador **Mostrar razonamiento del modelo (thinking)** del panel LLM muestra el razonamiento cuando el modelo lo declara en el catálogo. El texto de razonamiento se transmite en streaming y no se guarda como respuesta final ni se conserva en memoria.
+- El panel LLM guarda por `engine:model` la configuración editable del agente, tools, contexto, dtype/device, sampling y thinking. El razonamiento se transmite en streaming y no se guarda como respuesta final ni se conserva en memoria.
 - Los resultados de las tools se guardan como artifacts en el panel LLM: puedes previsualizarlos, adjuntarlos al siguiente mensaje o eliminarlos. El adjuntado respeta el presupuesto de contexto del modelo y se omite si no hay margen.
 - La primera carga de modelos Transformers.js puede descargar ficheros grandes y quedar cacheada por el navegador.
 - WebGPU es la ruta recomendada para tools con Transformers.js. El fallback WASM existe para chat básico en navegadores sin WebGPU, pero no debe considerarse una ruta fiable para tool calling; usa un navegador con WebGPU compatible u Ollama si necesitas herramientas.
@@ -185,7 +188,7 @@ Permite introducir cualquier URL válida `ws://` o `wss://`. Para WSS usa un cer
 | `pnpm install` | Instala las dependencias del proyecto; no genera los assets pesados |
 | `pnpm prepare:local` | Ejecuta `setup` y `build` para dejar un entorno local usable |
 | `pnpm setup` | Descarga/copia assets base, genera initramfs, perfiles y discos |
-| `pnpm build` | Integra el catálogo de modelos y genera el worker/bridge LLM y el bundle frontend; requiere haber ejecutado `setup` al menos una vez |
+| `pnpm build` | Genera el worker/bridge LLM y el bundle frontend; no consulta APIs de modelos y requiere haber ejecutado `setup` al menos una vez |
 | `pnpm build:prod` | Genera el runtime minificado para producción: JS/CSS minificados y hashes de caché |
 | `pnpm check` | Ejecuta TypeScript, lint, tests unitarios y checks de integridad del repo/assets |
 | `pnpm clean` | Borra `build/` y las salidas generadas por el build en `public/` |
@@ -207,14 +210,13 @@ Regenera con `pnpm build` después de tocar:
 - `src/browser/`
 - `src/web/index.html`
 - `src/web/styles/`
-- `data/llm-models.json`
 - provider AI SDK o worker LLM
 
 ## Artefactos generados
 
 | Fuente | Salida | Regenerar |
 | --- | --- | --- |
-| `src/browser/`, `data/llm-models.json`, `src/web/index.html`, `src/web/styles/` | `public/index.html`, `public/style.css`, `public/styles/`, `public/assets/app.js`, `public/assets/ai-sdk-bridge.mjs` | `pnpm build` |
+| `src/browser/`, `src/web/index.html`, `src/web/styles/` | `public/index.html`, `public/style.css`, `public/styles/`, `public/assets/app.js`, `public/assets/ai-sdk-bridge.mjs` | `pnpm build` |
 | `src/web/styles/` | `public/assets/app.css` | `pnpm build:prod` |
 | `src/browser/chat/provider/ai-sdk/` | `public/assets/chat/` | `pnpm build` |
 | `vm/profiles/*.json`, `vm/overlay/common/` | `build/profiles/`, `public/v86/images/profiles/` | `pnpm setup` |

@@ -48,8 +48,10 @@ function numberInRange(value: unknown, min: number, max: number): number | null 
 }
 
 function stringArray(value: unknown): string[] | null {
-  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) return null;
-  return [...new Set(value.map((item) => item.trim()).filter(Boolean))];
+  if (!Array.isArray(value)) return null;
+  const strings = value.filter((item): item is string => typeof item === "string");
+  if (strings.length !== value.length) return null;
+  return [...new Set(strings.map((item) => item.trim()).filter(Boolean))];
 }
 
 function record(value: unknown): Record<string, unknown> | null {
@@ -250,7 +252,7 @@ export function importProfiles(
 
 export function loadHfRecents(storage: StorageLike): string[] {
   try {
-    const value = JSON.parse(storage.getItem(HF_RECENTS_STORAGE_KEY) || "[]");
+    const value: unknown = JSON.parse(storage.getItem(HF_RECENTS_STORAGE_KEY) || "[]");
     return stringArray(value)?.slice(0, 20) || [];
   } catch {
     return [];

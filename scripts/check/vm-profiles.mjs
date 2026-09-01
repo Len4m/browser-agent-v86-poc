@@ -2,8 +2,7 @@
 /**
  * Validates vm/profiles/*.json against vm/profiles/profile.schema.json.
  *
- * This keeps profile checks dependency-free, matching the lightweight approach
- * used by scripts/check/llm-models.mjs.
+ * This keeps profile checks dependency-free.
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";

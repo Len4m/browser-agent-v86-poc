@@ -12,7 +12,6 @@ import { ensureLLMCapabilities, syncLLMCapabilityBadges, type LlmCapabilities } 
 import {
   defaultModelConfig,
   findLlmModel,
-  getLlmModels,
   getLlmState,
   getSelectedLlmModel,
   llmEngineMetaLabel,
@@ -333,6 +332,7 @@ async function selectTransformersModel(modelId: string, discovered?: DiscoveredM
     gated: false,
     metadata: { manual: true },
   };
+  const savedProfile = loadProfiles(localStorage)[item.key];
   let inspection: ModelInspection;
   let selection: Partial<LlmUserProfile> = {};
   try {
@@ -349,7 +349,7 @@ async function selectTransformersModel(modelId: string, discovered?: DiscoveredM
     inspection = failedInspection(normalized, error);
     selection = { device: "auto", dtype: "auto" };
   }
-  const config = registerDiscoveredModel(item, inspection, selection);
+  const config = registerDiscoveredModel(item, inspection, savedProfile ? null : selection);
   selectLlmModel(config);
   refreshRegisteredModelSelect(config);
   syncProfileUi(config);
@@ -412,7 +412,7 @@ function syncProfileUi(config = getSelectedModel()): void {
   if (!profile) return;
   const setValue = (id: string, value: unknown): void => {
     const element = document.getElementById(id);
-    if (element instanceof HTMLInputElement || element instanceof HTMLSelectElement) element.value = String(value ?? "");
+    if (element instanceof HTMLInputElement || element instanceof HTMLSelectElement) element.value = textValue(value);
   };
   setValue("ba-llm-tool-strategy", profile.toolStrategy);
   setValue("ba-llm-tool-calling", profile.toolCalling);

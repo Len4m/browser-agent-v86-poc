@@ -55,6 +55,7 @@ test("profile precedence is defaults, inspection, saved profile, current selecti
   );
   assert.equal(resolved.contextWindowTokens, 8192);
   assert.equal(resolved.temperature, 0.2);
+  assert.equal(resolveProfile("transformersjs", "org/model", null, { ...saved, device: "wasm", dtype: "q8" }).device, "wasm");
 });
 
 test("weak and fair cap effective tool steps", () => {

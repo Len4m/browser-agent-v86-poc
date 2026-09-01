@@ -81,7 +81,6 @@ No abras `index.html` como `file://`. `pnpm start` ya sirve `public/` con las ca
 
 ```txt
 public/             # raíz servida al navegador; contiene salidas generadas y assets estáticos
-data/               # catálogo de modelos y datos estructurados usados por el build
 src/browser/        # código TypeScript del frontend
 src/web/            # plantilla HTML y CSS fuente
 scripts/            # scripts principales y pasos internos de build/setup/check/clean

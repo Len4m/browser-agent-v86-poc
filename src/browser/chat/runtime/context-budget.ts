@@ -1,7 +1,7 @@
 // Browser Agent v86 - LLM context budget.
-// Single source of truth for prompt/output budgets. contextWindowTokens comes
-// from the model catalog; this module reserves part of that window for input
-// and derives max output from the remaining room.
+// Single source of truth for prompt/output budgets. The selected user profile
+// provides contextWindowTokens; this module reserves part of that window for
+// input and derives max output from the remaining room.
 
 import { t } from "../../app/i18n";
 import { defaultModelConfig, getLlmState, getSelectedLlmModel, type LlmContextPolicy, type LlmModelConfig } from "../state/chat-state";

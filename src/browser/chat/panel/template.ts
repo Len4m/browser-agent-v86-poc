@@ -104,7 +104,7 @@ function buildLLMPanelHtml(): string {
             <select id="ba-llm-hf-results" size="6"></select>
           </label>
           <label id="ba-llm-custom-wrap" class="ba-llm-field"><span data-i18n="panel.llm.discovery.manual">Repository ID</span>
-            <input id="ba-llm-custom-model" placeholder="onnx-community/Llama-3.2-1B-Instruct-ONNX" />
+            <input id="ba-llm-custom-model" placeholder="organization/model" />
           </label>
           <small id="ba-llm-hf-recents" class="ba-llm-note"></small>
         </section>

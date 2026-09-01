@@ -60,6 +60,27 @@ test("HF service debounces, cancels stale requests and caches pages", async () =
   assert.equal(calls, 2);
 });
 
+test("a cached HF result still cancels an obsolete in-flight query", async () => {
+  let currentSignal: AbortSignal | undefined;
+  const fetcher: FetchLike = async (input, init) => {
+    if (String(input).includes("search=slow")) {
+      currentSignal = init?.signal || undefined;
+      return await new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+      });
+    }
+    return jsonResponse([{ id: "org/cached", pipeline_tag: "text-generation", tags: ["transformers.js"] }]);
+  };
+  const service = new HfModelSearchService(fetcher, () => 100, 0);
+  await service.search("cached");
+  const slow = service.search("slow");
+  const rejected = assert.rejects(slow, { name: "AbortError" });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  await service.search("cached");
+  await rejected;
+  assert.equal(currentSignal?.aborted, true);
+});
+
 test("HF errors include rate-limit retry information", async () => {
   const fetcher: FetchLike = async () => new Response("limited", {
     status: 429,
