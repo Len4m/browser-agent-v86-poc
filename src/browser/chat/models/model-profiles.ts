@@ -8,7 +8,6 @@ import type {
 } from "./model-types";
 
 export const LAST_PROFILE_STORAGE_KEY = "ba.llm.lastProfile.v1";
-export const HF_RECENTS_STORAGE_KEY = "ba.llm.hfRecents.v1";
 
 export interface StorageLike {
   getItem(key: string): string | null;
@@ -189,22 +188,4 @@ export function saveLastProfile(storage: StorageLike, profile: LlmUserProfile): 
   const valid = validateProfile(profile);
   if (!valid) throw new Error("Invalid LLM profile");
   storage.setItem(LAST_PROFILE_STORAGE_KEY, JSON.stringify(valid));
-}
-
-export function loadHfRecents(storage: StorageLike): string[] {
-  try {
-    const value: unknown = JSON.parse(storage.getItem(HF_RECENTS_STORAGE_KEY) || "[]");
-    return stringArray(value)?.slice(0, 20) || [];
-  } catch {
-    return [];
-  }
-}
-
-export function recordHfRecent(storage: StorageLike, modelId: string): string[] {
-  const normalized = modelId.trim();
-  const recents = [normalized, ...loadHfRecents(storage).filter((item) => item !== normalized)]
-    .filter(Boolean)
-    .slice(0, 20);
-  storage.setItem(HF_RECENTS_STORAGE_KEY, JSON.stringify(recents));
-  return recents;
 }

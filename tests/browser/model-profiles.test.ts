@@ -3,11 +3,8 @@ import assert from "node:assert/strict";
 import {
   defaultProfile,
   effectiveMaxSteps,
-  HF_RECENTS_STORAGE_KEY,
   LAST_PROFILE_STORAGE_KEY,
-  loadHfRecents,
   loadLastProfile,
-  recordHfRecent,
   resolveProfile,
   saveLastProfile,
   validateProfile,
@@ -80,15 +77,4 @@ test("profile validation enforces enums and clamps numeric limits", () => {
   assert.equal(valid?.temperature, 2);
   assert.equal(valid?.topP, 1);
   assert.equal(validateProfile({ ...profile, toolStrategy: "magic" }), null);
-});
-
-test("HF recents are saved only when explicitly recorded and capped to twenty", () => {
-  const storage = new MemoryStorage();
-  assert.deepEqual(loadHfRecents(storage), []);
-  for (let index = 0; index < 22; index += 1) recordHfRecent(storage, `org/model-${index}`);
-  recordHfRecent(storage, "org/model-10");
-  const recents = loadHfRecents(storage);
-  assert.equal(recents.length, 20);
-  assert.equal(recents[0], "org/model-10");
-  assert.ok(storage.getItem(HF_RECENTS_STORAGE_KEY));
 });

@@ -310,7 +310,6 @@
   font-size: 0.66rem;
 }
 
-.ba-llm-model-option-tag,
 .ba-llm-tag {
   display: inline-flex;
   align-items: center;
@@ -324,10 +323,6 @@
   font-weight: 800;
   line-height: 1.2;
   white-space: nowrap;
-}
-
-.ba-llm-model-option-tag {
-  flex: 0 0 auto;
 }
 
 .ba-llm-collapsible-body {

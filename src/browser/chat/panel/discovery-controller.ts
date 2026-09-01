@@ -1,7 +1,6 @@
 import { t } from "../../app/i18n";
 import { ensureLLMCapabilities } from "../state/capabilities";
 import {
-  getLlmModels,
   getSelectedLlmModel,
   registerDiscoveredModel,
   selectLlmModel,
@@ -14,7 +13,6 @@ import {
 } from "../models/model-discovery";
 import type { DiscoveredModel, LlmEngine, LlmUserProfile, ModelInspection } from "../models/model-types";
 import { modelKey } from "../models/model-types";
-import { loadHfRecents, recordHfRecent } from "../models/model-profiles";
 import { chooseTransformersRuntime } from "../models/transformers-inspection";
 import { getAiSdkReady } from "../provider/ai-sdk-runtime";
 import { llmAgent } from "../runtime/agent-loop";
@@ -69,7 +67,6 @@ export interface DiscoveryController {
   ensureSelection: () => Promise<LlmModelConfig>;
   setActionBusy: (busy: boolean) => void;
   render: () => void;
-  recordRecent: (model: LlmModelConfig) => void;
 }
 
 export function createDiscoveryController(hooks: DiscoveryControllerHooks): DiscoveryController {
@@ -137,12 +134,6 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
       main.append(meta);
     }
     option.append(main);
-    if (model.metadata.recent === true) {
-      const recent = document.createElement("span");
-      recent.className = "ba-llm-model-option-tag";
-      recent.textContent = t("panel.llm.discovery.recent");
-      option.append(recent);
-    }
     return option;
   }
 
@@ -264,32 +255,6 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
     renderInspection();
   }
 
-  function recentModels(): DiscoveredModel[] {
-    const verified = new Set(getLlmModels()
-      .filter((model) => model.engine === "transformersjs" && model.inspection?.capabilities.tools === true)
-      .map((model) => model.model));
-    return loadHfRecents(localStorage)
-      .filter((modelId) => verified.has(modelId))
-      .map((modelId) => ({
-        key: modelKey("transformersjs", modelId),
-        engine: "transformersjs",
-        modelId,
-        label: modelId,
-        private: false,
-        gated: false,
-        metadata: { recent: true, tools: true },
-      }));
-  }
-
-  function renderRecents(): void {
-    const element = document.getElementById("ba-llm-hf-recents");
-    if (!element) return;
-    const recents = recentModels();
-    element.textContent = recents.length
-      ? t("panel.llm.discovery.recentsAvailable", { count: recents.length })
-      : "";
-  }
-
   function setError(id: string, message = ""): void {
     const element = document.getElementById(id);
     if (!element) return;
@@ -317,7 +282,7 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
     if (force) searchService.clearCache();
     try {
       const page = await searchService.search(search, append ? hfNextUrl : null);
-      const pageModels = append ? page.models : [...(search.trim() ? [] : recentModels()), ...page.models];
+      const pageModels = page.models;
       hfResults = append
         ? [...hfResults, ...pageModels.filter((model) => !hfResults.some((item) => item.key === model.key))]
         : pageModels.filter((model, index, list) => list.findIndex((item) => item.key === model.key) === index);
@@ -537,9 +502,7 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
     } else if (selected?.engine === "ollama") {
       selectedOllamaKey = selected.id;
     }
-    hfResults = recentModels();
     renderList(elementById("ba-llm-hf-results"), hfResults);
-    renderRecents();
     if (selected?.engine === "ollama") void refreshOllama();
     else void refreshHf();
   }
@@ -547,15 +510,8 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
   function render(): void {
     renderList(elementById("ba-llm-hf-results"), hfResults);
     renderList(elementById("ba-llm-ollama-models"), ollamaResults);
-    renderRecents();
     renderInspection();
   }
 
-  function recordRecent(model: LlmModelConfig): void {
-    if (model.engine !== "transformersjs" || !model.model || model.inspection?.capabilities.tools !== true) return;
-    recordHfRecent(localStorage, model.model);
-    renderRecents();
-  }
-
-  return { source, bind, initialize, ensureSelection, setActionBusy, render, recordRecent };
+  return { source, bind, initialize, ensureSelection, setActionBusy, render };
 }
