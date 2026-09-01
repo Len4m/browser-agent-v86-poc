@@ -6,7 +6,7 @@ import { state } from "../../app/state";
 import { t } from "../../app/i18n";
 import { originApi } from "../../app/origin-awareness";
 import { appEvents } from "../../core/events";
-import { addMessage, throwIfAborted } from "../../vm/runtime-assets";
+import { addMessage, makeAbortError, throwIfAborted } from "../../vm/runtime-assets";
 import { backgroundToolsApi } from "../../vm/background-tools-serial1";
 import { detectLLMCapabilities, type LlmCapabilities } from "../state/capabilities";
 import { defaultModelConfig, getLlmState, getSelectedLlmModel, llmEventsApi, llmModelRequiresWebGPU, llmModelShortLabel, type LlmModelConfig, type LlmState } from "../state/chat-state";
@@ -78,6 +78,8 @@ interface RunAgentTurnOptions {
 interface LlmAgentApi {
   getSelectedModelConfig: () => LlmModelConfig;
   loadSelectedModel: () => Promise<void>;
+  cancelModelLoad: () => boolean;
+  isModelLoadActive: () => boolean;
   handleUserMessage: (userText: string) => Promise<void>;
   clearHistory: () => void;
   unloadModel: () => void;
@@ -88,6 +90,7 @@ interface LlmAgentApi {
 }
 
 let activeTurnAbortController: AbortController | null = null;
+let activeModelLoadAbortController: AbortController | null = null;
 let activeTurnGeneration = 0;
 let stopRequested = false;
 let streamDeltaLogCount = 0;
@@ -345,10 +348,22 @@ function isModelReady(): boolean {
 }
 
 async function loadSelectedModel(): Promise<void> {
+  const loadController = new AbortController();
+  activeModelLoadAbortController = loadController;
+  try {
+    await loadSelectedModelWithSignal(loadController.signal);
+  } finally {
+    if (activeModelLoadAbortController === loadController) activeModelLoadAbortController = null;
+  }
+}
+
+async function loadSelectedModelWithSignal(signal: AbortSignal): Promise<void> {
   const llm = ensureLlmState();
   const caps = await ensureCapabilities();
+  throwIfAborted(signal);
   const modelConfig = resolveTransformersRuntimeConfig(getSelectedModelConfig(), caps);
   const sdk = await ensureAiSdk();
+  throwIfAborted(signal);
 
   const needsWebGPU = llmModelRequiresWebGPU(modelConfig);
   if (!modelConfig.model) {
@@ -382,6 +397,7 @@ async function loadSelectedModel(): Promise<void> {
   try {
     sdk.unloadModel();
     await sdk.loadModel(modelConfig, {
+      signal,
       onProgress(detail) {
         llmEventsApi.emit("progress", detail);
         if (detail.status === "fallback") {
@@ -389,6 +405,7 @@ async function loadSelectedModel(): Promise<void> {
         }
       },
     });
+    throwIfAborted(signal);
 
     const activeConfig = sdk.getActiveModelConfig?.() || modelConfig;
     const activeRuntime = runtimeInfo(activeConfig);
@@ -417,6 +434,18 @@ async function loadSelectedModel(): Promise<void> {
     llmResourceGovernor.finish("model-load");
     updateChatAvailability();
   }
+}
+
+function isModelLoadActive(): boolean {
+  return Boolean(activeModelLoadAbortController && !activeModelLoadAbortController.signal.aborted);
+}
+
+function cancelModelLoad(): boolean {
+  const controller = activeModelLoadAbortController;
+  if (!controller || controller.signal.aborted) return false;
+  controller.abort(makeAbortError(t("common.operationCancelled")));
+  unloadModel();
+  return true;
 }
 
 async function handleToolUiAfterExecute({
@@ -1074,6 +1103,8 @@ function refreshChatAvailabilityWithResourceTelemetry(): void {
 export const llmAgent: LlmAgentApi = {
   getSelectedModelConfig,
   loadSelectedModel,
+  cancelModelLoad,
+  isModelLoadActive,
   handleUserMessage,
   clearHistory,
   unloadModel,

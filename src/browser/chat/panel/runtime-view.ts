@@ -1,4 +1,5 @@
 import { t } from "../../app/i18n";
+import { setLoading } from "../../vm/runtime-assets";
 import { ensureLLMCapabilities, syncLLMCapabilityBadges, type LlmCapabilities } from "../state/capabilities";
 import {
   getLlmState,
@@ -38,7 +39,7 @@ interface RuntimeViewHooks {
 
 export interface RuntimeView {
   setStatus: (text: string, tone?: string) => void;
-  setProgress: (detail: ProgressDetail | null, force?: boolean) => void;
+  setProgress: (detail: ProgressDetail | null) => void;
   updateCapabilityDetails: (result: LlmCapabilities | null) => void;
   applyCapabilities: (result: LlmCapabilities | null) => void;
   checkCapabilities: (options?: { force?: boolean }) => Promise<LlmCapabilities>;
@@ -139,25 +140,21 @@ export function createRuntimeView(hooks: RuntimeViewHooks): RuntimeView {
     status.className = `badge ba-llm-header-status ${tone}`.trim();
   }
 
-  function setProgress(detail: ProgressDetail | null, force = false): void {
-    const wrap = document.getElementById("ba-llm-progress-wrap");
-    const bar = document.getElementById("ba-llm-progress-bar");
-    const percent = document.getElementById("ba-llm-progress-percent");
-    const title = document.getElementById("ba-llm-progress-title");
-    const sub = document.getElementById("ba-llm-progress-detail");
-    if (!wrap || !(bar instanceof HTMLElement) || !percent || !title || !sub) return;
-    if (!detail && !force) return;
-    const info = detail
-      ? getProgressInfo(detail)
-      : { mode: "idle", percent: 0, title: t("panel.llm.progress.idle"), detail: "" } satisfies ProgressInfo;
-    wrap.classList.toggle("is-active", info.mode !== "idle");
-    bar.classList.toggle("is-indeterminate", info.mode === "indeterminate");
-    const percentage = info.percent == null ? 0 : info.percent;
-    bar.style.width = `${percentage}%`;
-    bar.setAttribute("aria-valuenow", String(percentage));
-    percent.textContent = info.percent == null ? "—" : `${percentage}%`;
-    title.textContent = info.title || t("common.loading");
-    sub.textContent = info.detail || "";
+  function setProgress(detail: ProgressDetail | null): void {
+    if (!detail) {
+      setLoading(false);
+      return;
+    }
+    const info = getProgressInfo(detail);
+    setLoading(true, {
+      title: info.title || t("common.loading"),
+      detail: info.detail,
+      percent: info.percent,
+      indeterminate: info.mode === "indeterminate",
+      cancelable: llmAgent.isModelLoadActive(),
+      cancelLabel: t("panel.llm.action.cancelDownload"),
+      onCancel: llmAgent.cancelModelLoad,
+    });
   }
 
   function canUnloadActiveWorker(): boolean {

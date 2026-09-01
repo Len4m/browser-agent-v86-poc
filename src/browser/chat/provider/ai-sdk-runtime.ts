@@ -82,7 +82,10 @@ export interface AiSdkBridgeApi {
   tool: (config: AiSdkToolConfig) => unknown;
   unloadModel: () => void;
   inspectModel: (modelId: string, options?: { dtype?: string; timeoutMs?: number }) => Promise<ModelInspection>;
-  loadModel: (modelConfig: LlmModelConfig, options?: { onProgress?: (detail: Record<string, unknown>) => void }) => Promise<void>;
+  loadModel: (modelConfig: LlmModelConfig, options?: {
+    signal?: AbortSignal;
+    onProgress?: (detail: Record<string, unknown>) => void;
+  }) => Promise<void>;
   getActiveModel: () => unknown;
   getActiveModelConfig: () => LlmModelConfig | null;
   isModelReady: () => boolean;

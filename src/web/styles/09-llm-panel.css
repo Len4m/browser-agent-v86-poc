@@ -552,64 +552,6 @@
   font-size: 0.82rem;
 }
 
-.ba-llm-progress-wrap {
-  display: grid;
-  gap: 0.42rem;
-  padding: 0.72rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  background: #fff;
-}
-
-.ba-llm-progress-wrap.is-active {
-  border-color: #bfdbfe;
-  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.05);
-}
-
-.ba-llm-progress-head {
-  display: flex;
-  gap: 0.6rem;
-  align-items: center;
-  justify-content: space-between;
-  color: #334155;
-  font-size: 0.78rem;
-  font-weight: 850;
-}
-
-#ba-llm-progress-percent {
-  color: #2563eb;
-  font-size: 0.78rem;
-}
-
-.ba-llm-progress-track {
-  position: relative;
-  height: 10px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #e2e8f0;
-}
-
-.ba-llm-progress-bar {
-  width: 0;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #2563eb, #38bdf8);
-  transition: width 0.18s ease;
-}
-
-.ba-llm-progress-bar.is-indeterminate {
-  width: 36% !important;
-  animation: ba-llm-progress-sweep 1.15s ease-in-out infinite;
-}
-
-.ba-llm-progress-detail {
-  min-height: 1rem;
-  color: #64748b;
-  font-size: 0.72rem;
-  line-height: 1.35;
-  word-break: break-word;
-}
-
 .ba-llm-note {
   margin: 0;
   color: #64748b;
@@ -620,11 +562,6 @@
 
 .ba-llm-origin-warning {
   margin-top: 0;
-}
-
-@keyframes ba-llm-progress-sweep {
-  0% { transform: translateX(-130%); }
-  100% { transform: translateX(310%); }
 }
 
 @media (max-width: 520px) {

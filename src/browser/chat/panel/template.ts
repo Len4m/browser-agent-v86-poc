@@ -164,19 +164,6 @@ function buildLLMPanelHtml(): string {
           <button id="ba-llm-load" type="button" data-i18n="panel.llm.action.load">panel.llm.action.load</button>
         </div>
 
-        <small class="ba-llm-note" data-i18n="panel.llm.note.tools">panel.llm.note.tools</small>
-
-        <div id="ba-llm-progress-wrap" class="ba-llm-progress-wrap" aria-live="polite">
-          <div class="ba-llm-progress-head">
-            <span id="ba-llm-progress-title" data-i18n="panel.llm.progress.idle">panel.llm.progress.idle</span>
-            <b id="ba-llm-progress-percent">—</b>
-          </div>
-          <div class="ba-llm-progress-track">
-            <div id="ba-llm-progress-bar" class="ba-llm-progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
-          </div>
-          <div id="ba-llm-progress-detail" class="ba-llm-progress-detail"></div>
-        </div>
-
         <details class="ba-llm-resource-card ba-llm-collapsible-card">
           <summary class="ba-llm-tool-policy-head ba-llm-collapsible-summary">
             <strong data-i18n="panel.llm.resources.title">panel.llm.resources.title</strong>

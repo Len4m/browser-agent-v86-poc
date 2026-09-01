@@ -6,6 +6,7 @@ import { applyDomTranslations, t } from "../../app/i18n";
 import { originApi } from "../../app/origin-awareness";
 import { appEvents } from "../../core/events";
 import { showBaModal } from "../../ui/modal";
+import { isAbortError } from "../../vm/runtime-assets";
 import { syncLLMCapabilityBadges } from "../state/capabilities";
 import { getLlmState, getSelectedLlmModel, llmEventsApi, type LlmModelConfig } from "../state/chat-state";
 import { llmAgent } from "../runtime/agent-loop";
@@ -86,7 +87,7 @@ function syncSourceVisibility(): void {
 
   runtimeView.updateSelectedModelCard();
   updateResourceLines();
-  runtimeView.setProgress(null, true);
+  runtimeView.setProgress(null);
 
   const llm = ensureLlmState();
   const selected = getSelectedModel();
@@ -111,23 +112,28 @@ async function handleLoadClick(): Promise<void> {
   const llm = ensureLlmState();
   try {
     setPanelBusy(true);
-    runtimeView.setProgress({ status: "init", model: "" }, true);
+    runtimeView.setProgress({ status: "init", model: "" });
     const selected = await discovery.ensureSelection();
-    runtimeView.setProgress({ status: "init", model: selected.model || "" }, true);
+    runtimeView.setProgress({ status: "init", model: selected.model || "" });
     await runtimeView.checkCapabilities();
     runtimeView.setStatus(selected.engine === "ollama"
       ? t("common.connectingOllama")
       : (selected.device === "wasm" ? t("panel.llm.status.loadingWasm") : t("panel.llm.status.loadingModel")), "warn");
     llm.loading = true;
-    await llmAgent.loadSelectedModel();
-    discovery.recordRecent(selected);
-    runtimeView.setProgress({ status: "done" }, true);
+    const loading = llmAgent.loadSelectedModel();
+    runtimeView.setProgress({ status: "init", model: selected.model || "" });
+    await loading;
   } catch (error) {
-    llm.lastError = errorMessage(error);
-    runtimeView.setStatus(t("panel.llm.status.loadError"), "bad");
-    runtimeView.setProgress({ status: "error", file: errorMessage(error) }, true);
+    if (isAbortError(error)) {
+      llm.lastError = "";
+      runtimeView.setStatus(t("common.operationCancelled"), "warn");
+    } else {
+      llm.lastError = errorMessage(error);
+      runtimeView.setStatus(t("panel.llm.status.loadError"), "bad");
+    }
   } finally {
     llm.loading = false;
+    runtimeView.setProgress(null);
     setPanelBusy(false);
     runtimeView.syncWorkerUnloadButton();
     llmAgent.updateChatAvailability();
@@ -215,7 +221,7 @@ function bindPanelControls(): void {
   document.getElementById("ba-llm-abort")?.addEventListener("click", () => {
     if (!runtimeView.canUnloadActiveWorker()) return;
     llmAgent.unloadModel();
-    runtimeView.setProgress(null, true);
+    runtimeView.setProgress(null);
     runtimeView.setStatus(t("panel.llm.status.workerUnloaded"), "warn");
     runtimeView.syncWorkerUnloadButton();
   });
@@ -275,7 +281,7 @@ function bindApplicationEvents(): void {
     syncToolPolicyUi();
     updateAvailableToolsUi();
   });
-  llmEventsApi.on("progress", (detail) => runtimeView.setProgress(detail, true));
+  llmEventsApi.on("progress", (detail) => runtimeView.setProgress(detail));
   llmEventsApi.on("context", (detail) => updateResourceLines({ context: resourceContext(detail) || {} }));
   for (const event of ["artifact", "artifact-context", "artifact-remove", "artifact-clear"] as const) {
     llmEventsApi.on(event, () => updateResourceLines());

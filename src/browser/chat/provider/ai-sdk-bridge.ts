@@ -35,6 +35,7 @@ interface ActiveModelHandle {
 }
 
 interface LoadModelOptions {
+  signal?: AbortSignal;
   onProgress?: (detail: Record<string, unknown>) => void;
 }
 
@@ -71,6 +72,40 @@ function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
   return "Error";
+}
+
+function modelLoadAbortError(signal: AbortSignal): Error {
+  if (signal.reason instanceof Error) return signal.reason;
+  const error = new Error(typeof signal.reason === "string" ? signal.reason : t("common.operationCancelled"));
+  error.name = "AbortError";
+  return error;
+}
+
+function abortableModelLoad<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise;
+  if (signal.aborted) {
+    unloadModel();
+    return Promise.reject(modelLoadAbortError(signal));
+  }
+  return new Promise<T>((resolve, reject) => {
+    const cleanup = (): void => signal.removeEventListener("abort", onAbort);
+    const onAbort = (): void => {
+      cleanup();
+      unloadModel();
+      reject(modelLoadAbortError(signal));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    promise.then(
+      (value) => {
+        cleanup();
+        resolve(value);
+      },
+      (error) => {
+        cleanup();
+        reject(error instanceof Error ? error : new Error(errorMessage(error)));
+      },
+    );
+  });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -300,7 +335,7 @@ function createModel(modelConfig: LlmModelConfig): LanguageModelV4 {
   return model;
 }
 
-async function loadModel(modelConfig: LlmModelConfig, { onProgress }: LoadModelOptions = {}): Promise<LanguageModelV4> {
+async function loadModel(modelConfig: LlmModelConfig, { signal, onProgress }: LoadModelOptions = {}): Promise<LanguageModelV4> {
   async function loadWithConfig(config: LlmModelConfig): Promise<LanguageModelV4> {
     const model = createModel(config);
     // wrapLanguageModel solo envuelve doGenerate/doStream; sesión y descarga viven en el modelo base.
@@ -327,9 +362,15 @@ async function loadModel(modelConfig: LlmModelConfig, { onProgress }: LoadModelO
     return model;
   }
 
+  const loadAttempt = (config: LlmModelConfig): Promise<LanguageModelV4> => abortableModelLoad(loadWithConfig(config), signal);
+
   try {
-    return await loadWithConfig(modelConfig);
+    return await loadAttempt(modelConfig);
   } catch (error) {
+    if (signal?.aborted || (error instanceof Error && error.name === "AbortError")) {
+      unloadModel();
+      throw signal?.aborted ? modelLoadAbortError(signal) : error;
+    }
     const msg = errorMessage(error);
     const fallbackConfig = isGpuRuntimeFailure(msg) ? buildWasmFallbackConfig(modelConfig) : null;
     if (!fallbackConfig) {
@@ -350,7 +391,7 @@ async function loadModel(modelConfig: LlmModelConfig, { onProgress }: LoadModelO
     terminateActiveWorker();
     activeModelHandle = null;
     try {
-      const model = await loadWithConfig(fallbackConfig);
+      const model = await loadAttempt(fallbackConfig);
       if (typeof console !== "undefined" && console.info) {
         console.info("[llm] WebGPU load failed; active session uses WASM fallback.", {
           model: fallbackConfig.model,
