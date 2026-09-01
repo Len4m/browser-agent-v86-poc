@@ -171,10 +171,6 @@
   display: none;
 }
 
-.ba-llm-discovery-pagination {
-  justify-content: flex-end;
-}
-
 .ba-llm-model-list-frame {
   position: relative;
 }
@@ -268,6 +264,29 @@
   box-shadow: inset 3px 0 #2563eb;
 }
 
+.ba-llm-model-load-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 42px;
+  padding: 0.5rem 0.65rem;
+  border: 1px dashed #93c5fd;
+  border-radius: 11px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-align: center;
+  box-shadow: none;
+}
+
+.ba-llm-model-load-more:hover,
+.ba-llm-model-load-more:focus-visible {
+  border-color: #3b82f6;
+  background: #dbeafe;
+}
+
 .ba-llm-model-option-main {
   display: grid;
   gap: 0.14rem;
@@ -333,6 +352,40 @@
   background: #fff;
   color: #0f172a;
   font-size: 0.88rem;
+}
+
+.ba-llm-model-list-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.38rem;
+  min-height: 28px;
+}
+
+.ba-llm-refresh-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 8px;
+  color: #475569;
+}
+
+.ba-llm-refresh-icon::before {
+  content: "";
+  width: 15px;
+  height: 15px;
+  background: currentColor;
+  -webkit-mask: url("/assets/icons/lucide/refresh-ccw-dot.svg") center / contain no-repeat;
+  mask: url("/assets/icons/lucide/refresh-ccw-dot.svg") center / contain no-repeat;
+}
+
+.ba-llm-refresh-icon:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 
 .ba-llm-model-card {
@@ -780,22 +833,11 @@
   max-width: min(100%, 18rem);
 }
 
-
-/* v9.47: capacidad WebGPU/WASM como acción discreta; el check inicial sigue gestionado por JS al inicio/al abrir el panel. */
-.ba-llm-actions-primary .ba-llm-check-btn {
-  flex: 0 0 auto;
-  padding: 7px 10px;
-  font-size: 0.74rem;
-  font-weight: 800;
-  border-radius: 999px;
-}
-
 .ba-llm-actions-primary #ba-llm-load {
   flex: 1 1 100%;
 }
 
 @media (max-width: 520px) {
-  .ba-llm-actions-primary .ba-llm-check-btn,
   .ba-llm-actions-primary #ba-llm-load {
     flex: 1 1 auto;
   }
@@ -863,6 +905,11 @@
 .ba-llm-collapsible-body {
   display: grid;
   gap: 0.55rem;
+}
+
+.ba-llm-profile-actions button {
+  font-size: 0.72rem;
+  line-height: 1.2;
 }
 
 .ba-llm-collapsible-card > summary.ba-llm-collapsible-summary:hover strong,

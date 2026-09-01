@@ -450,7 +450,7 @@
   "panel.llm.profile.import": "Import profiles",
   "panel.llm.profile.manual": "manual",
   "panel.llm.profile.quality": "Tool-calling capability",
-  "panel.llm.profile.reset": "Restore engine defaults",
+  "panel.llm.profile.reset": "Restore defaults",
   "panel.llm.profile.strategy": "Tool strategy",
   "panel.llm.profile.think": "Thinking",
   "panel.llm.progress.currentFilePercent": "Current file · {percent}%",

@@ -35,13 +35,39 @@ interface DiscoveryControllerHooks {
   onSourceChanged: () => void;
 }
 
+const ACTION_CONTROL_SELECTOR = [
+  'input[name="ba-llm-source"]',
+  "#ba-llm-hf-search",
+  "#ba-llm-custom-model",
+  "#ba-llm-ollama-endpoint",
+  "#ba-llm-tool-strategy",
+  "#ba-llm-tool-calling",
+  "#ba-llm-max-steps",
+  "#ba-llm-max-tools",
+  "#ba-llm-think-mode",
+  "#ba-llm-show-thinking",
+  "#ba-llm-temperature",
+  "#ba-llm-top-p",
+  "#ba-llm-context-window",
+  "#ba-llm-safe-input",
+  "#ba-llm-max-output",
+  "#ba-llm-max-plan",
+  "#ba-llm-device",
+  "#ba-llm-dtype",
+  "#ba-llm-reuse-cache",
+  "#ba-llm-thinking-tag",
+  "#ba-llm-start-reasoning",
+  "#ba-llm-profile-reset",
+  "#ba-llm-profile-import",
+  "#ba-llm-profile-file",
+].join(",");
+
 export interface DiscoveryController {
   source: () => LlmEngine;
   bind: () => void;
   initialize: () => void;
   ensureSelection: () => Promise<LlmModelConfig>;
   setActionBusy: (busy: boolean) => void;
-  setListBusy: (id: string, busy: boolean) => void;
   render: () => void;
   recordRecent: (model: LlmModelConfig) => void;
 }
@@ -57,6 +83,10 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
   let inspectionModelId = "";
   let inspectionPending = false;
   let actionBusy = false;
+  let hfRequestBusy = false;
+  let hfRequestGeneration = 0;
+  let ollamaRequestBusy = false;
+  let hfLoadMoreButton: HTMLButtonElement | null = null;
 
   function source(): LlmEngine {
     const checked = document.querySelector<HTMLInputElement>('input[name="ba-llm-source"]:checked');
@@ -116,6 +146,28 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
     return option;
   }
 
+  function loadMoreButton(): HTMLButtonElement {
+    if (!hfLoadMoreButton) {
+      hfLoadMoreButton = document.createElement("button");
+      hfLoadMoreButton.id = "ba-llm-hf-more";
+      hfLoadMoreButton.type = "button";
+      hfLoadMoreButton.className = "ba-llm-model-load-more";
+      hfLoadMoreButton.setAttribute("role", "option");
+      hfLoadMoreButton.setAttribute("aria-selected", "false");
+      hfLoadMoreButton.addEventListener("click", () => {
+        if (hfNextUrl && !actionBusy && !hfRequestBusy) void refreshHf({ append: true });
+      });
+    }
+    hfLoadMoreButton.textContent = t("panel.llm.discovery.more");
+    return hfLoadMoreButton;
+  }
+
+  function syncLoadMoreOption(container: HTMLElement, engine: LlmEngine): void {
+    if (engine !== "transformersjs") return;
+    if (hfNextUrl) container.append(loadMoreButton());
+    else hfLoadMoreButton?.remove();
+  }
+
   function renderList(container: HTMLElement | null, models: DiscoveredModel[], options: { append?: boolean } = {}): void {
     if (!container) return;
     const scrollTop = container.scrollTop;
@@ -127,6 +179,7 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
     const additions = options.append ? models.filter((model) => !knownKeys.has(model.key)) : models;
     if (!options.append) container.replaceChildren();
     container.append(...additions.map(createOption));
+    syncLoadMoreOption(container, engine);
     const activeKey = selectedKey(engine) || (selectedModel?.engine === engine ? selectedModel.id : "");
     const hasActiveKey = Array.from(container.querySelectorAll<HTMLElement>("[data-model-key]"))
       .some((item) => item.dataset.modelKey === activeKey);
@@ -134,17 +187,39 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
     else if (!options.append) setSelectedKey(engine, "");
     if (options.append) {
       container.scrollTop = scrollTop;
-      if (activeElement instanceof HTMLElement && document.contains(activeElement)) {
+      if (activeElement === hfLoadMoreButton && !document.contains(activeElement)) {
+        container.focus({ preventScroll: true });
+      } else if (activeElement instanceof HTMLElement && document.contains(activeElement)) {
         activeElement.focus({ preventScroll: true });
       }
     }
+    syncBusyUi();
   }
 
-  function setListBusy(id: string, busy: boolean): void {
+  function renderListBusy(id: string, busy: boolean): void {
     const list = elementById(id);
     if (!list) return;
     list.classList.toggle("is-busy", busy);
     list.setAttribute("aria-busy", String(busy));
+    for (const button of Array.from(list.querySelectorAll("button"))) setDisabled(button, busy);
+  }
+
+  function setActionControlsDisabled(disabled: boolean): void {
+    for (const control of Array.from(document.querySelectorAll(ACTION_CONTROL_SELECTOR))) setDisabled(control, disabled);
+  }
+
+  function syncBusyUi(): void {
+    renderListBusy("ba-llm-hf-results", actionBusy || hfRequestBusy);
+    renderListBusy("ba-llm-ollama-models", actionBusy || ollamaRequestBusy);
+    setDisabled(document.getElementById("ba-llm-hf-refresh"), actionBusy || hfRequestBusy);
+    setDisabled(hfLoadMoreButton, actionBusy || hfRequestBusy);
+    setDisabled(document.getElementById("ba-llm-ollama-refresh"), actionBusy || ollamaRequestBusy);
+  }
+
+  function setListBusy(id: string, busy: boolean): void {
+    if (id === "ba-llm-hf-results") hfRequestBusy = busy;
+    else if (id === "ba-llm-ollama-models") ollamaRequestBusy = busy;
+    syncBusyUi();
   }
 
   function renderInspection(): void {
@@ -155,7 +230,7 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
     if (text) text.textContent = inspectionPending
       ? t("panel.llm.discovery.inspecting", { model: inspectionModelId })
       : "";
-    document.getElementById("ba-llm-panel")?.setAttribute("aria-busy", String(inspectionPending));
+    document.getElementById("ba-llm-panel")?.setAttribute("aria-busy", String(actionBusy || inspectionPending));
     if (inspectionPending) {
       const card = elementById("ba-llm-selected-card");
       const warnings = elementById("ba-llm-model-warnings");
@@ -221,9 +296,14 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
   }
 
   async function refreshHf({ append = false, force = false }: { append?: boolean; force?: boolean } = {}): Promise<void> {
+    if (actionBusy || (append && hfRequestBusy)) return;
+    const requestGeneration = ++hfRequestGeneration;
     const search = inputById("ba-llm-hf-search")?.value || "";
     const results = elementById("ba-llm-hf-results");
-    const more = document.getElementById("ba-llm-hf-more");
+    if (!append) {
+      hfNextUrl = null;
+      hfLoadMoreButton?.remove();
+    }
     setListBusy("ba-llm-hf-results", true);
     setError("ba-llm-hf-error");
     if (force) searchService.clearCache();
@@ -235,11 +315,10 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
         : pageModels.filter((model, index, list) => list.findIndex((item) => item.key === model.key) === index);
       hfNextUrl = page.nextUrl;
       renderList(results, hfResults, { append });
-      if (more instanceof HTMLButtonElement) more.hidden = !hfNextUrl;
     } catch (error) {
       if ((error as { name?: string })?.name !== "AbortError") setError("ba-llm-hf-error", errorMessage(error));
     } finally {
-      setListBusy("ba-llm-hf-results", false);
+      if (requestGeneration === hfRequestGeneration) setListBusy("ba-llm-hf-results", false);
     }
   }
 
@@ -250,6 +329,7 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
   }
 
   async function refreshOllama(): Promise<void> {
+    if (actionBusy || ollamaRequestBusy) return;
     const list = elementById("ba-llm-ollama-models");
     setListBusy("ba-llm-ollama-models", true);
     setError("ba-llm-ollama-error");
@@ -370,11 +450,10 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
 
   function setActionBusy(busy: boolean): void {
     actionBusy = busy;
+    setActionControlsDisabled(busy);
     setDisabled(document.getElementById("ba-llm-load"), busy || inspectionPending);
-    setDisabled(document.getElementById("ba-llm-check"), busy);
-    setDisabled(document.getElementById("ba-llm-custom-model"), busy);
-    setListBusy("ba-llm-hf-results", busy);
-    setListBusy("ba-llm-ollama-models", busy);
+    document.getElementById("ba-llm-panel")?.setAttribute("aria-busy", String(busy || inspectionPending));
+    syncBusyUi();
   }
 
   function bind(): void {
@@ -389,9 +468,6 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
     }
     inputById("ba-llm-hf-search")?.addEventListener("input", () => { void refreshHf(); });
     document.getElementById("ba-llm-hf-refresh")?.addEventListener("click", () => { void refreshHf({ force: true }); });
-    document.getElementById("ba-llm-hf-more")?.addEventListener("click", () => {
-      if (hfNextUrl) void refreshHf({ append: true });
-    });
     elementById("ba-llm-hf-results")?.addEventListener("click", (event) => {
       const option = eventTargetElement(event)?.closest<HTMLElement>("[data-model-key]");
       const model = hfResults.find((item) => item.key === option?.dataset.modelKey);
@@ -442,5 +518,5 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
     renderRecents();
   }
 
-  return { source, bind, initialize, ensureSelection, setActionBusy, setListBusy, render, recordRecent };
+  return { source, bind, initialize, ensureSelection, setActionBusy, render, recordRecent };
 }

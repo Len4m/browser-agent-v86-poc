@@ -66,20 +66,18 @@ function buildLLMPanelHtml(): string {
           <label class="ba-llm-field"><span data-i18n="panel.llm.discovery.search">Search Hugging Face</span>
             <input id="ba-llm-hf-search" type="search" autocomplete="off" placeholder="Qwen, Llama, Phi…" />
           </label>
-          <div class="ba-llm-row">
-            <button id="ba-llm-hf-refresh" type="button" class="secondary" data-i18n="common.refresh">Refresh</button>
-          </div>
           <div id="ba-llm-hf-error" class="ba-llm-note" hidden></div>
-          <div class="ba-llm-field"><span data-i18n="panel.llm.discovery.results">Hub results</span>
+          <div class="ba-llm-field">
+            <div class="ba-llm-model-list-heading">
+              <span data-i18n="panel.llm.discovery.results">Hub results</span>
+              <button id="ba-llm-hf-refresh" type="button" class="secondary ba-llm-refresh-icon" aria-label="Refresh" title="Refresh" data-i18n-attr="aria-label:common.refresh,title:common.refresh"></button>
+            </div>
             <div class="ba-llm-model-list-frame">
               <div id="ba-llm-hf-results" class="ba-llm-model-list" role="listbox" aria-label="Hugging Face models" tabindex="0"></div>
               <span class="ba-llm-model-list-loading" aria-hidden="true"><span class="ba-llm-spinner"></span></span>
             </div>
           </div>
           <small class="ba-llm-note" data-i18n="panel.llm.discovery.toolsOnlyHub">Only models with detected tool support are listed. Manual repository IDs remain unrestricted.</small>
-          <div class="ba-llm-row ba-llm-discovery-pagination">
-            <button id="ba-llm-hf-more" type="button" class="secondary" data-i18n="panel.llm.discovery.more" hidden>Load more</button>
-          </div>
           <label id="ba-llm-custom-wrap" class="ba-llm-field"><span data-i18n="panel.llm.discovery.manual">Repository ID</span>
             <input id="ba-llm-custom-model" placeholder="organization/model" />
           </label>
@@ -90,8 +88,11 @@ function buildLLMPanelHtml(): string {
           <label id="ba-llm-ollama-endpoint-wrap" class="ba-llm-field"><span data-i18n="panel.llm.field.ollamaEndpoint">panel.llm.field.ollamaEndpoint</span>
             <input id="ba-llm-ollama-endpoint" placeholder="http://127.0.0.1:11434" />
           </label>
-          <button id="ba-llm-ollama-refresh" type="button" class="secondary" data-i18n="common.refresh">Refresh</button>
-          <div class="ba-llm-field"><span data-i18n="panel.llm.discovery.installed">Installed models</span>
+          <div class="ba-llm-field">
+            <div class="ba-llm-model-list-heading">
+              <span data-i18n="panel.llm.discovery.installed">Installed models</span>
+              <button id="ba-llm-ollama-refresh" type="button" class="secondary ba-llm-refresh-icon" aria-label="Refresh" title="Refresh" data-i18n-attr="aria-label:common.refresh,title:common.refresh"></button>
+            </div>
             <div class="ba-llm-model-list-frame">
               <div id="ba-llm-ollama-models" class="ba-llm-model-list" role="listbox" aria-label="Ollama models" tabindex="0"></div>
               <span class="ba-llm-model-list-loading" aria-hidden="true"><span class="ba-llm-spinner"></span></span>
@@ -148,8 +149,8 @@ function buildLLMPanelHtml(): string {
             <label id="ba-llm-cache-wrap" class="ba-llm-field ba-llm-thinking-toggle"><input id="ba-llm-reuse-cache" type="checkbox" /><span>generation cache</span></label>
             <label id="ba-llm-tag-wrap" class="ba-llm-field"><span>thinking tag</span><input id="ba-llm-thinking-tag" value="think" /></label>
             <label id="ba-llm-reasoning-start-wrap" class="ba-llm-field ba-llm-thinking-toggle"><input id="ba-llm-start-reasoning" type="checkbox" /><span>startWithReasoning</span></label>
-            <div class="ba-llm-row">
-              <button id="ba-llm-profile-reset" type="button" class="secondary" data-i18n="panel.llm.profile.reset">Restore engine defaults</button>
+            <div class="ba-llm-row ba-llm-profile-actions">
+              <button id="ba-llm-profile-reset" type="button" class="secondary" data-i18n="panel.llm.profile.reset">Restore defaults</button>
               <button id="ba-llm-profile-export" type="button" class="secondary" data-i18n="panel.llm.profile.export">Export profiles</button>
               <button id="ba-llm-profile-import" type="button" class="secondary" data-i18n="panel.llm.profile.import">Import profiles</button>
               <input id="ba-llm-profile-file" type="file" accept="application/json,.json" hidden />
