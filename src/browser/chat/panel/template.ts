@@ -63,6 +63,7 @@ function buildLLMPanelHtml(): string {
         </fieldset>
 
         <section id="ba-llm-hf-discovery" class="ba-llm-discovery">
+          <small class="ba-llm-note" data-i18n="panel.llm.discovery.transformersHint">Transformers.js works best with WebGPU. Models are downloaded and run in the browser.</small>
           <label class="ba-llm-field"><span data-i18n="panel.llm.discovery.search">Search Hugging Face</span>
             <input id="ba-llm-hf-search" type="search" autocomplete="off" placeholder="Qwen, Llama, Phi…" />
           </label>
@@ -86,10 +87,10 @@ function buildLLMPanelHtml(): string {
             </div>
             <small id="ba-llm-custom-error" class="ba-llm-field-error" role="alert" hidden></small>
           </div>
-          <small id="ba-llm-hf-recents" class="ba-llm-note"></small>
         </section>
 
         <section id="ba-llm-ollama-discovery" class="ba-llm-discovery" hidden>
+          <small class="ba-llm-note" data-i18n="panel.llm.discovery.ollamaCorsHint">Configure OLLAMA_ORIGINS so Ollama accepts requests from the browser.</small>
           <label id="ba-llm-ollama-endpoint-wrap" class="ba-llm-field"><span data-i18n="panel.llm.field.ollamaEndpoint">panel.llm.field.ollamaEndpoint</span>
             <input id="ba-llm-ollama-endpoint" placeholder="http://127.0.0.1:11434" />
           </label>
