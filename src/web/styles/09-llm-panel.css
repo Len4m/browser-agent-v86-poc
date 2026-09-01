@@ -354,6 +354,53 @@
   font-size: 0.88rem;
 }
 
+.ba-llm-manual-input {
+  position: relative;
+}
+
+.ba-llm-field .ba-llm-manual-input input {
+  padding-right: 2.65rem;
+}
+
+.ba-llm-manual-inspect {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #475569;
+  box-shadow: none;
+  transform: translateY(-50%);
+}
+
+.ba-llm-manual-inspect::before {
+  content: "";
+  width: 15px;
+  height: 15px;
+  background: currentColor;
+  -webkit-mask: url("/assets/icons/lucide/info.svg") center / contain no-repeat;
+  mask: url("/assets/icons/lucide/info.svg") center / contain no-repeat;
+}
+
+.ba-llm-manual-inspect:hover,
+.ba-llm-manual-inspect:focus-visible {
+  background: #e2e8f0;
+  color: #1d4ed8;
+}
+
+.ba-llm-field-error {
+  color: #b91c1c;
+  font-size: 0.7rem;
+  font-weight: 650;
+}
+
 .ba-llm-model-list-heading {
   display: flex;
   align-items: center;
@@ -379,8 +426,8 @@
   width: 15px;
   height: 15px;
   background: currentColor;
-  -webkit-mask: url("/assets/icons/lucide/refresh-ccw-dot.svg") center / contain no-repeat;
-  mask: url("/assets/icons/lucide/refresh-ccw-dot.svg") center / contain no-repeat;
+  -webkit-mask: url("/assets/icons/lucide/refresh-ccw.svg") center / contain no-repeat;
+  mask: url("/assets/icons/lucide/refresh-ccw.svg") center / contain no-repeat;
 }
 
 .ba-llm-refresh-icon:focus-visible {

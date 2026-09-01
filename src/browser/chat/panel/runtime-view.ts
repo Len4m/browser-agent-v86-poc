@@ -7,7 +7,7 @@ import {
   type LlmModelConfig,
 } from "../state/chat-state";
 import { llmAgent } from "../runtime/agent-loop";
-import { bytesLabel, setDisabled, textValue } from "./dom-utils";
+import { bytesLabel, inputById, setDisabled, textValue } from "./dom-utils";
 import { llmPanelCapabilities } from "./capabilities-view";
 import { ensureLlmState, getSelectedModel } from "./state-utils";
 
@@ -178,7 +178,12 @@ export function createRuntimeView(hooks: RuntimeViewHooks): RuntimeView {
     const meta = document.getElementById("ba-llm-selected-meta");
     const repo = document.getElementById("ba-llm-repo-path");
     const card = document.getElementById("ba-llm-selected-card");
-    const visible = Boolean(model.model && model.engine === hooks.getSelectedSource());
+    const manualModelId = hooks.getSelectedSource() === "transformersjs"
+      ? inputById("ba-llm-custom-model")?.value.trim()
+      : "";
+    const visible = Boolean(model.model
+      && model.engine === hooks.getSelectedSource()
+      && (!manualModelId || manualModelId === model.model));
     if (card instanceof HTMLElement) card.hidden = !visible;
     if (title) title.textContent = llmModelShortLabel(model);
     if (desc) {

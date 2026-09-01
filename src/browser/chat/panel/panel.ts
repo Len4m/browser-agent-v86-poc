@@ -49,6 +49,7 @@ const discovery: DiscoveryController = createDiscoveryController({
     profiles.sync(config);
     onModelChanged(config);
   },
+  onCandidateChanged: runtimeView.updateSelectedModelCard,
   onSourceChanged: syncSourceVisibility,
 });
 

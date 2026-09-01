@@ -32,6 +32,7 @@ import { ensureLlmState, getSelectedModel } from "./state-utils";
 
 interface DiscoveryControllerHooks {
   onModelSelected: (config: LlmModelConfig) => void;
+  onCandidateChanged: () => void;
   onSourceChanged: () => void;
 }
 
@@ -39,6 +40,7 @@ const ACTION_CONTROL_SELECTOR = [
   'input[name="ba-llm-source"]',
   "#ba-llm-hf-search",
   "#ba-llm-custom-model",
+  "#ba-llm-custom-inspect",
   "#ba-llm-ollama-endpoint",
   "#ba-llm-tool-strategy",
   "#ba-llm-tool-calling",
@@ -178,7 +180,8 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
     if (!options.append) container.replaceChildren();
     container.append(...additions.map(createOption));
     syncLoadMoreOption(container, engine);
-    const activeKey = selectedKey(engine) || (selectedModel?.engine === engine ? selectedModel.id : "");
+    const manualModelId = engine === "transformersjs" ? inputById("ba-llm-custom-model")?.value.trim() : "";
+    const activeKey = selectedKey(engine) || (!manualModelId && selectedModel?.engine === engine ? selectedModel.id : "");
     const hasActiveKey = Array.from(container.querySelectorAll<HTMLElement>("[data-model-key]"))
       .some((item) => item.dataset.modelKey === activeKey);
     if (activeKey && hasActiveKey) setSelectedKey(engine, activeKey);
@@ -236,6 +239,7 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
       if (warnings) warnings.hidden = true;
     }
     setDisabled(document.getElementById("ba-llm-load"), actionBusy || inspectionPending);
+    setDisabled(document.getElementById("ba-llm-custom-inspect"), actionBusy || inspectionPending);
   }
 
   function beginInspection(modelId: string): number {
@@ -291,6 +295,12 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
     if (!element) return;
     element.textContent = message;
     element.hidden = !message;
+  }
+
+  function setManualError(message = ""): void {
+    setError("ba-llm-custom-error", message);
+    const input = inputById("ba-llm-custom-model");
+    if (input) input.setAttribute("aria-invalid", String(Boolean(message)));
   }
 
   async function refreshHf({ append = false, force = false }: { append?: boolean; force?: boolean } = {}): Promise<void> {
@@ -355,7 +365,11 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
     };
   }
 
-  async function selectTransformers(modelId: string, discovered?: DiscoveredModel): Promise<LlmModelConfig> {
+  async function selectTransformers(
+    modelId: string,
+    discovered?: DiscoveredModel,
+    options: { requireInspection?: boolean } = {},
+  ): Promise<LlmModelConfig> {
     const normalized = modelId.trim();
     if (!normalized.includes("/")) throw new Error("Use a Hugging Face repository ID such as organization/model");
     const generation = beginInspection(normalized);
@@ -386,17 +400,29 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
           inspection = await sdk.inspectModel(normalized, { dtype: runtime.dtype });
         }
       } catch (error) {
+        if (options.requireInspection) throw error;
         inspection = failedInspection(normalized, error);
         selection = { device: "auto", dtype: "auto" };
       }
       if (generation !== inspectionGeneration) return getSelectedModel();
       const config = registerDiscoveredModel(item, inspection, selection);
       selectLlmModel(config);
-      setSelectedKey("transformersjs", item.key);
+      setSelectedKey("transformersjs", discovered ? item.key : "");
       hooks.onModelSelected(config);
       return config;
     } finally {
       finishInspection(generation);
+    }
+  }
+
+  async function inspectManualModel(): Promise<void> {
+    if (actionBusy || inspectionPending) return;
+    const modelId = inputById("ba-llm-custom-model")?.value.trim() || "";
+    setManualError();
+    try {
+      await selectTransformers(modelId, undefined, { requireInspection: true });
+    } catch (error) {
+      setManualError(errorMessage(error));
     }
   }
 
@@ -463,12 +489,21 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
       });
     }
     inputById("ba-llm-hf-search")?.addEventListener("input", () => { void refreshHf(); });
+    inputById("ba-llm-custom-model")?.addEventListener("input", (event) => {
+      const input = event.target instanceof HTMLInputElement ? event.target : null;
+      if (inspectionPending) cancelInspection();
+      if (input?.value.trim()) setSelectedKey("transformersjs", "");
+      setManualError();
+      hooks.onCandidateChanged();
+    });
+    document.getElementById("ba-llm-custom-inspect")?.addEventListener("click", () => { void inspectManualModel(); });
     document.getElementById("ba-llm-hf-refresh")?.addEventListener("click", () => { void refreshHf({ force: true }); });
     elementById("ba-llm-hf-results")?.addEventListener("click", (event) => {
       const option = eventTargetElement(event)?.closest<HTMLElement>("[data-model-key]");
       const model = hfResults.find((item) => item.key === option?.dataset.modelKey);
       const manual = inputById("ba-llm-custom-model");
       if (manual) manual.value = "";
+      setManualError();
       if (model) {
         setSelectedKey("transformersjs", model.key);
         void selectTransformers(model.modelId, model).catch((error) => setError("ba-llm-hf-error", errorMessage(error)));
@@ -497,7 +532,6 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
   function initialize(): void {
     const selected = getSelectedLlmModel();
     if (selected?.engine === "transformersjs") {
-      selectedHfKey = selected.id;
       const manual = inputById("ba-llm-custom-model");
       if (manual) manual.value = selected.model || "";
     } else if (selected?.engine === "ollama") {

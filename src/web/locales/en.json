@@ -423,6 +423,7 @@
   "panel.llm.clearChat.detail": "This action does not affect the VM, the WS network, the disks or the snapshots.",
   "panel.llm.clearChat.message": "The visible chat, the LLM internal history and the tool artifacts will be deleted.",
   "panel.llm.discovery.installed": "Installed models with tools",
+  "panel.llm.discovery.inspectManual": "Inspect repository information",
   "panel.llm.discovery.inspecting": "Inspecting metadata for {model}…",
   "panel.llm.discovery.localModels": "Local models",
   "panel.llm.discovery.manual": "Repository ID",

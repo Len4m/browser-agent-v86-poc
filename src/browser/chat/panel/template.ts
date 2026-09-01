@@ -78,9 +78,14 @@ function buildLLMPanelHtml(): string {
             </div>
           </div>
           <small class="ba-llm-note" data-i18n="panel.llm.discovery.toolsOnlyHub">Only models with detected tool support are listed. Manual repository IDs remain unrestricted.</small>
-          <label id="ba-llm-custom-wrap" class="ba-llm-field"><span data-i18n="panel.llm.discovery.manual">Repository ID</span>
-            <input id="ba-llm-custom-model" placeholder="organization/model" />
-          </label>
+          <div id="ba-llm-custom-wrap" class="ba-llm-field">
+            <label for="ba-llm-custom-model" data-i18n="panel.llm.discovery.manual">Repository ID</label>
+            <div class="ba-llm-manual-input">
+              <input id="ba-llm-custom-model" placeholder="organization/model" aria-describedby="ba-llm-custom-error" />
+              <button id="ba-llm-custom-inspect" type="button" class="secondary ba-llm-manual-inspect" aria-label="Inspect repository information" title="Inspect repository information" data-i18n-attr="aria-label:panel.llm.discovery.inspectManual,title:panel.llm.discovery.inspectManual"></button>
+            </div>
+            <small id="ba-llm-custom-error" class="ba-llm-field-error" role="alert" hidden></small>
+          </div>
           <small id="ba-llm-hf-recents" class="ba-llm-note"></small>
         </section>
 
