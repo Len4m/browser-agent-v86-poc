@@ -6,6 +6,7 @@ import type { LanguageModel } from "ai";
 import { initI18n, t } from "../../app/i18n";
 import type { LlmModelConfig } from "../state/chat-state";
 import type { ModelInspection } from "../models/model-types";
+import { buildWasmFallbackConfig, isGpuRuntimeFailure } from "../models/transformers-runtime";
 import type { AiSdkBridgeApi, AiSdkRunAgentStreamTurnOptions, AiSdkRunAgentStreamTurnResult, AiSdkToolConfig } from "./ai-sdk-runtime";
 import {
   tool,
@@ -51,11 +52,6 @@ function textValue(value: unknown): string {
   if (typeof value === "string") return value;
   if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") return String(value);
   return "";
-}
-
-function messageText(value: unknown): string {
-  if (value instanceof Error) return value.message;
-  return textValue(value);
 }
 
 function mapDevice(device: unknown): TransformersDevice {
@@ -304,19 +300,6 @@ function createModel(modelConfig: LlmModelConfig): LanguageModelV4 {
   return model;
 }
 
-function buildWasmFallbackConfig(modelConfig: LlmModelConfig): LlmModelConfig | null {
-  if ((modelConfig?.engine || "transformersjs") !== "transformersjs") return null;
-  if ((modelConfig.device || "auto") !== "auto") return null;
-  return {
-    ...modelConfig,
-    id: `${modelConfig.id || "custom-transformersjs"}-wasm-fallback`,
-    device: "wasm",
-    dtype: typeof modelConfig.wasmDtype === "string" ? modelConfig.wasmDtype : "q8",
-    fallbackFrom: modelConfig.id || modelConfig.model,
-    fallbackReason: "webgpu-runtime-failure",
-  };
-}
-
 async function loadModel(modelConfig: LlmModelConfig, { onProgress }: LoadModelOptions = {}): Promise<LanguageModelV4> {
   async function loadWithConfig(config: LlmModelConfig): Promise<LanguageModelV4> {
     const model = createModel(config);
@@ -348,7 +331,7 @@ async function loadModel(modelConfig: LlmModelConfig, { onProgress }: LoadModelO
     return await loadWithConfig(modelConfig);
   } catch (error) {
     const msg = errorMessage(error);
-    const fallbackConfig = isGpuInferenceFailure(msg) ? buildWasmFallbackConfig(modelConfig) : null;
+    const fallbackConfig = isGpuRuntimeFailure(msg) ? buildWasmFallbackConfig(modelConfig) : null;
     if (!fallbackConfig) {
       unloadModel();
       throw error;
@@ -404,17 +387,6 @@ function getActiveModelConfig(): LlmModelConfig | null {
 
 function isModelReady(): boolean {
   return Boolean(activeModelHandle?.model);
-}
-
-function isNonFallbackLoadFailure(message: unknown): boolean {
-  return /fetch|network|timeout|abort(ed)?|404|403|failed to fetch|download|indexeddb|quota|enotfound|connection refused|unexpected token|json\.parse|modelo no configurado|unavailable/i.test(messageText(message));
-}
-
-function isGpuInferenceFailure(message: unknown): boolean {
-  const msg = messageText(message);
-  if (isNonFallbackLoadFailure(msg)) return false;
-  // No usar RuntimeError: genérico — provoca fallback WASM en fallos de descarga/init transitorios.
-  return /out of device memory|VK_ERROR_OUT_OF_DEVICE_MEMORY|WebGPU validation failed|Invalid Buffer|Device lost|failed to call OrtRun|CreateBuffer|null function|function signature mismatch|unaligned accesses|Instance reference no longer exists|memoria GPU agotada|WebGPU inválido|shader[- ]?f16|f16 not supported/i.test(msg);
 }
 
 function createAiSdkTool(config: AiSdkToolConfig): unknown {

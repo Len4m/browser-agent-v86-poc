@@ -105,9 +105,7 @@ async function ensureCapabilitiesWhenPanelOpens(
   const llmState = getLlmState();
   if (!details?.open || llmState?.capabilitiesChecked || llmState?.capabilitiesChecking) return;
 
-  const select = document.getElementById("ba-llm-model");
   const load = document.getElementById("ba-llm-load");
-  setDisabled(select, true);
   setDisabled(load, true);
 
   try {
@@ -118,7 +116,6 @@ async function ensureCapabilitiesWhenPanelOpens(
     setStatus?.(t("caps.view.recheckError"), "bad");
   } finally {
     const latest = getLlmState();
-    setDisabled(select, false);
     setDisabled(load, Boolean(latest?.loading));
   }
 }

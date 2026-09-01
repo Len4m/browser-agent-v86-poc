@@ -19,6 +19,7 @@ import {
   type AiSdkRunAgentStreamTurnResult,
   type AiSdkToolCall,
 } from "../provider/ai-sdk-runtime";
+import { resolveTransformersRuntimeConfig } from "../models/transformers-runtime";
 import { buildAiSdkTools } from "../tools/ai-tools";
 import { llmToolExecutor } from "../tools/tool-executor";
 import { llmToolRegistry } from "../tools/tool-registry";
@@ -345,8 +346,8 @@ function isModelReady(): boolean {
 
 async function loadSelectedModel(): Promise<void> {
   const llm = ensureLlmState();
-  const modelConfig = getSelectedModelConfig();
   const caps = await ensureCapabilities();
+  const modelConfig = resolveTransformersRuntimeConfig(getSelectedModelConfig(), caps);
   const sdk = await ensureAiSdk();
 
   const needsWebGPU = llmModelRequiresWebGPU(modelConfig);

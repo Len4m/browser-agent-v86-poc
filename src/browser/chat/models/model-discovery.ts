@@ -59,8 +59,22 @@ export function buildHfSearchUrl(query = ""): string {
   url.searchParams.set("sort", "downloads");
   url.searchParams.set("direction", "-1");
   url.searchParams.set("limit", "30");
+  for (const field of ["config", "downloads", "gated", "lastModified", "likes", "pipeline_tag", "private", "tags"]) {
+    url.searchParams.append("expand", field);
+  }
   if (query.trim()) url.searchParams.set("search", query.trim());
   return url.href;
+}
+
+function hfDeclaresTools(value: Record<string, unknown>, tags: string[]): boolean {
+  if (tags.some((tag) => /^(?:function-calling|tool-calling|tool-use|tools)$/i.test(tag))) return true;
+  const config = isRecord(value.config) ? value.config : {};
+  const tokenizer = isRecord(config.tokenizer_config) ? config.tokenizer_config : {};
+  const templateText = [config.chat_template, config.chat_template_jinja, tokenizer.chat_template]
+    .map((item) => typeof item === "string" || Array.isArray(item) || isRecord(item) ? JSON.stringify(item) : "")
+    .join("\n")
+    .toLowerCase();
+  return /(?:tool_call|tool_calls|tool_response|<tool|\.tools|\btools\b)/.test(templateText);
 }
 
 function hfModel(value: unknown): DiscoveredModel | null {
@@ -70,6 +84,7 @@ function hfModel(value: unknown): DiscoveredModel | null {
   if (text(value.pipeline_tag) !== "text-generation") return null;
   const tags = Array.isArray(value.tags) ? value.tags.filter((tag): tag is string => typeof tag === "string") : [];
   if (!tags.includes("transformers.js")) return null;
+  if (!hfDeclaresTools(value, tags)) return null;
   return {
     key: modelKey("transformersjs", modelId),
     engine: "transformersjs",
@@ -79,7 +94,7 @@ function hfModel(value: unknown): DiscoveredModel | null {
     modifiedAt: text(value.lastModified) || undefined,
     private: false,
     gated: false,
-    metadata: { tags, likes: number(value.likes), pipelineTag: value.pipeline_tag },
+    metadata: { tags, likes: number(value.likes), pipelineTag: value.pipeline_tag, tools: true },
   };
 }
 
@@ -184,6 +199,36 @@ export async function discoverOllamaModels(fetcher: FetchLike, endpoint: string,
     const model = ollamaModel(value);
     return model ? [model] : [];
   });
+}
+
+export async function discoverOllamaToolModels(fetcher: FetchLike, endpoint: string, signal?: AbortSignal): Promise<DiscoveredModel[]> {
+  const models = await discoverOllamaModels(fetcher, endpoint, signal);
+  if (!models.length) return [];
+  const supported = new Array<boolean>(models.length).fill(false);
+  let nextIndex = 0;
+  let successfulInspections = 0;
+  let firstError: Error | null = null;
+  const worker = async (): Promise<void> => {
+    while (nextIndex < models.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      try {
+        const details = await inspectOllamaModel(fetcher, endpoint, models[index], signal);
+        successfulInspections += 1;
+        const announcedCapabilities = Array.isArray(details.raw.capabilities)
+          ? details.raw.capabilities.filter((item): item is string => typeof item === "string")
+          : [];
+        supported[index] = announcedCapabilities.includes("tools");
+      } catch (error) {
+        firstError ||= error instanceof Error ? error : new Error("Ollama model inspection failed");
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(4, models.length) }, () => worker()));
+  if (!successfulInspections && firstError) {
+    throw new Error("Ollama model inspection failed", { cause: firstError });
+  }
+  return models.filter((_model, index) => supported[index]);
 }
 
 function findContextWindow(modelInfo: Record<string, unknown>): number | undefined {

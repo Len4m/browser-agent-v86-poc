@@ -2,13 +2,10 @@
 // Static labels use data-i18n so applyDomTranslations() handles initial render
 // and live language switching. Dynamic values are translated by panel.ts.
 
-import { t } from "../../app/i18n";
-import { getLlmModels, llmModelLabel, type LlmModelConfig } from "../state/chat-state";
 import { llmToolRegistry } from "../tools/tool-registry";
 
 interface LlmPanelTemplateApi {
   escapeHtml: (value: unknown) => string;
-  modelOptionsHtml: () => string;
   toolPolicyOptionsHtml: () => string;
   buildLLMPanelHtml: () => string;
 }
@@ -28,42 +25,6 @@ function escapeHtml(value: unknown): string {
     .replaceAll("'", "&#039;");
 }
 
-function modelOptionsHtml(): string {
-  const models = getLlmModels();
-  const groups = [
-    {
-      label: t("panel.llm.optgroup.ollama"),
-      matches: (model: LlmModelConfig) => model.engine === "ollama",
-    },
-    {
-      label: t("panel.llm.optgroup.transformers"),
-      matches: (model: LlmModelConfig) => (model.engine || "transformersjs") === "transformersjs",
-    },
-  ];
-
-  const optionHtml = (model: LlmModelConfig): string => {
-    const sizeLabel = textValue(model.sizeLabel);
-    const size = sizeLabel ? ` · ${sizeLabel}` : "";
-    const dtype = model.dtype ? ` · ${model.dtype}` : "";
-    return `<option value="${escapeHtml(model.id)}">${escapeHtml(llmModelLabel(model))}${escapeHtml(size)}${escapeHtml(dtype)}</option>`;
-  };
-
-  const used = new Set<string>();
-  const grouped = groups.map((group) => {
-    const options = models.filter((model) => group.matches(model));
-    options.forEach((model) => used.add(model.id));
-    if (!options.length) return "";
-    return `<optgroup label="${escapeHtml(group.label)}">${options.map(optionHtml).join("")}</optgroup>`;
-  });
-
-  const remaining = models.filter((model) => !used.has(model.id));
-  if (remaining.length) {
-    grouped.push(`<optgroup label="${escapeHtml(t("panel.llm.optgroup.others"))}">${remaining.map(optionHtml).join("")}</optgroup>`);
-  }
-
-  return grouped.join("");
-}
-
 function toolPolicyOptionsHtml(): string {
   return llmToolRegistry.SECURITY_LEVELS
     .map((item) => `<option value="${escapeHtml(item.level)}">${escapeHtml(item.label)}</option>`)
@@ -73,23 +34,33 @@ function toolPolicyOptionsHtml(): string {
 function buildLLMPanelHtml(): string {
   return `
       <div id="ba-llm-panel" class="ba-llm-panel">
-        <div class="ba-llm-hero">
-          <div class="ba-llm-mark" aria-hidden="true">LLM</div>
-          <div class="ba-llm-hero-copy">
-            <div class="ba-llm-kicker" data-i18n="panel.llm.kicker">panel.llm.kicker</div>
-            <div class="ba-llm-title-row">
-              <strong>Transformers.js/Ollama</strong>
-            </div>
-            <p data-i18n="panel.llm.intro">panel.llm.intro</p>
-          </div>
-        </div>
+        <p class="ba-llm-intro" data-i18n="panel.llm.intro">panel.llm.intro</p>
 
-        <label class="ba-llm-field"><span data-i18n="panel.llm.discovery.source">Source</span>
-          <select id="ba-llm-source">
-            <option value="transformersjs">Transformers.js · Hugging Face</option>
-            <option value="ollama">Ollama</option>
-          </select>
-        </label>
+        <fieldset class="ba-llm-source-picker">
+          <legend data-i18n="panel.llm.discovery.source">Source</legend>
+          <div class="ba-llm-source-options">
+            <label class="ba-llm-source-option">
+              <input type="radio" name="ba-llm-source" value="transformersjs" checked />
+              <span class="ba-llm-source-card">
+                <span class="ba-llm-source-logo ba-llm-source-logo--hf" aria-hidden="true">
+                  <img src="./assets/icons/huggingface.svg" alt="" />
+                </span>
+                <span class="ba-llm-source-copy"><strong>Transformers.js</strong><small>Hugging Face Hub</small></span>
+                <span class="ba-llm-source-check" aria-hidden="true">✓</span>
+              </span>
+            </label>
+            <label class="ba-llm-source-option">
+              <input type="radio" name="ba-llm-source" value="ollama" />
+              <span class="ba-llm-source-card">
+                <span class="ba-llm-source-logo ba-llm-source-logo--ollama" aria-hidden="true">
+                  <img src="./assets/icons/ollama.svg" alt="" />
+                </span>
+                <span class="ba-llm-source-copy"><strong>Ollama</strong><small data-i18n="panel.llm.discovery.localModels">Local models</small></span>
+                <span class="ba-llm-source-check" aria-hidden="true">✓</span>
+              </span>
+            </label>
+          </div>
+        </fieldset>
 
         <section id="ba-llm-hf-discovery" class="ba-llm-discovery">
           <label class="ba-llm-field"><span data-i18n="panel.llm.discovery.search">Search Hugging Face</span>
@@ -97,12 +68,18 @@ function buildLLMPanelHtml(): string {
           </label>
           <div class="ba-llm-row">
             <button id="ba-llm-hf-refresh" type="button" class="secondary" data-i18n="common.refresh">Refresh</button>
-            <button id="ba-llm-hf-more" type="button" class="secondary" data-i18n="panel.llm.discovery.more" hidden>Load more</button>
           </div>
           <div id="ba-llm-hf-error" class="ba-llm-note" hidden></div>
-          <label class="ba-llm-field"><span data-i18n="panel.llm.discovery.results">Hub results</span>
-            <select id="ba-llm-hf-results" size="6"></select>
-          </label>
+          <div class="ba-llm-field"><span data-i18n="panel.llm.discovery.results">Hub results</span>
+            <div class="ba-llm-model-list-frame">
+              <div id="ba-llm-hf-results" class="ba-llm-model-list" role="listbox" aria-label="Hugging Face models" tabindex="0"></div>
+              <span class="ba-llm-model-list-loading" aria-hidden="true"><span class="ba-llm-spinner"></span></span>
+            </div>
+          </div>
+          <small class="ba-llm-note" data-i18n="panel.llm.discovery.toolsOnlyHub">Only models with detected tool support are listed. Manual repository IDs remain unrestricted.</small>
+          <div class="ba-llm-row ba-llm-discovery-pagination">
+            <button id="ba-llm-hf-more" type="button" class="secondary" data-i18n="panel.llm.discovery.more" hidden>Load more</button>
+          </div>
           <label id="ba-llm-custom-wrap" class="ba-llm-field"><span data-i18n="panel.llm.discovery.manual">Repository ID</span>
             <input id="ba-llm-custom-model" placeholder="organization/model" />
           </label>
@@ -114,18 +91,23 @@ function buildLLMPanelHtml(): string {
             <input id="ba-llm-ollama-endpoint" placeholder="http://127.0.0.1:11434" />
           </label>
           <button id="ba-llm-ollama-refresh" type="button" class="secondary" data-i18n="common.refresh">Refresh</button>
-          <label class="ba-llm-field"><span data-i18n="panel.llm.discovery.installed">Installed models</span>
-            <select id="ba-llm-ollama-models" size="6"></select>
-          </label>
+          <div class="ba-llm-field"><span data-i18n="panel.llm.discovery.installed">Installed models</span>
+            <div class="ba-llm-model-list-frame">
+              <div id="ba-llm-ollama-models" class="ba-llm-model-list" role="listbox" aria-label="Ollama models" tabindex="0"></div>
+              <span class="ba-llm-model-list-loading" aria-hidden="true"><span class="ba-llm-spinner"></span></span>
+            </div>
+          </div>
+          <small class="ba-llm-note" data-i18n="panel.llm.discovery.toolsOnlyOllama">Only installed models that announce tool support are listed.</small>
           <div id="ba-llm-ollama-error" class="ba-llm-note" hidden></div>
         </section>
         <div id="ba-llm-ollama-origin-notice" class="local-service-origin-warning ba-llm-origin-warning" hidden></div>
 
-        <label class="ba-llm-field"><span data-i18n="panel.llm.field.model">panel.llm.field.model</span>
-          <select id="ba-llm-model">${modelOptionsHtml()}</select>
-        </label>
+        <div id="ba-llm-model-inspection" class="ba-llm-inspection-loading" role="status" aria-live="polite" hidden>
+          <span class="ba-llm-spinner" aria-hidden="true"></span>
+          <span id="ba-llm-model-inspection-text"></span>
+        </div>
 
-        <section class="ba-llm-model-card" aria-live="polite">
+        <section id="ba-llm-selected-card" class="ba-llm-model-card" aria-live="polite">
           <div class="ba-llm-model-main">
             <strong id="ba-llm-selected-title" data-i18n="panel.llm.selected.defaultTitle">panel.llm.selected.defaultTitle</strong>
             <span id="ba-llm-repo-path" class="ba-llm-repo-path"></span>
@@ -136,8 +118,8 @@ function buildLLMPanelHtml(): string {
 
         <div id="ba-llm-model-warnings" class="ba-llm-note"></div>
 
-        <details class="ba-llm-tool-policy ba-llm-collapsible-card" open>
-          <summary class="ba-llm-collapsible-summary"><strong data-i18n="panel.llm.profile.basic">Agent configuration</strong></summary>
+        <details class="ba-llm-tool-policy ba-llm-collapsible-card">
+          <summary class="ba-llm-tool-policy-head ba-llm-collapsible-summary"><strong data-i18n="panel.llm.profile.basic">Agent configuration</strong></summary>
           <div class="ba-llm-collapsible-body">
             <label class="ba-llm-field"><span data-i18n="panel.llm.profile.strategy">Tool strategy</span>
               <select id="ba-llm-tool-strategy"><option value="off">off</option><option value="heuristic">heuristic</option><option value="model-first">model-first</option></select>
@@ -153,7 +135,7 @@ function buildLLMPanelHtml(): string {
         </details>
 
         <details class="ba-llm-tool-policy ba-llm-collapsible-card">
-          <summary class="ba-llm-collapsible-summary"><strong data-i18n="panel.llm.profile.advanced">Advanced configuration</strong></summary>
+          <summary class="ba-llm-tool-policy-head ba-llm-collapsible-summary"><strong data-i18n="panel.llm.profile.advanced">Advanced configuration</strong></summary>
           <div class="ba-llm-collapsible-body">
             <label class="ba-llm-field"><span>temperature</span><input id="ba-llm-temperature" type="number" min="0" max="2" step="0.05" /></label>
             <label class="ba-llm-field"><span>topP</span><input id="ba-llm-top-p" type="number" min="0" max="1" step="0.05" /></label>
@@ -230,7 +212,6 @@ function buildLLMPanelHtml(): string {
 
 export const llmPanelTemplate: LlmPanelTemplateApi = {
   escapeHtml,
-  modelOptionsHtml,
   toolPolicyOptionsHtml,
   buildLLMPanelHtml,
 };

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   buildHfSearchUrl,
   discoverOllamaModels,
+  discoverOllamaToolModels,
   HfModelSearchService,
   inspectOllamaModel,
   searchHfModels,
@@ -22,7 +23,9 @@ test("HF search applies fixed runtime filters and parses Link pagination", async
   const fetcher: FetchLike = async (input) => {
     requested = String(input);
     return jsonResponse([
-      { id: "org/valid", pipeline_tag: "text-generation", tags: ["transformers.js"], downloads: 12, gated: false },
+      { id: "org/valid", pipeline_tag: "text-generation", tags: ["transformers.js"], downloads: 12, gated: false, config: { tokenizer_config: { chat_template: "{% if tools %}<tool_call>{% endif %}" } } },
+      { id: "org/no-tools", pipeline_tag: "text-generation", tags: ["transformers.js"], gated: false, config: { tokenizer_config: { chat_template: "{{ messages }}" } } },
+      { id: "org/tagged-tools", pipeline_tag: "text-generation", tags: ["transformers.js", "tool-calling"], gated: false },
       { id: "org/gated", pipeline_tag: "text-generation", tags: ["transformers.js"], gated: "manual" },
       { id: "org/wrong-task", pipeline_tag: "fill-mask", tags: ["transformers.js"] },
     ], { headers: { link: '<https://huggingface.co/api/models?cursor=abc>; rel="next"' } });
@@ -34,7 +37,8 @@ test("HF search applies fixed runtime filters and parses Link pagination", async
   assert.equal(url.searchParams.get("sort"), "downloads");
   assert.equal(url.searchParams.get("limit"), "30");
   assert.equal(url.searchParams.get("search"), "qwen");
-  assert.deepEqual(page.models.map((model) => model.modelId), ["org/valid"]);
+  assert.ok(url.searchParams.getAll("expand").includes("config"));
+  assert.deepEqual(page.models.map((model) => model.modelId), ["org/valid", "org/tagged-tools"]);
   assert.equal(page.nextUrl, "https://huggingface.co/api/models?cursor=abc");
 });
 
@@ -47,7 +51,7 @@ test("HF service debounces, cancels stale requests and caches pages", async () =
         init?.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
       });
     }
-    return jsonResponse([{ id: "org/second", pipeline_tag: "text-generation", tags: ["transformers.js"] }]);
+    return jsonResponse([{ id: "org/second", pipeline_tag: "text-generation", tags: ["transformers.js"], config: { tokenizer_config: { chat_template: "{{ tools }}<tool_call>" } } }]);
   };
   const service = new HfModelSearchService(fetcher, () => 100, 0);
   const first = service.search("first");
@@ -69,7 +73,7 @@ test("a cached HF result still cancels an obsolete in-flight query", async () =>
         init?.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
       });
     }
-    return jsonResponse([{ id: "org/cached", pipeline_tag: "text-generation", tags: ["transformers.js"] }]);
+    return jsonResponse([{ id: "org/cached", pipeline_tag: "text-generation", tags: ["transformers.js"], config: { chat_template_jinja: "{% for tool in tools %}<tool>{{ tool }}{% endfor %}" } }]);
   };
   const service = new HfModelSearchService(fetcher, () => 100, 0);
   await service.search("cached");
@@ -97,7 +101,15 @@ test("Ollama discovery exposes every installed model and objective details", asy
       return jsonResponse({ models: [
         { name: "qwen:latest", size: 1234, details: { family: "qwen", parameter_size: "4B", quantization_level: "Q4_K_M" } },
         { name: "plain:1b", size: 456 },
+        { name: "template-only:1b", size: 789 },
       ] });
+    }
+    const requestedModel = typeof init?.body === "string" ? JSON.parse(init.body).model : "";
+    if (requestedModel === "plain:1b") {
+      return jsonResponse({ capabilities: ["completion"], template: "{{ .Prompt }}", model_info: {} });
+    }
+    if (requestedModel === "template-only:1b") {
+      return jsonResponse({ capabilities: ["completion"], template: "{{ .Tools }}<tool_call>", model_info: {} });
     }
     return jsonResponse({
       capabilities: ["completion", "tools", "thinking"],
@@ -107,12 +119,14 @@ test("Ollama discovery exposes every installed model and objective details", asy
     });
   };
   const models = await discoverOllamaModels(fetcher, "http://localhost:11434/");
-  assert.deepEqual(models.map((model) => model.modelId), ["qwen:latest", "plain:1b"]);
+  assert.deepEqual(models.map((model) => model.modelId), ["qwen:latest", "plain:1b", "template-only:1b"]);
   const details = await inspectOllamaModel(fetcher, "http://localhost:11434/", models[0]);
   assert.deepEqual(details.capabilities, { chat: true, tools: true, thinking: true, vision: false });
   assert.equal(details.contextWindowTokens, 16384);
   assert.equal(requests[1].init?.method, "POST");
   assert.equal(requests[1].init?.body, JSON.stringify({ model: "qwen:latest" }));
+  const toolModels = await discoverOllamaToolModels(fetcher, "http://localhost:11434/");
+  assert.deepEqual(toolModels.map((model) => model.modelId), ["qwen:latest"]);
 });
 
 test("manual HF URL construction never requires a build-time inventory", () => {
