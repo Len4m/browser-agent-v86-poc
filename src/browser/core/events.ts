@@ -2,6 +2,7 @@ export type AppEventMap = {
   "app:language-changed": { lang: string };
   "console:state-changed": { source: string };
   "llm:availability-refresh-requested": { source: string };
+  "llm:activity": Record<string, unknown>;
   "llm:artifact": Record<string, unknown>;
   "llm:artifact-clear": Record<string, unknown>;
   "llm:artifact-context": Record<string, unknown>;

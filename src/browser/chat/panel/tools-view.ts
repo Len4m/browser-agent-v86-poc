@@ -50,8 +50,7 @@ function getActiveToolProfileLabel(profileId: string): string {
 
 function getSelectedModelForTools(): LlmModelConfig {
   const llm = getLlmState();
-  if (llm?.loaded && llm.activeModel) return llm.activeModel;
-  return llm?.activeModel || getSelectedLlmModel() || defaultModelConfig("transformersjs", "");
+  return getSelectedLlmModel() || llm?.activeModel || defaultModelConfig("transformersjs", "");
 }
 
 function getNativeToolsPickerState(): NativeToolsPickerState {

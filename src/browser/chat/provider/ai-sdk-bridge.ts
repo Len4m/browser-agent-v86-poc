@@ -220,7 +220,6 @@ async function inspectModel(
 ): Promise<ModelInspection> {
   const normalized = modelId.trim();
   if (!normalized) throw new Error("Modelo no configurado.");
-  unloadModel();
   const worker = createInspectionWorker();
   const requestId = globalThis.crypto?.randomUUID?.() || `inspect-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   try {

@@ -8,6 +8,7 @@ import { originApi } from "../../app/origin-awareness";
 import { appEvents } from "../../core/events";
 import { addMessage, makeAbortError, throwIfAborted } from "../../vm/runtime-assets";
 import { backgroundToolsApi } from "../../vm/background-tools-serial1";
+import { resolveTurnModelConfig } from "../models/model-config";
 import { detectLLMCapabilities, type LlmCapabilities } from "../state/capabilities";
 import { defaultModelConfig, getLlmState, getSelectedLlmModel, llmEventsApi, llmModelRequiresWebGPU, llmModelShortLabel, type LlmModelConfig, type LlmState } from "../state/chat-state";
 import {
@@ -82,7 +83,7 @@ interface LlmAgentApi {
   isModelLoadActive: () => boolean;
   handleUserMessage: (userText: string) => Promise<void>;
   clearHistory: () => void;
-  unloadModel: () => void;
+  unloadModel: (options?: { force?: boolean }) => boolean;
   updateChatAvailability: () => void;
   isModelReady: () => boolean;
   isChatOperationActive: () => boolean;
@@ -278,6 +279,7 @@ function isChatOperationActive(): boolean {
   const governor = llmResourceGovernor.getSnapshot();
   return Boolean(
     llm?.generating
+    || activeTurnAbortController
     || governor.llmBusy
     || governor.toolBusy
     || governor.backgroundToolBusy
@@ -292,7 +294,6 @@ function stopActiveTurn(): void {
   stopRequested = true;
   activeTurnGeneration += 1;
   activeTurnAbortController?.abort();
-  activeTurnAbortController = null;
   backgroundToolsApi.cancelPending(t("bgtools.reason.user"));
   const llm = getLlmState();
   if (llm) llm.generating = false;
@@ -444,7 +445,7 @@ function cancelModelLoad(): boolean {
   const controller = activeModelLoadAbortController;
   if (!controller || controller.signal.aborted) return false;
   controller.abort(makeAbortError(t("common.operationCancelled")));
-  unloadModel();
+  unloadModel({ force: true });
   return true;
 }
 
@@ -500,11 +501,15 @@ async function runAgentTurn({
     err.name = "AbortError";
     throw err;
   }
-  const sdk = await ensureAiSdk();
   const llm = ensureLlmState();
-  const modelConfig = llm.activeModel || getSelectedModelConfig();
+  const selectedModel = getSelectedLlmModel();
+  const modelConfig = llm.activeModel
+    ? resolveTurnModelConfig(llm.activeModel, selectedModel)
+    : getSelectedModelConfig();
   const policy = llmContextBudget.getPolicy(modelConfig);
-  const showThinking = Boolean(modelConfig.thinking?.enabled && llm.settings?.showThinking);
+  const thinkingEnabled = Boolean(modelConfig.thinking?.enabled);
+  const showThinking = Boolean(thinkingEnabled && llm.settings?.showThinking);
+  const sdk = await ensureAiSdk();
 
   const attachedArtifact = llmArtifacts.consumeContextArtifact();
   const referencedArtifact = attachedArtifact
@@ -762,7 +767,7 @@ async function runAgentTurn({
       temperature: modelConfig.temperature ?? 0.15,
       topP: modelConfig.topP ?? 0.85,
       needsVm: useToolLoop,
-      enableThinking: showThinking,
+      enableThinking: thinkingEnabled,
       toolCalling: toolCallingMode,
       activeToolNames: sentActiveToolNames,
       abortSignal,
@@ -946,6 +951,8 @@ async function handleUserMessage(userText: string): Promise<void> {
     return;
   }
 
+  if (activeTurnAbortController) return;
+
   if (!llmResourceGovernor.canStart("llm")) {
     addMessage("agent", t("chat.msg.busyTryLater"));
     updateChatAvailability();
@@ -1000,15 +1007,15 @@ async function handleUserMessage(userText: string): Promise<void> {
     llm.lastError = message;
     if (isRecoverableGpuMemoryError(message)) {
       llmResourceGovernor.markGpuMemoryPressure();
-      unloadModel();
+      unloadModel({ force: true });
     }
     llmEventsApi.emit("status", { text: t("chat.status.errorLlmTools"), tone: "bad" });
   } finally {
+    if (activeTurnAbortController === turnAbort) activeTurnAbortController = null;
     if (activeTurnGeneration === turnGeneration) {
-      activeTurnAbortController = null;
       llm.generating = false;
-      updateChatAvailability();
     }
+    updateChatAvailability();
   }
 }
 
@@ -1027,10 +1034,11 @@ function clearHistory(): void {
   updateChatAvailability();
 }
 
-function unloadModel(): void {
+function unloadModel({ force = false }: { force?: boolean } = {}): boolean {
+  const llm = ensureLlmState();
+  if (!force && activeTurnAbortController) return false;
   const sdk = getAiSdk();
   sdk?.unloadModel?.();
-  const llm = ensureLlmState();
   llm.loaded = false;
   llm.loading = false;
   llm.generating = false;
@@ -1038,6 +1046,7 @@ function unloadModel(): void {
   llm.activeModel = null;
   updateChatAvailability();
   llmEventsApi.emit("status", { text: t("chat.status.modelUnloaded"), tone: "warn" });
+  return true;
 }
 
 function setChatSubmitStopMode(submit: HTMLButtonElement | null, isStop: boolean): void {
@@ -1093,6 +1102,11 @@ function updateChatAvailability(): void {
       submit.disabled = !canSend;
     }
   }
+  llmEventsApi.emit("activity", {
+    busy,
+    generating: Boolean(llm?.generating),
+    loading: Boolean(llm?.loading),
+  });
 }
 
 function refreshChatAvailabilityWithResourceTelemetry(): void {

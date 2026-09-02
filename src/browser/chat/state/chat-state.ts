@@ -111,7 +111,7 @@ export interface LlmState {
 }
 
 type LlmEventType =
-  | "artifact" | "artifact-clear" | "artifact-context" | "artifact-remove"
+  | "activity" | "artifact" | "artifact-clear" | "artifact-context" | "artifact-remove"
   | "capabilities" | "context" | "native-tools" | "progress" | "resource"
   | "status" | "tool-done" | "tool-error" | "tool-policy" | "tool-start";
 
@@ -216,12 +216,6 @@ export function registerDiscoveredModel(
     : null;
   const profile = resolveProfile(discovered.engine, discovered.modelId, inspection, saved, saved ? null : selection);
   const config = modelConfigFromProfile(profile, discovered, inspection);
-  dynamicModels.set(config.id, config);
-  return config;
-}
-
-export function registerModelProfile(profile: LlmUserProfile, inspection: ModelInspection | null = null): LlmModelConfig {
-  const config = modelConfigFromProfile(profile, null, inspection);
   dynamicModels.set(config.id, config);
   return config;
 }

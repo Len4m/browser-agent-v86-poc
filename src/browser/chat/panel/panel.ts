@@ -113,6 +113,11 @@ function setPanelBusy(busy: boolean): void {
   runtimeView.syncWorkerUnloadButton();
 }
 
+function syncTurnControls(busy = llmAgent.isChatOperationActive()): void {
+  discovery.setTurnBusy(busy);
+  runtimeView.syncWorkerUnloadButton();
+}
+
 function setLoadError(message = ""): void {
   const element = document.getElementById("ba-llm-load-error");
   if (!element) return;
@@ -283,9 +288,11 @@ function mountPanel(): void {
 
 function bindApplicationEvents(): void {
   llmEventsApi.on("status", (detail) => {
-    runtimeView.setStatus(textValue(detail.text, "—"), textValue(detail.tone));
+    const status = textValue(detail.text);
+    if (status) runtimeView.setStatus(status, textValue(detail.tone));
     runtimeView.updateSelectedModelCard();
   });
+  llmEventsApi.on("activity", (detail) => syncTurnControls(Boolean(detail.busy)));
   llmEventsApi.on("capabilities", (detail) => {
     const current = getLlmState()?.capabilities;
     const capabilities = isLlmCapabilities(detail.capabilities)

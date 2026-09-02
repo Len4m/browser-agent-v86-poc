@@ -60,12 +60,28 @@ const ACTION_CONTROL_SELECTOR = [
   "#ba-llm-profile-reset",
 ].join(",");
 
+const TURN_LOCKED_CONTROL_SELECTOR = [
+  'input[name="ba-llm-source"]',
+  "#ba-llm-custom-model",
+  "#ba-llm-custom-inspect",
+  "#ba-llm-ollama-endpoint",
+  "#ba-llm-think-mode",
+  "#ba-llm-device",
+  "#ba-llm-dtype",
+  "#ba-llm-reuse-cache",
+  "#ba-llm-thinking-tag",
+  "#ba-llm-start-reasoning",
+  "#ba-llm-profile-reset",
+  "#ba-llm-tool-autonomy",
+].join(",");
+
 export interface DiscoveryController {
   source: () => LlmEngine;
   bind: () => void;
   initialize: () => void;
   ensureSelection: () => Promise<LlmModelConfig>;
   setActionBusy: (busy: boolean) => void;
+  setTurnBusy: (busy: boolean) => void;
   render: () => void;
 }
 
@@ -80,6 +96,7 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
   let inspectionModelId = "";
   let inspectionPending = false;
   let actionBusy = false;
+  let turnBusy = false;
   let hfRequestBusy = false;
   let hfRequestGeneration = 0;
   let ollamaRequestBusy = false;
@@ -193,19 +210,27 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
     if (!list) return;
     list.classList.toggle("is-busy", busy);
     list.setAttribute("aria-busy", String(busy));
-    for (const button of Array.from(list.querySelectorAll("button"))) setDisabled(button, busy);
+    for (const button of Array.from(list.querySelectorAll("button"))) {
+      setDisabled(button, busy || (turnBusy && button !== hfLoadMoreButton));
+    }
   }
 
-  function setActionControlsDisabled(disabled: boolean): void {
-    for (const control of Array.from(document.querySelectorAll(ACTION_CONTROL_SELECTOR))) setDisabled(control, disabled);
+  function syncControlAvailability(): void {
+    for (const control of Array.from(document.querySelectorAll(ACTION_CONTROL_SELECTOR))) setDisabled(control, actionBusy);
+    for (const control of Array.from(document.querySelectorAll(TURN_LOCKED_CONTROL_SELECTOR))) {
+      setDisabled(control, actionBusy || turnBusy);
+    }
   }
 
   function syncBusyUi(): void {
+    syncControlAvailability();
     renderListBusy("ba-llm-hf-results", actionBusy || hfRequestBusy);
     renderListBusy("ba-llm-ollama-models", actionBusy || ollamaRequestBusy);
     setDisabled(document.getElementById("ba-llm-hf-refresh"), actionBusy || hfRequestBusy);
     setDisabled(hfLoadMoreButton, actionBusy || hfRequestBusy);
     setDisabled(document.getElementById("ba-llm-ollama-refresh"), actionBusy || ollamaRequestBusy);
+    setDisabled(document.getElementById("ba-llm-load"), actionBusy || inspectionPending || turnBusy);
+    setDisabled(document.getElementById("ba-llm-custom-inspect"), actionBusy || inspectionPending || turnBusy);
   }
 
   function setListBusy(id: string, busy: boolean): void {
@@ -229,8 +254,7 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
       if (card) card.hidden = true;
       if (warnings) warnings.hidden = true;
     }
-    setDisabled(document.getElementById("ba-llm-load"), actionBusy || inspectionPending);
-    setDisabled(document.getElementById("ba-llm-custom-inspect"), actionBusy || inspectionPending);
+    syncBusyUi();
   }
 
   function beginInspection(modelId: string): number {
@@ -437,9 +461,12 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
 
   function setActionBusy(busy: boolean): void {
     actionBusy = busy;
-    setActionControlsDisabled(busy);
-    setDisabled(document.getElementById("ba-llm-load"), busy || inspectionPending);
     document.getElementById("ba-llm-panel")?.setAttribute("aria-busy", String(busy || inspectionPending));
+    syncBusyUi();
+  }
+
+  function setTurnBusy(busy: boolean): void {
+    turnBusy = busy;
     syncBusyUi();
   }
 
@@ -513,5 +540,5 @@ export function createDiscoveryController(hooks: DiscoveryControllerHooks): Disc
     renderInspection();
   }
 
-  return { source, bind, initialize, ensureSelection, setActionBusy, render };
+  return { source, bind, initialize, ensureSelection, setActionBusy, setTurnBusy, render };
 }

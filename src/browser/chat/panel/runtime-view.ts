@@ -1,6 +1,7 @@
 import { t } from "../../app/i18n";
 import { setLoading } from "../../vm/runtime-assets";
 import { ensureLLMCapabilities, syncLLMCapabilityBadges, type LlmCapabilities } from "../state/capabilities";
+import { resolveTurnModelConfig } from "../models/model-config";
 import {
   getLlmState,
   llmEngineMetaLabel,
@@ -186,7 +187,10 @@ export function createRuntimeView(hooks: RuntimeViewHooks): RuntimeView {
 
   function canUnloadActiveWorker(): boolean {
     const llm = getLlmState();
-    return Boolean(llm?.loaded && !llm.loading && llm.activeModel?.runtime?.worker);
+    return Boolean(llm?.loaded
+      && !llm.loading
+      && !llmAgent.isChatOperationActive()
+      && llm.activeModel?.runtime?.worker);
   }
 
   function syncWorkerUnloadButton(): void {
@@ -196,7 +200,9 @@ export function createRuntimeView(hooks: RuntimeViewHooks): RuntimeView {
   function updateSelectedModelCard(): void {
     const selected = getSelectedModel();
     const active = getLlmState()?.activeModel || null;
-    const model = shouldShowActiveModel(selected, active) ? active || selected : selected;
+    const model = shouldShowActiveModel(selected, active)
+      ? resolveTurnModelConfig(active || selected, selected)
+      : selected;
     const title = document.getElementById("ba-llm-selected-title");
     const desc = document.getElementById("ba-llm-selected-desc");
     const meta = document.getElementById("ba-llm-selected-meta");

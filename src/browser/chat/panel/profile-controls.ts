@@ -8,9 +8,10 @@ import type {
   ToolCallingQuality,
   ToolStrategy,
 } from "../models/model-types";
+import { requiresLlmRuntimeReload } from "../models/model-config";
 import { llmAgent } from "../runtime/agent-loop";
 import {
-  registerModelProfile,
+  modelConfigFromProfile,
   selectLlmModel,
   type LlmModelConfig,
 } from "../state/chat-state";
@@ -120,8 +121,14 @@ export function createProfileControls(hooks: ProfileControlsHooks): ProfileContr
       hooks.setStatus("Invalid model profile", "bad");
       return;
     }
-    if (ensureLlmState().loaded) llmAgent.unloadModel();
-    const config = registerModelProfile(profile, current.inspection || null);
+    const config = modelConfigFromProfile(profile, null, current.inspection || null);
+    const llm = ensureLlmState();
+    const requiresReload = Boolean(llm.activeModel && requiresLlmRuntimeReload(llm.activeModel, config));
+    if (requiresReload && llmAgent.isChatOperationActive()) {
+      sync(current);
+      return;
+    }
+    if (llm.loaded && requiresReload) llmAgent.unloadModel();
     selectLlmModel(config);
     hooks.onModelChanged(config);
   }
@@ -129,7 +136,12 @@ export function createProfileControls(hooks: ProfileControlsHooks): ProfileContr
   function reset(): void {
     const current = getSelectedModel();
     const profile = defaultProfile(current.engine, current.model || "");
-    const config = registerModelProfile(profile, current.inspection || null);
+    const config = modelConfigFromProfile(profile, null, current.inspection || null);
+    const llm = ensureLlmState();
+    if (llm.activeModel && requiresLlmRuntimeReload(llm.activeModel, config)) {
+      if (llmAgent.isChatOperationActive()) return;
+      if (llm.loaded) llmAgent.unloadModel();
+    }
     selectLlmModel(config);
     sync(config);
     hooks.onModelChanged(config);
