@@ -34,6 +34,7 @@ const runtimeView = createRuntimeView({
 });
 
 function onModelChanged(config: LlmModelConfig): void {
+  setLoadError();
   runtimeView.updateSelectedModelCard();
   updateNativeToolsPickerUi();
   updateResourceLines();
@@ -50,7 +51,10 @@ const discovery: DiscoveryController = createDiscoveryController({
     profiles.sync(config);
     onModelChanged(config);
   },
-  onCandidateChanged: runtimeView.updateSelectedModelCard,
+  onCandidateChanged() {
+    setLoadError();
+    runtimeView.updateSelectedModelCard();
+  },
   onSourceChanged: syncSourceVisibility,
 });
 
@@ -68,6 +72,7 @@ function findLlmPanelBody(): HTMLElement | null {
 }
 
 function syncSourceVisibility(): void {
+  setLoadError();
   const source = discovery.source();
   const huggingFace = document.getElementById("ba-llm-hf-discovery");
   const ollama = document.getElementById("ba-llm-ollama-discovery");

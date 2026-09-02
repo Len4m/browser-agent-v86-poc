@@ -165,6 +165,9 @@ function buildLLMPanelHtml(): string {
           <button id="ba-llm-load" type="button" aria-describedby="ba-llm-load-error" data-i18n="panel.llm.action.load">panel.llm.action.load</button>
           <small id="ba-llm-load-error" class="ba-llm-field-error ba-llm-load-error" role="alert" hidden></small>
         </div>
+        <div class="ba-llm-row ba-llm-actions-secondary">
+          <button id="ba-llm-abort" type="button" class="secondary danger-light" data-i18n="panel.llm.action.unloadWorker">panel.llm.action.unloadWorker</button>
+        </div>
 
         <details class="ba-llm-resource-card ba-llm-collapsible-card">
           <summary class="ba-llm-tool-policy-head ba-llm-collapsible-summary">
@@ -194,9 +197,6 @@ function buildLLMPanelHtml(): string {
           </div>
         </details>
 
-        <div class="ba-llm-row ba-llm-actions-secondary">
-          <button id="ba-llm-abort" type="button" class="secondary danger-light" data-i18n="panel.llm.action.unloadWorker">panel.llm.action.unloadWorker</button>
-        </div>
         <div id="ba-llm-capabilities" class="ba-llm-note" data-i18n="common.inferencePending">common.inferencePending</div>
       </div>
     `;
