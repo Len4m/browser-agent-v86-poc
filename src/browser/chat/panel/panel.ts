@@ -108,9 +108,17 @@ function setPanelBusy(busy: boolean): void {
   runtimeView.syncWorkerUnloadButton();
 }
 
+function setLoadError(message = ""): void {
+  const element = document.getElementById("ba-llm-load-error");
+  if (!element) return;
+  element.textContent = message;
+  element.hidden = !message;
+}
+
 async function handleLoadClick(): Promise<void> {
   const llm = ensureLlmState();
   try {
+    setLoadError();
     setPanelBusy(true);
     runtimeView.setProgress({ status: "init", model: "" });
     const selected = await discovery.ensureSelection();
@@ -126,9 +134,12 @@ async function handleLoadClick(): Promise<void> {
   } catch (error) {
     if (isAbortError(error)) {
       llm.lastError = "";
+      setLoadError();
       runtimeView.setStatus(t("common.operationCancelled"), "warn");
     } else {
-      llm.lastError = errorMessage(error);
+      const message = errorMessage(error);
+      llm.lastError = message;
+      setLoadError(t("panel.llm.status.loadErrorDetail", { error: message }));
       runtimeView.setStatus(t("panel.llm.status.loadError"), "bad");
     }
   } finally {

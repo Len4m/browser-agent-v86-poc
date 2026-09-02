@@ -20,6 +20,7 @@ export interface ProgressDetail {
   file?: string;
   name?: string;
   path?: string;
+  data?: string;
   model?: string;
   fallbackDevice?: string;
   fallbackDtype?: string;
@@ -55,6 +56,20 @@ function normalizePercent(value: unknown): number | null {
   return Math.max(0, Math.min(100, Math.round(numeric)));
 }
 
+function modelFileKind(file: string): string {
+  const normalized = file.toLowerCase();
+  if (/\.onnx(?:_data)?$|\.safetensors$|\.(?:bin|gguf)$|model.*\.data$/.test(normalized)) {
+    return t("panel.llm.progress.component.weights");
+  }
+  if (/tokenizer|vocab|merges|added_tokens|special_tokens/.test(normalized)) {
+    return t("panel.llm.progress.component.tokenizer");
+  }
+  if (/config|preprocessor|processor|chat_template/.test(normalized)) {
+    return t("panel.llm.progress.component.configuration");
+  }
+  return t("panel.llm.progress.component.files");
+}
+
 function getProgressInfo(detail: ProgressDetail | null | undefined): ProgressInfo {
   if (!detail) return { mode: "idle", percent: null, title: "", detail: "" };
   const rawPercent = Number.isFinite(detail.progress)
@@ -63,6 +78,7 @@ function getProgressInfo(detail: ProgressDetail | null | undefined): ProgressInf
       ? normalizePercent(Number(detail.loaded) / Number(detail.total))
       : null);
   const file = detail.file || detail.name || detail.path || "";
+  const component = modelFileKind(file);
   const loaded = bytesLabel(detail.loaded);
   const total = bytesLabel(detail.total);
   const size = loaded && total ? `${loaded} / ${total}` : (loaded || total || "");
@@ -71,9 +87,9 @@ function getProgressInfo(detail: ProgressDetail | null | undefined): ProgressInf
     case "init":
       return { mode: "indeterminate", percent: null, title: t("panel.llm.progress.preparingModel"), detail: detail.model || "" };
     case "initiate":
-      return { mode: "indeterminate", percent: null, title: t("panel.llm.progress.preparingFile"), detail: file || t("panel.llm.progress.initializing") };
+      return { mode: "indeterminate", percent: null, title: t("panel.llm.progress.preparingComponent", { component }), detail: file || t("panel.llm.progress.initializing") };
     case "download":
-      return { mode: "indeterminate", percent: null, title: t("common.downloading"), detail: file || t("panel.llm.progress.waiting") };
+      return { mode: "indeterminate", percent: null, title: t("panel.llm.progress.downloadingComponent", { component }), detail: file || t("panel.llm.progress.waiting") };
     case "progress_total":
       return {
         mode: "determinate",
@@ -85,8 +101,19 @@ function getProgressInfo(detail: ProgressDetail | null | undefined): ProgressInf
       return {
         mode: rawPercent == null ? "indeterminate" : "determinate-file",
         percent: rawPercent,
-        title: rawPercent == null ? t("panel.llm.progress.downloadingFile") : t("panel.llm.progress.currentFilePercent", { percent: rawPercent }),
+        title: rawPercent == null
+          ? t("panel.llm.progress.downloadingComponent", { component })
+          : t("panel.llm.progress.downloadingComponentPercent", { component, percent: rawPercent }),
         detail: file ? `${file}${size ? ` · ${size}` : ""}` : (size || t("panel.llm.progress.fileProgress")),
+      };
+    case "loading":
+      return {
+        mode: "indeterminate",
+        percent: null,
+        title: /compil|warm/i.test(detail.data || "")
+          ? t("panel.llm.progress.warmingModel")
+          : t("panel.llm.progress.preparingModel"),
+        detail: file,
       };
     case "fallback":
       return {
@@ -101,7 +128,7 @@ function getProgressInfo(detail: ProgressDetail | null | undefined): ProgressInf
     case "ready":
       return { mode: "determinate", percent: 100, title: t("panel.llm.progress.filesReady"), detail: file || t("panel.llm.progress.preparingExecution") };
     case "done":
-      return { mode: "determinate", percent: 100, title: t("panel.llm.progress.modelDownloaded"), detail: t("panel.llm.progress.loadComplete") };
+      return { mode: "determinate", percent: 100, title: t("panel.llm.progress.componentComplete", { component }), detail: file || t("panel.llm.progress.loadComplete") };
     default:
       return { mode: rawPercent == null ? "indeterminate" : "determinate", percent: rawPercent, title: detail.status || t("common.loading"), detail: file || size || "" };
   }

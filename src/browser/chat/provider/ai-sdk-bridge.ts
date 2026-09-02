@@ -163,7 +163,13 @@ function forwardWorkerDiagnostic(value: unknown): void {
   });
 }
 
-function createWorker({ disposeGenerationCacheBeforeGenerate = false }: { disposeGenerationCacheBeforeGenerate?: boolean } = {}): Worker {
+function createWorker({
+  disposeGenerationCacheBeforeGenerate = false,
+  onProgress,
+}: {
+  disposeGenerationCacheBeforeGenerate?: boolean;
+  onProgress?: LoadModelOptions["onProgress"];
+} = {}): Worker {
   terminateActiveWorker();
   if (!workerUrl) {
     workerUrl = new URL("./chat/workers/llm-browser-ai.worker.mjs", import.meta.url);
@@ -175,6 +181,10 @@ function createWorker({ disposeGenerationCacheBeforeGenerate = false }: { dispos
   activeWorker = new Worker(url, { type: "module" });
   activeWorker.addEventListener("message", (event) => {
     forwardWorkerDiagnostic(event.data);
+    const detail = isRecord(event.data) ? event.data : null;
+    if (detail && ["initiate", "download", "progress", "progress_total", "done", "ready", "loading"].includes(textValue(detail.status))) {
+      onProgress?.(detail);
+    }
   });
   activeWorker.addEventListener("error", (event) => {
     emitDiagnostic("worker error event", {
@@ -288,7 +298,7 @@ function resolveOllamaEndpoint(): string {
   ).replace(/\/+$/g, "");
 }
 
-function createModel(modelConfig: LlmModelConfig): LanguageModelV4 {
+function createModel(modelConfig: LlmModelConfig, onProgress?: LoadModelOptions["onProgress"]): LanguageModelV4 {
   if (!modelConfig?.model) throw new Error("Modelo no configurado.");
 
   let base: BrowserSessionLanguageModel;
@@ -314,7 +324,7 @@ function createModel(modelConfig: LlmModelConfig): LanguageModelV4 {
     base = transformersJS(modelConfig.model, {
       device,
       dtype,
-      worker: createWorker({ disposeGenerationCacheBeforeGenerate }),
+      worker: createWorker({ disposeGenerationCacheBeforeGenerate, onProgress }),
     });
     runtime = {
       provider: "transformersjs",
@@ -337,7 +347,7 @@ function createModel(modelConfig: LlmModelConfig): LanguageModelV4 {
 
 async function loadModel(modelConfig: LlmModelConfig, { signal, onProgress }: LoadModelOptions = {}): Promise<LanguageModelV4> {
   async function loadWithConfig(config: LlmModelConfig): Promise<LanguageModelV4> {
-    const model = createModel(config);
+    const model = createModel(config, onProgress);
     // wrapLanguageModel solo envuelve doGenerate/doStream; sesión y descarga viven en el modelo base.
     const sessionModel = activeModelHandle?.base;
     const availability = await sessionModel?.availability?.();
@@ -348,7 +358,7 @@ async function loadModel(modelConfig: LlmModelConfig, { signal, onProgress }: Lo
         : t("chat.error.transformersUnavailable"));
     }
 
-    if (availability !== "available") {
+    if (availability !== "available" && config.engine === "ollama") {
       await sessionModel?.createSessionWithProgress?.((progress: unknown) => {
         onProgress?.({
           status: "progress",
@@ -357,6 +367,8 @@ async function loadModel(modelConfig: LlmModelConfig, { signal, onProgress }: Lo
           model: config.model,
         });
       });
+    } else if (availability !== "available") {
+      await sessionModel?.createSessionWithProgress?.();
     }
 
     return model;

@@ -541,6 +541,17 @@
   flex: 1 1 150px;
 }
 
+.ba-llm-load-error {
+  flex: 1 1 100%;
+  padding: 0.48rem 0.58rem;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fef2f2;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
 .ba-llm-actions-secondary button {
   flex: 1 1 130px;
   padding: 8px 10px;

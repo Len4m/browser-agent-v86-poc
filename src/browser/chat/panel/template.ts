@@ -162,7 +162,8 @@ function buildLLMPanelHtml(): string {
         </details>
 
         <div class="ba-llm-actions-primary">
-          <button id="ba-llm-load" type="button" data-i18n="panel.llm.action.load">panel.llm.action.load</button>
+          <button id="ba-llm-load" type="button" aria-describedby="ba-llm-load-error" data-i18n="panel.llm.action.load">panel.llm.action.load</button>
+          <small id="ba-llm-load-error" class="ba-llm-field-error ba-llm-load-error" role="alert" hidden></small>
         </div>
 
         <details class="ba-llm-resource-card ba-llm-collapsible-card">
