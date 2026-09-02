@@ -108,15 +108,23 @@ Before shutting down the VM, save a snapshot if you want to keep RAM/process sta
 
 The **LLM** panel lets you choose and load the inference engine:
 
-- **Model**: lists browser Transformers.js models and Ollama options.
-- **Ollama endpoint**: appears when an Ollama model is selected; usually `http://127.0.0.1:11434`.
-- **Load model** initializes the selected backend. For Transformers.js, it downloads or reuses the cached model and starts a worker; for Ollama, it checks the configured endpoint and local model.
-- **Show model reasoning (thinking)** appears for models that expose reasoning output.
+- **Source** switches between Transformers.js and Ollama. Changing source unloads the previous model and clears its loading errors.
+- **Transformers.js** searches Hugging Face. The list only shows repositories with detected tool support, has a refresh button beside its heading, and appends **Load more** at the end while more results are available.
+- **Repository ID** accepts a model that is not in the list. Typing an ID deselects the previous result; use the information button inside the field to inspect its metadata. If inspection fails, the reason appears directly below it.
+- **Ollama endpoint** is usually `http://127.0.0.1:11434`; the list shows installed models that announce tool support and can be refreshed from the icon beside its heading.
+- The selected-model card summarizes the engine, download size, quantization, context, and detected capabilities. **Agent configuration** and **Advanced configuration** control its behavior; **Restore defaults** restores the initial values for the current engine/model.
+- **Load model** initializes the selected backend. For Transformers.js, it downloads or reuses the cached model and starts a worker; for Ollama, it checks the endpoint and local model. During download, the shared application overlay identifies the current phase or component and **Cancel download** stops it without reloading the page.
+- If loading fails, the error appears next to **Load model**. It is cleared when you select another source, model, or ID so it cannot be mistaken for the next attempt.
+- **Show model reasoning (thinking)** controls whether generated reasoning is visible.
 - **Resources and context** shows context budget, artifacts, and active operation.
 - **Tool autonomy** sets the highest risk level the agent may execute without asking for confirmation.
 - **Unload worker** stops generation and releases the active Transformers.js worker and model. It is disabled for Ollama models because they run outside the browser.
 
 WebGPU is the recommended path for local models. If WebGPU fails and the model supports it, the app may try the experimental WASM fallback.
+
+The application retains the last selected engine/model and its configuration. Model files may remain in the browser cache.
+
+While chat is responding, controls that would change the loaded runtime are locked, including source/model, device, dtype, cache, and thinking generation/parsing. Autonomy is also locked so approvals cannot change in the middle of a turn. Agent, tool-selection, sampling, context, and reasoning-display settings can be prepared for the next turn without stopping the current response. If you change a runtime setting while chat is idle, you must load the model again.
 
 ### Ollama
 
@@ -202,6 +210,8 @@ The **Run checks** panel validates environment and runtime state:
 - snapshot APIs;
 - serial channels and runners when the VM is active;
 - packages and tools expected by the active profile.
+
+On an isolated **Local Docker WS** network with Internet disabled, the check validates the interface and IPv4 address without waiting for an impossible external connection. In other modes, the HTTP probe makes one attempt with a 5-second timeout before falling back to ping.
 
 If a check fails, review its details and the tool log before trying again.
 

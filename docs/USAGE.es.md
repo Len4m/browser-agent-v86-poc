@@ -149,16 +149,20 @@ Backends soportados:
 - **Transformers.js**: corre en el navegador con worker propio. WebGPU es lo recomendado; algunos modelos pueden caer a WASM si WebGPU falla.
 - **Ollama HTTP**: el navegador llama directamente al endpoint local, por defecto `http://127.0.0.1:11434`.
 
-Los modelos se descubren en runtime. Transformers.js busca repositorios públicos no gated de `text-generation` etiquetados `transformers.js` en Hugging Face Hub; Ollama lista todos los modelos instalados en el endpoint configurado. También se puede introducir manualmente un ID de repositorio para Transformers.js.
+Los modelos se descubren en runtime. Transformers.js busca repositorios públicos no gated de `text-generation` etiquetados `transformers.js` en Hugging Face Hub; Ollama consulta los modelos instalados en el endpoint configurado y muestra los que anuncian soporte de tools. También se puede introducir manualmente un ID de repositorio para Transformers.js.
 
-La búsqueda del Hub es remota y paginada. Las cargas correctas de Transformers.js aparecen en **Recientes**, por lo que siguen disponibles junto con los perfiles guardados cuando la API del Hub falla. Al seleccionar un repositorio, el worker de inferencia existente inspecciona ficheros ONNX, dtypes, contexto declarado, chat template y señales de tools/thinking. Al seleccionar un modelo Ollama se consulta `/api/show` para obtener capacidades y contexto.
+La búsqueda del Hub es remota y paginada; **Cargar más** aparece como última opción del listado mientras existan más resultados. La lista solo incluye repositorios con soporte de tools detectado. El ID manual no tiene ese filtro: el botón de información situado dentro del campo permite inspeccionar sus metadatos antes de cargarlo y muestra el error bajo el campo si no se puede consultar. Al seleccionar o inspeccionar un repositorio, un worker temporal revisa ficheros ONNX, dtypes, contexto declarado, chat template y señales de tools/thinking. Ollama muestra los modelos instalados que anuncian tools y consulta `/api/show` para obtener capacidades y contexto.
 
-Los bloques básico y avanzado representan la política del usuario, no recomendaciones. Una capacidad desconocida produce avisos, pero no desactiva el agente. Los perfiles se guardan en `ba.llm.profiles.v1` y los últimos 20 repositorios del Hub cargados correctamente en `ba.llm.hfRecents.v1`. La exportación/importación está versionada y excluye recientes, cachés, historial de chat y endpoint Ollama.
+La caché del navegador puede evitar que Transformers.js vuelva a descargar los archivos. La aplicación persiste el último motor/modelo seleccionado y sus ajustes bajo `ba.llm.lastProfile.v1`. **Restaurar defaults** recupera los valores iniciales del motor y modelo actuales.
+
+Los bloques básico y avanzado representan la política del usuario, no recomendaciones. Una capacidad desconocida produce avisos, pero no desactiva por sí sola el agente.
 
 Notas de uso:
 
 - El chat está deshabilitado hasta que cargues un backend/modelo.
-- El panel LLM guarda por `engine:model` la configuración editable del agente, tools, contexto, dtype/device, sampling y thinking. El razonamiento se transmite en streaming y no se guarda como respuesta final ni se conserva en memoria.
+- La carga de Transformers.js usa el overlay general de la aplicación. Indica la fase o componente en curso —por ejemplo, configuración, tokenizador o pesos— y permite **Cancelar descarga** sin recargar la página. Si falla, el detalle aparece junto a **Cargar modelo** y se limpia al cambiar de fuente o candidato.
+- Al comenzar una respuesta se fija la configuración efectiva de ese turno. Los ajustes que alteran el runtime cargado —motor/modelo, device, dtype, generation cache y generación/parsing de thinking— quedan bloqueados hasta que termine; la autonomía también se bloquea para no cambiar la política de aprobación a mitad del turno. Si los ajustes de runtime se cambian con el chat inactivo, descargan el runtime y requieren volver a cargarlo. Los ajustes de agente, selección de tools, sampling, contexto y visualización del razonamiento pueden prepararse para el siguiente turno sin interrumpir el actual.
+- El razonamiento se transmite en streaming y no se guarda como respuesta final ni se conserva en memoria.
 - Los resultados de las tools se guardan como artifacts en el panel LLM: puedes previsualizarlos, adjuntarlos al siguiente mensaje o eliminarlos. El adjuntado respeta el presupuesto de contexto del modelo y se omite si no hay margen.
 - La primera carga de modelos Transformers.js puede descargar ficheros grandes y quedar cacheada por el navegador.
 - WebGPU es la ruta recomendada para tools con Transformers.js. El fallback WASM existe para chat básico en navegadores sin WebGPU, pero no debe considerarse una ruta fiable para tool calling; usa un navegador con WebGPU compatible u Ollama si necesitas herramientas.

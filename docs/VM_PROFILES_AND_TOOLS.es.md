@@ -133,7 +133,7 @@ Las definiciones de campos, reglas de validación y propiedades obligatorias de 
 
 2. Usa un nombre estable.
 
-   Los nombres siguen el estilo `area.nombre.accion`, por ejemplo:
+   Los nombres siguen el estilo `area_nombre_accion`, por ejemplo:
 
    - `vm_fs_read`
    - `web_curl_head`

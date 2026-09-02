@@ -149,16 +149,20 @@ Supported backends:
 - **Transformers.js**: runs in a dedicated browser worker. WebGPU is recommended; some models can fall back to WASM if WebGPU fails.
 - **Ollama HTTP**: the browser connects directly to the local endpoint, `http://127.0.0.1:11434` by default.
 
-Models are discovered at runtime. Transformers.js searches public, non-gated `text-generation` repositories tagged `transformers.js` on the Hugging Face Hub; Ollama lists every model installed at the configured endpoint. A repository ID can also be entered manually for Transformers.js.
+Models are discovered at runtime. Transformers.js searches public, non-gated `text-generation` repositories tagged `transformers.js` on the Hugging Face Hub; Ollama queries the models installed at the configured endpoint and shows those that announce tool support. A repository ID can also be entered manually for Transformers.js.
 
-Hub search is remote and paginated. Successful Transformers.js loads appear in **Recent**, so they and saved profiles remain usable when the Hub API is unavailable. Selecting a Transformers.js repository inspects its ONNX files, dtypes, declared context, chat template, and tool/thinking signals in the existing inference worker. Selecting an Ollama model requests `/api/show` for its capabilities and context.
+Hub search is remote and paginated; **Load more** remains the last list option while more results are available. The list only includes repositories with detected tool support. A manual repository ID is not subject to that filter: the information button inside the field inspects its metadata before loading and shows an error below the field when inspection fails. Selecting or inspecting a repository uses a temporary worker to inspect its ONNX files, dtypes, declared context, chat template, and tool/thinking signals. Ollama lists installed models that announce tool support and requests `/api/show` for their capabilities and context.
 
-The basic and advanced sections are user policy, not recommendations. Unknown capabilities produce warnings but do not disable the agent. Profiles are stored under `ba.llm.profiles.v1`; the last 20 successful Hub repositories use `ba.llm.hfRecents.v1`. Profile export/import is schema-versioned and excludes recents, caches, chat history, and the Ollama endpoint.
+The browser cache may prevent Transformers.js from downloading model files again. The application persists the last selected engine/model and its settings under `ba.llm.lastProfile.v1`. **Restore defaults** restores the initial values for the current engine and model.
+
+The basic and advanced sections represent user policy, not recommendations. An unknown capability produces warnings but does not disable the agent by itself.
 
 Usage notes:
 
 - Chat is disabled until you load a backend/model.
-- The LLM panel stores editable agent, tool, context, dtype/device, sampling, and thinking settings per `engine:model`. Reasoning text is streamed but is not saved as the final response or retained in memory.
+- Transformers.js loading uses the application's shared overlay. It identifies the current phase or component—for example configuration, tokenizer, or weights—and provides **Cancel download** without reloading the page. On failure, the details appear next to **Load model** and are cleared when the source or candidate changes.
+- The effective configuration is captured when a response starts. Settings that change the loaded runtime—engine/model, device, dtype, generation cache, and thinking generation/parsing—are locked until it finishes; autonomy is also locked so approval policy cannot change mid-turn. Changing runtime settings while chat is idle unloads the runtime and requires loading it again. Agent, tool-selection, sampling, context, and reasoning-display settings can be prepared for the next turn without interrupting the current one.
+- Reasoning text is streamed but is not saved as the final response or retained in memory.
 - Tool results are stored as artifacts in the LLM panel: you can preview them, attach them to the next message, or delete them. Attachments respect the model's context budget and are omitted when there is not enough room.
 - The first Transformers.js model load may download large files, which the browser can cache.
 - WebGPU is the recommended path for tools with Transformers.js. The WASM fallback exists for basic chat in browsers without WebGPU, but should not be considered reliable for tool calling; use a browser with compatible WebGPU or Ollama when you need tools.

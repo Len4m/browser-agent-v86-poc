@@ -133,7 +133,7 @@ Field definitions, validation rules, and required properties for `vm/profiles/<i
 
 2. Use a stable name.
 
-   Names follow the `area.name.action` style, for example:
+   Names follow the `area_name_action` style, for example:
 
    - `vm_fs_read`
    - `web_curl_head`

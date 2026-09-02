@@ -122,7 +122,7 @@ Toda la copy de UI vive en catálogos JSON (`src/web/locales/*.json`) y el códi
 
 Fuente y salidas generadas del LLM:
 
-- `src/browser/chat/models/`: descubrimiento e inspección runtime, selección de dtype según hardware y perfiles versionados del usuario. El build no contiene un inventario de modelos ni consulta APIs externas de modelos.
+- `src/browser/chat/models/`: descubrimiento e inspección runtime, selección de dtype según hardware y validación/defaults de la última configuración elegida por el usuario. El build no contiene un inventario de modelos ni consulta APIs externas de modelos.
 - `public/assets/chat/ai-sdk-browser.mjs`, generado desde `src/browser/chat/provider/ai-sdk/entry.ts`.
 - `public/assets/chat/workers/llm-browser-ai.worker.mjs`, generado desde `src/browser/chat/provider/ai-sdk/llm-browser-ai.worker.ts`.
 - `public/assets/ai-sdk-bridge.mjs`, generado desde `src/browser/chat/provider/ai-sdk-bridge.ts`.
@@ -258,6 +258,7 @@ Flujo de un turno:
 ```txt
 sendChat()
   -> llmAgent.handleUserMessage()
+  -> resolveTurnModelConfig()
   -> buildAiSdkTools()
   -> getAiSdk().runAgentStreamTurn()
     -> streamText()
@@ -280,7 +281,9 @@ Detalles importantes:
 - Las ejecuciones de tools se serializan por turno para proteger el canal `serial1`, aunque AI SDK entregue varias llamadas en paralelo.
 - El runner conserva una síntesis de respaldo si hubo tool work y la respuesta textual falta, parece un plan de tool o falla el paso de síntesis del SDK.
 - El middleware de Transformers.js elimina `toolChoice` para compatibilidad con ese backend.
-- El razonamiento (thinking) se configura en cada perfil local del usuario. Transformers.js puede extraer un tag configurable con `extractReasoningMiddleware`; Ollama acepta un booleano o nivel de esfuerzo soportado y devuelve `message.thinking` nativo. Se transmite en streaming y no se conserva en memoria ni como respuesta final.
+- El turno captura su configuración efectiva antes del primer `await`. `resolveTurnModelConfig()` combina el runtime activo con los ajustes seguros seleccionados para el turno; los campos que requieren recrear el modelo permanecen ligados al runtime cargado. La UI bloquea esos campos durante una respuesta y, si cambian con el chat inactivo, descarga el runtime para exigir una nueva carga.
+- El razonamiento (thinking) se configura en la selección actual del usuario. Transformers.js puede extraer un tag configurable con `extractReasoningMiddleware`; Ollama acepta un booleano o nivel de esfuerzo soportado y devuelve `message.thinking` nativo. Se transmite en streaming y no se conserva en memoria ni como respuesta final.
+- La última selección y su configuración LLM se guardan en `ba.llm.lastProfile.v1`; la caché de archivos de Transformers.js es independiente de esta preferencia.
 - Ollama se llama desde el navegador, no desde la VM. El endpoint por defecto es `http://127.0.0.1:11434`.
 
 ### Contrato de tools y perfiles
@@ -298,6 +301,8 @@ Archivos clave:
 
 | Archivo | Responsabilidad |
 | --- | --- |
+| `src/browser/chat/models/model-config.ts` | Decide qué cambios requieren recargar el runtime y fija la configuración efectiva de cada turno |
+| `src/browser/chat/panel/` | Descubrimiento, selección, controles, progreso, errores y vistas del panel LLM |
 | `src/browser/chat/provider/ai-sdk-bridge.ts` | Crea/carga modelos, fallback WebGPU->WASM, Ollama y API ESM del bridge AI SDK |
 | `src/browser/chat/provider/ai-sdk/browser-agent-runner.ts` | Turno AI SDK, steps, streaming y síntesis de respaldo |
 | `src/browser/chat/provider/ai-sdk/ollama-browser-model.ts` | Provider Ollama HTTP browser |
@@ -347,7 +352,7 @@ Archivos clave:
 2. El código de aplicación debe importarse desde `src/browser/main.ts` o desde módulos importados por este.
 3. Nuevo CSS en `src/web/styles/` y `@import` desde `src/web/styles/style.css`.
 4. Nuevas librerías browser vía `package.json` + script de copia/bundle, no copiadas a mano en `public/vendor/`.
-5. No añadir modelos hardcodeados al runtime. La compatibilidad y el comportamiento del agente deben descubrirse o configurarse mediante el perfil de usuario por modelo.
+5. No añadir modelos hardcodeados al runtime. La compatibilidad debe descubrirse y el comportamiento del agente debe derivarse de la configuración actual validada.
 6. Nueva tool como modulo de definicion en `src/browser/chat/tools/definitions/`; mantener alineados nombre literal, `requiredPackages`, `allowedTools` de perfiles, checks y tests.
 7. Cambios en perfiles, overlay o runners requieren `pnpm setup`.
 8. Cambios en provider AI SDK o worker requieren `pnpm build`.

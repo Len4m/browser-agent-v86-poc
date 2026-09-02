@@ -122,7 +122,7 @@ All UI copy lives in JSON catalogs (`src/web/locales/*.json`), and code only ref
 
 LLM source and generated outputs:
 
-- `src/browser/chat/models/`: runtime discovery, inspection, hardware dtype selection, and versioned user profiles. The build contains no model inventory and does not query external model APIs.
+- `src/browser/chat/models/`: runtime discovery, inspection, hardware dtype selection, and validation/defaults for the user's last selected configuration. The build contains no model inventory and does not query external model APIs.
 - `public/assets/chat/ai-sdk-browser.mjs`, generated from `src/browser/chat/provider/ai-sdk/entry.ts`.
 - `public/assets/chat/workers/llm-browser-ai.worker.mjs`, generated from `src/browser/chat/provider/ai-sdk/llm-browser-ai.worker.ts`.
 - `public/assets/ai-sdk-bridge.mjs`, generated from `src/browser/chat/provider/ai-sdk-bridge.ts`.
@@ -258,6 +258,7 @@ Turn flow:
 ```txt
 sendChat()
   -> llmAgent.handleUserMessage()
+  -> resolveTurnModelConfig()
   -> buildAiSdkTools()
   -> getAiSdk().runAgentStreamTurn()
     -> streamText()
@@ -280,7 +281,9 @@ Important details:
 - Tool executions are serialized per turn to protect the `serial1` channel even when AI SDK presents several calls in parallel.
 - The runner keeps a fallback synthesis when tools ran and the text response is missing, resembles a tool plan, or the SDK synthesis step fails.
 - The Transformers.js middleware removes `toolChoice` for compatibility with that backend.
-- Reasoning (thinking) is configured in each local user profile. Transformers.js can extract a configurable tag with `extractReasoningMiddleware`; Ollama accepts a boolean or supported effort level and returns native `message.thinking`. It is streamed and is not retained in memory or as the final response.
+- A turn captures its effective configuration before the first `await`. `resolveTurnModelConfig()` combines the active runtime with the selected turn-safe settings; fields that require model recreation remain bound to the loaded runtime. The UI locks those fields during a response and unloads the runtime when they change while chat is idle, requiring a new load.
+- Reasoning (thinking) is configured on the user's current selection. Transformers.js can extract a configurable tag with `extractReasoningMiddleware`; Ollama accepts a boolean or supported effort level and returns native `message.thinking`. It is streamed and is not retained in memory or as the final response.
+- The latest selection and its LLM configuration are stored under `ba.llm.lastProfile.v1`; the Transformers.js file cache is independent of this preference.
 - Ollama is called from the browser, not the VM. The default endpoint is `http://127.0.0.1:11434`.
 
 ### Tool and profile contract
@@ -298,6 +301,8 @@ Key files:
 
 | File | Responsibility |
 | --- | --- |
+| `src/browser/chat/models/model-config.ts` | Decides which changes require a runtime reload and captures the effective configuration for each turn |
+| `src/browser/chat/panel/` | Discovery, selection, controls, progress, errors, and LLM panel views |
 | `src/browser/chat/provider/ai-sdk-bridge.ts` | Creates/loads models, WebGPU→WASM fallback, Ollama, and the AI SDK bridge ESM API |
 | `src/browser/chat/provider/ai-sdk/browser-agent-runner.ts` | AI SDK turn, steps, streaming, and fallback synthesis |
 | `src/browser/chat/provider/ai-sdk/ollama-browser-model.ts` | Ollama HTTP provider for the browser |
@@ -347,7 +352,7 @@ Key files:
 2. Application code must be imported from `src/browser/main.ts` or from modules imported by it.
 3. Add new CSS under `src/web/styles/` and `@import` it from `src/web/styles/style.css`.
 4. Add new browser libraries through `package.json` plus a copy/bundle script; do not copy them manually into `public/vendor/`.
-5. Do not add hardcoded runtime models. Model compatibility and agent behavior must be discoverable or configurable through the per-model user profile.
+5. Do not add hardcoded runtime models. Model compatibility must be discovered, and agent behavior must derive from the validated current configuration.
 6. Add new tools as definition modules in `src/browser/chat/tools/definitions/`; keep the literal name, `requiredPackages`, profile `allowedTools`, checks, and tests aligned.
 7. Changes to profiles, the overlay, or runners require `pnpm setup`.
 8. Changes to the AI SDK provider or worker require `pnpm build`.

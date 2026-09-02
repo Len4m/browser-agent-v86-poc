@@ -109,15 +109,23 @@ Antes de apagar la VM, guarda snapshot si quieres conservar el estado de RAM/pro
 
 El panel **LLM** permite elegir y cargar el motor de inferencia:
 
-- **Modelo**: lista modelos Transformers.js para navegador y opciones Ollama.
-- **Ollama endpoint**: aparece al elegir un modelo Ollama; usa normalmente `http://127.0.0.1:11434`.
-- **Cargar modelo** inicializa el backend seleccionado. En Transformers.js descarga o reutiliza el modelo cacheado y arranca un worker; en Ollama comprueba el endpoint configurado y el modelo local.
-- **Mostrar razonamiento del modelo (thinking)** aparece en modelos que exponen razonamiento.
+- **Fuente** cambia entre Transformers.js y Ollama. Al cambiar de fuente se descarga el modelo anterior y se limpian sus errores de carga.
+- **Transformers.js** permite buscar en Hugging Face. El listado muestra repositorios con soporte de tools detectado, dispone de un botón de refresco junto al título y añade **Cargar más** al final cuando existen más resultados.
+- **ID del repositorio** permite usar un modelo que no aparece en el listado. Escribirlo deselecciona el resultado anterior; pulsa el botón de información integrado en el campo para consultar sus metadatos. Si la consulta falla, el motivo aparece justo debajo.
+- **Ollama endpoint** usa normalmente `http://127.0.0.1:11434`; el listado muestra modelos instalados que anuncian soporte de tools y puede refrescarse desde el icono junto a su título.
+- La tarjeta del modelo seleccionado resume motor, descarga, cuantización, contexto y capacidades detectadas. **Configuración del agente** y **Configuración avanzada** permiten ajustar su comportamiento; **Restaurar defaults** recupera los valores iniciales del motor/modelo actual.
+- **Cargar modelo** inicializa el backend seleccionado. En Transformers.js descarga o reutiliza el modelo cacheado y arranca un worker; en Ollama comprueba el endpoint y el modelo local. Durante la descarga aparece el overlay general con la fase o componente en curso y **Cancelar descarga** permite detenerla sin recargar la página.
+- Si la carga falla, el error se muestra junto a **Cargar modelo**. Se elimina al elegir otra fuente, modelo o ID para no confundirlo con el siguiente intento.
+- **Mostrar razonamiento del modelo (thinking)** controla si se ve el razonamiento generado.
 - **Recursos y contexto** muestra presupuesto de contexto, artifacts y operacion activa.
 - **Autonomia de tools** define el nivel de riesgo máximo que el agente puede ejecutar sin pedir permiso.
 - **Descargar worker** detiene la generación y libera el worker y el modelo activos de Transformers.js. Está deshabilitado con modelos Ollama porque se ejecutan fuera del navegador.
 
 WebGPU es la ruta recomendada para modelos locales. Si WebGPU falla y el modelo lo permite, la aplicacion puede intentar fallback WASM experimental.
+
+La aplicación conserva el último motor/modelo seleccionado y su configuración. Los archivos del modelo pueden permanecer en la caché del navegador.
+
+Mientras el chat responde se bloquean los controles que cambiarían el runtime cargado, como fuente/modelo, device, dtype, cache y generación/parsing de thinking. La autonomía también queda bloqueada para no cambiar las aprobaciones a mitad del turno. Los ajustes de agente, selección de tools, sampling, contexto y visualización del razonamiento se pueden preparar para el turno siguiente sin detener la respuesta actual. Si cambias un ajuste de runtime cuando el chat está inactivo, tendrás que volver a cargar el modelo.
 
 ### Ollama
 
@@ -203,6 +211,8 @@ El panel **Comprobar** ejecuta validaciones de entorno y estado:
 - APIs de snapshot;
 - seriales y runners cuando la VM esta activa;
 - paquetes y tools esperadas por perfil.
+
+En una red **Local Docker WS** aislada, sin la opción de Internet, la comprobación valida interfaz e IPv4 y no espera una conexión externa imposible. En los demás modos, la prueba HTTP hace un único intento con un timeout de 5 segundos antes de usar ping como alternativa.
 
 Si una comprobacion falla, revisa el detalle y el log de tools antes de arrancar de nuevo.
 

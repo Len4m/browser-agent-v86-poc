@@ -99,9 +99,9 @@ docs/                      # user, usage, architecture, and developer documentat
 | [docs/USAGE.en.md](docs/USAGE.en.md) | Local setup, VM/LLM/wsnic, scripts, runtime zip, and common issues. |
 | [docs/ARCHITECTURE.en.md](docs/ARCHITECTURE.en.md) | Frontend architecture, build, VM, serial channels, LLM, tool/profile contracts, and maintenance rules. |
 | [docs/VM_PROFILES_AND_TOOLS.en.md](docs/VM_PROFILES_AND_TOOLS.en.md) | Developer guide for adding VM profiles and exposing tools through profile policy. |
-| [docs/schema-reference/](docs/schema-reference/README.md) | Generated JSON Schema field references (LLM catalog, VM profile). |
+| [docs/schema-reference/](docs/schema-reference/README.md) | Generated JSON Schema field reference for VM profiles. |
 
-Each document links to its counterpart in the other language. Use `USAGE`, `ARCHITECTURE`, and `VM_PROFILES_AND_TOOLS` when contributing to or deploying the project. For profile and LLM catalog field semantics, see `docs/schema-reference/`.
+Each document links to its counterpart in the other language. Use `USAGE`, `ARCHITECTURE`, and `VM_PROFILES_AND_TOOLS` when contributing to or deploying the project. For VM profile field semantics, see `docs/schema-reference/`.
 
 ## Contributing
 
