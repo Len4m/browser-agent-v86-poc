@@ -22,6 +22,10 @@ La interfaz está disponible en español e inglés. El idioma se elige en el sel
 
 La interfaz, los [manuales de usuario](USER_MANUAL.es.md), esta guía y la documentación de arquitectura están disponibles en español e inglés. Consulta [README.es.md](../README.es.md) para acceder a toda la documentación en español.
 
+## Tema de apariencia
+
+El botón de tema de la cabecera alterna **Sistema → Claro → Oscuro** y cambia entre los iconos de sol y luna combinados, sol y luna. El modo Sistema sigue los cambios de apariencia del navegador; una elección explícita se guarda en `localStorage` (`ba.theme`) y se aplica antes de mostrar la interfaz para evitar destellos de otro tema.
+
 ## Requisitos
 
 Para usar un runtime ya generado basta con:

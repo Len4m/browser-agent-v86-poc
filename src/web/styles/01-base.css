@@ -90,9 +90,15 @@ input:focus { box-shadow: var(--ba-focus-blue); }
   min-width: 0;
 }
 .header-brand-icon {
+  display: block;
   flex: 0 0 auto;
   width: 54px;
   height: 54px;
+  background: center / cover no-repeat url("/assets/icons/browser-agent-header-64.webp");
+  background-image: image-set(
+    url("/assets/icons/browser-agent-header-64.webp") 1x,
+    url("/assets/icons/browser-agent-header-96.webp") 2x
+  );
 }
 .header-brand-copy {
   min-width: 0;

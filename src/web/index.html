@@ -7,6 +7,23 @@
   <meta name="description" content="Run a Linux x86 virtual machine in your browser with v86, local AI chat, agent tools, terminal access, and optional networking from a static web app." />
   <meta name="application-name" content="Browser Agent v86" />
   <meta name="theme-color" content="#2563eb" />
+  <script>
+    (() => {
+      const storageKey = "ba.theme";
+      let preference = "system";
+      try {
+        const stored = window.localStorage.getItem(storageKey);
+        if (stored === "light" || stored === "dark") preference = stored;
+      } catch {}
+      let systemDark = false;
+      try {
+        systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      } catch {}
+      const resolved = preference === "system" ? (systemDark ? "dark" : "light") : preference;
+      document.documentElement.dataset.theme = resolved;
+      document.documentElement.dataset.themePreference = preference;
+    })();
+  </script>
   <meta name="robots" content="index,follow" />
   <link rel="canonical" href="%BA_CANONICAL_URL%" />
   <link rel="icon" href="/favicon.ico" sizes="any" />
@@ -35,15 +52,7 @@
   <main class="app">
     <header class="header">
       <div class="header-brand">
-        <img
-          class="header-brand-icon"
-          src="/assets/icons/browser-agent-header-64.webp"
-          srcset="/assets/icons/browser-agent-header-64.webp 1x, /assets/icons/browser-agent-header-96.webp 2x"
-          width="54"
-          height="54"
-          alt=""
-          decoding="async"
-        />
+        <span class="header-brand-icon" aria-hidden="true"></span>
         <div class="header-brand-copy">
           <h1>Browser Agent POC</h1>
           <p data-i18n="header.tagline">header.tagline</p>
@@ -55,6 +64,7 @@
         <span id="badge-gpu" class="badge">WebGPU</span>
         <span id="badge-ws" class="badge" data-i18n="ws.badge.disconnected">ws.badge.disconnected</span>
         <select id="ba-lang-select" class="badge ba-lang-select" data-i18n-attr="aria-label:header.lang.aria"></select>
+        <button id="ba-theme-toggle" type="button" class="ba-theme-toggle" aria-live="polite"></button>
         <a
           class="badge user-manual-link"
           href="https://github.com/Len4m/browser-agent-v86-poc/blob/main/docs/USER_MANUAL.es.md"

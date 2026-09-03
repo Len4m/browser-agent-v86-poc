@@ -22,6 +22,7 @@ La cabecera muestra el estado global:
 - **WebGPU/WASM**: backend de inferencia disponible para modelos locales. Puede mostrar WebGPU o WASM según lo que acepte el navegador.
 - **WS**: estado de la red wsnic.
 - **Idioma**: selector ES/EN. Cambia la interfaz sin recargar la página ni perder la VM.
+- **Tema**: un botón con iconos de sol y luna combinados, sol o luna alterna entre Sistema, Claro y Oscuro. La elección se conserva para próximas visitas.
 - **GitHub**: abre el repositorio del proyecto.
 
 ## Flujo recomendado

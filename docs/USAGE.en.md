@@ -22,6 +22,10 @@ The interface is available in Spanish and English. Use the language selector in 
 
 The interface, [user manuals](USER_MANUAL.en.md), this guide, and the architecture documentation are available in Spanish and English. See [README.md](../README.md) for links to all English documentation.
 
+## Appearance theme
+
+The header theme button cycles through **System → Light → Dark** and changes between combined sun-and-moon, sun, and moon icons. System mode follows browser appearance changes; an explicit choice is stored in `localStorage` (`ba.theme`) and applied before the interface is shown to avoid a flash of another theme.
+
 ## Requirements
 
 To use a prebuilt runtime, you only need:

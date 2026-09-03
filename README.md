@@ -22,6 +22,7 @@ Current status: **beta `0.9.8-beta.9`**. Version `1.0.0` is reserved for the fir
 - **Browser-based LLM or local Ollama**: Transformers.js with WebGPU/WASM and an optional Ollama HTTP provider, including optional per-model reasoning (thinking) display.
 - **Optional networking through wsnic**: a local WebSocket proxy that gives the VM network access.
 - **Bilingual ES/EN UI**: switch languages instantly from the header without reloading or losing the VM; when there is no saved choice, the app selects Spanish if the browser reports a Spanish language and English otherwise.
+- **Light/dark appearance**: System, Light, and Dark modes with instant switching and a persistent preference.
 
 ## Try the online demo
 

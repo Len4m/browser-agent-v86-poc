@@ -375,6 +375,7 @@
   "header.githubRepo": "Abrir repositorio en GitHub",
   "header.lang.aria": "Idioma",
   "header.tagline": "IA, agente y VM Linux: todo corre 100% en tu navegador.",
+  "header.theme.toggle": "Cambiar tema",
   "header.userManual.href": "https://github.com/Len4m/browser-agent-v86-poc/blob/main/docs/USER_MANUAL.es.md",
   "header.userManual.label": "Manual",
   "header.userManual.title": "Abrir el manual de usuario en español",

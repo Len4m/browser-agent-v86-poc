@@ -21,6 +21,7 @@ The header shows global status:
 - **WebGPU/WASM**: inference backend available for local models. It may show WebGPU or WASM depending on what the browser supports.
 - **WS**: wsnic network status.
 - **Language**: ES/EN selector. It switches the UI without reloading the page or losing the VM.
+- **Theme**: a combined sun-and-moon, sun, or moon button cycles through System, Light, and Dark. The choice is kept for later visits.
 - **GitHub**: opens the project repository.
 
 ## Recommended workflow

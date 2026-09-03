@@ -3,6 +3,7 @@
 import { initBootstrap } from "./bootstrap";
 import { initI18n } from "./i18n";
 import { initLangSelector } from "./lang-selector";
+import { initThemeControl } from "./theme";
 import { initOriginAwareness } from "./origin-awareness";
 import { initLlmAgentDebug } from "../chat/runtime/agent-debug";
 import { initLlmAgentLoop } from "../chat/runtime/agent-loop";
@@ -30,6 +31,7 @@ export async function initBrowserApp(): Promise<void> {
   initStatusControls();
   initProfileConfig();
   initLangSelector();
+  initThemeControl();
   initLlmAgentDebug();
   initTooltips();
   initBootstrap();

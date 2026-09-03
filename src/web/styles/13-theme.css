@@ -1,0 +1,766 @@
+/* Browser Agent v86 - appearance themes and compact theme control.
+   Loaded last so the dark palette can cover legacy component-local colors
+   without duplicating or disturbing the light theme. */
+
+.ba-theme-toggle {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ba-radius-pill);
+  background: transparent;
+  color: var(--ba-color-text);
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.ba-theme-toggle::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  background: currentColor;
+  -webkit-mask: url("/assets/icons/lucide/sun-moon.svg") center / contain no-repeat;
+  mask: url("/assets/icons/lucide/sun-moon.svg") center / contain no-repeat;
+}
+
+:root[data-theme-preference="light"] .ba-theme-toggle::before {
+  -webkit-mask-image: url("/assets/icons/lucide/sun.svg");
+  mask-image: url("/assets/icons/lucide/sun.svg");
+}
+
+:root[data-theme-preference="dark"] .ba-theme-toggle::before {
+  -webkit-mask-image: url("/assets/icons/lucide/moon.svg");
+  mask-image: url("/assets/icons/lucide/moon.svg");
+}
+
+.ba-theme-toggle:hover {
+  background: #f1f5f9;
+  color: var(--ba-color-text-soft);
+}
+
+.ba-theme-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--ba-focus-blue);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ba-color-canvas: #0b1120;
+  --ba-color-surface: #111827;
+  --ba-color-text: #f1f5f9;
+  --ba-color-text-soft: #cbd5e1;
+  --ba-color-muted: #94a3b8;
+  --ba-color-subtle: #a8b6c9;
+  --ba-color-border: #293548;
+  --ba-color-border-strong: #3b4a60;
+  --ba-color-blue: #2563eb;
+  --ba-color-blue-hover: #1d4ed8;
+  --ba-color-danger: #dc2626;
+  --ba-color-danger-hover: #b91c1c;
+  --ba-color-danger-soft: rgba(244, 63, 94, 0.13);
+  --ba-color-danger-soft-hover: rgba(244, 63, 94, 0.21);
+  --ba-color-danger-text: #fda4af;
+  --ba-shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.32), 0 12px 32px rgba(0, 0, 0, 0.08);
+  --ba-focus-blue: 0 0 0 4px rgba(96, 165, 250, 0.2);
+  --ba-dark-surface-soft: #172033;
+  --ba-dark-surface-muted: #1e293b;
+  --ba-dark-surface-hover: #243248;
+  --ba-dark-accent-text: #93c5fd;
+  --ba-dark-accent-border: #315a98;
+  --ba-dark-accent-soft: rgba(59, 130, 246, 0.15);
+  --ba-dark-success-text: #6ee7b7;
+  --ba-dark-success-border: #176b55;
+  --ba-dark-success-soft: rgba(16, 185, 129, 0.13);
+  --ba-dark-warning-text: #fcd34d;
+  --ba-dark-warning-border: #8a5a13;
+  --ba-dark-warning-soft: rgba(245, 158, 11, 0.13);
+  --ba-dark-danger-border: #8f3048;
+}
+
+:root[data-theme="dark"] body {
+  background: var(--ba-color-canvas);
+  color: var(--ba-color-text);
+}
+
+:root[data-theme="dark"] .header-brand-icon {
+  background-image: url("/assets/icons/browser-agent-header-dark-64.webp");
+  background-image: image-set(
+    url("/assets/icons/browser-agent-header-dark-64.webp") 1x,
+    url("/assets/icons/browser-agent-header-dark-96.webp") 2x
+  );
+}
+
+:root[data-theme="dark"] .ba-theme-toggle {
+  color: var(--ba-color-text);
+}
+
+:root[data-theme="dark"] .ba-theme-toggle:hover {
+  background: var(--ba-dark-surface-muted);
+  color: var(--ba-color-text-soft);
+}
+
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] textarea,
+:root[data-theme="dark"] select {
+  border-color: var(--ba-color-border-strong);
+  background-color: var(--ba-dark-surface-soft);
+  color: var(--ba-color-text);
+}
+
+:root[data-theme="dark"] input::placeholder,
+:root[data-theme="dark"] textarea::placeholder {
+  color: var(--ba-color-muted);
+}
+
+:root[data-theme="dark"] button.secondary {
+  background: var(--ba-dark-surface-soft);
+  color: var(--ba-color-text-soft);
+  border-color: var(--ba-color-border-strong);
+}
+
+:root[data-theme="dark"] button.secondary:hover {
+  background: var(--ba-dark-surface-hover);
+}
+
+:root[data-theme="dark"] button.danger-light {
+  border-color: var(--ba-dark-danger-border);
+  background: var(--ba-color-danger-soft);
+  color: var(--ba-color-danger-text);
+}
+
+:root[data-theme="dark"] button.danger-light:hover {
+  background: var(--ba-color-danger-soft-hover);
+  color: #fecdd3;
+}
+
+:root[data-theme="dark"] .badge {
+  border-color: var(--ba-color-border-strong);
+  background: var(--ba-dark-surface-muted);
+  color: var(--ba-color-text-soft);
+}
+
+:root[data-theme="dark"] .badge.good {
+  border-color: var(--ba-dark-success-border);
+  background: var(--ba-dark-success-soft);
+  color: var(--ba-dark-success-text);
+}
+
+:root[data-theme="dark"] .badge.warn {
+  border-color: var(--ba-dark-warning-border);
+  background: var(--ba-dark-warning-soft);
+  color: var(--ba-dark-warning-text);
+}
+
+:root[data-theme="dark"] .badge.bad {
+  border-color: var(--ba-dark-danger-border);
+  background: var(--ba-color-danger-soft);
+  color: var(--ba-color-danger-text);
+}
+
+:root[data-theme="dark"] .badge.blue {
+  border-color: var(--ba-dark-accent-border);
+  background: var(--ba-dark-accent-soft);
+  color: var(--ba-dark-accent-text);
+}
+
+:root[data-theme="dark"] .user-manual-link {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #fff;
+}
+
+:root[data-theme="dark"] .github-repo-link:hover {
+  background: var(--ba-dark-surface-muted);
+}
+
+:root[data-theme="dark"] .chat-log,
+:root[data-theme="dark"] .check {
+  background: var(--ba-color-canvas);
+}
+
+:root[data-theme="dark"] .bubble {
+  border-color: var(--ba-color-border);
+  background: var(--ba-dark-surface-soft);
+  color: var(--ba-color-text-soft);
+}
+
+:root[data-theme="dark"] .user .bubble {
+  border-color: var(--ba-color-blue);
+  background: var(--ba-color-blue);
+  color: #fff;
+}
+
+/* Workspace, runtime controls and loading state. */
+:root[data-theme="dark"] #chat-form .chat-input,
+:root[data-theme="dark"] .vm-options select,
+:root[data-theme="dark"] #ws-preset {
+  border-color: var(--ba-color-border-strong);
+  background: var(--ba-dark-surface-soft);
+  color: var(--ba-color-text);
+}
+
+:root[data-theme="dark"] #chat-form .chat-input:disabled,
+:root[data-theme="dark"] #ws-url[readonly] {
+  background: var(--ba-color-canvas);
+  color: var(--ba-color-muted);
+}
+
+:root[data-theme="dark"] .chat-tools-btn.ba-icon-only,
+:root[data-theme="dark"] .vm-options {
+  border-color: var(--ba-color-border);
+  background: var(--ba-dark-surface-soft);
+  color: var(--ba-color-text-soft);
+}
+
+:root[data-theme="dark"] .chat-tools-btn.ba-icon-only:hover {
+  border-color: var(--ba-dark-accent-border);
+  background: var(--ba-dark-accent-soft);
+  color: var(--ba-dark-accent-text);
+}
+
+:root[data-theme="dark"] .chat-tools-badge {
+  box-shadow: 0 0 0 2px var(--ba-color-surface);
+}
+
+:root[data-theme="dark"] .vm-options label,
+:root[data-theme="dark"] .tool-log-details summary,
+:root[data-theme="dark"] .ws-help summary,
+:root[data-theme="dark"] .ws-internet-option {
+  color: var(--ba-color-text-soft);
+}
+
+:root[data-theme="dark"] .ws-help {
+  border-top-color: var(--ba-color-border);
+}
+
+:root[data-theme="dark"] button.copy-command {
+  background: rgba(30, 41, 59, 0.94);
+  color: var(--ba-color-text-soft);
+}
+
+:root[data-theme="dark"] button.copy-command:hover {
+  background: var(--ba-dark-surface-hover);
+}
+
+:root[data-theme="dark"] .copy-status {
+  color: var(--ba-dark-success-text);
+}
+
+:root[data-theme="dark"] #vm-profile-hint,
+:root[data-theme="dark"] .vm-profile-hint,
+:root[data-theme="dark"] #vm-disk-hint,
+:root[data-theme="dark"] #loading-percent,
+:root[data-theme="dark"] .snapshot-note {
+  color: var(--ba-color-muted);
+}
+
+:root[data-theme="dark"] .ws-endpoint-warning,
+:root[data-theme="dark"] .local-service-origin-warning {
+  border-color: var(--ba-dark-warning-border);
+  background: var(--ba-dark-warning-soft);
+  color: var(--ba-dark-warning-text);
+}
+
+:root[data-theme="dark"] .ws-endpoint-note {
+  border-color: var(--ba-dark-accent-border);
+  background: var(--ba-dark-accent-soft);
+  color: var(--ba-dark-accent-text);
+}
+
+:root[data-theme="dark"] #loading-overlay {
+  background: rgba(2, 6, 23, 0.7);
+}
+
+:root[data-theme="dark"] .loading-card {
+  border-color: var(--ba-color-border-strong);
+  background: var(--ba-color-surface);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.48);
+}
+
+:root[data-theme="dark"] #loading-title {
+  color: var(--ba-color-text);
+}
+
+:root[data-theme="dark"] #loading-detail {
+  color: var(--ba-color-subtle);
+}
+
+:root[data-theme="dark"] .loading-progress {
+  background: var(--ba-dark-surface-muted);
+}
+
+:root[data-theme="dark"] .chat-layout-toggle {
+  border-color: var(--ba-dark-accent-border);
+  background: var(--ba-dark-accent-soft);
+  color: var(--ba-dark-accent-text);
+}
+
+:root[data-theme="dark"] .chat-layout-toggle:hover {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.24);
+}
+
+:root[data-theme="dark"] .chat-layout-toggle[aria-pressed="true"] {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #fff;
+}
+
+:root[data-theme="dark"] .chat-submit-btn.is-stop {
+  border-color: var(--ba-dark-danger-border);
+  background: var(--ba-color-danger-soft);
+  color: var(--ba-color-danger-text);
+}
+
+:root[data-theme="dark"] .chat-submit-btn.is-stop:hover {
+  background: var(--ba-color-danger-soft-hover);
+}
+
+/* Console tabs and help content. The terminal itself is intentionally black. */
+:root[data-theme="dark"] .console-tabs {
+  border-color: var(--ba-color-border);
+  background: var(--ba-dark-surface-soft);
+}
+
+:root[data-theme="dark"] .console-tab {
+  border-color: var(--ba-color-border-strong);
+  background: var(--ba-color-surface);
+  color: var(--ba-color-text-soft);
+}
+
+:root[data-theme="dark"] .console-tab:hover {
+  background: var(--ba-dark-surface-hover);
+}
+
+:root[data-theme="dark"] .console-tab.active {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #fff;
+}
+
+:root[data-theme="dark"] .ba-console-rename-field,
+:root[data-theme="dark"] .ba-console-help {
+  color: var(--ba-color-text-soft);
+}
+
+:root[data-theme="dark"] .ba-console-help-plus {
+  color: var(--ba-color-muted);
+}
+
+:root[data-theme="dark"] .ba-console-rename-field input {
+  border-color: var(--ba-color-border-strong);
+  background: var(--ba-dark-surface-soft);
+  color: var(--ba-color-text);
+}
+
+:root[data-theme="dark"] .ba-console-help-section h4,
+:root[data-theme="dark"] .ba-console-help kbd,
+:root[data-theme="dark"] .ba-console-help code {
+  color: var(--ba-color-text);
+}
+
+:root[data-theme="dark"] .ba-console-help kbd,
+:root[data-theme="dark"] .ba-console-help code,
+:root[data-theme="dark"] .ba-console-help-foot {
+  border-color: var(--ba-color-border);
+  background: var(--ba-dark-surface-soft);
+  box-shadow: none;
+}
+
+:root[data-theme="dark"] .ba-console-help-foot {
+  color: var(--ba-color-subtle);
+}
+
+/* Modal surfaces. */
+:root[data-theme="dark"] .ba-modal-overlay {
+  background: rgba(2, 6, 23, 0.72);
+}
+
+:root[data-theme="dark"] .ba-modal-card {
+  border-color: var(--ba-color-border-strong);
+  background: var(--ba-color-surface);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.52);
+}
+
+:root[data-theme="dark"] .ba-modal-icon {
+  border-color: var(--ba-dark-warning-border);
+  background: var(--ba-dark-warning-soft);
+  color: var(--ba-dark-warning-text);
+}
+
+:root[data-theme="dark"] .ba-modal-content h3 {
+  color: var(--ba-color-text);
+}
+
+:root[data-theme="dark"] .ba-modal-content p {
+  color: var(--ba-color-text-soft);
+}
+
+:root[data-theme="dark"] .ba-modal-detail {
+  border-color: var(--ba-color-border);
+  background: var(--ba-dark-surface-soft);
+  color: var(--ba-color-subtle) !important;
+}
+
+:root[data-theme="dark"] .ba-modal-button.secondary {
+  border-color: var(--ba-color-border-strong);
+  background: var(--ba-dark-surface-soft);
+  color: var(--ba-color-text-soft);
+}
+
+:root[data-theme="dark"] .collapsible-panel > summary.panel-title::after,
+:root[data-theme="dark"] .ws-help-title {
+  color: var(--ba-color-muted);
+}
+
+:root[data-theme="dark"] .collapsible-panel > summary.panel-title:hover h2,
+:root[data-theme="dark"] .collapsible-panel > summary.panel-title:hover::after {
+  color: var(--ba-dark-accent-text);
+}
+
+/* LLM configuration, model cards and generated resource UI. */
+:root[data-theme="dark"] .ba-llm-panel,
+:root[data-theme="dark"] .ba-llm-source-copy strong,
+:root[data-theme="dark"] .ba-llm-model-option,
+:root[data-theme="dark"] .ba-llm-model-option-main strong,
+:root[data-theme="dark"] .ba-llm-model-main strong,
+:root[data-theme="dark"] .ba-llm-model-meta b,
+:root[data-theme="dark"] .ba-llm-tool-policy-head,
+:root[data-theme="dark"] .ba-llm-artifact-summary,
+:root[data-theme="dark"] .ba-llm-artifact-summary:hover,
+:root[data-theme="dark"] .ba-llm-artifact-summary:focus-visible,
+:root[data-theme="dark"] .ba-llm-artifact-preview {
+  color: var(--ba-color-text);
+}
+
+:root[data-theme="dark"] .ba-llm-intro,
+:root[data-theme="dark"] .ba-llm-manual-inspect,
+:root[data-theme="dark"] .ba-llm-refresh-icon,
+:root[data-theme="dark"] .ba-llm-model-meta span,
+:root[data-theme="dark"] .ba-llm-tool-policy small,
+:root[data-theme="dark"] .ba-llm-note,
+:root[data-theme="dark"] .ba-llm-thinking,
+:root[data-theme="dark"] .ba-llm-tool-list small,
+:root[data-theme="dark"] .ba-llm-native-tool-meta {
+  color: var(--ba-color-subtle);
+}
+
+:root[data-theme="dark"] .ba-llm-source-picker legend,
+:root[data-theme="dark"] .ba-llm-field,
+:root[data-theme="dark"] .ba-llm-tool-list,
+:root[data-theme="dark"] .ba-llm-resource-lines,
+:root[data-theme="dark"] .ba-llm-thinking-toggle,
+:root[data-theme="dark"] .ba-llm-thinking summary,
+:root[data-theme="dark"] .ba-llm-native-tool-row,
+:root[data-theme="dark"] #ba-llm-native-tools-count,
+:root[data-theme="dark"] .ba-native-tools-count {
+  color: var(--ba-color-text-soft);
+}
+
+:root[data-theme="dark"] .ba-llm-source-copy small,
+:root[data-theme="dark"] .ba-llm-model-option-main small,
+:root[data-theme="dark"] .ba-llm-model-main p,
+:root[data-theme="dark"] .ba-llm-tool-list small,
+:root[data-theme="dark"] .ba-llm-collapsible-summary::after {
+  color: var(--ba-color-muted);
+}
+
+:root[data-theme="dark"] .ba-llm-source-card,
+:root[data-theme="dark"] .ba-llm-model-list,
+:root[data-theme="dark"] .ba-llm-field select,
+:root[data-theme="dark"] .ba-llm-field input:not([type="checkbox"]),
+:root[data-theme="dark"] .ba-llm-model-meta span,
+:root[data-theme="dark"] .ba-llm-tool-list span,
+:root[data-theme="dark"] .ba-llm-resource-lines span,
+:root[data-theme="dark"] .ba-llm-artifact-row,
+:root[data-theme="dark"] .ba-llm-card-count {
+  border-color: var(--ba-color-border-strong);
+  background: var(--ba-color-surface);
+}
+
+:root[data-theme="dark"] .ba-llm-source-logo {
+  background: var(--ba-dark-surface-muted);
+}
+
+:root[data-theme="dark"] .ba-llm-source-logo--ollama {
+  background: #fff;
+}
+
+:root[data-theme="dark"] .ba-llm-source-logo--hf {
+  background: #fff7cc;
+}
+
+:root[data-theme="dark"] .ba-llm-source-option > input:checked + .ba-llm-source-card {
+  border-color: #3b82f6;
+  background: linear-gradient(145deg, rgba(37, 99, 235, 0.2), var(--ba-color-surface));
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+}
+
+:root[data-theme="dark"] .ba-llm-discovery,
+:root[data-theme="dark"] .ba-llm-model-card,
+:root[data-theme="dark"] .ba-llm-resource-card,
+:root[data-theme="dark"] .ba-llm-thinking,
+:root[data-theme="dark"] .ba-llm-native-tools-picker,
+:root[data-theme="dark"] .ba-llm-artifact-preview {
+  border-color: var(--ba-color-border);
+  background: var(--ba-dark-surface-soft);
+  box-shadow: none;
+}
+
+:root[data-theme="dark"] .ba-llm-model-list-loading {
+  background: rgba(11, 17, 32, 0.78);
+}
+
+:root[data-theme="dark"] .ba-llm-inspection-loading,
+:root[data-theme="dark"] .ba-llm-model-load-more,
+:root[data-theme="dark"] .ba-llm-tag,
+:root[data-theme="dark"] .ba-llm-tool-policy {
+  border-color: var(--ba-dark-accent-border);
+  background: var(--ba-dark-accent-soft);
+  color: var(--ba-dark-accent-text);
+}
+
+:root[data-theme="dark"] .ba-llm-tool-policy {
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.16), rgba(37, 99, 235, 0.07));
+}
+
+:root[data-theme="dark"] .ba-llm-model-option {
+  background: var(--ba-dark-surface-soft);
+}
+
+:root[data-theme="dark"] .ba-llm-model-option:hover,
+:root[data-theme="dark"] .ba-llm-model-option.is-selected,
+:root[data-theme="dark"] .ba-llm-model-load-more:hover,
+:root[data-theme="dark"] .ba-llm-model-load-more:focus-visible,
+:root[data-theme="dark"] .ba-llm-manual-inspect:hover,
+:root[data-theme="dark"] .ba-llm-manual-inspect:focus-visible,
+:root[data-theme="dark"] .ba-llm-collapsible-card > summary.ba-llm-collapsible-summary:hover .ba-llm-card-count {
+  border-color: var(--ba-dark-accent-border);
+  background: rgba(59, 130, 246, 0.22);
+}
+
+:root[data-theme="dark"] .ba-llm-repo-path,
+:root[data-theme="dark"] .ba-llm-tool-list span,
+:root[data-theme="dark"] .ba-llm-card-count,
+:root[data-theme="dark"] .ba-llm-collapsible-card > summary.ba-llm-collapsible-summary:hover strong,
+:root[data-theme="dark"] .ba-llm-collapsible-card > summary.ba-llm-collapsible-summary:hover::after {
+  color: var(--ba-dark-accent-text);
+}
+
+:root[data-theme="dark"] .ba-llm-tag--positive {
+  border-color: var(--ba-dark-success-border);
+  background: var(--ba-dark-success-soft);
+  color: var(--ba-dark-success-text);
+}
+
+:root[data-theme="dark"] .ba-llm-tag--muted,
+:root[data-theme="dark"] .ba-llm-tag--unknown {
+  border-color: var(--ba-color-border);
+  background: var(--ba-dark-surface-muted);
+  color: var(--ba-color-muted);
+}
+
+:root[data-theme="dark"] .ba-llm-tag--warning {
+  border-color: var(--ba-dark-warning-border);
+  background: var(--ba-dark-warning-soft);
+  color: var(--ba-dark-warning-text);
+}
+
+:root[data-theme="dark"] .ba-llm-tag--error,
+:root[data-theme="dark"] .ba-llm-load-error {
+  border-color: var(--ba-dark-danger-border);
+  background: var(--ba-color-danger-soft);
+  color: var(--ba-color-danger-text);
+}
+
+:root[data-theme="dark"] .ba-llm-field-error {
+  color: var(--ba-color-danger-text);
+}
+
+:root[data-theme="dark"] .ba-llm-artifact-row.is-attached,
+:root[data-theme="dark"] .ba-llm-artifact-row:hover,
+:root[data-theme="dark"] .ba-llm-artifact-row.is-attached:hover {
+  border-color: #0284c7;
+  background: rgba(14, 165, 233, 0.13);
+}
+
+:root[data-theme="dark"] #ba-llm-native-tools-count,
+:root[data-theme="dark"] .ba-native-tools-count,
+:root[data-theme="dark"] .ba-llm-native-tool-meta {
+  background: var(--ba-dark-surface-muted);
+}
+
+:root[data-theme="dark"] .ba-llm-native-tool-row:hover {
+  background: var(--ba-dark-surface-hover);
+}
+
+/* Chat markdown and tool-call cards. Code blocks stay deliberately near-black. */
+:root[data-theme="dark"] .ba-code-copy-btn {
+  border-color: var(--ba-color-border-strong);
+  background: rgba(30, 41, 59, 0.94);
+  color: var(--ba-color-text-soft);
+}
+
+:root[data-theme="dark"] .ba-code-copy-btn:hover {
+  border-color: var(--ba-color-muted);
+  background: var(--ba-dark-surface-hover);
+}
+
+:root[data-theme="dark"] .ba-code-copy-btn.is-copied {
+  border-color: var(--ba-dark-success-border);
+  background: var(--ba-dark-success-soft);
+  color: var(--ba-dark-success-text);
+}
+
+:root[data-theme="dark"] .ba-md-stream :not(pre) > code {
+  border-color: var(--ba-dark-accent-border);
+  background: var(--ba-dark-accent-soft);
+  color: var(--ba-dark-accent-text);
+}
+
+:root[data-theme="dark"] .ba-tool-card {
+  border-color: var(--ba-dark-accent-border);
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.14), var(--ba-dark-surface-soft));
+  color: var(--ba-color-text);
+}
+
+:root[data-theme="dark"] .ba-tool-disclosure-title {
+  color: var(--ba-dark-accent-text);
+}
+
+:root[data-theme="dark"] .ba-tool-disclosure-state,
+:root[data-theme="dark"] .ba-tool-meta,
+:root[data-theme="dark"] .ba-tool-args-wrap summary {
+  color: var(--ba-color-muted);
+}
+
+:root[data-theme="dark"] .ba-tool-disclosure-state.pending {
+  color: var(--ba-dark-warning-text);
+}
+
+:root[data-theme="dark"] .ba-tool-disclosure-state.ok {
+  color: var(--ba-dark-success-text);
+}
+
+:root[data-theme="dark"] .ba-tool-disclosure-state.bad {
+  color: var(--ba-color-danger-text);
+}
+
+:root[data-theme="dark"] .ba-tool-disclosure-body,
+:root[data-theme="dark"] .ba-tool-disclosure-body .ba-llm-md-host.ba-tool-answer,
+:root[data-theme="dark"] .ba-tool-args-wrap .ba-tool-args {
+  border-color: var(--ba-color-border);
+}
+
+:root[data-theme="dark"] .ba-tool-disclosure-reason {
+  color: var(--ba-color-text-soft);
+}
+
+:root[data-theme="dark"] .ba-tool-args-wrap {
+  border-color: var(--ba-color-border);
+  background: var(--ba-color-surface);
+}
+
+:root[data-theme="dark"] .ba-tool-result.ok {
+  border-color: var(--ba-dark-success-border);
+  background: var(--ba-dark-success-soft);
+  color: var(--ba-dark-success-text);
+}
+
+:root[data-theme="dark"] .ba-tool-result.bad {
+  border-color: var(--ba-dark-danger-border);
+  background: var(--ba-color-danger-soft);
+  color: var(--ba-color-danger-text);
+}
+
+:root[data-theme="dark"] .ba-llm-synthesis-after-tool .ba-llm-bubble {
+  border-color: #6d5cae;
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.13), var(--ba-dark-surface-soft));
+}
+
+:root[data-theme="dark"] .chat-clear-btn,
+:root[data-theme="dark"] .chat-clear-btn:hover {
+  border-color: var(--ba-color-border-strong);
+  background: var(--ba-dark-surface-soft);
+  color: var(--ba-color-text-soft);
+}
+
+:root[data-theme="dark"] .chat-clear-btn.ba-icon-only {
+  border-color: var(--ba-dark-danger-border);
+  background: var(--ba-color-danger-soft);
+  color: var(--ba-color-danger-text);
+}
+
+:root[data-theme="dark"] .chat-clear-btn.ba-icon-only:hover {
+  background: var(--ba-color-danger-soft-hover);
+  color: #fecdd3;
+}
+
+:root[data-theme="dark"] .ba-llm-inference-indicator {
+  border-color: var(--ba-dark-accent-border);
+  background: rgba(37, 99, 235, 0.16);
+  color: var(--ba-dark-accent-text);
+}
+
+/* Background tools and agent diagnostics. */
+:root[data-theme="dark"] .bg-tool-details {
+  border-color: var(--ba-dark-accent-border);
+  background: var(--ba-dark-accent-soft);
+}
+
+:root[data-theme="dark"] .bg-tool-summary {
+  color: var(--ba-color-text);
+}
+
+:root[data-theme="dark"] .bg-tool-note,
+:root[data-theme="dark"] .ba-agent-debug-enable {
+  color: var(--ba-color-subtle);
+}
+
+:root[data-theme="dark"] body.bg-tool-busy .bg-tool-details {
+  border-color: var(--ba-dark-warning-border);
+  background: var(--ba-dark-warning-soft);
+}
+
+:root[data-theme="dark"] .ba-agent-debug-panel {
+  border-color: var(--ba-color-border-strong);
+  background: var(--ba-dark-surface-soft);
+}
+
+:root[data-theme="dark"] .ba-agent-debug-summary {
+  color: var(--ba-color-text-soft);
+}
+
+:root[data-theme="dark"] .ba-agent-debug-summary::after,
+:root[data-theme="dark"] .ba-agent-debug-log:empty::before {
+  color: var(--ba-color-muted) !important;
+  -webkit-text-fill-color: var(--ba-color-muted);
+}
+
+:root[data-theme="dark"] .ba-agent-debug-summary:hover,
+:root[data-theme="dark"] .ba-agent-debug-summary:hover::after {
+  color: var(--ba-dark-accent-text);
+}
+
+:root[data-theme="dark"] .ba-agent-debug-toolbar {
+  border-bottom-color: var(--ba-color-border);
+}
+
+:root[data-theme="dark"] .ba-agent-debug-panel pre.ba-agent-debug-log,
+:root[data-theme="dark"] .ba-agent-debug-log {
+  border-top-color: var(--ba-color-border);
+  background: var(--ba-color-canvas) !important;
+  color: var(--ba-color-text-soft) !important;
+  -webkit-text-fill-color: var(--ba-color-text-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ba-theme-toggle,
+  .ba-theme-toggle::before {
+    transition: none;
+  }
+}

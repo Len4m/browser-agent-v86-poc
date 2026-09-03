@@ -122,6 +122,10 @@ export function initTooltips(): void {
       hide();
     });
 
+    // A completed action may change its own title (for example, the theme
+    // control). Hide the previous tooltip so the next hover reads fresh text.
+    document.addEventListener("click", hide);
+
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
         hide();
