@@ -12,7 +12,7 @@ Browser Agent v86 POC has three main work areas:
 - **VM**: an x86 Linux machine running in v86, with profiles, consoles, disks, and snapshots.
 - **Bottom panels**: wsnic networking, LLM information, and status checks.
 
-![Browser Agent v86 POC](assets/20260604_010743_image.png)
+![Browser Agent v86 POC](assets/screen.png)
 
 The header shows global status:
 

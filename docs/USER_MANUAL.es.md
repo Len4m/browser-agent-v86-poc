@@ -12,8 +12,7 @@ Browser Agent v86 POC combina tres zonas de trabajo:
 - **VM**: maquina Linux x86 ejecutada con v86, con perfiles, consolas, discos y snapshots.
 - **Paneles inferiores**: red wsnic, informacion LLM y comprobaciones de estado.
 
-
-![Browser Agent v86 POC](assets/20260604_010743_image.png)
+![Browser Agent v86 POC](assets/screen.png)
 
 La cabecera muestra el estado global:
 
