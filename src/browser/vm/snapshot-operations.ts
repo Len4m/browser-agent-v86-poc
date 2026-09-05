@@ -1,5 +1,6 @@
 import { $, NL, state } from "../app/state";
 import { t } from "../app/i18n";
+import { errorMessage, isRecord } from "../app/value-utils";
 import type { SnapshotConsoleUiState } from "../console/console-state";
 import { showBaModal } from "../ui/modal";
 import { logTool, setAgentBusy, setBadge, syncSnapshotButtons } from "../ui/status-controls";
@@ -29,16 +30,6 @@ import {
   type VmProfile,
 } from "./runtime-config";
 import { diskRootHash, sha256 } from "./storage-hash";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  return "Error";
-}
 
 function snapshotConsoleUiState(): SnapshotConsoleUiState {
   const humanTabs = state.consoleTabs.tabs.filter((tab) => tab.owner === "human");

@@ -5,6 +5,7 @@
 import { state } from "../app/state";
 import { t } from "../app/i18n";
 import { clampInt } from "../app/text-utils";
+import { errorMessage, isRecord, safeText } from "../app/value-utils";
 
 const MAX_RAW_CHARS = 96 * 1024;
 const DEFAULT_TIMEOUT_MS = 4500;
@@ -103,42 +104,6 @@ const ctl: ConsoleControlState = {
   outputHandlers: new Set(),
   eventHandlers: new Set(),
 };
-
-function safeText(value: unknown): string {
-  if (value == null) return "";
-  switch (typeof value) {
-    case "string":
-      return value;
-    case "number":
-    case "boolean":
-    case "bigint":
-      return `${value}`;
-    case "symbol":
-      return value.description ? `Symbol(${value.description})` : "Symbol()";
-    case "function":
-      return value.name ? `[function ${value.name}]` : "[function]";
-    case "object": {
-      try {
-        const json = JSON.stringify(value);
-        if (typeof json === "string") return json;
-      } catch {
-        // Fall through to a stable object tag.
-      }
-      return Object.prototype.toString.call(value);
-    }
-  }
-  return "";
-}
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  return "Error";
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
 
 function vmSerial2Api(): VmSerial2Api | null {
   return isRecord(state.vm) ? state.vm : null;

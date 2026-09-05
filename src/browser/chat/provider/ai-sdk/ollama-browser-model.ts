@@ -7,6 +7,7 @@
 
 import type { LanguageModel } from "ai";
 import { t } from "../../../app/i18n";
+import { isRecord } from "../../../app/value-utils";
 
 type LanguageModelV4 = Extract<LanguageModel, { specificationVersion: "v4" }>;
 type CallOptions = Parameters<LanguageModelV4["doGenerate"]>[0];
@@ -73,10 +74,6 @@ interface OllamaChatResponse {
     thinking?: unknown;
     tool_calls?: unknown;
   };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 function textValue(value: unknown): string {

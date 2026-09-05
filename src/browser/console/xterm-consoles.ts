@@ -5,6 +5,7 @@
 import { $, NL, state, type ConsoleTab } from "../app/state";
 import { t } from "../app/i18n";
 import { trimLines } from "../app/text-utils";
+import { errorMessage, isRecord, safeText } from "../app/value-utils";
 import { appEvents } from "../core/events";
 import { showBaModal, showBaModalPanel } from "../ui/modal";
 import { blurSerialConsole, logTool, setBadge } from "../ui/status-controls";
@@ -64,31 +65,6 @@ const decoder = new TextDecoder();
 
 function xtermRuntimeWindow(): XtermRuntimeWindow {
   return window;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  return "Error";
-}
-
-function safeText(value: unknown): string {
-  if (value == null) return "";
-  if (typeof value === "string") return value;
-  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") return `${value}`;
-  if (typeof value === "symbol") return value.description ? `Symbol(${value.description})` : "Symbol()";
-  if (typeof value === "function") return value.name ? `[function ${value.name}]` : "[function]";
-  try {
-    const json = JSON.stringify(value);
-    if (typeof json === "string") return json;
-  } catch {
-    // Fall through to a stable object tag.
-  }
-  return Object.prototype.toString.call(value);
 }
 
 function asManagedTab(tab: ConsoleTab): ManagedConsoleTab {

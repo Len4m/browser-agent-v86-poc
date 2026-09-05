@@ -1,4 +1,5 @@
 import { $, state } from "../app/state";
+import { isRecord } from "../app/value-utils";
 
 export interface SerialTerminal {
   cols?: number;
@@ -36,10 +37,6 @@ interface SerialVmApi {
     terminal?: unknown;
   };
   serial0_send?: (text: string) => void;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 function asSerialTerminal(value: unknown): SerialTerminal | null {

@@ -3,6 +3,7 @@
 import { $, NL, state } from "../app/state";
 import { t, tn } from "../app/i18n";
 import { shellQuote } from "../app/text-utils";
+import { errorMessage, isRecord } from "../app/value-utils";
 import { llmToolRegistry } from "../chat/tools/tool-registry";
 import type { ToolRuntimeCheck } from "../chat/tools/types";
 import { getConfig, getSelectedProfile, getVmRuntimeConfig, getWsRelayUrl } from "../vm/profile-config";
@@ -35,18 +36,8 @@ function v86RuntimeWindow(): V86RuntimeWindow {
   return window;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
 function vmApi(): VmApi | null {
   return typeof state.vm === "object" && state.vm !== null ? state.vm : null;
-}
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  return "Error";
 }
 
 function hasWebGpu(): boolean {

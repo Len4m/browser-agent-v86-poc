@@ -4,6 +4,7 @@
 
 import type { LanguageModel } from "ai";
 import { initI18n, t } from "../../app/i18n";
+import { errorMessage, isRecord } from "../../app/value-utils";
 import type { LlmModelConfig } from "../state/chat-state";
 import type { ModelInspection } from "../models/model-types";
 import { buildWasmFallbackConfig, isGpuRuntimeFailure } from "../models/transformers-runtime";
@@ -68,12 +69,6 @@ function mapDtype(dtype: unknown): TransformersDtype {
   return "auto";
 }
 
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  return "Error";
-}
-
 function modelLoadAbortError(signal: AbortSignal): Error {
   if (signal.reason instanceof Error) return signal.reason;
   const error = new Error(typeof signal.reason === "string" ? signal.reason : t("common.operationCancelled"));
@@ -106,10 +101,6 @@ function abortableModelLoad<T>(promise: Promise<T>, signal?: AbortSignal): Promi
       },
     );
   });
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 function errorDetails(error: unknown): Record<string, unknown> {

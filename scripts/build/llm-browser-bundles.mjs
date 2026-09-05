@@ -11,10 +11,10 @@
  *   public/assets/chat/workers/llm-browser-ai.worker.mjs
  */
 import * as esbuild from "esbuild";
-import { gzipSync } from "node:zlib";
-import { readFileSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
+import { sizeSummary } from "./lib/reporting.mjs";
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
 const tsconfigPath = join(root, "tsconfig.json");
@@ -24,18 +24,6 @@ const analyze = process.argv.includes("--analyze");
 const browserOutFile = join(root, "public/assets/chat/ai-sdk-browser.mjs");
 const workerOutFile = join(root, "public/assets/chat/workers/llm-browser-ai.worker.mjs");
 const transformersStubNamespace = "ba-transformers-main-thread-stub";
-
-function formatBytes(bytes) {
-  if (!Number.isFinite(bytes)) return "—";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
-}
-
-function sizeSummary(file) {
-  const content = readFileSync(file);
-  return `${formatBytes(statSync(file).size)} / gzip ${formatBytes(gzipSync(content).length)}`;
-}
 
 const shared = {
   tsconfig: tsconfigPath,

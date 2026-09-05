@@ -1,8 +1,6 @@
-const numberFormatter = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 1 });
+export { isRecord, setDisabled } from "../../app/value-utils";
 
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
+const numberFormatter = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 1 });
 
 export function textValue(value: unknown, fallback = ""): string {
   if (typeof value === "string") return value;
@@ -18,17 +16,6 @@ export function numberValue(value: unknown, fallback = 0): number {
 export function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return textValue(error, "Error");
-}
-
-export function setDisabled(element: Element | null, disabled: boolean): void {
-  if (
-    element instanceof HTMLButtonElement
-    || element instanceof HTMLInputElement
-    || element instanceof HTMLSelectElement
-    || element instanceof HTMLTextAreaElement
-  ) {
-    element.disabled = disabled;
-  }
 }
 
 export function inputById(id: string): HTMLInputElement | null {

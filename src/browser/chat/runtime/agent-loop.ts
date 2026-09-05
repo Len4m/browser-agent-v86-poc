@@ -4,6 +4,7 @@
 
 import { state } from "../../app/state";
 import { t } from "../../app/i18n";
+import { isRecord } from "../../app/value-utils";
 import { getEffectiveVmProfileId } from "../../vm/profile-config";
 import { originApi } from "../../app/origin-awareness";
 import { appEvents } from "../../core/events";
@@ -142,10 +143,6 @@ const NATIVE_TOOL_STREAM_SKIP = new Set([
   "start-step",
   "finish-step",
 ]);
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
 
 function textValue(value: unknown, fallback = ""): string {
   if (typeof value === "string") return value;

@@ -3,6 +3,7 @@
 import { $, state } from "../app/state";
 import { t, tn } from "../app/i18n";
 import { appEvents } from "../core/events";
+import { isRecord, setDisabled } from "../app/value-utils";
 import { browserCowStore } from "./indexeddb-cow-disk";
 import { formatBytes } from "./runtime-assets";
 import { LOCAL_WS_URL } from "./ws-network-config";
@@ -32,10 +33,6 @@ interface ProfileOptions {
 
 let initialized = false;
 let persistenceSyncRevision = 0;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
 
 function isVmProfile(value: unknown): value is VmProfile {
   return isRecord(value) && typeof value.id === "string";
@@ -125,17 +122,6 @@ export async function syncProfilePersistenceIndicators(): Promise<boolean> {
 
 function inputValue(id: string): string {
   return $<HTMLInputElement>(id)?.value.trim() || "";
-}
-
-function setDisabled(el: Element | null, disabled: boolean): void {
-  if (
-    el instanceof HTMLButtonElement
-    || el instanceof HTMLInputElement
-    || el instanceof HTMLSelectElement
-    || el instanceof HTMLTextAreaElement
-  ) {
-    el.disabled = disabled;
-  }
 }
 
 export function getSelectedProfile(): VmProfile | null {

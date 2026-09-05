@@ -1,5 +1,6 @@
 import { $, NL, state } from "../app/state";
 import { t } from "../app/i18n";
+import { errorMessage } from "../app/value-utils";
 import { showBaModal } from "../ui/modal";
 import { logTool, setAgentBusy } from "../ui/status-controls";
 import { createRuntimeCowDisk, type CowDisk } from "./indexeddb-cow-disk";
@@ -11,12 +12,6 @@ import {
   syncProfilePersistenceIndicators,
 } from "./profile-config";
 import { resolveVmRuntime, runtimeInputFromProfile, type ResolvedVmRuntime } from "./runtime-config";
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  return "Error";
-}
 
 async function selectedWorkspace(): Promise<{ runtime: ResolvedVmRuntime; disk: CowDisk }> {
   if (state.activeRuntime?.storage.mode === "persistent" && state.activeCowDisk) {

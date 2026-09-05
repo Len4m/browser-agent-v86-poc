@@ -4,11 +4,11 @@
  */
 import * as esbuild from "esbuild";
 import { createHash } from "node:crypto";
-import { gzipSync } from "node:zlib";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { toolDefinitionsPlugin } from "./plugins/tool-definitions-plugin.mjs";
+import { sizeSummary } from "./lib/reporting.mjs";
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
 const tsconfigPath = join(root, "tsconfig.json");
@@ -30,18 +30,6 @@ const appVersion = packageJson.version || "0.0.0";
 const minify = process.env.BA_MINIFY === "1" || process.argv.includes("--minify");
 const sourcemap = process.env.BA_SOURCEMAP === "1" || process.argv.includes("--sourcemap");
 const toolDefinitions = toolDefinitionsPlugin(root);
-
-function formatBytes(bytes) {
-  if (!Number.isFinite(bytes)) return "—";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
-}
-
-function sizeSummary(file) {
-  const content = readFileSync(file);
-  return `${formatBytes(statSync(file).size)} / gzip ${formatBytes(gzipSync(content).length)}`;
-}
 
 function cacheKeyForContent(content) {
   return createHash("sha256").update(content).digest("hex").slice(0, 12);

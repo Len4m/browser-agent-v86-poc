@@ -3,6 +3,7 @@
 // incrementally and avoids replacing innerHTML on every token.
 
 import { t } from "../../app/i18n";
+import { isRecord } from "../../app/value-utils";
 import { scrollChatLogToBottom } from "./chat-scroll";
 
 const SAFE_URL_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
@@ -39,10 +40,6 @@ export interface MarkdownStreamRenderer {
 
 let smdPromise: Promise<StreamingMarkdownModule> | null = null;
 let purifyPromise: Promise<DomPurifyModule | null> | null = null;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
 
 function isStreamingMarkdownModule(value: unknown): value is StreamingMarkdownModule {
   return isRecord(value)

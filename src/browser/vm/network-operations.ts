@@ -10,6 +10,7 @@ import {
 } from "../app/state";
 import { t } from "../app/i18n";
 import { isPublishedOrigin } from "../app/origin-awareness";
+import { errorMessage } from "../app/value-utils";
 import { showBaModal } from "../ui/modal";
 import {
   isWsConnected,
@@ -30,12 +31,6 @@ import {
   validateWsUrl,
   type WsPreset,
 } from "./ws-network-config";
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  return "Error";
-}
 
 async function configureNetworkInVm(): Promise<void> {
   if (state.networkConfiguring || state.networkConfigured) return;

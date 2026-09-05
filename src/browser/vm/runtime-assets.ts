@@ -2,6 +2,7 @@
 
 import { $, state } from "../app/state";
 import { t } from "../app/i18n";
+import { isRecord } from "../app/value-utils";
 import { validateWsUrl, type WsValidationError } from "./ws-network-config";
 
 export interface AssetCheckResult {
@@ -56,10 +57,6 @@ type V86RuntimeWindow = Window & typeof globalThis & {
 interface V86StateApi {
   save_state?: (done: (error: unknown, result?: unknown) => void) => unknown;
   restore_state?: (buffer: ArrayBuffer, done: (error?: unknown) => void) => unknown;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 function isPromiseLike(value: unknown): value is PromiseLike<unknown> {

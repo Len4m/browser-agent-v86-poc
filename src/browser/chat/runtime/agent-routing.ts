@@ -1,6 +1,7 @@
 // Browser Agent v86 - LLM agent routing heuristics.
 
 import { getLlmState, type LlmModelConfig } from "../state/chat-state";
+import { isRecord } from "../../app/value-utils";
 import type { ToolStrategy } from "../models/model-types";
 import { llmNativeToolsPolicy } from "../tools/native-tools-policy";
 
@@ -47,10 +48,6 @@ function textValue(value: unknown): string {
   if (typeof value === "string") return value;
   if (typeof value === "number" || typeof value === "boolean") return String(value);
   return "";
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 function flattenErrorMessage(error: unknown): string {

@@ -1,6 +1,7 @@
 import { $, NL, state } from "../app/state";
 import { t } from "../app/i18n";
 import { clampExecVmOutputBytes } from "../app/text-utils";
+import { errorMessage, isRecord } from "../app/value-utils";
 import { appEvents } from "../core/events";
 import { formatLoggedCommand, logTool, setAgentBusy } from "../ui/status-controls";
 import { backgroundToolsApi } from "./background-tools-serial1";
@@ -32,16 +33,6 @@ interface ExecVmPending {
   rejectOnTokens: string[];
   bytesSinceParse: number;
   maxRawChars: number;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  return "Error";
 }
 
 function normalizeExecVmResult(result: unknown): ExecVmResult {

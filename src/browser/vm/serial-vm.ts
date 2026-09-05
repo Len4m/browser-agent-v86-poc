@@ -3,6 +3,7 @@
 import { $, CR, NL, state } from "../app/state";
 import { t } from "../app/i18n";
 import { trimLines } from "../app/text-utils";
+import { errorMessage, isRecord, setDisabled } from "../app/value-utils";
 import { confirmVmShutdown, showBaModal } from "../ui/modal";
 import {
   logTool,
@@ -109,16 +110,6 @@ function vmRuntimeWindow(): VmRuntimeWindow {
   return window;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  return "Error";
-}
-
 async function identifyAsset(url: string, bytes: ArrayBuffer | undefined, declared?: AssetIdentity): Promise<AssetIdentity> {
   if (declared) return declared;
   const buffer = bytes || await (await fetch(url, { cache: "force-cache" })).arrayBuffer();
@@ -141,17 +132,6 @@ function isPendingCommand(value: unknown): value is PendingCommand {
     && typeof value.timer === "number"
     && Array.isArray(value.resolveOnTokens)
     && Array.isArray(value.rejectOnTokens);
-}
-
-function setDisabled(el: Element | null, disabled: boolean): void {
-  if (
-    el instanceof HTMLButtonElement
-    || el instanceof HTMLInputElement
-    || el instanceof HTMLSelectElement
-    || el instanceof HTMLTextAreaElement
-  ) {
-    el.disabled = disabled;
-  }
 }
 
 async function resyncVmAfterRestore(consoleUi: SnapshotConsoleUiState | null): Promise<void> {

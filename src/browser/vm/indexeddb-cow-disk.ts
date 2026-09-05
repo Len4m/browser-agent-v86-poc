@@ -141,7 +141,7 @@ function transactionDone(transaction: IDBTransaction): Promise<void> {
   });
 }
 
-export class IndexedDbCowBlockStore implements CowBlockStore {
+class IndexedDbCowBlockStore implements CowBlockStore {
   private databasePromise: Promise<IDBDatabase> | null = null;
 
   constructor(private readonly databaseName = "browser-agent-v86-storage-v1") {}
@@ -308,9 +308,9 @@ export interface CowDiskOptions {
   onDirty?: () => void;
 }
 
-let sharedBrowserStore: IndexedDbCowBlockStore | null = null;
+let sharedBrowserStore: CowBlockStore | null = null;
 
-export function browserCowStore(): IndexedDbCowBlockStore {
+export function browserCowStore(): CowBlockStore {
   return sharedBrowserStore || (sharedBrowserStore = new IndexedDbCowBlockStore());
 }
 

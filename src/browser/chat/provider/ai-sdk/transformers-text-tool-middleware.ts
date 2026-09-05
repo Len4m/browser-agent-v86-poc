@@ -3,6 +3,7 @@
  */
 
 import { extractReasoningMiddleware, type LanguageModelMiddleware } from "ai";
+import { isRecord } from "../../../app/value-utils";
 import { parseTextToolCalls, looksLikeTextToolPlan, type ParsedTextToolCall } from "./text-tool-parser";
 
 type WrapGenerateInput = Parameters<NonNullable<LanguageModelMiddleware["wrapGenerate"]>>[0];
@@ -30,10 +31,6 @@ interface TextDeltaLike {
   delta?: unknown;
   text?: unknown;
   textDelta?: unknown;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 function isTransformersThinkingEnabled(params: CallParams): boolean {

@@ -16,6 +16,7 @@ import {
   type TextStreamPart,
   type ToolSet,
 } from "ai";
+import { isRecord } from "../../../app/value-utils";
 import { initI18n, t } from "../../../app/i18n";
 import type {
   AiSdkApprovalDecision,
@@ -68,10 +69,6 @@ export interface RunAgentStreamTurnResult {
   steps: AgentStep[];
   finishReason: FinishReason | null;
   hadToolWork: boolean;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 function textFromUnknown(value: unknown): string {

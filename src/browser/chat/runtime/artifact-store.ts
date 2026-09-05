@@ -4,6 +4,7 @@
 
 import { normalizeNewlines, stripAnsiAndControls } from "../../app/text-utils";
 import { t } from "../../app/i18n";
+import { isRecord } from "../../app/value-utils";
 import { getLlmState, llmEventsApi, type LlmState } from "../state/chat-state";
 import type { NormalizedToolCall, ToolArgs, ToolExecutionResult } from "../tools/types";
 
@@ -114,10 +115,6 @@ interface LlmArtifactsApi {
 
 function nowId(prefix = "art"): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 function textValue(value: unknown, fallback = ""): string {

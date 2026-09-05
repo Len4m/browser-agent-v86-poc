@@ -3,6 +3,7 @@
 // features such as shader-f16 are exposed. It does not create a GPUDevice.
 
 import { t } from "../../app/i18n";
+import { errorMessage } from "../../app/value-utils";
 import { appEvents } from "../../core/events";
 import { setBadge } from "../../ui/status-controls";
 import { getLlmState, llmEventsApi } from "./chat-state";
@@ -66,12 +67,6 @@ function baseResult(): LlmCapabilities {
     reason: "",
     checkedAt: 0,
   };
-}
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  return "Error";
 }
 
 function isCapabilitiesResult(value: unknown): value is LlmCapabilities {

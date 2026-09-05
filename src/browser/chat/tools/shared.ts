@@ -1,10 +1,9 @@
 import { t } from "../../app/i18n";
 import { shellQuote, stripAnsiAndControls } from "../../app/text-utils";
+import { isRecord } from "../../app/value-utils";
 import type { ToolArgs, ToolArgValue, ToolDefinition, ToolExecutionResult } from "./types";
 
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
+export { isRecord } from "../../app/value-utils";
 
 export function isToolArgValue(value: unknown): value is ToolArgValue {
   if (value == null) return true;
@@ -23,7 +22,7 @@ export function normalizeToolName(value: unknown): string {
   return textValue(value).trim().replaceAll(".", "_");
 }
 
-export function abortError(signal?: AbortSignal): Error {
+function abortError(signal?: AbortSignal): Error {
   const reason = signal?.reason as unknown;
   const error = new Error(reason instanceof Error
     ? reason.message

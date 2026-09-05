@@ -1,6 +1,7 @@
 // Browser Agent v86 - LLM panel GPU capability badges.
 
 import { t } from "../../app/i18n";
+import { errorMessage, setDisabled } from "../../app/value-utils";
 import { appEvents } from "../../core/events";
 import { getLlmState } from "../state/chat-state";
 
@@ -17,23 +18,6 @@ interface LlmPanelCapabilitiesApi {
   bindCapabilityRecheckBadges: (onRecheck?: () => void) => void;
   runCapabilityRecheckFromBadge: (options?: CapabilityRecheckOptions) => Promise<void>;
   ensureCapabilitiesWhenPanelOpens: (details: HTMLDetailsElement | null | undefined, options?: CapabilityRecheckOptions) => Promise<void>;
-}
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  return "Error";
-}
-
-function setDisabled(el: Element | null, disabled: boolean): void {
-  if (
-    el instanceof HTMLButtonElement
-    || el instanceof HTMLInputElement
-    || el instanceof HTMLSelectElement
-    || el instanceof HTMLTextAreaElement
-  ) {
-    el.disabled = disabled;
-  }
 }
 
 function capabilityRecheckTitle(currentTitle: unknown): string {

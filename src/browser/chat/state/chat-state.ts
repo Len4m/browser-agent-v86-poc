@@ -220,8 +220,7 @@ export function registerDiscoveredModel(
   return config;
 }
 
-export function getLlmModels(): LlmModelConfig[] { return [...dynamicModels.values()]; }
-export function findLlmModel(id: string | null | undefined): LlmModelConfig | null { return id ? dynamicModels.get(id) || null : null; }
+function findLlmModel(id: string | null | undefined): LlmModelConfig | null { return id ? dynamicModels.get(id) || null : null; }
 export function getSelectedLlmModel(): LlmModelConfig | null { return findLlmModel(llmState?.selectedModelId) || llmState?.activeModel || null; }
 
 export function selectLlmModel(config: LlmModelConfig): void {
@@ -257,10 +256,6 @@ function llmTransformersDeviceLabel(model: Pick<LlmModelConfig, "engine" | "devi
 
 export function llmEngineMetaLabel(model: LlmModelConfig): string {
   const base = llmEngineLabel(model.engine);
-  return model.engine === "transformersjs" ? `${base} · ${llmTransformersDeviceLabel(model)}` : base;
-}
-export function llmModelLabel(model: LlmModelConfig): string {
-  const base = `${model.engine === "ollama" ? "Ollama" : "Transformers.js"} · ${llmModelName(model)}`;
   return model.engine === "transformersjs" ? `${base} · ${llmTransformersDeviceLabel(model)}` : base;
 }
 export function llmModelShortLabel(model: LlmModelConfig): string { return llmModelName(model); }

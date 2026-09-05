@@ -6,6 +6,7 @@
 
 import { NL } from "../../app/state";
 import { t } from "../../app/i18n";
+import { errorMessage } from "../../app/value-utils";
 import { getLlmState, llmEventsApi } from "../state/chat-state";
 import { showBaModal } from "../../ui/modal";
 import { logTool } from "../../ui/status-controls";
@@ -31,12 +32,6 @@ function nowId(prefix = "tool"): string {
 
 function activeToolSet(names: string[] | null | undefined): Set<string> | null {
   return Array.isArray(names) ? new Set(names.map(normalizeToolName).filter(Boolean)) : null;
-}
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  return "Error";
 }
 
 function getAutonomyMaxLevel(): number {

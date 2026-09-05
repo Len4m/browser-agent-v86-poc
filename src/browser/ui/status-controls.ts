@@ -3,20 +3,10 @@
 import { $, state } from "../app/state";
 import { t, tn } from "../app/i18n";
 import { stripAnsi } from "../app/text-utils";
+import { setDisabled } from "../app/value-utils";
 import { appEvents } from "../core/events";
 
 const TOOL_LOG_MAX_CHARS = 50000;
-
-function setDisabled(el: Element | null, disabled: boolean): void {
-  if (
-    el instanceof HTMLButtonElement
-    || el instanceof HTMLInputElement
-    || el instanceof HTMLSelectElement
-    || el instanceof HTMLTextAreaElement
-  ) {
-    el.disabled = disabled;
-  }
-}
 
 export function setBadge(el: Element | null, text: string, tone = ""): void {
   if (!el) return;

@@ -4,6 +4,7 @@
 import { state } from "../app/state";
 import { t } from "../app/i18n";
 import { clampInt, stripAnsi, trimLinesSimple, utf8ToBase64 } from "../app/text-utils";
+import { errorMessage, isRecord, safeText, setDisabled } from "../app/value-utils";
 import { appEvents } from "../core/events";
 import {
   formatLoggedCommand,
@@ -92,42 +93,6 @@ interface VmSerial1Api {
 
 let initialized = false;
 
-function safeText(value: unknown): string {
-  if (value == null) return "";
-  switch (typeof value) {
-    case "string":
-      return value;
-    case "number":
-    case "boolean":
-    case "bigint":
-      return `${value}`;
-    case "symbol":
-      return value.description ? `Symbol(${value.description})` : "Symbol()";
-    case "function":
-      return value.name ? `[function ${value.name}]` : "[function]";
-    case "object": {
-      try {
-        const json = JSON.stringify(value);
-        if (typeof json === "string") return json;
-      } catch {
-        // Fall through to a stable object tag.
-      }
-      return Object.prototype.toString.call(value);
-    }
-  }
-  return "";
-}
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  return "Error";
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
 function vmSerial1Api(): VmSerial1Api | null {
   return isRecord(state.vm) ? state.vm : null;
 }
@@ -159,17 +124,6 @@ function getStatusEl(): HTMLElement | null {
 
 function getHeadingEl(): HTMLElement | null {
   return document.getElementById("bg-tool-heading");
-}
-
-function setDisabled(el: Element | null, disabled: boolean): void {
-  if (
-    el instanceof HTMLButtonElement
-    || el instanceof HTMLInputElement
-    || el instanceof HTMLSelectElement
-    || el instanceof HTMLTextAreaElement
-  ) {
-    el.disabled = disabled;
-  }
 }
 
 function appendBounded(prop: "liveText" | "diagnosticText", text: unknown, max: number): string {
