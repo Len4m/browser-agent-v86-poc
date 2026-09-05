@@ -109,12 +109,7 @@ export class MemoryCowBlockStore implements CowBlockStore {
   reset(workspaceId: string): Promise<void> {
     const prefix = `${workspaceId}\u0000`;
     for (const key of [...this.blocks.keys()]) if (key.startsWith(prefix)) this.blocks.delete(key);
-    const metadata = this.metadata.get(workspaceId);
-    if (metadata) {
-      metadata.activeGeneration = "main";
-      metadata.checkpoint = "empty";
-      metadata.updatedAt = Date.now();
-    }
+    this.metadata.delete(workspaceId);
     return Promise.resolve();
   }
 }
@@ -284,14 +279,25 @@ class IndexedDbCowBlockStore implements CowBlockStore {
 
   async reset(workspaceId: string): Promise<void> {
     const db = await this.database();
-    const readTx = db.transaction("blocks", "readonly");
-    const records = await requestResult(readTx.objectStore("blocks").index("generation").getAllKeys(IDBKeyRange.bound([workspaceId, ""], [workspaceId, "\uffff"])));
-    await transactionDone(readTx);
     const tx = db.transaction(["blocks", "workspaces"], "readwrite", { durability: "strict" });
-    for (const key of records) tx.objectStore("blocks").delete(key);
-    const metadata = await requestResult(tx.objectStore("workspaces").get(workspaceId)) as WorkspaceMetadata | undefined;
-    if (metadata) tx.objectStore("workspaces").put({ ...metadata, activeGeneration: "main", checkpoint: "empty", updatedAt: Date.now() });
-    await transactionDone(tx);
+    const done = transactionDone(tx);
+    const blocks = tx.objectStore("blocks");
+    tx.objectStore("workspaces").delete(workspaceId);
+    const request = blocks.index("generation")
+      .openKeyCursor(IDBKeyRange.bound([workspaceId, ""], [workspaceId, "\uffff"]));
+    await new Promise<void>((resolve, reject) => {
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) {
+          resolve();
+          return;
+        }
+        blocks.delete(cursor.primaryKey);
+        cursor.continue();
+      };
+      request.onerror = () => reject(request.error || new Error("No se pudieron eliminar los bloques del workspace."));
+    });
+    await done;
   }
 }
 
@@ -530,9 +536,17 @@ export class CowDisk {
     await this.flush();
     await this.store.reset(this.options.workspaceId);
     this.memory.clear();
-    if (this.metadata) {
-      this.metadata.activeGeneration = "main";
-      this.metadata.checkpoint = "empty";
+    this.importRollback = null;
+    this.metadata = await this.store.open({
+      id: this.options.workspaceId,
+      profileHash: this.options.profileHash,
+      seedHash: this.options.seedHash,
+      sizeBytes: this.byteLength,
+      blockSize: this.blockSize,
+    });
+    const remainingBytes = await this.store.storedBytes(this.metadata.id, this.metadata.activeGeneration);
+    if (remainingBytes !== 0 || this.metadata.checkpoint !== "empty") {
+      throw new Error("IndexedDB conserva datos después de reiniciar el workspace.");
     }
   }
 

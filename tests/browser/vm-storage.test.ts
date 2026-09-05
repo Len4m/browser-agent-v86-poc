@@ -213,6 +213,8 @@ test("a profile hash resolves to one deterministic persistent workspace", async 
   assert.deepEqual([...await new Promise<Uint8Array>((resolve) => second.get(0, 1, resolve))], [7]);
   await second.reset();
   assert.equal((await store.getMetadata(options.workspaceId))?.checkpoint, "empty");
+  assert.equal(await store.storedBytes(options.workspaceId, "main"), 0);
+  assert.deepEqual(await second.exportBlocks(), []);
 });
 
 test("portable snapshots include HDB and reject truncation, corruption and incompatible RAM", async () => {

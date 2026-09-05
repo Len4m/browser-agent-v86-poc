@@ -216,8 +216,22 @@ try {
   await page.locator("#ba-modal-actions .ba-modal-button.danger").click();
   await page.locator("#vm-profile-storage-status").waitFor({ state: "hidden", timeout: 10000 });
   await page.locator("#workspace-toolbar").waitFor({ state: "hidden", timeout: 10000 });
+  if ((await page.locator('#vm-profile option[value="alpine-base"]').textContent())?.includes("💾")) {
+    throw new Error("el perfil conserva el icono de datos después de reiniciar el workspace");
+  }
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.locator('#vm-profile option[value="alpine-base"]').waitFor({ state: "attached", timeout: 30000 });
+  await page.selectOption("#vm-profile", "alpine-base");
+  await page.selectOption("#vm-storage-mode", "persistent");
+  if ((await page.locator('#vm-profile option[value="alpine-base"]').textContent())?.includes("💾")) {
+    throw new Error("el perfil recupera el icono de datos tras recargar después del reinicio");
+  }
+  if (await page.locator("#vm-profile-storage-status").isVisible() || await page.locator("#workspace-toolbar").isVisible()) {
+    throw new Error("la interfaz recupera información de un workspace vacío después de recargar");
+  }
   await page.click("#start-vm");
   await page.locator("#badge-vm.good").waitFor({ state: "visible", timeout: 60000 });
+  await page.locator("details.tool-log-details > summary").click();
   await command("test ! -e /root/.ba-persistent-e2e && echo WORKSPACE_RESET_OK", "WORKSPACE_RESET_OK");
   await restoreContext.close();
   if (browserErrors.length) throw new Error(`errores de página: ${browserErrors.join(" | ")}`);

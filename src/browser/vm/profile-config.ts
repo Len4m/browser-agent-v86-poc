@@ -84,37 +84,30 @@ export async function syncProfilePersistenceIndicators(): Promise<boolean> {
   const selectedProfileId = select.value;
   const results = await Promise.all(getProfiles().map(async (profile) => {
     const option = Array.from(select.options).find((candidate) => candidate.value === profile.id);
-    if (!option) return { option: null, metadata: null };
+    if (!option) return { option: null, metadata: null, storedBytes: 0 };
     try {
       const metadata = profile.profileHash
         ? await browserCowStore().getMetadata(persistentWorkspaceId(profile.profileHash))
         : null;
-      return { option, metadata };
+      const storedBytes = metadata && metadata.checkpoint !== "empty"
+        ? await browserCowStore().storedBytes(metadata.id, metadata.activeGeneration)
+        : 0;
+      return { option, metadata, storedBytes };
     } catch {
-      return { option, metadata: undefined };
+      return { option, metadata: undefined, storedBytes: 0 };
     }
   }));
   if (revision !== persistenceSyncRevision) return false;
 
-  for (const { option, metadata } of results) {
+  for (const { option, metadata, storedBytes } of results) {
     if (!option) continue;
     option.dataset.persistence = metadata === undefined
       ? "unknown"
-      : metadata && metadata.checkpoint !== "empty" ? "saved" : "empty";
+      : metadata && storedBytes > 0 ? "saved" : "empty";
     delete option.dataset.persistenceBytes;
+    if (metadata && storedBytes > 0) option.dataset.persistenceBytes = String(storedBytes);
   }
 
-  const selected = results.find(({ option }) => option?.value === selectedProfileId);
-  if (selected?.option && selected.metadata && selected.metadata.checkpoint !== "empty") {
-    try {
-      const storedBytes = await browserCowStore().storedBytes(selected.metadata.id, selected.metadata.activeGeneration);
-      if (revision !== persistenceSyncRevision || select.value !== selectedProfileId) return false;
-      selected.option.dataset.persistenceBytes = String(storedBytes);
-    } catch {
-      if (revision !== persistenceSyncRevision) return false;
-      selected.option.dataset.persistence = "unknown";
-    }
-  }
   if (revision !== persistenceSyncRevision || select.value !== selectedProfileId) return false;
   renderProfilePersistenceIndicators();
   return true;
