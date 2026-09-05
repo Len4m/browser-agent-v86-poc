@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 
 const steps = [
   [process.execPath, ["scripts/check/runtime-contract.mjs"]],
+  [process.execPath, ["scripts/check/module-graph.mjs"]],
   [process.execPath, ["scripts/check/vm-profiles.mjs"]],
   [process.execPath, ["scripts/check/frontend-manifest.mjs"]],
   [process.execPath, ["scripts/check/js-syntax.mjs"]],

@@ -181,7 +181,7 @@ Los módulos TypeScript nuevos deben vivir en `src/browser/` y comunicarse media
 
 ```txt
 Usuario / LLM
-  -> execVm() [src/browser/vm/operations.ts]
+  -> execVm() [src/browser/vm/exec-vm.ts]
     -> targetTools=true (por defecto)
       -> backgroundToolsApi.execVm()
       -> serial1 / ttyS1
@@ -189,6 +189,8 @@ Usuario / LLM
     -> targetTools=false
       -> serial0 / ttyS0 con marcadores __BAGENT_*
 ```
+
+`src/browser/vm/operations.ts` es solo la fachada pública que conserva imports estables. La implementación está separada en `exec-vm.ts`, `network-operations.ts`, `snapshot-operations.ts` y `workspace-controls.ts`. El adaptador `serial-console.ts` aísla el terminal de la gestión del ciclo de vida en `serial-vm.ts`. `pnpm check` verifica que los módulos TypeScript del navegador no formen ciclos de imports estáticos.
 
 Contratos actuales:
 
@@ -209,13 +211,16 @@ Ambos runners guest están escritos en Python 3 y son procesos persistentes supe
 
 `scripts/setup.mjs` ejecuta:
 
-1. `scripts/check/vm-profiles.mjs`
-2. `scripts/setup/runtime-assets.mjs`
-3. `scripts/setup/vm-profile-image.mjs vm/profiles/*.json` para cada perfil válido, en orden de nombre de fichero
+1. `scripts/check/runtime-contract.mjs`
+2. `scripts/check/vm-profiles.mjs`
+3. `scripts/setup/runtime-assets.mjs` una sola vez
+4. `scripts/setup/vm-profile-image.mjs vm/profiles/*.json --skip-runtime-assets` para cada perfil válido, en orden de nombre de fichero
 
 El listado de perfiles se descubre desde `vm/profiles/*.json`, excluyendo `profile.schema.json`. Si algún perfil no pasa el schema, `setup` se detiene antes de generar imágenes.
 
 `scripts/setup/vm-profile-image.mjs` genera para cada perfil un manifest con `profileHash`, identidades SHA-256, initramfs mínimo, HDA ext4 por partes y semilla HDB. El mismo `CowDisk` respalda HDB en memoria para sesiones temporales o en IndexedDB para el workspace persistente del perfil.
+
+`vm/runtime-contract.json` es la fuente compartida para las versiones de formato y de v86, el tamaño de bloque/parte, la línea de arranque y la topología de dispositivos. Tanto el runtime del navegador como el generador de perfiles lo consumen; la comprobación del contrato impide utilizar un build de v86 distinto por accidente.
 
 ### Almacenamiento y snapshots
 

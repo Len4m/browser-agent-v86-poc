@@ -181,7 +181,7 @@ New TypeScript modules must live in `src/browser/` and communicate through ESM i
 
 ```txt
 User / LLM
-  -> execVm() [src/browser/vm/operations.ts]
+  -> execVm() [src/browser/vm/exec-vm.ts]
     -> targetTools=true (default)
       -> backgroundToolsApi.execVm()
       -> serial1 / ttyS1
@@ -189,6 +189,8 @@ User / LLM
     -> targetTools=false
       -> serial0 / ttyS0 with __BAGENT_* markers
 ```
+
+`src/browser/vm/operations.ts` is only the public facade that keeps imports stable. Implementation is split across `exec-vm.ts`, `network-operations.ts`, `snapshot-operations.ts`, and `workspace-controls.ts`. The `serial-console.ts` adapter isolates the terminal from lifecycle management in `serial-vm.ts`. `pnpm check` verifies that browser TypeScript modules do not form static import cycles.
 
 Current contracts:
 
@@ -209,13 +211,16 @@ Both guest runners are written in Python 3 and run as persistent processes super
 
 `scripts/setup.mjs` runs:
 
-1. `scripts/check/vm-profiles.mjs`
-2. `scripts/setup/runtime-assets.mjs`
-3. `scripts/setup/vm-profile-image.mjs vm/profiles/*.json` for each valid profile, ordered by filename
+1. `scripts/check/runtime-contract.mjs`
+2. `scripts/check/vm-profiles.mjs`
+3. `scripts/setup/runtime-assets.mjs` once
+4. `scripts/setup/vm-profile-image.mjs vm/profiles/*.json --skip-runtime-assets` for each valid profile, ordered by filename
 
 Profiles are discovered from `vm/profiles/*.json`, excluding `profile.schema.json`. If any profile fails schema validation, `setup` stops before generating images.
 
 `scripts/setup/vm-profile-image.mjs` produces each profile manifest with `profileHash`, SHA-256 identities, a minimal initramfs, split ext4 HDA and HDB seed. The same `CowDisk` backs HDB in memory for temporary sessions or IndexedDB for the profile's persistent workspace.
+
+`vm/runtime-contract.json` is the shared source for format and v86 versions, block/part sizes, kernel command line, and device topology. Both the browser runtime and profile generator consume it; the contract check prevents a different v86 build from being used accidentally.
 
 ### Storage and snapshots
 
