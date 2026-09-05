@@ -5,7 +5,7 @@
 import { state } from "../../app/state";
 import { t } from "../../app/i18n";
 import { backgroundToolsApi } from "../../vm/background-tools-serial1";
-import { getSelectedProfile, type VmProfile } from "../../vm/profile-config";
+import { getEffectiveVmProfile, getEffectiveVmProfileId, type VmProfile } from "../../vm/profile-config";
 import { TOOL_DEFINITIONS } from "virtual:ba-tools";
 import { isRecord, normalizeToolName, textValue, toToolArgs } from "./shared";
 import type {
@@ -22,11 +22,6 @@ function isVmProfile(value: unknown): value is VmProfile {
   return isRecord(value) && typeof value.id === "string";
 }
 
-function activeRuntimeProfile(): VmProfile | null {
-  if (!isRecord(state.activeRuntime)) return null;
-  return isVmProfile(state.activeRuntime.profile) ? state.activeRuntime.profile : null;
-}
-
 export const llmToolRegistry: LlmToolRegistryApi = (() => {
   const SECURITY_LEVELS: SecurityLevel[] = [
     { level: 0, id: "none", get label() { return t("tools.level.none.label"); }, get description() { return t("tools.level.none.desc"); } },
@@ -41,9 +36,7 @@ export const llmToolRegistry: LlmToolRegistryApi = (() => {
   );
 
   function baseRuntimeContext(): RuntimeToolContext {
-    const activeProfile = activeRuntimeProfile()?.id
-      || getSelectedProfile()?.id
-      || "";
+    const activeProfile = getEffectiveVmProfileId();
     const backgroundToolsReady = backgroundToolsApi.enabled();
     return {
       vmPresent: Boolean(state.vm),
@@ -60,7 +53,7 @@ export const llmToolRegistry: LlmToolRegistryApi = (() => {
   }
 
   function profileForId(profileId: string): VmProfile | undefined {
-    const runtimeProfile = activeRuntimeProfile();
+    const runtimeProfile = getEffectiveVmProfile();
     if (runtimeProfile?.id === profileId) return runtimeProfile;
     return state.profiles.find((item): item is VmProfile => isVmProfile(item) && item.id === profileId);
   }

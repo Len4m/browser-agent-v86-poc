@@ -31,6 +31,7 @@ interface ProfileOptions {
 }
 
 let initialized = false;
+let persistenceSyncRevision = 0;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -70,27 +71,56 @@ function renderProfilePersistenceIndicators(): void {
     return;
   }
   const mark = (select.selectedOptions[0]?.dataset.persistence || "unknown") as ProfilePersistenceMark;
+  const storedBytes = Number(select.selectedOptions[0]?.dataset.persistenceBytes || "");
   badge.hidden = mark !== "saved";
-  badge.textContent = mark === "saved" ? t("vm.profile.persistence.saved") : "";
+  badge.textContent = mark === "saved"
+    ? `${t("vm.profile.persistence.saved")}${Number.isFinite(storedBytes) ? ` · ${formatBytes(storedBytes)}` : ""}`
+    : "";
+  badge.title = badge.textContent;
   badge.className = `badge ${mark === "saved" ? "good" : ""}`.trim();
 }
 
-export async function syncProfilePersistenceIndicators(): Promise<void> {
+export async function syncProfilePersistenceIndicators(): Promise<boolean> {
   const select = $<HTMLSelectElement>("vm-profile");
-  if (!select) return;
-  await Promise.all(getProfiles().map(async (profile) => {
+  if (!select) return false;
+  const revision = ++persistenceSyncRevision;
+  const selectedProfileId = select.value;
+  const results = await Promise.all(getProfiles().map(async (profile) => {
     const option = Array.from(select.options).find((candidate) => candidate.value === profile.id);
-    if (!option) return;
+    if (!option) return { option: null, metadata: null };
     try {
       const metadata = profile.profileHash
         ? await browserCowStore().getMetadata(persistentWorkspaceId(profile.profileHash))
         : null;
-      option.dataset.persistence = metadata && metadata.checkpoint !== "empty" ? "saved" : "empty";
+      return { option, metadata };
     } catch {
-      option.dataset.persistence = "unknown";
+      return { option, metadata: undefined };
     }
   }));
+  if (revision !== persistenceSyncRevision) return false;
+
+  for (const { option, metadata } of results) {
+    if (!option) continue;
+    option.dataset.persistence = metadata === undefined
+      ? "unknown"
+      : metadata && metadata.checkpoint !== "empty" ? "saved" : "empty";
+    delete option.dataset.persistenceBytes;
+  }
+
+  const selected = results.find(({ option }) => option?.value === selectedProfileId);
+  if (selected?.option && selected.metadata && selected.metadata.checkpoint !== "empty") {
+    try {
+      const storedBytes = await browserCowStore().storedBytes(selected.metadata.id, selected.metadata.activeGeneration);
+      if (revision !== persistenceSyncRevision || select.value !== selectedProfileId) return false;
+      selected.option.dataset.persistenceBytes = String(storedBytes);
+    } catch {
+      if (revision !== persistenceSyncRevision) return false;
+      selected.option.dataset.persistence = "unknown";
+    }
+  }
+  if (revision !== persistenceSyncRevision || select.value !== selectedProfileId) return false;
   renderProfilePersistenceIndicators();
+  return true;
 }
 
 function inputValue(id: string): string {
@@ -109,8 +139,17 @@ function setDisabled(el: Element | null, disabled: boolean): void {
 }
 
 export function getSelectedProfile(): VmProfile | null {
+  if (typeof document === "undefined") return null;
   const id = $<HTMLSelectElement>("vm-profile")?.value || "";
   return getProfiles().find((profile) => profile.id === id) || null;
+}
+
+export function getEffectiveVmProfile(): VmProfile | null {
+  return state.activeRuntime?.profile || getSelectedProfile();
+}
+
+export function getEffectiveVmProfileId(): string {
+  return getEffectiveVmProfile()?.id || "";
 }
 
 export function reflectRuntimeSelection(runtime: ResolvedVmRuntime): void {

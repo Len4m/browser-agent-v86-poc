@@ -1,7 +1,7 @@
 import { t, tn } from "../../app/i18n";
 import { state } from "../../app/state";
 import { showBaModalPanel } from "../../ui/modal";
-import { getSelectedProfile, type VmProfile } from "../../vm/profile-config";
+import { getEffectiveVmProfileId, type VmProfile } from "../../vm/profile-config";
 import {
   defaultModelConfig,
   getLlmState,
@@ -13,7 +13,7 @@ import { llmNativeToolsPolicy, type NativeToolsPolicyApi } from "../tools/native
 import { llmToolExecutor } from "../tools/tool-executor";
 import { llmToolRegistry } from "../tools/tool-registry";
 import type { ToolMetadata } from "../tools/types";
-import { createTextElement, eventTargetElement, isRecord, textValue } from "./dom-utils";
+import { createTextElement, eventTargetElement, isRecord } from "./dom-utils";
 import { ensureLlmState } from "./state-utils";
 
 interface NativeToolsPickerState {
@@ -29,19 +29,6 @@ function isVmProfile(value: unknown): value is VmProfile {
   return isRecord(value) && typeof value.id === "string";
 }
 
-function selectedProfileIdFromDom(): string {
-  const profile = document.getElementById("vm-profile");
-  return profile instanceof HTMLSelectElement ? profile.value : "";
-}
-
-function getActiveToolProfileId(): string {
-  if (isRecord(state.activeRuntime) && isRecord(state.activeRuntime.profile)) {
-    const id = textValue(state.activeRuntime.profile.id);
-    if (id) return id;
-  }
-  return getSelectedProfile()?.id || selectedProfileIdFromDom();
-}
-
 function getActiveToolProfileLabel(profileId: string): string {
   const profile = state.profiles.filter(isVmProfile).find((item) => item.id === profileId);
   return profile?.name || profileId || t("vm.profile.none");
@@ -55,7 +42,7 @@ function getSelectedModelForTools(): LlmModelConfig {
 function getNativeToolsPickerState(): NativeToolsPickerState {
   const policy = llmNativeToolsPolicy;
   const model = getSelectedModelForTools();
-  const profileId = getActiveToolProfileId();
+  const profileId = getEffectiveVmProfileId();
   if (!policy) return { model, profileId, max: 0, active: new Set(), available: [], policy: null };
   const max = policy.getMaxNativeTools(model);
   const available = llmToolRegistry?.listTools({ profileId }) || [];
@@ -203,7 +190,7 @@ export function updateAvailableToolsUi(): void {
     return;
   }
 
-  const profileId = getActiveToolProfileId();
+  const profileId = getEffectiveVmProfileId();
   const profileLabel = getActiveToolProfileLabel(profileId);
   const tools = llmToolRegistry.listTools({ profileId });
   if (countBadge) {

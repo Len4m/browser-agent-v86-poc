@@ -52,7 +52,7 @@ import {
 } from "./portable-state";
 import { isResolvedVmRuntime, resolveVmRuntime, runtimeInputFromProfile, type ResolvedVmRuntime, type VmProfile } from "./runtime-config";
 import { diskRootHash, sha256 } from "./storage-hash";
-import { browserStorageStatus, createRuntimeCowDisk, type CowDisk } from "./indexeddb-cow-disk";
+import { createRuntimeCowDisk, type CowDisk } from "./indexeddb-cow-disk";
 import {
   getWsRetryDelay,
   PUBLIC_RELAY_URL,
@@ -765,7 +765,7 @@ async function selectedWorkspace(): Promise<{ runtime: ResolvedVmRuntime; disk: 
 }
 
 export async function syncWorkspaceControls(): Promise<void> {
-  await syncProfilePersistenceIndicators();
+  if (!await syncProfilePersistenceIndicators()) return;
   const profile = getSelectedProfile();
   const hasPersistedWorkspace = Boolean(profile && selectedProfileHasPersistedWorkspace());
   const persistentModeSelected = getVmRuntimeConfig().workspaceMode === "persistent";
@@ -775,25 +775,6 @@ export async function syncWorkspaceControls(): Promise<void> {
     state.workspaceStatus = profile ? "temporary" : "none";
   }
 
-  let workspaceBytes: number | null = null;
-  if (hasPersistedWorkspace && profile) {
-    try {
-      const { disk } = await selectedWorkspace();
-      workspaceBytes = await disk.storedBytes();
-      if (state.workspaceStatus !== "degraded" && state.workspaceStatus !== "syncing") {
-        state.workspaceStatus = await browserStorageStatus();
-      }
-    } catch (error) {
-      state.workspaceStatus = "degraded";
-      logTool(`${NL}[workspace] IndexedDB no disponible: ${errorMessage(error)}${NL}`);
-    }
-  }
-
-  const storageBadge = $("vm-profile-storage-status");
-  if (storageBadge && hasPersistedWorkspace && workspaceBytes != null) {
-    storageBadge.textContent = `${t("vm.profile.persistence.saved")} · ${formatBytes(workspaceBytes)}`;
-    storageBadge.title = storageBadge.textContent;
-  }
   const blocked = state.vmStarting || state.agentBusy;
   const resetButton = $<HTMLButtonElement>("workspace-reset");
   if (resetButton) resetButton.disabled = blocked || !hasPersistedWorkspace || !persistentModeSelected || Boolean(state.vm);

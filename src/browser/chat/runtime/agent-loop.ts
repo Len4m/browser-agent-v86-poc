@@ -4,6 +4,7 @@
 
 import { state } from "../../app/state";
 import { t } from "../../app/i18n";
+import { getEffectiveVmProfileId } from "../../vm/profile-config";
 import { originApi } from "../../app/origin-awareness";
 import { appEvents } from "../../core/events";
 import { addMessage, makeAbortError, throwIfAborted } from "../../vm/runtime-assets";
@@ -184,14 +185,6 @@ function runtimeInfo(modelConfig: LlmModelConfig): RuntimeModelInfo {
         dtype: textValue(runtime.dtype),
       }
     : {};
-}
-
-function activeRuntimeProfileId(): string {
-  if (isRecord(state.activeRuntime) && isRecord(state.activeRuntime.profile)) {
-    return textValue(state.activeRuntime.profile.id);
-  }
-  const profileSelect = document.getElementById("vm-profile");
-  return profileSelect instanceof HTMLSelectElement ? profileSelect.value : "";
 }
 
 function isLlmCapabilities(value: unknown): value is LlmCapabilities {
@@ -727,7 +720,7 @@ async function runAgentTurn({
     selected: activeToolNames,
     registered: registeredToolNames,
     sentActiveTools: sentActiveToolNames,
-    profileId: activeRuntimeProfileId(),
+    profileId: getEffectiveVmProfileId(),
     modelId: modelConfig.id,
   });
 

@@ -1,8 +1,8 @@
 // Browser Agent v86 - AI SDK tool bridge.
 // Builds ai.tool() definitions from the typed LLM tool registry for the agent runner.
 
-import { state } from "../../app/state";
 import { t } from "../../app/i18n";
+import { getEffectiveVmProfileId } from "../../vm/profile-config";
 import {
   getAiSdk,
   type AiSdkSchemaLike,
@@ -63,20 +63,6 @@ export function createSerialToolQueue(): SerialToolQueue {
   };
 }
 
-function activeRuntimeProfileId(): string {
-  if (isRecord(state.activeRuntime) && isRecord(state.activeRuntime.profile)) {
-    return textValue(state.activeRuntime.profile.id);
-  }
-  return "";
-}
-
-function getProfileId(): string {
-  const stateProfile = activeRuntimeProfileId();
-  if (stateProfile) return stateProfile;
-  const profileSelect = document.getElementById("vm-profile");
-  return profileSelect instanceof HTMLSelectElement ? profileSelect.value : "";
-}
-
 function buildModelText(toolCall: NormalizedToolCall, toolResult: ToolExecutionResult | null | undefined, artifact: LlmArtifact | null): string {
   if (toolResult?.cancelled) return t("common.toolCancelledByUser");
   if (artifact) {
@@ -123,7 +109,7 @@ export function buildAiSdkTools({
   onToolStart,
   onToolEnd,
   toolNames = null,
-  profileId = getProfileId(),
+  profileId = getEffectiveVmProfileId(),
 }: BuildAiSdkToolsOptions = {}): Record<string, unknown> {
   const sdk = getAiSdk();
   if (!sdk?.tool || !sdk.z) return {};
