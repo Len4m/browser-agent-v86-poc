@@ -217,6 +217,27 @@ test("a profile hash resolves to one deterministic persistent workspace", async 
   assert.deepEqual(await second.exportBlocks(), []);
 });
 
+test("a workspace can be reset without reopening incompatible metadata", async () => {
+  const store = new MemoryCowBlockStore();
+  const workspaceId = persistentWorkspaceId(HASH_A);
+  const original = {
+    id: workspaceId,
+    profileHash: HASH_A,
+    seedHash: HASH_A,
+    sizeBytes: 65536,
+    blockSize: 65536,
+  };
+  const metadata = await store.open(original);
+  await store.write(workspaceId, metadata.activeGeneration, [{ index: 0, bytes: new Uint8Array(65536).fill(7) }]);
+  await store.activate(workspaceId, metadata.activeGeneration, "dirty");
+  await assert.rejects(store.open({ ...original, seedHash: HASH_B }), /identidad del perfil/);
+
+  await store.reset(workspaceId);
+  assert.equal(await store.getMetadata(workspaceId), null);
+  assert.equal(await store.storedBytes(workspaceId, metadata.activeGeneration), 0);
+  assert.equal((await store.open({ ...original, seedHash: HASH_B })).checkpoint, "empty");
+});
+
 test("portable snapshots include HDB and reject truncation, corruption and incompatible RAM", async () => {
   const blocks = [{ index: 1, bytes: new Uint8Array(65536).fill(42) }];
   const consoleUi = {

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* global document, HTMLButtonElement */
+/* global document, HTMLButtonElement, indexedDB */
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -212,6 +212,29 @@ try {
   await page.locator("#ba-modal-actions .ba-modal-button.danger").click();
   await page.waitForFunction(() => (document.querySelector("#save-state") instanceof HTMLButtonElement) && document.querySelector("#save-state").disabled, null, { timeout: 60000 });
   await page.waitForFunction(() => (document.querySelector("#workspace-reset") instanceof HTMLButtonElement) && !document.querySelector("#workspace-reset").disabled, null, { timeout: 10000 });
+  await page.evaluate(async () => {
+    const request = indexedDB.open("browser-agent-v86-storage-v1", 1);
+    const database = await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const tx = database.transaction("workspaces", "readwrite");
+    const store = tx.objectStore("workspaces");
+    const allRequest = store.getAll();
+    const records = await new Promise((resolve, reject) => {
+      allRequest.onsuccess = () => resolve(allRequest.result);
+      allRequest.onerror = () => reject(allRequest.error);
+    });
+    const saved = records.find((record) => record?.checkpoint && record.checkpoint !== "empty");
+    if (!saved) throw new Error("no se encontró el workspace preparado para corromper la identidad");
+    store.put({ ...saved, seedHash: "incompatible-test-seed" });
+    await new Promise((resolve, reject) => {
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+    database.close();
+  });
   await page.click("#workspace-reset");
   await page.locator("#ba-modal-actions .ba-modal-button.danger").click();
   await page.locator("#vm-profile-storage-status").waitFor({ state: "hidden", timeout: 10000 });
