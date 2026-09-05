@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import baseProfile from "../../vm/profiles/alpine-base.json";
+import { state } from "../../src/browser/app/state";
 import type { AiSdkToolCall } from "../../src/browser/chat/provider/ai-sdk-runtime";
 import { llmToolExecutor } from "../../src/browser/chat/tools/tool-executor";
 
@@ -14,14 +16,17 @@ function toolCall(toolName: string, input: Record<string, unknown> = {}): AiSdkT
 }
 
 test("native approval policy maps risk, allowlist and prior denials", () => {
+  class ProfileSelect { value = "alpine-base"; }
+  const profileSelect = new ProfileSelect();
   Object.defineProperty(globalThis, "document", {
-    value: { getElementById: () => null },
+    value: { getElementById: (id: string) => id === "vm-profile" ? profileSelect : null },
     configurable: true,
   });
   Object.defineProperty(globalThis, "HTMLSelectElement", {
-    value: class HTMLSelectElement {},
+    value: ProfileSelect,
     configurable: true,
   });
+  state.profiles = [baseProfile];
   const previousLevel = llmToolExecutor.getAutonomyMaxLevel();
   try {
     const lowRisk = toolCall("vm_fs_list", { path: "/tmp" });

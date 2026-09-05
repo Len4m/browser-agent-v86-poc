@@ -21,66 +21,57 @@
 .compact-vm-options .vm-field-profile {
   grid-column: 1 / 2;
 }
-.compact-vm-options .vm-field-disk {
+.compact-vm-options .vm-field-storage {
   grid-column: 2 / 3;
 }
 .compact-vm-options .vm-field-ram {
-  grid-column: 2 / 3;
-}
-.compact-vm-options .vm-field-vram {
   grid-column: 3 / 4;
 }
-body.vm-profile-preset .compact-vm-options .vm-field-manual-only {
-  display: none;
+.compact-vm-options .vm-field-vram {
+  grid-column: 4 / 5;
 }
-body.vm-profile-manual .compact-vm-options {
-  grid-template-columns: minmax(220px, 1.4fr) minmax(105px, .55fr) minmax(95px, .5fr) minmax(150px, .75fr);
-}
-body.vm-profile-manual .compact-vm-options .vm-field-profile { grid-column: 1 / 2; }
-body.vm-profile-manual .compact-vm-options .vm-field-ram { grid-column: 2 / 3; }
-body.vm-profile-manual .compact-vm-options .vm-field-vram { grid-column: 3 / 4; }
-body.vm-profile-manual .compact-vm-options .vm-field-disk { grid-column: 4 / 5; }
 
-.compact-vm-options #vm-profile-hint {
+.compact-vm-options .vm-profile-summary {
   grid-column: 1 / -1;
   margin: 0;
   align-self: center;
-  font-size: 11px;
-  line-height: 1.25;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
   padding-top: 2px;
 }
-.compact-vm-options #vm-disk-hint {
-  grid-column: 1 / -1;
-  margin: -2px 0 0;
+.compact-vm-options #vm-profile-hint {
   font-size: 11px;
   line-height: 1.25;
+  min-width: 0;
+}
+.compact-vm-options #vm-profile-storage-status {
+  flex: 0 0 auto;
+  font-size: 10px;
 }
 .vm-options + .toolbar {
+  align-items: center;
   margin-top: 2px;
 }
 @media (max-width: 900px) {
-  .compact-vm-options,
-  body.vm-profile-manual .compact-vm-options {
+  .compact-vm-options {
     grid-template-columns: 1fr 1fr;
   }
-  .compact-vm-options .vm-field-profile,
-  body.vm-profile-manual .compact-vm-options .vm-field-profile {
+  .compact-vm-options .vm-field-profile {
     grid-column: 1 / -1;
   }
-  .compact-vm-options .vm-field-disk,
-  body.vm-profile-manual .compact-vm-options .vm-field-disk {
+  .compact-vm-options .vm-field-storage {
     grid-column: 1 / -1;
   }
-  body.vm-profile-manual .compact-vm-options .vm-field-ram {
+  .compact-vm-options .vm-field-ram {
     grid-column: 1 / 2;
   }
-  body.vm-profile-manual .compact-vm-options .vm-field-vram {
+  .compact-vm-options .vm-field-vram {
     grid-column: 2 / 3;
   }
-  .compact-vm-options #vm-profile-hint,
-  body.vm-profile-manual .compact-vm-options #vm-profile-hint,
-  .compact-vm-options #vm-disk-hint {
+  .compact-vm-options .vm-profile-summary {
     grid-column: 1 / -1;
   }
 }

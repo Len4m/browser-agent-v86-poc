@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Len4m/browser-agent-v86-poc/schemas/vm-profile.schema.json",
   "title": "Browser Agent v86 VM profile",
-  "description": "Schema for source VM profiles in vm/profiles/*.json. Profiles are consumed by scripts/setup/vm-profile-image.mjs to generate public v86 initramfs manifests. Source profiles are intentionally explicit for generated image identity, UI metadata, boot assets, RAM defaults, packages and ordered tool policy.",
+  "description": "Schema for managed VM profiles. Every profile uses an immutable root HDA plus an optional in-memory or IndexedDB OverlayFS workspace.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -10,7 +10,9 @@
     "name",
     "description",
     "alpineVersion",
-    "recommendedRamMb",
+    "minimumRamMb",
+    "minimumVramMb",
+    "storage",
     "packages",
     "allowedTools"
   ],
@@ -51,22 +53,48 @@
       "pattern": "^(public/)?v86/images/.+",
       "description": "Optional kernel path override. Default derives from alpineVersion, for example 3.23.4 -> v86/images/kernels/alpine-v3.23-vmlinuz-lts."
     },
-    "recommendedRamMb": {
+    "minimumRamMb": {
       "type": "integer",
       "minimum": 64,
-      "description": "RAM applied automatically when this profile is selected. With initramfs, this is total guest RAM and also backs the unpacked rootfs."
+      "description": "Minimum guest RAM required by this profile in MB. The UI disables lower values and runtime validation rejects them."
     },
-    "recommendedVramMb": {
+    "minimumVramMb": {
       "type": "integer",
       "minimum": 0,
-      "default": 8,
-      "description": "Recommended VRAM shown and applied by default in MB. Optional; defaults to 8 when omitted. Use 0 only when the profile has been tested without VGA memory."
+      "description": "Minimum VGA memory required by this profile in MB. The UI disables lower values and runtime validation rejects them."
     },
-    "defaultDisk": {
-      "type": "string",
-      "pattern": "^(initramfs|hda-[0-9]+)$",
-      "default": "initramfs",
-      "description": "Default disk selector value. Optional; defaults to initramfs. hda-* adds a data disk; boot/rootfs still use initramfs."
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layout", "rootDiskMb", "workspaceDiskMb", "blockSize", "filesystem"],
+      "properties": {
+        "layout": {
+          "type": "string",
+          "const": "overlay-hda",
+          "description": "Managed profiles boot a minimal initramfs and switch to immutable HDA plus an optional OverlayFS workspace."
+        },
+        "rootDiskMb": {
+          "type": "integer",
+          "minimum": 128,
+          "description": "Logical size of the immutable ext4 root disk. Required for overlay-hda."
+        },
+        "workspaceDiskMb": {
+          "type": "integer",
+          "minimum": 128,
+          "description": "Logical size of the ext4 OverlayFS disk, backed by memory or IndexedDB according to the user's choice."
+        },
+        "blockSize": {
+          "type": "integer",
+          "enum": [65536],
+          "default": 65536,
+          "description": "Logical block size used by the browser CoW disk."
+        },
+        "filesystem": {
+          "type": "string",
+          "enum": ["ext4"],
+          "default": "ext4"
+        }
+      }
     },
     "packages": {
       "type": "array",
@@ -115,7 +143,7 @@
         "type": "string",
         "minLength": 1
       },
-      "description": "Shell commands executed by scripts/setup/vm-alpine-initramfs.sh against /rootfs during image generation."
+      "description": "Shell commands executed by scripts/setup/vm-alpine-overlay-hda.sh against /rootfs during image generation."
     },
     "bootMessage": {
       "type": "string",

@@ -286,11 +286,11 @@ export function showBaModalPanel({
   });
 }
 
-export async function confirmVmShutdown(): Promise<boolean> {
+export async function confirmVmShutdown({ persistent = false }: { persistent?: boolean } = {}): Promise<boolean> {
   const result = await showBaModal({
     title: t("common.shutdownVm"),
-    message: t("modal.shutdown.message"),
-    detail: t("modal.shutdown.detail"),
+    message: persistent ? t("modal.shutdown.persistentMessage") : t("modal.shutdown.message"),
+    detail: persistent ? t("modal.shutdown.persistentDetail") : t("modal.shutdown.detail"),
     buttons: [
       { id: "cancel", label: t("common.cancel"), variant: "secondary", cancel: true },
       { id: "shutdown", label: t("common.shutdownVm"), variant: "danger" },

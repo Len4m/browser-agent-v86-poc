@@ -588,7 +588,7 @@ export async function preloadVmAssets(
       });
     }, { signal });
 
-    if (asset.mode === "buffer") buffers[asset.key] = buffer;
+    buffers[asset.key] = buffer;
     completedBytes += knownSize || buffer.byteLength || 0;
   }
 

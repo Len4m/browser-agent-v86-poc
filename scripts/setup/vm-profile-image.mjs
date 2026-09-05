@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
@@ -60,17 +60,40 @@ function publicUrl(path) {
 }
 
 function contentHash(path) {
-  return createHash("sha256").update(readFileSync(path)).digest("hex").slice(0, 12);
+  const hash = createHash("sha256");
+  const descriptor = openSync(isAbsolute(path) ? path : join(root, path), "r");
+  const buffer = Buffer.allocUnsafe(1024 * 1024);
+  try {
+    let count = 0;
+    while ((count = readSync(descriptor, buffer, 0, buffer.byteLength, null)) > 0) hash.update(buffer.subarray(0, count));
+  } finally {
+    closeSync(descriptor);
+  }
+  return hash.digest("hex");
 }
 
 function versionedPublicUrl(path) {
   const abs = join(root, path);
   const url = publicUrl(path);
-  return `${url}?v=${contentHash(abs)}`;
+  return `${url}?v=${contentHash(abs).slice(0, 12)}`;
+}
+
+function assetIdentity(path, url = versionedPublicUrl(path), logicalBytes = null) {
+  const abs = join(root, path);
+  return { url, bytes: logicalBytes ?? bytes(abs), sha256: contentHash(abs) };
+}
+
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
 }
 
 if (!existsSync(profilePath)) fail(`no existe el perfil ${profilePath}`);
 const profile = JSON.parse(readFileSync(profilePath, "utf8"));
+const sourceHash = createHash("sha256").update(canonicalJson(Object.fromEntries(Object.entries(profile).filter(([key]) => key !== "$schema")))).digest("hex");
 
 const id = assertString(profile.id, "id");
 const name = assertString(profile.name || profile.id, "name");
@@ -81,15 +104,22 @@ const firstBootCommands = assertArray(profile.firstBootCommands || [], "firstBoo
 const buildCommands = assertArray(profile.buildCommands || [], "buildCommands");
 const alpineVersion = profile.alpineVersion ? assertString(profile.alpineVersion, "alpineVersion") : "3.23.4";
 const alpineBranch = profile.alpineBranch ? assertString(profile.alpineBranch, "alpineBranch") : `v${alpineVersion.split(".").slice(0, 2).join(".")}`;
+const storage = profile.storage;
+const layout = "overlay-hda";
 const output = `v86/images/profiles/${id}-initramfs.gz`;
+const rootfsOutput = `v86/images/profiles/${id}-rootfs.img`;
+const persistentSeedOutput = `v86/images/profiles/${id}-persistent-seed.img`;
 const kernelOutput = profile.kernelOutput ? assertString(profile.kernelOutput, "kernelOutput") : `v86/images/kernels/alpine-${alpineBranch}-vmlinuz-lts`;
 const outputFile = publicFilePath(output);
+const rootfsOutputFile = publicFilePath(rootfsOutput);
+const persistentSeedOutputFile = publicFilePath(persistentSeedOutput);
 const kernelOutputFile = publicFilePath(kernelOutput);
 const arch = profile.arch ? assertString(profile.arch, "arch") : "x86";
 const bootMessage = profile.bootMessage ? String(profile.bootMessage) : `${name} ready.`;
-const recommendedRamMb = Number(profile.recommendedRamMb || 512);
-const recommendedVramMb = Number(profile.recommendedVramMb ?? 8);
-const defaultDisk = typeof profile.defaultDisk === "string" ? profile.defaultDisk : "initramfs";
+const minimumRamMb = Number(profile.minimumRamMb);
+const minimumVramMb = Number(profile.minimumVramMb);
+if (!Number.isInteger(minimumRamMb) || minimumRamMb < 64) fail(`minimumRamMb inválido en ${id}`);
+if (!Number.isInteger(minimumVramMb) || minimumVramMb < 0) fail(`minimumVramMb inválido en ${id}`);
 const requiredProfilePackages = ["python3"];
 
 for (const packageName of requiredProfilePackages) {
@@ -127,9 +157,10 @@ writeFileSync(buildCommandsFile, [
 ].join("\n"));
 
 console.log("\n== Generando imagen del perfil ==");
-run("bash", ["scripts/setup/vm-alpine-initramfs.sh"], {
+run("bash", ["scripts/setup/vm-alpine-overlay-hda.sh"], {
   env: {
     PROFILE_ID: id,
+    PROFILE_BUILD_ID: `${id}-${sourceHash.slice(0, 12)}`,
     PROFILE_NAME: name,
     PROFILE_PACKAGES: packages.join("\n"),
     PROFILE_EXTRA_REPOSITORIES: extraRepositories.join("\n"),
@@ -138,6 +169,10 @@ run("bash", ["scripts/setup/vm-alpine-initramfs.sh"], {
     PROFILE_BOOT_MESSAGE: bootMessage,
     PROFILE_VERIFY_PACKAGES: "1",
     PROFILE_OUTPUT: outputFile,
+    PROFILE_ROOTFS_OUTPUT: rootfsOutputFile,
+    PROFILE_PERSISTENT_SEED_OUTPUT: persistentSeedOutputFile,
+    PROFILE_ROOT_DISK_MB: String(storage.rootDiskMb || 512),
+    PROFILE_WORKSPACE_DISK_MB: String(storage.workspaceDiskMb || 512),
     PROFILE_KERNEL_OUTPUT: kernelOutputFile,
     ALPINE_VERSION: alpineVersion,
     ALPINE_BRANCH: alpineBranch,
@@ -150,31 +185,88 @@ const kernelAbs = join(root, kernelOutputFile);
 if (!existsSync(outputAbs)) fail(`no se ha generado ${outputFile}`);
 if (!existsSync(kernelAbs)) fail(`no se ha generado ${kernelOutputFile}`);
 
+const rootfsAbs = join(root, rootfsOutputFile);
+const persistentSeedAbs = join(root, persistentSeedOutputFile);
+if (!existsSync(rootfsAbs)) fail(`no se ha generado ${rootfsOutputFile}`);
+if (!existsSync(persistentSeedAbs)) fail(`no se ha generado ${persistentSeedOutputFile}`);
+
+const rootfsPartsUrl = (() => {
+  const rootfsVersion = contentHash(rootfsOutputFile).slice(0, 12);
+  const directory = dirname(rootfsAbs);
+  const base = basename(rootfsAbs, ".img");
+  const sourcePattern = new RegExp(`^${base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-(\\d+)-(\\d+)\\.img\\.zst$`);
+  const targetPrefix = `${base}.${rootfsVersion}-`;
+  for (const file of readdirSync(directory)) {
+    if (file.startsWith(`${base}.`) && file.endsWith(".img.zst") && !file.startsWith(targetPrefix)) {
+      unlinkSync(join(directory, file));
+    }
+  }
+  for (const file of readdirSync(directory)) {
+    const match = file.match(sourcePattern);
+    if (match) renameSync(join(directory, file), join(directory, `${targetPrefix}${match[1]}-${match[2]}.img.zst`));
+  }
+  return publicUrl(rootfsOutputFile).replace(/\.img$/, `.${rootfsVersion}.img.zst`);
+})();
+
+const assets = {
+  libv86: assetIdentity("public/v86/build/libv86.js"),
+  wasm: assetIdentity("public/v86/build/v86.wasm"),
+  bios: assetIdentity("public/v86/bios/seabios.bin"),
+  vgaBios: assetIdentity("public/v86/bios/vgabios.bin"),
+  kernel: assetIdentity(kernelOutputFile),
+  initramfs: assetIdentity(outputFile),
+  rootfs: assetIdentity(rootfsOutputFile, rootfsPartsUrl, Number(storage.rootDiskMb) * 1024 * 1024),
+  persistentSeed: assetIdentity(persistentSeedOutputFile, versionedPublicUrl(persistentSeedOutputFile), Number(storage.workspaceDiskMb) * 1024 * 1024),
+};
+
+const profileIdentity = {
+  source: Object.fromEntries(Object.entries(profile).filter(([key]) => key !== "$schema")),
+  assets: Object.fromEntries(Object.entries(assets).map(([key, asset]) => [key, { bytes: asset.bytes, sha256: asset.sha256 }])),
+  topology: { hda: "immutable-root", hdb: "overlay-cow", blockSize: 65536, partSize: 4 * 1024 * 1024 },
+};
+const profileHash = createHash("sha256").update(canonicalJson(profileIdentity)).digest("hex");
+
 const manifest = {
   id,
   name,
   description: profile.description || "",
-  type: "initramfs",
+  type: layout,
+  profileHash,
   alpineVersion,
   alpineBranch,
   arch,
-  output: versionedPublicUrl(outputFile),
-  kernelOutput: versionedPublicUrl(kernelOutputFile),
+  output: assets.initramfs.url,
+  kernelOutput: assets.kernel.url,
   initramfsBytes: bytes(outputAbs),
   kernelBytes: bytes(kernelAbs),
   packages,
   allowedTools,
   firstBootCommands,
   buildCommands,
-  recommendedRamMb,
-  recommendedVramMb,
-  defaultDisk,
+  minimumRamMb,
+  minimumVramMb,
+  storage: {
+    layout,
+    rootDiskMb: Number(storage.rootDiskMb),
+    workspaceDiskMb: Number(storage.workspaceDiskMb),
+    blockSize: 65536,
+    filesystem: "ext4",
+    topology: [
+      { role: "hda", kind: "immutable-root", readOnly: true, useParts: true, fixedChunkSize: 4 * 1024 * 1024 },
+      { role: "hdb", kind: "overlay-cow", readOnly: false, blockSize: 65536, persistence: "user-selected" },
+    ],
+  },
+  assets,
+  cmdline: "rw rdinit=/init console=ttyS0,115200 console=tty0 edd=off nowatchdog tsc=reliable mitigations=off random.trust_cpu=on",
+  network: { type: "virtio" },
+  uarts: ["serial0", "serial1", "serial2"],
+  filesystem9p: { enabled: true, root: null },
   extraRepositories,
   generatedAt: new Date().toISOString(),
   notes: [
-    "RAM declarada: validar arrancando el perfil con el valor recomendado.",
+    "RAM/VRAM mínimas: validar arrancando el perfil con esos valores.",
     "No necesitas wsnic para construir esta imagen. Sí necesitas wsnic para validar red desde la VM.",
-    "Esta imagen sigue siendo initramfs: los cambios hechos dentro de la VM no persisten salvo snapshot.",
+    "Rootfs HDA inmutable + HDB CoW temporal o persistente, según la selección explícita del usuario.",
   ],
 };
 
@@ -192,14 +284,17 @@ index.push({
   id,
   name,
   description: manifest.description,
+  type: manifest.type,
+  profileHash,
   output: manifest.output,
   kernelOutput: manifest.kernelOutput,
   initramfsBytes: manifest.initramfsBytes,
-  recommendedRamMb,
-  recommendedVramMb,
-  defaultDisk,
+  minimumRamMb,
+  minimumVramMb,
   packages,
   allowedTools,
+  storage: manifest.storage,
+  assets,
   extraRepositories,
   generatedAt: manifest.generatedAt,
 });
@@ -208,6 +303,8 @@ writeFileSync(indexPath, JSON.stringify(index, null, 2) + "\n");
 console.log("\n== Resultado ==");
 console.log(`Kernel:    ${kernelOutputFile} (${human(manifest.kernelBytes)})`);
 console.log(`Initramfs: ${outputFile} (${human(manifest.initramfsBytes)})`);
+console.log(`Rootfs HDA: ${rootfsOutputFile} (${human(manifest.assets.rootfs.bytes)} lógicos)`);
+console.log(`Semilla HDB: ${persistentSeedOutputFile} (${human(manifest.assets.persistentSeed.bytes)} lógicos)`);
 console.log(`Manifest:  public/v86/images/profiles/${id}.json`);
-console.log(`RAM perfil: ${recommendedRamMb} MB`);
-console.log("\nPara probar con la UI actual, arranca la VM usando el initramfs generado por defecto.");
+console.log(`RAM mínima del perfil: ${minimumRamMb} MB`);
+console.log("\nEl perfil puede arrancar como sesión temporal o con su workspace persistente.");

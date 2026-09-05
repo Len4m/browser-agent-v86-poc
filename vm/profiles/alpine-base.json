@@ -4,7 +4,15 @@
   "name": "Alpine Base Lite",
   "description": "Alpine mínimo con certificados, curl y nano.",
   "alpineVersion": "3.23.4",
-  "recommendedRamMb": 512,
+  "minimumRamMb": 512,
+  "minimumVramMb": 8,
+  "storage": {
+    "layout": "overlay-hda",
+    "rootDiskMb": 512,
+    "workspaceDiskMb": 512,
+    "blockSize": 65536,
+    "filesystem": "ext4"
+  },
   "packages": [
     "ca-certificates",
     "curl",

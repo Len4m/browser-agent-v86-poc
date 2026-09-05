@@ -2,14 +2,49 @@
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export TERM=xterm
 
-mount -t devtmpfs dev /dev 2>/dev/null || mount -t tmpfs dev /dev
-mkdir -p /dev/pts /proc /sys /run /tmp /mnt /root
-mount -t devpts devpts /dev/pts 2>/dev/null || true
-mount -t proc proc /proc 2>/dev/null || true
-mount -t sysfs sysfs /sys 2>/dev/null || true
-mount -t tmpfs tmpfs /run 2>/dev/null || true
-mount -t tmpfs tmpfs /tmp 2>/dev/null || true
+trace_persistent_init() {
+  [ -f /etc/browser-agent-storage-layout ] || return 0
+  printf '[persistent-root] %s\n' "$*" >/dev/ttyS0 2>/dev/null || true
+}
 
+PERSISTENT_INIT_PHASE='entry'
+persistent_init_unexpected_exit() {
+  status=$?
+  trap - EXIT
+  : > /run/browser-agent-init-rescue 2>/dev/null || true
+  printf '\n[persistent-root] FATAL: /init exited in phase "%s" (status %s); keeping recovery console alive\n' \
+    "$PERSISTENT_INIT_PHASE" "$status" >/dev/ttyS0 2>/dev/null || true
+  while true; do
+    if [ -x /sbin/browser-agent-login ]; then
+      setsid getty -L -n -l /sbin/browser-agent-login 115200 ttyS0 xterm >/dev/ttyS0 2>&1 || true
+    else
+      setsid sh -c 'exec sh </dev/ttyS0 >/dev/ttyS0 2>&1' || true
+    fi
+    sleep 1
+  done
+}
+
+[ -f /etc/browser-agent-storage-layout ] && trap persistent_init_unexpected_exit EXIT
+trace_persistent_init 'entered final /init'
+
+PERSISTENT_INIT_PHASE='pseudo-filesystems'
+if [ -f /etc/browser-agent-storage-layout ]; then
+  # The minimal initramfs already mounted and moved these filesystems into the
+  # final root. Mounting over /dev again would hide ttyS0 and every transferred
+  # device node, leaving PID 1 alive but the serial console unreachable.
+  mkdir -p /dev/pts /proc /sys /run /tmp /mnt /root
+else
+  mount -t devtmpfs dev /dev 2>/dev/null || mount -t tmpfs dev /dev
+  mkdir -p /dev/pts /proc /sys /run /tmp /mnt /root
+  mount -t devpts devpts /dev/pts 2>/dev/null || true
+  mount -t proc proc /proc 2>/dev/null || true
+  mount -t sysfs sysfs /sys 2>/dev/null || true
+  mount -t tmpfs tmpfs /run 2>/dev/null || true
+fi
+mount -t tmpfs tmpfs /tmp 2>/dev/null || true
+trace_persistent_init 'pseudo-filesystems ready'
+
+PERSISTENT_INIT_PHASE='network-modules'
 hostname browser-alpine 2>/dev/null || true
 printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\n' > /etc/resolv.conf
 
@@ -30,6 +65,7 @@ if [ -f /etc/v86-net-modules.list ]; then
 else
   echo "missing /etc/v86-net-modules.list" >>/tmp/v86-net-modules.log
 fi
+trace_persistent_init 'modules ready'
 
 if [ -e /sys/bus/pci/devices/0000:00:05.0 ] && [ ! -e /sys/bus/pci/devices/0000:00:05.0/driver ] && [ -e /sys/bus/pci/drivers/ne2k-pci/bind ]; then
   echo 0000:00:05.0 > /sys/bus/pci/drivers/ne2k-pci/bind 2>>/tmp/v86-net-modules.log || true
@@ -47,6 +83,7 @@ exec /bin/sh -l
 LOGIN
 chmod +x /sbin/browser-agent-login
 
+PERSISTENT_INIT_PHASE='serial-runners'
 supervise_browser_agent_runner() {
   name="$1"
   tty="$2"
@@ -65,7 +102,9 @@ supervise_browser_agent_runner() {
 
 supervise_browser_agent_runner ba-serial1-runner /dev/ttyS1 /usr/local/bin/ba-serial1-runner
 supervise_browser_agent_runner ba-serial2-console-runner /dev/ttyS2 /usr/local/bin/ba-serial2-console-runner
+trace_persistent_init 'serial runners started'
 
+PERSISTENT_INIT_PHASE='firstboot'
 if [ -x /etc/browser-agent-firstboot.sh ]; then
   /etc/browser-agent-firstboot.sh >>/tmp/browser-agent-firstboot.log 2>&1 || true
 fi
@@ -81,11 +120,15 @@ fi
   fi
   printf '\n'
 } >/dev/ttyS0
+trace_persistent_init 'starting serial getty'
 
+PERSISTENT_INIT_PHASE='serial-getty-loop'
 while true; do
   # Use getty instead of launching /bin/sh directly. This gives the shell a
   # proper controlling TTY on ttyS0, enabling job control (Ctrl+Z, jobs, fg, bg).
-  setsid getty -L -n -l /sbin/browser-agent-login 115200 ttyS0 xterm >/dev/ttyS0 2>&1
+  # Keep the OR-list: BusyBox ash must not tail-exec getty and turn the login
+  # shell into PID 1. A tty close must return here, never kill the kernel init.
+  setsid getty -L -n -l /sbin/browser-agent-login 115200 ttyS0 xterm >/dev/ttyS0 2>&1 || true
   printf '\n[init] serial getty exited, restarting...\n' >/dev/ttyS0
   sleep 1
 done

@@ -12,20 +12,6 @@ import { modelConfigFromProfile, type LlmModelConfig } from "../../src/browser/c
 import { defaultProfile } from "../../src/browser/chat/models/model-profiles";
 import { TOOL_DEFINITIONS } from "virtual:ba-tools";
 
-const manualTools = [
-  "vm_python_exec",
-  "vm_sh_exec",
-  "vm_fs_list",
-  "vm_fs_read",
-  "vm_fs_write",
-  "vm_cmd_which",
-  "web_curl_head",
-  "vm_sys_info",
-  "vm_console_status",
-  "vm_pkg_info",
-  "web_curl_fetch_text",
-];
-
 function installProfiles(): void {
   state.profiles = [baseProfile, liteProfile, webProfile];
 }
@@ -47,8 +33,8 @@ function installLocalStorage(): Map<string, string> {
   return store;
 }
 
-test("manual profile exposes only the current base tool allowlist in priority order", () => {
-  assert.deepEqual(llmToolRegistry.listToolNames({ profileId: "manual" }), manualTools);
+test("a missing profile exposes no VM tools", () => {
+  assert.deepEqual(llmToolRegistry.listToolNames({ profileId: "" }), []);
 });
 
 test("VM profiles expose allowedTools order from source JSON", () => {

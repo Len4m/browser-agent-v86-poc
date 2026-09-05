@@ -21,21 +21,21 @@ import {
   connectWs,
   copyDockerCommand,
   openRestoreSnapshotPicker,
+  resetWorkspace,
   restoreSnapshotFromFile,
   runCommandFromInput,
   saveSnapshot,
   selectWsPreset,
+  syncWorkspaceControls,
   syncWsEndpointControls,
   testWsEndpoint,
-  toggleDiskInVm,
 } from "../vm/operations";
-import { loadProfiles, updateDiskHint, updateProfileHint } from "../vm/profile-config";
+import { loadProfiles, updateProfileHint } from "../vm/profile-config";
 import { runChecks } from "../ui/checks-panel";
 import { scheduleSerialFit, toggleVmPower } from "../vm/serial-vm";
 import { appEvents } from "../core/events";
 import {
   syncChecksButton,
-  syncDiskCheckButton,
   syncPowerButtons,
   syncSnapshotButtons,
   syncWsButton,
@@ -158,6 +158,7 @@ export function initBootstrap(): void {
   appEvents.on("app:language-changed", () => {
     setChatExpanded(document.body.classList.contains("chat-expanded"), { persist: false });
     applyDockerCopyLabels();
+    void syncWorkspaceControls();
   });
   // The global GPU/WASM badge is now driven by the same capability service
   // used by the LLM panel/model selector. This avoids the old mismatch where
@@ -193,9 +194,7 @@ export function initBootstrap(): void {
   $("restore-state-file")?.addEventListener("change", (event) => {
     void restoreSnapshotFromFile(event);
   });
-  $("check-disk")?.addEventListener("click", () => {
-    void toggleDiskInVm();
-  });
+  $("workspace-reset")?.addEventListener("click", () => { void resetWorkspace(); });
   $("run-checks")?.addEventListener("click", () => {
     void runChecks();
   });
@@ -218,17 +217,18 @@ export function initBootstrap(): void {
     state.assetBuffers = null;
     state.assetCacheKey = "";
     updateProfileHint({ applyDefaults: true });
-    updateDiskHint();
+    void syncWorkspaceControls();
     void runChecks();
   });
-  $("vm-ram-mb")?.addEventListener("change", () => { state.assetBuffers = null; state.assetCacheKey = ""; });
-  $("vm-vram-mb")?.addEventListener("change", () => { state.assetBuffers = null; state.assetCacheKey = ""; });
-  $("vm-disk")?.addEventListener("change", () => { updateDiskHint(); syncDiskCheckButton(); });
-  updateDiskHint();
+  $("vm-ram-mb")?.addEventListener("change", () => { state.assetBuffers = null; state.assetCacheKey = ""; updateProfileHint(); });
+  $("vm-vram-mb")?.addEventListener("change", () => { state.assetBuffers = null; state.assetCacheKey = ""; updateProfileHint(); });
+  $("vm-storage-mode")?.addEventListener("change", () => {
+    void syncWorkspaceControls();
+  });
   originApi.syncWarnings();
   syncPowerButtons();
-  syncDiskCheckButton();
   syncSnapshotButtons();
+  void syncWorkspaceControls();
   syncWsEndpointControls();
   syncWsButton();
   syncChecksButton();

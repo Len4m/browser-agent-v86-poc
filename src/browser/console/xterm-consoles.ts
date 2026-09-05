@@ -19,6 +19,7 @@ import {
   type ConsoleControlResult,
   type ConsoleControlSession,
 } from "../vm/console-control-serial2";
+import type { SnapshotConsoleUiState } from "../vm/portable-state";
 
 interface Disposable {
   dispose?: () => void;
@@ -567,7 +568,23 @@ function sessionAlive(session: ConsoleControlSession): boolean {
   return Boolean(session.alive);
 }
 
-function ensureConsoleTabForDaemonSession(session: ConsoleControlSession): ManagedConsoleTab | null {
+function normalizedRestoredTitle(value: unknown, fallback: string): string {
+  const title = typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, 32) : "";
+  return title || fallback;
+}
+
+function restoredTitleForSession(restoredUi: SnapshotConsoleUiState | null, sessionId: string): string | null {
+  if (!restoredUi || !Array.isArray(restoredUi.sessions)) return null;
+  const saved = restoredUi.sessions.find((session) => {
+    return isRecord(session) && safeText(session.sessionId) === sessionId;
+  });
+  return saved && isRecord(saved) ? normalizedRestoredTitle(saved.title, sessionId) : null;
+}
+
+function ensureConsoleTabForDaemonSession(
+  session: ConsoleControlSession,
+  restoredUi: SnapshotConsoleUiState | null = null,
+): ManagedConsoleTab | null {
   const sessionId = sessionIdFrom(session);
   if (!sessionId || findConsoleTabBySession(sessionId)) return null;
   if (tabs().filter((tab) => tab.owner === "human").length >= state.consoleTabs.maxHumanConsoles) return null;
@@ -578,7 +595,7 @@ function ensureConsoleTabForDaemonSession(session: ConsoleControlSession): Manag
   const tab: ManagedConsoleTab = {
     id: `human-${humanNumber}`,
     owner: "human",
-    title: String(humanNumber),
+    title: restoredTitleForSession(restoredUi, sessionId) || String(humanNumber),
     sessionId,
     humanNumber,
     closable: true,
@@ -592,18 +609,36 @@ function ensureConsoleTabForDaemonSession(session: ConsoleControlSession): Manag
   return tab;
 }
 
-export async function syncConsoleTabsFromDaemon({ repaint = true, createMissing = false }: { repaint?: boolean; createMissing?: boolean } = {}): Promise<boolean> {
+interface SyncConsoleTabsOptions {
+  repaint?: boolean;
+  createMissing?: boolean;
+  reactivateRestored?: boolean;
+  restoredUi?: SnapshotConsoleUiState | null;
+}
+
+export async function syncConsoleTabsFromDaemon({
+  repaint = true,
+  createMissing = false,
+  reactivateRestored = false,
+  restoredUi = null,
+}: SyncConsoleTabsOptions = {}): Promise<boolean> {
   if (!state.vm || !state.vmReady) return false;
   const sessions = await consoleControlApi.listSessions().catch(() => []);
   if (!Array.isArray(sessions)) return false;
   state.consoleTabs.extraReady = true;
   ensureConsoleOutputSubscription();
   const seen = new Set<string>();
+  const restoredTabs: ManagedConsoleTab[] = [];
   for (const session of sessions) {
     const sessionId = sessionIdFrom(session);
     seen.add(sessionId);
-    const tab = findConsoleTabBySession(sessionId)
-      || (createMissing && sessionAlive(session) ? ensureConsoleTabForDaemonSession(session) : null);
+    let tab = findConsoleTabBySession(sessionId);
+    if (!tab && createMissing && sessionAlive(session)) {
+      tab = ensureConsoleTabForDaemonSession(session, restoredUi);
+      if (tab) restoredTabs.push(tab);
+    }
+    const restoredTitle = restoredTitleForSession(restoredUi, sessionId);
+    if (tab && restoredTitle) tab.title = restoredTitle;
     if (tab) tab.status = sessionAlive(session) ? "ready" : "closed";
   }
   for (const tab of tabs()) {
@@ -611,7 +646,27 @@ export async function syncConsoleTabsFromDaemon({ repaint = true, createMissing 
       tab.status = "closed";
     }
   }
+  const serialTab = getConsoleTab("human-1");
+  if (serialTab && restoredUi) {
+    serialTab.title = normalizedRestoredTitle(restoredUi.serialTitle, defaultConsoleTitle(serialTab));
+  }
+  const restoredActiveSessionId = restoredUi ? safeText(restoredUi.activeSessionId) : "";
+  const restoredActive = restoredActiveSessionId ? findConsoleTabBySession(restoredActiveSessionId) : serialTab;
+  if (restoredUi && restoredActive) state.consoleTabs.activeId = restoredActive.id;
+
   setActiveConsolePane(state.consoleTabs.activeId || "human-1");
+  if (reactivateRestored) {
+    for (const tab of restoredTabs) {
+      if (tab.status !== "ready" || !tab.sessionId) continue;
+      try {
+        tab.term?.clear?.();
+        tab.term?.write?.("\x1b[3J\x1b[H\x1b[2J");
+      } catch {
+        // A restored PTY can still be reactivated if local repaint fails.
+      }
+      consoleControlApi.sendInput(tab.sessionId, "\x0c");
+    }
+  }
   if (repaint) renderConsoleTabs();
   return true;
 }

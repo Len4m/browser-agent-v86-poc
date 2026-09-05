@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Preparacion del rootfs segun el perfil: instalacion de paquetes (via Docker
 # export), buildCommands y mensaje de arranque.
-# Se carga con `source` desde vm-alpine-initramfs.sh y depende de los globals
+# Se carga con `source` desde vm-alpine-overlay-hda.sh y depende de los globals
 # WORK, ROOT_DIR, ALPINE_BRANCH, ALPINE_REPO, ALPINE_ARCH, PROFILE_* y de las
 # funciones de common.sh (write_rootfs_metadata, write_apk_repositories_file).
 

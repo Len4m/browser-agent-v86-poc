@@ -39,13 +39,12 @@ function getActiveToolProfileId(): string {
     const id = textValue(state.activeRuntime.profile.id);
     if (id) return id;
   }
-  return getSelectedProfile()?.id || selectedProfileIdFromDom() || "manual";
+  return getSelectedProfile()?.id || selectedProfileIdFromDom();
 }
 
 function getActiveToolProfileLabel(profileId: string): string {
-  if (profileId === "manual") return t("panel.llm.profile.manual");
   const profile = state.profiles.filter(isVmProfile).find((item) => item.id === profileId);
-  return profile?.name || profileId || t("panel.llm.profile.current");
+  return profile?.name || profileId || t("vm.profile.none");
 }
 
 function getSelectedModelForTools(): LlmModelConfig {
@@ -220,7 +219,6 @@ export function updateAvailableToolsUi(): void {
     children.push(chip);
   }
   if (!tools.length) children.push(createTextElement("span", "", t("panel.llm.tools.noneAvailableForProfile")));
-  if (profileId === "manual") children.push(createTextElement("small", "", t("panel.llm.tools.manualNote")));
   box.replaceChildren(...children);
 }
 

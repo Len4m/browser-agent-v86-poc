@@ -3,21 +3,12 @@
 import { $, state } from "../app/state";
 import { t, tn } from "../app/i18n";
 import { appEvents } from "../core/events";
+import { browserCowStore } from "./indexeddb-cow-disk";
 import { formatBytes } from "./runtime-assets";
 import { LOCAL_WS_URL } from "./ws-network-config";
+import { persistentWorkspaceId, type ResolvedVmRuntime, type VmProfile, type WorkspaceMode } from "./runtime-config";
 
-export interface VmProfile {
-  id: string;
-  name?: string;
-  output?: string;
-  kernelOutput?: string;
-  initramfsBytes?: number;
-  recommendedRamMb?: number;
-  recommendedVramMb?: number;
-  defaultDisk?: string;
-  packages?: string[];
-  allowedTools?: string[];
-}
+export type { VmProfile } from "./runtime-config";
 
 interface VmConfig {
   libv86: string;
@@ -26,17 +17,13 @@ interface VmConfig {
   vgaBios: string;
   bzimage: string;
   initrd: string;
-  profile: VmProfile | null;
+  profile: VmProfile;
 }
 
 export interface VmRuntimeConfig {
   ramMb: number;
   vramMb: number;
-  diskMode: string;
-  hda: {
-    sizeMb: number;
-    url: string;
-  } | null;
+  workspaceMode: WorkspaceMode;
 }
 
 interface ProfileOptions {
@@ -57,6 +44,55 @@ function getProfiles(): VmProfile[] {
   return state.profiles.filter(isVmProfile);
 }
 
+type ProfilePersistenceMark = "empty" | "saved" | "unknown";
+
+export function selectedProfileHasPersistedWorkspace(): boolean {
+  const select = $<HTMLSelectElement>("vm-profile");
+  return select?.selectedOptions[0]?.dataset.persistence === "saved";
+}
+
+function renderProfilePersistenceIndicators(): void {
+  const select = $<HTMLSelectElement>("vm-profile");
+  if (select) {
+    for (const option of Array.from(select.options)) {
+      const profile = getProfiles().find((candidate) => candidate.id === option.value);
+      const baseName = profile?.name || profile?.id || option.value;
+      option.textContent = option.dataset.persistence === "saved"
+        ? `${baseName} 💾`
+        : baseName;
+    }
+  }
+
+  const badge = $("vm-profile-storage-status");
+  const profile = getSelectedProfile();
+  if (!badge || !profile || !select) {
+    if (badge) badge.hidden = true;
+    return;
+  }
+  const mark = (select.selectedOptions[0]?.dataset.persistence || "unknown") as ProfilePersistenceMark;
+  badge.hidden = mark !== "saved";
+  badge.textContent = mark === "saved" ? t("vm.profile.persistence.saved") : "";
+  badge.className = `badge ${mark === "saved" ? "good" : ""}`.trim();
+}
+
+export async function syncProfilePersistenceIndicators(): Promise<void> {
+  const select = $<HTMLSelectElement>("vm-profile");
+  if (!select) return;
+  await Promise.all(getProfiles().map(async (profile) => {
+    const option = Array.from(select.options).find((candidate) => candidate.value === profile.id);
+    if (!option) return;
+    try {
+      const metadata = profile.profileHash
+        ? await browserCowStore().getMetadata(persistentWorkspaceId(profile.profileHash))
+        : null;
+      option.dataset.persistence = metadata && metadata.checkpoint !== "empty" ? "saved" : "empty";
+    } catch {
+      option.dataset.persistence = "unknown";
+    }
+  }));
+  renderProfilePersistenceIndicators();
+}
+
 function inputValue(id: string): string {
   return $<HTMLInputElement>(id)?.value.trim() || "";
 }
@@ -73,20 +109,34 @@ function setDisabled(el: Element | null, disabled: boolean): void {
 }
 
 export function getSelectedProfile(): VmProfile | null {
-  const id = $<HTMLSelectElement>("vm-profile")?.value || "manual";
-  if (id === "manual") return null;
+  const id = $<HTMLSelectElement>("vm-profile")?.value || "";
   return getProfiles().find((profile) => profile.id === id) || null;
+}
+
+export function reflectRuntimeSelection(runtime: ResolvedVmRuntime): void {
+  const profileSelect = $<HTMLSelectElement>("vm-profile");
+  if (profileSelect && runtime.profile?.id && Array.from(profileSelect.options).some((option) => option.value === runtime.profile?.id)) {
+    const changed = profileSelect.value !== runtime.profile.id;
+    profileSelect.value = runtime.profile.id;
+    if (changed) profileSelect.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  const modeSelect = $<HTMLSelectElement>("vm-storage-mode");
+  if (modeSelect) modeSelect.value = runtime.storage.mode;
+  setSelectValueIfExists("vm-ram-mb", runtime.ramMb);
+  setSelectValueIfExists("vm-vram-mb", runtime.vramMb);
+  updateProfileHint({ applyDefaults: false });
 }
 
 export function getConfig(): VmConfig {
   const profile = getSelectedProfile();
+  if (!profile) throw new Error(t("vm.profile.none"));
   return {
     libv86: inputValue("cfg-libv86"),
     wasm: inputValue("cfg-wasm"),
     bios: inputValue("cfg-bios"),
     vgaBios: inputValue("cfg-vga"),
-    bzimage: profile?.kernelOutput || inputValue("cfg-bzimage"),
-    initrd: profile?.output || inputValue("cfg-initrd"),
+    bzimage: profile.kernelOutput || "",
+    initrd: profile.output || "",
     profile,
   };
 }
@@ -105,28 +155,47 @@ function setSelectValueIfExists(id: string, value: string | number | null | unde
   }
 }
 
+function constrainResourceSelect(id: string, minimum: number, selectMinimum: boolean): void {
+  const select = $<HTMLSelectElement>(id);
+  if (!select || !Number.isFinite(minimum)) return;
+
+  let minimumOption = Array.from(select.options).find((option) => Number(option.value) === minimum);
+  if (!minimumOption) {
+    minimumOption = document.createElement("option");
+    minimumOption.value = String(minimum);
+    minimumOption.textContent = `${minimum} MB`;
+    const nextOption = Array.from(select.options).find((option) => Number(option.value) > minimum);
+    select.insertBefore(minimumOption, nextOption || null);
+  }
+
+  for (const option of Array.from(select.options)) {
+    option.disabled = Number(option.value) < minimum;
+  }
+  if (selectMinimum || Number(select.value) < minimum) select.value = minimumOption.value;
+}
+
+function applyProfileResourceMinimums(profile: VmProfile, selectMinimum: boolean): void {
+  constrainResourceSelect("vm-ram-mb", profile.minimumRamMb, selectMinimum);
+  constrainResourceSelect("vm-vram-mb", profile.minimumVramMb, selectMinimum);
+}
+
 function syncProfileControls({ applyDefaults = false }: ProfileOptions = {}): void {
   const profile = getSelectedProfile();
-  const isManual = !profile;
   const vmRunning = Boolean(state.vm || state.vmStarting);
   const profileSelect = $("vm-profile");
   const ram = $("vm-ram-mb");
   const vram = $("vm-vram-mb");
-  const disk = $("vm-disk");
+  const storageMode = $("vm-storage-mode");
 
-  document.body.classList.toggle("vm-profile-manual", isManual);
-  document.body.classList.toggle("vm-profile-preset", Boolean(profile));
-
-  if (profile && applyDefaults) {
-    setSelectValueIfExists("vm-ram-mb", profile.recommendedRamMb || 512);
-    setSelectValueIfExists("vm-vram-mb", profile.recommendedVramMb ?? 8);
-    if (profile.defaultDisk) setSelectValueIfExists("vm-disk", profile.defaultDisk);
+  if (profile) {
+    applyProfileResourceMinimums(profile, applyDefaults);
+    if (applyDefaults) setSelectValueIfExists("vm-storage-mode", "temporary");
   }
 
   setDisabled(profileSelect, vmRunning);
-  setDisabled(ram, vmRunning || Boolean(profile));
-  setDisabled(vram, vmRunning || Boolean(profile));
-  setDisabled(disk, vmRunning);
+  setDisabled(ram, vmRunning || !profile);
+  setDisabled(vram, vmRunning || !profile);
+  setDisabled(storageMode, vmRunning || !profile);
 }
 
 export function updateProfileHint({ applyDefaults = false }: ProfileOptions = {}): void {
@@ -135,19 +204,27 @@ export function updateProfileHint({ applyDefaults = false }: ProfileOptions = {}
   if (!hint) return;
 
   if (!profile) {
-    hint.textContent = t("vm.profile.hint.free");
-    hint.title = t("vm.profile.hint.free.title");
+    hint.textContent = t("vm.profile.none");
+    hint.title = "";
     syncProfileControls({ applyDefaults: false });
+    renderProfilePersistenceIndicators();
     return;
   }
 
   if (applyDefaults) syncProfileControls({ applyDefaults: true });
+  const runtime = getVmRuntimeConfig();
   const packageCount = Array.isArray(profile.packages) ? profile.packages.length : 0;
   const packageText = packageCount ? ` · ${tn("vm.profile.packages", packageCount)}` : "";
-  const diskText = profile.defaultDisk ? ` · ${t("vm.profile.disk", { disk: profile.defaultDisk })}` : "";
-  hint.textContent = `${profile.name || profile.id} · ${formatProfileBytes(profile.initramfsBytes)} · RAM ${profile.recommendedRamMb || "—"} MB · VRAM ${profile.recommendedVramMb ?? 8} MB${diskText}${packageText}`;
+  const resources = t("vm.profile.resourcesSummary", {
+    ram: runtime.ramMb,
+    minimumRam: profile.minimumRamMb,
+    vram: runtime.vramMb,
+    minimumVram: profile.minimumVramMb,
+  });
+  hint.textContent = `${profile.name || profile.id} · ${formatProfileBytes(profile.assets?.rootfs?.bytes)} rootfs · ${resources} · Overlay HDA/HDB${packageText}`;
   hint.title = Array.isArray(profile.packages) && profile.packages.length ? t("vm.profile.packagesList", { list: profile.packages.join(", ") }) : "";
   syncProfileControls({ applyDefaults: false });
+  renderProfilePersistenceIndicators();
 }
 
 export async function loadProfiles(): Promise<void> {
@@ -166,20 +243,17 @@ export async function loadProfiles(): Promise<void> {
   }
 
   select.replaceChildren();
-  const manual = document.createElement("option");
-  manual.value = "manual";
-  manual.textContent = t("common.freeManual");
-  select.appendChild(manual);
-
   for (const profile of getProfiles()) {
     const option = document.createElement("option");
     option.value = profile.id;
+    option.dataset.persistence = "unknown";
     option.textContent = profile.name || profile.id;
     select.appendChild(option);
   }
 
-  select.value = "manual";
-  updateProfileHint({ applyDefaults: false });
+  select.value = getProfiles()[0]?.id || "";
+  updateProfileHint({ applyDefaults: true });
+  await syncProfilePersistenceIndicators();
 }
 
 export function getWsRelayUrl(): string {
@@ -190,30 +264,19 @@ export function getWsRelayUrl(): string {
 export function getVmRuntimeConfig(): VmRuntimeConfig {
   const ramMb = Number($<HTMLSelectElement>("vm-ram-mb")?.value || "512");
   const vramMb = Number($<HTMLSelectElement>("vm-vram-mb")?.value || "8");
-  const diskValue = $<HTMLSelectElement>("vm-disk")?.value || "initramfs";
+  const workspaceMode = ($<HTMLSelectElement>("vm-storage-mode")?.value || "temporary") as WorkspaceMode;
   const config: VmRuntimeConfig = {
     ramMb: Number.isFinite(ramMb) ? ramMb : 512,
     vramMb: Number.isFinite(vramMb) ? vramMb : 8,
-    diskMode: diskValue,
-    hda: null,
+    workspaceMode,
   };
-
-  const match = diskValue.match(/^hda-(\d+)$/);
-  if (match) {
-    const sizeMb = Number(match[1]);
-    const suffix = sizeMb >= 1024 ? `${sizeMb / 1024}g` : `${sizeMb}m`;
-    config.hda = {
-      sizeMb,
-      url: `/v86/disks/alpine-hda-${suffix}.img`,
-    };
-  }
 
   return config;
 }
 
 export function setVmOptionsLocked(locked: boolean): void {
   if (locked) {
-    for (const id of ["vm-profile", "vm-ram-mb", "vm-vram-mb", "vm-disk"]) {
+    for (const id of ["vm-profile", "vm-ram-mb", "vm-vram-mb", "vm-storage-mode"]) {
       setDisabled($(id), true);
     }
     return;
@@ -221,25 +284,11 @@ export function setVmOptionsLocked(locked: boolean): void {
   syncProfileControls({ applyDefaults: false });
 }
 
-export function updateDiskHint(): void {
-  const hint = $("vm-disk-hint");
-  if (!hint) return;
-  const runtime = getVmRuntimeConfig();
-  const profile = getSelectedProfile();
-  if (runtime.hda) {
-    hint.textContent = t("vm.disk.hint.hda", { url: runtime.hda.url });
-  } else if (profile) {
-    hint.textContent = t("vm.disk.hint.profile");
-  } else {
-    hint.textContent = t("vm.disk.hint.free");
-  }
-}
-
 export function initProfileConfig(): void {
   if (initialized) return;
   initialized = true;
   appEvents.on("app:language-changed", () => {
     updateProfileHint({ applyDefaults: false });
-    updateDiskHint();
+    renderProfilePersistenceIndicators();
   });
 }

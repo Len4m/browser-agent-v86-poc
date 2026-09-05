@@ -10,7 +10,6 @@ import {
   logTool,
   setBadge,
   syncChecksButton,
-  syncDiskCheckButton,
   syncPowerButtons,
   syncSnapshotButtons,
 } from "../ui/status-controls";
@@ -222,7 +221,6 @@ function diagnostics(): BackgroundToolDiagnostics {
 
 function refreshDependentUi(): void {
   syncPowerButtons();
-  syncDiskCheckButton();
   syncSnapshotButtons();
   syncChecksButton();
   appEvents.emit("console:state-changed", { source: "background-tools" });

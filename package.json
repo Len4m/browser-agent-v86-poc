@@ -24,6 +24,7 @@
     "docs:schemas": "node scripts/docs/schema-reference.mjs",
     "lint": "eslint .",
     "test": "node scripts/test.mjs",
+    "test:vm-storage": "node scripts/test-vm-storage.mjs",
     "check": "tsc && pnpm lint && pnpm test && node scripts/check.mjs",
     "clean": "node scripts/clean.mjs",
     "clean:runtime": "node scripts/clean-runtime.mjs",
@@ -48,6 +49,7 @@
     "@eslint/js": "^10.0.1",
     "eslint": "^10.9.1",
     "globals": "^17.11.0",
+    "playwright-core": "^1.62.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.68.0"
   }

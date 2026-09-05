@@ -191,7 +191,7 @@ function activeRuntimeProfileId(): string {
     return textValue(state.activeRuntime.profile.id);
   }
   const profileSelect = document.getElementById("vm-profile");
-  return profileSelect instanceof HTMLSelectElement ? profileSelect.value : "manual";
+  return profileSelect instanceof HTMLSelectElement ? profileSelect.value : "";
 }
 
 function isLlmCapabilities(value: unknown): value is LlmCapabilities {

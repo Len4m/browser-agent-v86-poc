@@ -27,11 +27,6 @@ function activeRuntimeProfile(): VmProfile | null {
   return isVmProfile(state.activeRuntime.profile) ? state.activeRuntime.profile : null;
 }
 
-function selectedProfileId(): string {
-  const profileSelect = document.getElementById("vm-profile");
-  return profileSelect instanceof HTMLSelectElement ? profileSelect.value : "manual";
-}
-
 export const llmToolRegistry: LlmToolRegistryApi = (() => {
   const SECURITY_LEVELS: SecurityLevel[] = [
     { level: 0, id: "none", get label() { return t("tools.level.none.label"); }, get description() { return t("tools.level.none.desc"); } },
@@ -41,24 +36,6 @@ export const llmToolRegistry: LlmToolRegistryApi = (() => {
     { level: 99, id: "free", get label() { return t("tools.level.free.label"); }, get description() { return t("tools.level.free.desc"); } },
   ];
 
-  const MANUAL_TOOL_NAMES = [
-    "vm_python_exec",
-    "vm_sh_exec",
-    "vm_fs_list",
-    "vm_fs_read",
-    "vm_fs_write",
-    "vm_cmd_which",
-    "web_curl_head",
-    "vm_sys_info",
-    "vm_console_status",
-    "vm_pkg_info",
-    "web_curl_fetch_text",
-  ];
-
-  const PROFILE_TOOL_NAMES: Record<string, string[]> = {
-    manual: MANUAL_TOOL_NAMES,
-  };
-
   const TOOLS: Record<string, ToolDefinition> = Object.fromEntries(
     TOOL_DEFINITIONS.map((tool) => [tool.name, tool]),
   );
@@ -66,7 +43,7 @@ export const llmToolRegistry: LlmToolRegistryApi = (() => {
   function baseRuntimeContext(): RuntimeToolContext {
     const activeProfile = activeRuntimeProfile()?.id
       || getSelectedProfile()?.id
-      || selectedProfileId();
+      || "";
     const backgroundToolsReady = backgroundToolsApi.enabled();
     return {
       vmPresent: Boolean(state.vm),
@@ -79,7 +56,6 @@ export const llmToolRegistry: LlmToolRegistryApi = (() => {
       agentBusy: Boolean(state.agentBusy),
       activeProfile,
       networkConfigured: Boolean(state.networkConfigured),
-      diskMounted: Boolean(state.diskMounted),
     };
   }
 
@@ -90,7 +66,6 @@ export const llmToolRegistry: LlmToolRegistryApi = (() => {
   }
 
   function rawAllowedToolNames(profileId: string): string[] {
-    if (profileId === "manual") return MANUAL_TOOL_NAMES;
     const profile = profileForId(profileId);
     if (!profile || !Array.isArray(profile.allowedTools)) return [];
     return profile.allowedTools.map(normalizeToolName).filter(Boolean);
@@ -98,7 +73,7 @@ export const llmToolRegistry: LlmToolRegistryApi = (() => {
 
   function hasRequiredPackages(tool: ToolDefinition, profileId: string): boolean {
     const requiredPackages = Array.isArray(tool.requiredPackages) ? tool.requiredPackages : [];
-    if (!requiredPackages.length || profileId === "manual") return true;
+    if (!requiredPackages.length) return true;
     const profile = profileForId(profileId);
     if (!profile || !Array.isArray(profile.packages)) return false;
     const packages = new Set(profile.packages);
@@ -210,7 +185,7 @@ export const llmToolRegistry: LlmToolRegistryApi = (() => {
     return [
       t("prompt.runtime.compact", {
         vm, serial1,
-        profile: ctx.activeProfile || "manual",
+        profile: ctx.activeProfile || t("vm.profile.none"),
         net: ctx.networkConfigured ? t("common.yes") : t("common.no"),
       }),
       t("prompt.runtime.activeTools", { count: enabled.length, tools: toolsLine }),
@@ -227,9 +202,8 @@ export const llmToolRegistry: LlmToolRegistryApi = (() => {
       t("prompt.runtime.shellReady", { v: ctx.vmReady ? yes : no }),
       t("prompt.runtime.consoleReady", { v: ctx.consoleReady ? yes : no }),
       t("prompt.runtime.toolsReady", { v: ctx.toolsConsoleAvailable ? yes : no }),
-      t("prompt.runtime.profile", { profile: ctx.activeProfile || "manual" }),
+      t("prompt.runtime.profile", { profile: ctx.activeProfile || t("vm.profile.none") }),
       t("prompt.runtime.network", { v: ctx.networkConfigured ? yes : no }),
-      t("prompt.runtime.disk", { v: ctx.diskMounted ? yes : no }),
       t("prompt.runtime.serials", {
         s0: ctx.pendingCommand || ctx.agentBusy ? t("common.busyFem") : t("prompt.free"),
         s1: ctx.backgroundToolBusy ? t("common.busy") : t("prompt.free"),
@@ -257,7 +231,6 @@ export const llmToolRegistry: LlmToolRegistryApi = (() => {
 
   return {
     SECURITY_LEVELS,
-    PROFILE_TOOL_NAMES,
     getTool,
     listTools,
     listToolNames,

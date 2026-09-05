@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Extraccion del kernel linux-lts y de los modulos de red/almacenamiento que
 # necesita v86, resolviendo dependencias desde modules.dep.
-# Se carga con `source` desde vm-alpine-initramfs.sh y depende de los globals
+# Se carga con `source` desde vm-alpine-overlay-hda.sh y depende de los globals
 # WORK, ALPINE_REPO, ALPINE_ARCH, OUT_KERNEL y MODULES_LIST. Las funciones
 # auxiliares usan MODDIR/KVER/ROOT_MODDIR/ORDER_FILE/VISITED_FILE que
 # build_net_modules declara como locales (bash usa scope dinamico).
@@ -136,7 +136,7 @@ build_net_modules() {
   cp "$MODDIR"/modules.* "$ROOT_MODDIR/" 2>/dev/null || true
 
   local target_rels="" modname rel
-  for modname in af_packet lib8390 8390 ne2k-pci virtio virtio_ring virtio_pci virtio_pci_modern_dev virtio_pci_legacy_dev virtio_net ata_piix ata_generic pata_acpi libata scsi_mod sd_mod virtio_blk ext2 ext4 mbcache jbd2 crc16 crc32c crc32c_generic libcrc32c; do
+  for modname in af_packet lib8390 8390 ne2k-pci virtio virtio_ring virtio_pci virtio_pci_modern_dev virtio_pci_legacy_dev virtio_net ata_piix ata_generic pata_acpi libata scsi_mod sd_mod virtio_blk ext2 ext4 overlay mbcache jbd2 crc16 crc32c crc32c_generic libcrc32c; do
     rel="$(find_module_rel "$modname")"
     if [ -n "$rel" ]; then
       target_rels="$target_rels $rel"
@@ -145,7 +145,7 @@ build_net_modules() {
 
   # Hard fallback if modules.dep has unexpected formatting.
   if [ -z "$(echo "$target_rels" | xargs)" ]; then
-    target_rels="$(find "$MODDIR/kernel" -type f \( -name 'af_packet.ko*' -o -name 'lib8390.ko*' -o -name '8390.ko*' -o -name 'ne2k-pci.ko*' -o -name 'virtio*.ko*' -o -name 'ata_piix.ko*' -o -name 'ata_generic.ko*' -o -name 'pata_acpi.ko*' -o -name 'libata.ko*' -o -name 'scsi_mod.ko*' -o -name 'sd_mod.ko*' -o -name 'virtio_blk.ko*' -o -name 'ext2.ko*' -o -name 'ext4.ko*' -o -name 'jbd2.ko*' -o -name 'mbcache.ko*' -o -name 'crc*.ko*' -o -name 'libcrc32c.ko*' \) | sed "s#^$MODDIR/##")"
+    target_rels="$(find "$MODDIR/kernel" -type f \( -name 'af_packet.ko*' -o -name 'lib8390.ko*' -o -name '8390.ko*' -o -name 'ne2k-pci.ko*' -o -name 'virtio*.ko*' -o -name 'ata_piix.ko*' -o -name 'ata_generic.ko*' -o -name 'pata_acpi.ko*' -o -name 'libata.ko*' -o -name 'scsi_mod.ko*' -o -name 'sd_mod.ko*' -o -name 'virtio_blk.ko*' -o -name 'ext2.ko*' -o -name 'ext4.ko*' -o -name 'overlay.ko*' -o -name 'jbd2.ko*' -o -name 'mbcache.ko*' -o -name 'crc*.ko*' -o -name 'libcrc32c.ko*' \) | sed "s#^$MODDIR/##")"
   fi
 
   if [ -z "$(echo "$target_rels" | xargs)" ]; then

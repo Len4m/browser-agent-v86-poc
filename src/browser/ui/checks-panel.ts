@@ -198,29 +198,9 @@ export async function runChecks({ probeWsRelay = true }: RunChecksOptions = {}):
     const runtime = getVmRuntimeConfig();
     add(t("checks.item.ram"), runtime.ramMb >= 256, `${runtime.ramMb} MB`);
 
-    if (runtime.hda) {
-      const diskResult = await checkAsset(runtime.hda.url);
-      add(t("checks.item.hdaFile"), diskResult.ok, diskResult.ok ? runtime.hda.url : `${runtime.hda.url} · ${diskResult.detail}`);
-    } else {
-      add(t("checks.item.vmDisk"), true, "initramfs/RAM");
-    }
-
-    const diskUrls = [
-      "/v86/disks/alpine-hda-250m.img",
-      "/v86/disks/alpine-hda-512m.img",
-      "/v86/disks/alpine-hda-1g.img",
-    ];
-    let diskOk = 0;
-    for (const url of diskUrls) {
-      const result = await checkAsset(url);
-      if (result.ok) diskOk += 1;
-    }
-    add(t("checks.item.hdaDisks"), diskOk === diskUrls.length, `${diskOk}/${diskUrls.length}`);
-
     const cfg = getConfig();
     const profile = getSelectedProfile();
     if (profile) add(t("checks.item.profileSelected"), true, `${profile.name || profile.id} · ${profile.output || ""}`);
-    else add(t("checks.item.profileSelected"), true, t("common.freeManual"));
 
     const assets: Array<[string, string]> = [
       ["libv86.js", cfg.libv86],
@@ -282,12 +262,10 @@ export async function runChecks({ probeWsRelay = true }: RunChecksOptions = {}):
         const clean = normalizeTerminalStreamForMarkers(pkgResult.stdout);
         const missingPackages = clean.match(/BA_PKG_MISSING:([^\n\r]*)/)?.[1]?.trim();
         add(t("checks.item.vmPackages"), pkgResult.code === 0, missingPackages ? t("checks.detail.missing", { list: missingPackages }) : pkgResult.stderr || t("checks.badge.ok"));
-      } else {
-        add(t("checks.item.vmPackages"), true, t("common.manualMode"));
       }
 
       const toolChecks = llmToolRegistry.listToolRuntimeChecks({
-        profileId: profile?.id || "manual",
+        profileId: profile?.id || "",
         includeUnavailable: true,
       });
       const toolResult = await runVmCheck(makeToolCheckCommand(toolChecks), {
@@ -320,17 +298,6 @@ export async function runChecks({ probeWsRelay = true }: RunChecksOptions = {}):
       if (!netDetail) netDetail = netResult.stderr || (netOk ? t("checks.badge.ok") : t("common.noConnection"));
       add(t("checks.item.vmNetwork"), netOk, netDetail);
 
-      if (runtime.hda && state.diskMounted) {
-        const diskVmCommand = "if mountpoint -q /mnt/hda; then echo DISK_MOUNTED; echo browser-agent-disk-check > /mnt/hda/.ba-check && sync && rm -f /mnt/hda/.ba-check && echo DISK_RW_OK || { echo DISK_RW_FAIL; exit 1; }; else echo DISK_NOT_MOUNTED; exit 2; fi";
-        const diskVmResult = await runVmCheck(diskVmCommand, {
-          label: t("checks.label.checkingDisk"),
-          timeoutMs: 12000,
-        });
-        const diskClean = normalizeTerminalStreamForMarkers(diskVmResult.stdout);
-        add(t("checks.item.hdaRwInVm"), diskVmResult.code === 0 && diskClean.includes("DISK_RW_OK"), diskClean.match(/DISK_[A-Z_]+/)?.[0] || diskVmResult.stderr || t("checks.badge.ok"));
-      } else if (runtime.hda) {
-        add(t("checks.item.hdaRwInVm"), false, t("common.notMounted"));
-      }
     }
 
     updateChecksSummaryFromDom();

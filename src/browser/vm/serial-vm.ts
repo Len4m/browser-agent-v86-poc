@@ -3,17 +3,16 @@
 import { $, CR, NL, state } from "../app/state";
 import { t } from "../app/i18n";
 import { trimLines } from "../app/text-utils";
-import { confirmVmShutdown } from "../ui/modal";
+import { confirmVmShutdown, showBaModal } from "../ui/modal";
 import {
   logTool,
   safeTrim,
   setAgentBusy,
   setBadge,
-  syncDiskCheckButton,
   syncPowerButtons,
   syncSnapshotButtons,
 } from "../ui/status-controls";
-import { maybeConfigureNetwork, type ExecVmResult } from "./operations";
+import { maybeConfigureNetwork, syncWorkspaceControls, type ExecVmResult } from "./operations";
 import {
   checkAsset,
   isAbortError,
@@ -28,6 +27,7 @@ import {
   getConfig,
   getVmRuntimeConfig,
   getWsRelayUrl,
+  reflectRuntimeSelection,
   setVmOptionsLocked,
 } from "./profile-config";
 import { backgroundToolsApi } from "./background-tools-serial1";
@@ -45,6 +45,14 @@ import {
   extractBetweenLast,
   normalizeTerminalStreamForMarkers,
 } from "./terminal-markers";
+import { createRuntimeCowDisk, requestDurableBrowserStorage, type CowBlock } from "./indexeddb-cow-disk";
+import {
+  resolveVmRuntime,
+  type AssetIdentity,
+  type ResolvedVmRuntime,
+} from "./runtime-config";
+import { sha256 } from "./storage-hash";
+import type { SnapshotConsoleUiState } from "./portable-state";
 
 interface TerminalLike {
   cols?: number;
@@ -96,6 +104,10 @@ interface V86Constructor {
 
 interface StartVmOptions {
   restoreStateBuffer?: ArrayBuffer | null;
+  resolvedRuntime?: ResolvedVmRuntime | null;
+  restoreDiskBlocks?: CowBlock[];
+  restoreDiskCheckpoint?: string | null;
+  restoreConsoleUi?: SnapshotConsoleUiState | null;
 }
 
 interface StopVmOptions {
@@ -131,6 +143,12 @@ function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
   return "Error";
+}
+
+async function identifyAsset(url: string, bytes: ArrayBuffer | undefined, declared?: AssetIdentity): Promise<AssetIdentity> {
+  if (declared) return declared;
+  const buffer = bytes || await (await fetch(url, { cache: "force-cache" })).arrayBuffer();
+  return { url, bytes: buffer.byteLength, sha256: await sha256(buffer) };
 }
 
 function asTerminalLike(value: unknown): TerminalLike | null {
@@ -397,7 +415,7 @@ export function focusSerialConsole(): void {
   }
 }
 
-async function resyncVmAfterRestore(): Promise<void> {
+async function resyncVmAfterRestore(consoleUi: SnapshotConsoleUiState | null): Promise<void> {
   logTool(`[snapshot] revalidando seriales y consolas xterm tras restore...${NL}`);
 
   const [serial1Ok, serial2Ok] = await Promise.all([
@@ -415,7 +433,12 @@ async function resyncVmAfterRestore(): Promise<void> {
 
   if (serial2Ok) {
     const before = state.consoleTabs.tabs.length;
-    const consolesSynced = await syncConsoleTabsFromDaemon({ repaint: false, createMissing: true }).catch(() => false);
+    const consolesSynced = await syncConsoleTabsFromDaemon({
+      repaint: false,
+      createMissing: true,
+      reactivateRestored: true,
+      restoredUi: consoleUi,
+    }).catch(() => false);
     if (consolesSynced) {
       const restoredCount = Math.max(0, state.consoleTabs.tabs.length - before);
       logTool(`[snapshot] consolas xterm sincronizadas con el snapshot${restoredCount ? ` (${restoredCount} pestaña(s) restaurada(s))` : ""}.${NL}`);
@@ -425,7 +448,6 @@ async function resyncVmAfterRestore(): Promise<void> {
   }
 
   renderConsoleTabs();
-  syncDiskCheckButton();
   syncSnapshotButtons();
   maybeConfigureNetwork();
 }
@@ -456,8 +478,19 @@ export async function toggleVmPower(): Promise<void> {
 
 export async function startVm(options: StartVmOptions = {}): Promise<void> {
   const restoreStateBuffer = options.restoreStateBuffer || null;
-  const cfg = getConfig();
-  const runtime = getVmRuntimeConfig();
+  const restoreConsoleUi = options.restoreConsoleUi || null;
+  const selectedConfig = getConfig();
+  const selectedRuntime = getVmRuntimeConfig();
+  const requestedRuntime = options.resolvedRuntime || null;
+  const cfg = requestedRuntime ? {
+    libv86: requestedRuntime.assets.libv86.url,
+    wasm: requestedRuntime.assets.wasm.url,
+    bios: requestedRuntime.assets.bios.url,
+    vgaBios: requestedRuntime.assets.vgaBios.url,
+    bzimage: requestedRuntime.assets.kernel.url,
+    initrd: requestedRuntime.assets.initramfs.url,
+    profile: requestedRuntime.profile,
+  } : selectedConfig;
   const startButton = $("start-vm");
 
   if (state.vmStarting) return;
@@ -467,8 +500,10 @@ export async function startVm(options: StartVmOptions = {}): Promise<void> {
     return;
   }
 
+  if (requestedRuntime) reflectRuntimeSelection(requestedRuntime);
+
   if (restoreStateBuffer) {
-    logTool(`${NL}[snapshot] restaurando snapshot. Debes usar la misma RAM/disco/configuración que al guardarlo. Los discos hda no están incluidos en el snapshot.${NL}`);
+    logTool(`${NL}[snapshot] ${t("vm.snapshot.restoringValidated")}${NL}`);
   }
 
   state.vmStarting = true;
@@ -485,25 +520,6 @@ export async function startVm(options: StartVmOptions = {}): Promise<void> {
   setBadge($("vm-detail"), t("common.downloadingLower"), "warn");
 
   try {
-    if (runtime.hda) {
-      setLoading(true, {
-        title: t("vm.loading.preparing"),
-        detail: t("vm.loading.checkingDisk"),
-        percent: null,
-        indeterminate: true,
-        ...startCancelOptions,
-      });
-      await nextPaint();
-      const diskCheck = await checkAsset(runtime.hda.url, { signal: startAbortController.signal });
-      throwIfAborted(startAbortController.signal);
-      if (!diskCheck.ok) {
-        setBadge($("vm-detail"), t("vm.badge.diskNotFound"), "bad");
-        logTool(`${NL}[host] no existe la imagen de disco ${runtime.hda.url}. Genera esa imagen raw o usa Disco: RAM/initramfs.${NL}`);
-        setLoading(false);
-        return;
-      }
-    }
-
     setLoading(true, {
       title: t("vm.loading.preparing"),
       detail: t("vm.loading.startingDownload"),
@@ -520,6 +536,52 @@ export async function startVm(options: StartVmOptions = {}): Promise<void> {
     });
     throwIfAborted(startAbortController.signal);
 
+    const declared = cfg.profile?.assets;
+    const runtime = requestedRuntime || resolveVmRuntime({
+      profile: cfg.profile,
+      ramMb: selectedRuntime.ramMb,
+      vramMb: selectedRuntime.vramMb,
+      workspace: {
+        mode: selectedRuntime.workspaceMode,
+      },
+      wsRelayUrl: getWsRelayUrl(),
+      assets: {
+        libv86: await identifyAsset(cfg.libv86, buffers.libv86, declared?.libv86),
+        wasm: await identifyAsset(cfg.wasm, buffers.wasm, declared?.wasm),
+        bios: await identifyAsset(cfg.bios, buffers.bios, declared?.bios),
+        vgaBios: await identifyAsset(cfg.vgaBios, buffers.vgaBios, declared?.vgaBios),
+        kernel: await identifyAsset(cfg.bzimage, buffers.bzimage, declared?.kernel),
+        initramfs: await identifyAsset(cfg.initrd, buffers.initrd, declared?.initramfs),
+      },
+    });
+
+    const rootDisk = runtime.storage.disks.find((disk) => disk.kind === "immutable-root");
+    const overlayDisk = runtime.storage.disks.find((disk) => disk.kind === "overlay-cow");
+    if (rootDisk) {
+      const firstPart = rootDisk.asset.url.replace(/\.img\.zst(?:\?.*)?$/, `-0-${rootDisk.fixedChunkSize}.img.zst`);
+      const [rootCheck, seedCheck] = await Promise.all([
+        checkAsset(firstPart, { signal: startAbortController.signal }),
+        checkAsset(overlayDisk?.seed.url || "", { signal: startAbortController.signal }),
+      ]);
+      if (!rootCheck.ok || !seedCheck.ok) throw new Error("Faltan los assets HDA/HDB del perfil persistente. Ejecuta pnpm setup.");
+    }
+
+    let cowDisk: ReturnType<typeof createRuntimeCowDisk> = null;
+    if (overlayDisk) {
+      state.workspaceStatus = overlayDisk.persistence === "persistent"
+        ? await requestDurableBrowserStorage()
+        : "temporary";
+      cowDisk = createRuntimeCowDisk(runtime, (status, error) => {
+          state.workspaceStatus = status;
+          if (error) logTool(`[workspace] ${errorMessage(error)}${NL}`);
+      }, overlayDisk.persistence === "persistent" ? () => { void syncWorkspaceControls(); } : undefined);
+      if (!cowDisk) throw new Error("No se pudo resolver el disco OverlayFS del perfil.");
+      await cowDisk.load();
+      if (options.restoreDiskBlocks && options.restoreDiskCheckpoint) {
+        await cowDisk.importBlocks(options.restoreDiskBlocks, options.restoreDiskCheckpoint, { provisional: true });
+      }
+    }
+
     const vmRuntime = vmRuntimeWindow();
     const Starter = vmRuntime.V86Starter || vmRuntime.V86;
     if (!isV86Constructor(Starter)) throw new Error("window.V86Starter no existe");
@@ -534,17 +596,16 @@ export async function startVm(options: StartVmOptions = {}): Promise<void> {
     state.bootBuffer = "";
     state.pending = null;
     state.activeRuntime = runtime;
-    state.diskMounted = false;
+    state.activeCowDisk = cowDisk;
     state.snapshotRestoring = Boolean(restoreStateBuffer);
     resetConsoleTabs();
-    syncDiskCheckButton();
     syncSnapshotButtons();
+    void syncWorkspaceControls();
 
-    const relayUrl = getWsRelayUrl();
+    const relayUrl = runtime.network.relayUrl;
     logTool(`[network] v86 virtio net_device.relay_url = ${relayUrl}${NL}`);
-    logTool(`[host] RAM ${runtime.ramMb} MB · VRAM ${runtime.vramMb} MB · Disco ${runtime.hda ? runtime.hda.url : "initramfs/RAM"}${NL}`);
-    if (cfg.profile) logTool(`[profile] ${cfg.profile.name || cfg.profile.id} · ${cfg.profile.output || ""}${NL}`);
-    else logTool(`[profile] libre / manual${NL}`);
+    logTool(`[host] RAM ${runtime.ramMb} MB · VRAM ${runtime.vramMb} MB · Almacenamiento ${runtime.storage.layout}/${runtime.storage.mode}${NL}`);
+    logTool(`[profile] ${cfg.profile.name || cfg.profile.id} · ${cfg.profile.output || ""}${NL}`);
 
     const vm = new Starter({
       wasm_path: cfg.wasm,
@@ -554,7 +615,8 @@ export async function startVm(options: StartVmOptions = {}): Promise<void> {
       vga_bios: { buffer: buffers.vgaBios },
       bzimage: { buffer: buffers.bzimage },
       ...(buffers.initrd ? { initrd: { buffer: buffers.initrd } } : {}),
-      ...(runtime.hda ? { hda: { url: runtime.hda.url, async: true, size: runtime.hda.sizeMb * 1024 * 1024 } } : {}),
+      ...(rootDisk ? { hda: { url: rootDisk.asset.url, async: true, size: rootDisk.sizeBytes, use_parts: true, fixed_chunk_size: rootDisk.fixedChunkSize } } : {}),
+      ...(cowDisk ? { hdb: cowDisk } : {}),
       // virtio-net is faster on modern Alpine and is supported by the generated initramfs.
       net_device: { type: "virtio", relay_url: relayUrl },
       filesystem: {},
@@ -563,7 +625,7 @@ export async function startVm(options: StartVmOptions = {}): Promise<void> {
       // serial0/ttyS0 remains the boot console and fallback.
       uart1: true,
       uart2: true,
-      cmdline: "rw rdinit=/init console=ttyS0,115200 console=tty0 edd=off nowatchdog tsc=reliable mitigations=off random.trust_cpu=on",
+      cmdline: runtime.cmdline,
       autostart: !restoreStateBuffer,
       disable_keyboard: true,
       screen_container: $("screen-container"),
@@ -595,6 +657,7 @@ export async function startVm(options: StartVmOptions = {}): Promise<void> {
         });
         await nextPaint();
         await v86RestoreState(restoreStateBuffer);
+        await cowDisk?.commitImport();
         if (typeof vm.run === "function") vm.run();
         state.vmReady = true;
         state.snapshotRestoring = false;
@@ -608,12 +671,15 @@ export async function startVm(options: StartVmOptions = {}): Promise<void> {
             // Prompt nudging is best-effort.
           }
           scheduleSerialFit({ focus: true });
-          resyncVmAfterRestore().catch((error: unknown) => {
+          resyncVmAfterRestore(restoreConsoleUi).catch((error: unknown) => {
             logTool(`[snapshot] aviso resync restore: ${errorMessage(error)}${NL}`);
             maybeConfigureNetwork();
           });
         }, 300);
       } catch (error) {
+        await cowDisk?.rollbackImport().catch((rollbackError: unknown) => {
+          logTool(`[snapshot] error revirtiendo HDB: ${errorMessage(rollbackError)}${NL}`);
+        });
         state.snapshotRestoring = false;
         setBadge($("badge-vm"), t("vm.badge.errorRestore"), "bad");
         setBadge($("vm-detail"), t("common.snapshotError"), "bad");
@@ -654,16 +720,15 @@ export async function startVm(options: StartVmOptions = {}): Promise<void> {
       logTool(`[host] error: ${errorMessage(error)}${NL}`);
     }
     state.activeRuntime = null;
-    state.diskMounted = false;
-    syncDiskCheckButton();
+    state.activeCowDisk = null;
     setLoading(false);
   } finally {
     if (state.vmStartAbortController === startAbortController) state.vmStartAbortController = null;
     state.vmStarting = false;
     setVmOptionsLocked(Boolean(state.vm));
     syncPowerButtons();
-    syncDiskCheckButton();
     syncSnapshotButtons();
+    void syncWorkspaceControls();
   }
 }
 
@@ -672,8 +737,30 @@ export async function stopVm({ confirmShutdown = true }: StopVmOptions = {}): Pr
   if (!vm || state.vmStarting || state.agentBusy || state.pending || state.bgTools.pending) return;
 
   if (confirmShutdown) {
-    const ok = await confirmVmShutdown();
+    const ok = await confirmVmShutdown({ persistent: state.activeRuntime?.storage.mode === "persistent" });
     if (!ok) return;
+  }
+
+  if (state.vmReady) {
+    while (true) {
+      const result = await import("./operations").then(({ execVm }) => execVm("sync", {
+        lock: true, log: false, timeoutMs: 30000,
+      }));
+      if (result.code === 0) break;
+      const choice = await showBaModal({
+        title: t("vm.shutdown.syncFailed"),
+        message: t("vm.shutdown.syncFailedDetail", { error: result.stderr || result.stdout || String(result.code) }),
+        buttons: [
+          { id: "cancel", label: t("common.cancel"), variant: "secondary", cancel: true },
+          { id: "retry", label: t("common.retry"), variant: "primary" },
+          { id: "force", label: t("vm.shutdown.force"), variant: "danger" },
+        ],
+      });
+      if (choice === "retry") continue;
+      if (choice === "cancel") return;
+      logTool(`[host] ${t("vm.shutdown.forcedWarning")}${NL}`);
+      break;
+    }
   }
 
   setDisabled($("stop-vm"), true);
@@ -684,23 +771,24 @@ export async function stopVm({ confirmShutdown = true }: StopVmOptions = {}): Pr
   logTool(`${NL}[host] apagando VM...${NL}`);
 
   try {
-    if (state.vmReady && typeof vm.serial0_send === "function") {
-      try {
-        vm.serial0_send(`sync${NL}`);
-      } catch {
-        // Shutdown sync is best-effort.
-      }
-      await new Promise<void>((resolve) => {
-        window.setTimeout(resolve, 250);
-      });
-    }
-
+    // Stop the emulated CPU before the final host-side flush. Otherwise the
+    // guest can submit another HDB write between flush() and destroy().
     if (typeof vm.stop === "function") {
       try {
         await vm.stop();
       } catch (error) {
         logTool(`[host] aviso stop(): ${errorMessage(error)}${NL}`);
       }
+    }
+
+    if (state.activeCowDisk) {
+      const durability = state.workspaceStatus === "evictable" || state.workspaceStatus === "degraded"
+        ? state.workspaceStatus
+        : "persisted";
+      state.workspaceStatus = "syncing";
+      await state.activeCowDisk.flush();
+      await state.activeCowDisk.checkpoint();
+      state.workspaceStatus = state.activeRuntime?.storage.mode === "persistent" ? durability : "temporary";
     }
 
     if (typeof vm.destroy === "function") {
@@ -721,16 +809,16 @@ export async function stopVm({ confirmShutdown = true }: StopVmOptions = {}): Pr
     state.networkConfigured = false;
     state.networkConfiguring = false;
     state.activeRuntime = null;
-    state.diskMounted = false;
+    state.activeCowDisk = null;
     resetConsoleTabs();
     setAgentBusy(false);
     setVmOptionsLocked(false);
     setBadge($("badge-vm"), t("common.v86Inactive"), "");
     setBadge($("vm-detail"), t("common.offLower"), "");
     syncPowerButtons();
-    syncDiskCheckButton();
     syncSnapshotButtons();
-    logTool(`[host] VM apagada. Puedes cambiar RAM/disco y arrancar de nuevo.${NL}`);
+    void syncWorkspaceControls();
+    logTool(`[host] VM apagada. Puedes cambiar perfil o almacenamiento y arrancar de nuevo.${NL}`);
   }
 }
 
@@ -801,7 +889,7 @@ function onSerialChar(char: string): void {
     state.vmReady = true;
     setBadge($("badge-vm"), t("vm.badge.ready"), "good");
     setBadge($("vm-detail"), t("vm.badge.shellReady"), "good");
-    syncDiskCheckButton();
+    void syncWorkspaceControls();
     scheduleSerialFit({ focus: true });
     window.setTimeout(() => {
       void initConsoleTabsAfterBoot();

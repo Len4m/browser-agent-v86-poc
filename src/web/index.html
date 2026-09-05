@@ -120,13 +120,16 @@
         </div>
         <div class="vm-options compact-vm-options" data-i18n-attr="aria-label:vm.options.aria">
           <label class="vm-field-profile"><span data-i18n="vm.field.profile">vm.field.profile</span>
-            <select id="vm-profile">
-              <option value="manual" selected data-i18n="common.freeManual">common.freeManual</option>
+            <select id="vm-profile"></select>
+          </label>
+          <label class="vm-field-storage"><span data-i18n="vm.field.storage">vm.field.storage</span>
+            <select id="vm-storage-mode">
+              <option value="temporary" selected data-i18n="vm.storage.temporary">vm.storage.temporary</option>
+              <option value="persistent" data-i18n="vm.storage.persistent">vm.storage.persistent</option>
             </select>
           </label>
-          <label class="vm-field-ram vm-field-manual-only"><span data-i18n="vm.field.ram">vm.field.ram</span>
+          <label class="vm-field-ram"><span data-i18n="vm.field.ram">vm.field.ram</span>
             <select id="vm-ram-mb">
-              <option value="256">256 MB</option>
               <option value="512" selected>512 MB</option>
               <option value="768">768 MB</option>
               <option value="1024">1024 MB</option>
@@ -134,27 +137,25 @@
               <option value="2048">2048 MB</option>
             </select>
           </label>
-          <label class="vm-field-vram vm-field-manual-only"><span data-i18n="vm.field.vram">vm.field.vram</span>
+          <label class="vm-field-vram"><span data-i18n="vm.field.vram">vm.field.vram</span>
             <select id="vm-vram-mb">
               <option value="8" selected>8 MB</option>
               <option value="16">16 MB</option>
               <option value="32">32 MB</option>
             </select>
           </label>
-          <label class="vm-field-disk"><span data-i18n="vm.field.disk">vm.field.disk</span>
-            <select id="vm-disk">
-              <option value="initramfs" selected>RAM / initramfs</option>
-              <option value="hda-250">hda 250 MB</option>
-              <option value="hda-512">hda 512 MB</option>
-              <option value="hda-1024">hda 1 GB</option>
-            </select>
-          </label>
-          <div id="vm-profile-hint"></div>
-          <div id="vm-disk-hint"></div>
+          <div class="vm-profile-summary">
+            <div id="vm-profile-hint"></div>
+            <span id="vm-profile-storage-status" class="badge" hidden></span>
+          </div>
         </div>
         <div class="toolbar">
           <button id="start-vm" type="button" class="vm-power-btn" data-i18n="vm.controls.power.on" data-i18n-attr="title:vm.controls.power.on.title">vm.controls.power.on</button>
-          <button id="check-disk" type="button" class="secondary" hidden data-i18n="vm.controls.disk.mount" data-i18n-attr="title:vm.controls.disk.mount.title">vm.controls.disk.mount</button>
+          <button id="save-state" type="button" class="secondary snapshot-save-btn" disabled data-i18n="vm.snapshot.save">vm.snapshot.save</button>
+          <button id="restore-state" type="button" class="secondary snapshot-restore-btn" data-i18n="vm.snapshot.restore">vm.snapshot.restore</button>
+          <span id="workspace-toolbar" class="workspace-inline" hidden data-i18n-attr="aria-label:vm.workspace.aria">
+            <button id="workspace-reset" type="button" class="secondary danger-light workspace-reset-btn" data-i18n="vm.workspace.reset">vm.workspace.reset</button>
+          </span>
         </div>
         <div id="console-tabs" class="console-tabs">
           <div id="console-tabs-list" class="console-tabs-list"></div>
@@ -176,9 +177,7 @@
           </div>
         </div>
         <div class="snapshot-toolbar" data-i18n-attr="aria-label:vm.snapshots.aria">
-          <button id="save-state" type="button" class="secondary snapshot-save-btn" disabled data-i18n="vm.snapshot.save">vm.snapshot.save</button>
-          <button id="restore-state" type="button" class="secondary snapshot-restore-btn" data-i18n="vm.snapshot.restore">vm.snapshot.restore</button>
-          <input id="restore-state-file" type="file" accept=".v86state,.bin,application/octet-stream" hidden />
+          <input id="restore-state-file" type="file" accept=".bav86snapshot,application/octet-stream" hidden />
           <div class="snapshot-note" data-i18n="vm.snapshot.note">vm.snapshot.note</div>
         </div>
         <pre id="terminal" class="terminal" data-i18n="app.toolLog.intro">app.toolLog.intro</pre>
@@ -255,8 +254,6 @@
     <input id="cfg-wasm" type="hidden" value="/v86/build/v86.wasm" />
     <input id="cfg-bios" type="hidden" value="/v86/bios/seabios.bin" />
     <input id="cfg-vga" type="hidden" value="/v86/bios/vgabios.bin" />
-    <input id="cfg-bzimage" type="hidden" value="/v86/images/kernels/alpine-v3.23-vmlinuz-lts" />
-    <input id="cfg-initrd" type="hidden" value="/v86/images/profiles/alpine-base-initramfs.gz" />
 
     <div id="screen-container" class="hidden-screen">
       <div></div>

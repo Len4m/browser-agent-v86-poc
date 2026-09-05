@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
-import { readdirSync } from "node:fs";
+import { mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -16,15 +16,17 @@ if (!profileFiles.length) {
   process.exit(1);
 }
 
+const generatedProfilesDir = join(root, "public", "v86", "images", "profiles");
+mkdirSync(generatedProfilesDir, { recursive: true });
+writeFileSync(join(generatedProfilesDir, "index.json"), "[]\n");
+
 const steps = [
   [process.execPath, ["scripts/check/vm-profiles.mjs"]],
   [process.execPath, ["scripts/setup/runtime-assets.mjs"]],
-  ["bash", ["scripts/setup/vm-alpine-initramfs.sh"]],
   ...profileFiles.map((profilePath) => [
     process.execPath,
     ["scripts/setup/vm-profile-image.mjs", profilePath],
   ]),
-  ["bash", ["scripts/setup/vm-hda-data-disks.sh"]],
 ];
 
 for (const [command, args] of steps) {

@@ -1,0 +1,65 @@
+#!/bin/sh
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin
+
+rescue() {
+  echo "[persistent-init] ERROR: $*" >/dev/ttyS0 2>/dev/null || true
+  echo "[persistent-init] entrando en shell de recuperación" >/dev/ttyS0 2>/dev/null || true
+  while true; do
+    # Never replace PID 1 with an interactive shell: an EOF/HUP on ttyS0 would
+    # otherwise make the kernel panic and hide the original recovery message.
+    setsid sh -c 'exec sh </dev/ttyS0 >/dev/ttyS0 2>&1' || true
+    echo "[persistent-init] shell de recuperación cerrada; reiniciando" >/dev/ttyS0 2>/dev/null || true
+    sleep 1
+  done
+}
+
+mount -t devtmpfs dev /dev 2>/dev/null || mount -t tmpfs dev /dev || rescue "no se pudo montar /dev"
+mkdir -p /dev/pts /proc /sys /run /lower /persist /newroot
+mount -t devpts devpts /dev/pts 2>/dev/null || true
+mount -t proc proc /proc || rescue "no se pudo montar /proc"
+mount -t sysfs sysfs /sys || rescue "no se pudo montar /sys"
+mount -t tmpfs tmpfs /run || rescue "no se pudo montar /run"
+
+if [ -f /etc/v86-boot-modules.list ]; then
+  while read -r module; do
+    [ -f "$module" ] && insmod "$module" 2>/dev/null || true
+  done < /etc/v86-boot-modules.list
+fi
+
+ROOT_DISK=""
+PERSIST_DISK=""
+attempt=0
+while [ "$attempt" -lt 100 ]; do
+  for candidate in /dev/sda /dev/sdb /dev/hda /dev/hdb /dev/hdc /dev/vda /dev/vdb; do
+    [ -b "$candidate" ] || continue
+    identity="$(/bin/busybox blkid "$candidate" 2>/dev/null || true)"
+    case "$identity" in
+      *'LABEL="ba-root"'*) ROOT_DISK="$candidate" ;;
+      *'LABEL="ba-persist"'*) PERSIST_DISK="$candidate" ;;
+    esac
+  done
+  [ -n "$ROOT_DISK" ] && [ -n "$PERSIST_DISK" ] && break
+  attempt=$((attempt + 1))
+  sleep 1
+done
+
+[ -n "$ROOT_DISK" ] || rescue "HDA raíz no detectado"
+[ -n "$PERSIST_DISK" ] || rescue "HDB persistente no detectado"
+mount -t ext4 -o ro "$ROOT_DISK" /lower || rescue "no se pudo montar $ROOT_DISK como lowerdir"
+mount -t ext4 "$PERSIST_DISK" /persist || rescue "no se pudo montar $PERSIST_DISK"
+mkdir -p /persist/upper /persist/work
+mount -t overlay overlay -o lowerdir=/lower,upperdir=/persist/upper,workdir=/persist/work /newroot \
+  || rescue "no se pudo montar OverlayFS"
+
+[ -x /newroot/init ] || rescue "falta /init ejecutable en la raíz final"
+[ -x /newroot/bin/sh ] || rescue "falta /bin/sh ejecutable en la raíz final"
+mkdir -p /newroot/dev /newroot/proc /newroot/sys /newroot/run /newroot/mnt/.ba-lower /newroot/mnt/.ba-persist
+mount --move /dev /newroot/dev
+mount --move /proc /newroot/proc
+mount --move /sys /newroot/sys
+mount --move /run /newroot/run
+mount --move /lower /newroot/mnt/.ba-lower
+mount --move /persist /newroot/mnt/.ba-persist
+echo "[persistent-init] switch_root: $ROOT_DISK + $PERSIST_DISK" >/newroot/dev/ttyS0 2>/dev/null || true
+exec /bin/busybox switch_root -c /dev/ttyS0 /newroot /init
+rescue "switch_root devolvió código $?"

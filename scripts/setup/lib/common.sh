@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Helpers compartidos del build de la imagen initramfs.
-# Pensado para cargarse con `source` desde vm-alpine-initramfs.sh: usa los
+# Pensado para cargarse con `source` desde vm-alpine-overlay-hda.sh: usa los
 # globals ya definidos por el script principal (WORK, BUILD_ID, PROFILE_*,
 # ALPINE_REPO).
 

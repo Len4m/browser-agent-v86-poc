@@ -1,6 +1,10 @@
 /* Browser Agent v86 - 03-utility-hidden.css */
 
 /* Utility classes used by JavaScript without inline styling */
+[hidden] {
+  display: none !important;
+}
+
 .clipboard-fallback {
   position: fixed;
   left: -9999px;
@@ -22,4 +26,28 @@
   color: #64748b;
   font-size: 12px;
   line-height: 1.35;
+}
+
+.workspace-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.workspace-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.workspace-reset-btn::before {
+  content: "";
+  width: 0.9rem;
+  height: 0.9rem;
+  flex: 0 0 auto;
+  background: currentColor;
+  -webkit-mask: url("/assets/icons/lucide/refresh-ccw.svg") center / contain no-repeat;
+  mask: url("/assets/icons/lucide/refresh-ccw.svg") center / contain no-repeat;
 }

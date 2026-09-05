@@ -5,8 +5,6 @@ import {
   DOCKER_WSNIC_COMMAND,
   DOCKER_WSNIC_ISOLATED_COMMAND,
   NL,
-  VM_DISK_MOUNT_COMMAND,
-  VM_DISK_UNMOUNT_COMMAND,
   VM_NETWORK_COMMAND,
   state,
 } from "../app/state";
@@ -21,12 +19,17 @@ import {
   logTool,
   setAgentBusy,
   setBadge,
-  syncDiskCheckButton,
   syncSnapshotButtons,
   syncWsButton,
 } from "../ui/status-controls";
 import { backgroundToolsApi } from "./background-tools-serial1";
-import { getVmRuntimeConfig, getWsRelayUrl, type VmRuntimeConfig } from "./profile-config";
+import {
+  getSelectedProfile,
+  getVmRuntimeConfig,
+  getWsRelayUrl,
+  selectedProfileHasPersistedWorkspace,
+  syncProfilePersistenceIndicators,
+} from "./profile-config";
 import {
   checkWsRelayEndpoint,
   downloadArrayBuffer,
@@ -38,6 +41,18 @@ import {
   v86SaveState,
   wsValidationErrorDetail,
 } from "./runtime-assets";
+import {
+  assertSnapshotCompatible,
+  createSnapshotContainer,
+  decodeDiskBlocks,
+  decodePortable,
+  SNAPSHOT_MAGIC,
+  type PortableSnapshotManifest,
+  type SnapshotConsoleUiState,
+} from "./portable-state";
+import { isResolvedVmRuntime, resolveVmRuntime, runtimeInputFromProfile, type ResolvedVmRuntime, type VmProfile } from "./runtime-config";
+import { diskRootHash, sha256 } from "./storage-hash";
+import { browserStorageStatus, createRuntimeCowDisk, type CowDisk } from "./indexeddb-cow-disk";
 import {
   getWsRetryDelay,
   PUBLIC_RELAY_URL,
@@ -105,16 +120,24 @@ function requestConsoleRender(source: string): void {
   appEvents.emit("console:state-changed", { source });
 }
 
-function isVmRuntimeConfig(value: unknown): value is VmRuntimeConfig {
-  return isRecord(value)
-    && typeof value.ramMb === "number"
-    && typeof value.vramMb === "number"
-    && typeof value.diskMode === "string"
-    && ("hda" in value);
+function activeRuntimeConfig(): ResolvedVmRuntime | null {
+  return isResolvedVmRuntime(state.activeRuntime) ? state.activeRuntime : null;
 }
 
-function activeRuntimeConfig(): VmRuntimeConfig | null {
-  return isVmRuntimeConfig(state.activeRuntime) ? state.activeRuntime : null;
+function snapshotConsoleUiState(): SnapshotConsoleUiState {
+  const humanTabs = state.consoleTabs.tabs.filter((tab) => tab.owner === "human");
+  const active = humanTabs.find((tab) => tab.id === state.consoleTabs.activeId);
+  const serial = humanTabs.find((tab) => tab.transport === "serial0");
+  return {
+    activeSessionId: active?.transport === "serial2" && active.sessionId ? String(active.sessionId) : null,
+    serialTitle: String(serial?.title || "1").replace(/\s+/g, " ").trim().slice(0, 32) || "1",
+    sessions: humanTabs
+      .filter((tab) => tab.transport === "serial2" && tab.sessionId)
+      .map((tab) => ({
+        sessionId: String(tab.sessionId),
+        title: String(tab.title || tab.humanNumber || tab.sessionId).replace(/\s+/g, " ").trim().slice(0, 32),
+      })),
+  };
 }
 
 function buildExecVmWrappedCommand(command: string, marker: string, maxOutputBytes: number | undefined): string {
@@ -290,47 +313,6 @@ async function configureNetworkInVm(): Promise<void> {
     setBadge($("ws-detail"), t("net.badge.wsnicOkNoNet"), "warn");
     logTool(`[network] ${t("net.wsnicRespondsNotConfigured")}${NL}`);
   }
-}
-
-export async function toggleDiskInVm(): Promise<void> {
-  const runtime = activeRuntimeConfig();
-  if (!runtime?.hda) return;
-
-  if (!state.vm || !state.vmReady) {
-    logTool(`${NL}[disk] ${t("vm.disk.bootFirst")}${NL}`);
-    return;
-  }
-
-  const mounting = !state.diskMounted;
-  const result = await execVm(mounting ? VM_DISK_MOUNT_COMMAND : VM_DISK_UNMOUNT_COMMAND, {
-    lock: true,
-    label: mounting ? t("vm.disk.mounting") : t("vm.disk.unmounting"),
-    timeoutMs: mounting ? 45000 : 20000,
-  });
-
-  if (result.stdout) logTool(`${NL}${result.stdout}${NL}`);
-  if (result.stderr) logTool(`${NL}[disk stderr] ${result.stderr}${NL}`);
-
-  if (mounting) {
-    if (result.stdout.includes("DISK_MOUNT_OK")) {
-      state.diskMounted = true;
-      setBadge($("vm-detail"), t("vm.disk.badge.mounted"), "good");
-      logTool(`[disk] ${t("vm.disk.mountedAt")}${NL}`);
-    } else {
-      setBadge($("vm-detail"), t("vm.disk.badge.notMounted"), "warn");
-      logTool(`[disk] ${t("vm.disk.mountFailed")}${NL}`);
-    }
-  } else if (result.stdout.includes("DISK_UNMOUNT_OK") || result.stdout.includes("DISK_NOT_MOUNTED")) {
-    state.diskMounted = false;
-    setBadge($("vm-detail"), t("vm.disk.badge.unmounted"), "good");
-    logTool(`[disk] ${t("vm.disk.unmountedAt")}${NL}`);
-  } else {
-    state.diskMounted = true;
-    setBadge($("vm-detail"), t("vm.disk.badge.inUse"), "warn");
-    logTool(`[disk] ${t("vm.disk.unmountFailed")}${NL}`);
-  }
-
-  syncDiskCheckButton();
 }
 
 export function maybeConfigureNetwork(): void {
@@ -607,9 +589,9 @@ export async function connectWs(): Promise<void> {
 export async function saveSnapshot(): Promise<void> {
   if (!state.vm || state.vmStarting || state.agentBusy || state.pending || state.bgTools.pending) return;
 
-  const runtime = activeRuntimeConfig() ?? getVmRuntimeConfig();
-  const diskLabel = runtime.hda ? `hda-${runtime.hda.sizeMb}mb` : "initramfs";
-  const filename = `browser-agent-v86-${runtime.ramMb}mb-${diskLabel}-${timestampForFilename()}.v86state`;
+  const runtime = activeRuntimeConfig();
+  if (!runtime) return;
+  const filename = `browser-agent-v86-${runtime.profile.id}-${timestampForFilename()}.bav86snapshot`;
 
   setAgentBusy(true, t("vm.snapshot.saving"));
   setLoading(true, {
@@ -620,18 +602,31 @@ export async function saveSnapshot(): Promise<void> {
   });
   await nextPaint();
   logTool(`${NL}[snapshot] ${t("vm.snapshot.savingLog")}${NL}`);
-  if (runtime.hda) {
-    logTool(`[snapshot] ${t("vm.snapshot.noHdaWarning", { url: runtime.hda.url })}${NL}`);
-  }
-
+  let paused = false;
   try {
-    const buffer = await v86SaveState();
-    downloadArrayBuffer(buffer, filename);
-    logTool(`[snapshot] ${t("vm.snapshot.downloaded", { filename, size: formatBytes(buffer.byteLength) })}${NL}`);
+    const syncResult = await execVm("sync", { lock: false, log: false, timeoutMs: 30000 });
+    if (syncResult.code !== 0) throw new Error(`sync guest falló: ${syncResult.stderr || syncResult.stdout}`);
+    const vm = state.vm as { stop?: () => unknown; run?: () => unknown };
+    if (typeof vm.stop === "function") {
+      await vm.stop();
+      paused = true;
+    }
+    if (state.activeCowDisk) {
+      await state.activeCowDisk.flush();
+      await state.activeCowDisk.checkpoint();
+    }
+    const blocks = state.activeCowDisk ? await state.activeCowDisk.exportBlocks() : [];
+    const v86State = await v86SaveState();
+    const container = await createSnapshotContainer(runtime, v86State, blocks, snapshotConsoleUiState());
+    downloadArrayBuffer(container, filename);
+    logTool(`[snapshot] ${t("vm.snapshot.downloaded", { filename, size: formatBytes(container.byteLength) })}${NL}`);
   } catch (error) {
     logTool(`[snapshot] ${t("vm.snapshot.saveError", { error: errorMessage(error) })}${NL}`);
     setBadge($("vm-detail"), t("common.snapshotError"), "bad");
   } finally {
+    if (paused) {
+      try { (state.vm as { run?: () => unknown } | null)?.run?.(); } catch { /* resume is best-effort */ }
+    }
     setLoading(false);
     setAgentBusy(false);
     syncSnapshotButtons();
@@ -662,18 +657,34 @@ async function stopVmForRestore(): Promise<void> {
   await stopVm({ confirmShutdown: false });
 }
 
-async function startVmForRestore(buffer: ArrayBuffer): Promise<void> {
+async function startVmForRestore(
+  buffer: ArrayBuffer,
+  runtime: ResolvedVmRuntime,
+  blocks: ReturnType<typeof decodeDiskBlocks>,
+  checkpoint: string | null,
+  consoleUi: SnapshotConsoleUiState | null,
+): Promise<void> {
   const { startVm } = await import("./serial-vm");
-  await startVm({ restoreStateBuffer: buffer });
+  await startVm({
+    restoreStateBuffer: buffer,
+    resolvedRuntime: runtime,
+    restoreDiskBlocks: blocks,
+    restoreDiskCheckpoint: checkpoint,
+    restoreConsoleUi: consoleUi,
+  });
+}
+
+function knownProfile(id: string | undefined, profileHash: string): VmProfile | null {
+  if (!id) return null;
+  return state.profiles.find((value): value is VmProfile => {
+    return isRecord(value) && value.id === id && value.profileHash === profileHash;
+  }) || null;
 }
 
 export async function restoreSnapshotFromFile(event: Event): Promise<void> {
   const input = event.target instanceof HTMLInputElement ? event.target : null;
   const file = input?.files?.[0] || null;
   if (!file) return;
-
-  const shouldContinue = !state.vm || await confirmRestoreSnapshot();
-  if (!shouldContinue) return;
 
   setAgentBusy(true, t("vm.snapshot.reading"));
   setLoading(true, {
@@ -687,16 +698,129 @@ export async function restoreSnapshotFromFile(event: Event): Promise<void> {
   try {
     const buffer = await file.arrayBuffer();
     logTool(`${NL}[snapshot] ${t("common.loadedFile", { filename: file.name, size: formatBytes(buffer.byteLength) })}${NL}`);
-    logTool(`[snapshot] ${t("vm.snapshot.hdaNotInSnapshot")}${NL}`);
+    const decoded = await decodePortable<PortableSnapshotManifest>(buffer, SNAPSHOT_MAGIC);
+    const v86State = decoded.sections.get("v86-state");
+    if (!v86State || await sha256(v86State) !== decoded.manifest.stateSha256) throw new Error("El estado v86 no coincide con su manifiesto.");
+
+    const profile = knownProfile(decoded.manifest.runtime.profile?.id, decoded.manifest.runtime.profileHash);
+    let available: ResolvedVmRuntime;
+    if (profile) {
+      const snapshotDisk = decoded.manifest.runtime.storage.disks.find((disk) => disk.kind === "overlay-cow");
+      const runtimeInput = runtimeInputFromProfile(profile, getWsRelayUrl(), snapshotDisk ? {
+        mode: snapshotDisk.persistence,
+      } : { mode: "temporary" });
+      available = resolveVmRuntime({
+        ...runtimeInput,
+        ramMb: decoded.manifest.runtime.ramMb,
+        vramMb: decoded.manifest.runtime.vramMb,
+      });
+    } else if (state.activeRuntime?.profileHash === decoded.manifest.runtime.profileHash) {
+      available = state.activeRuntime;
+    } else {
+      throw new Error("El perfil exacto del snapshot no está publicado en esta aplicación.");
+    }
+    assertSnapshotCompatible(decoded.manifest, available);
+
+    const cow = available.storage.disks.find((disk) => disk.kind === "overlay-cow");
+    const delta = decoded.sections.get("hdb-delta");
+    const blocks = cow && delta ? decodeDiskBlocks(delta, cow.blockSize, cow.sizeBytes) : [];
+    if (blocks.length !== decoded.manifest.blockCount) throw new Error("Número de bloques HDB incoherente.");
+    if (cow && await diskRootHash(blocks) !== decoded.manifest.diskRootHash) throw new Error("Hash raíz HDB incompatible.");
+
+    const shouldContinue = !state.vm || await confirmRestoreSnapshot();
+    if (!shouldContinue) {
+      setLoading(false);
+      setAgentBusy(false);
+      return;
+    }
     setAgentBusy(false);
 
     if (state.vm) await stopVmForRestore();
-    await startVmForRestore(buffer);
+    await startVmForRestore(
+      v86State.slice().buffer,
+      available,
+      blocks,
+      decoded.manifest.diskRootHash,
+      decoded.manifest.consoleUi || null,
+    );
   } catch (error) {
     logTool(`[snapshot] ${t("vm.snapshot.restoreError", { error: errorMessage(error) })}${NL}`);
     setLoading(false);
     setAgentBusy(false);
     syncSnapshotButtons();
+  }
+}
+
+async function selectedWorkspace(): Promise<{ runtime: ResolvedVmRuntime; disk: CowDisk }> {
+  if (state.activeRuntime?.storage.mode === "persistent" && state.activeCowDisk) {
+    return { runtime: state.activeRuntime, disk: state.activeCowDisk };
+  }
+  const profile = getSelectedProfile();
+  if (!profile) throw new Error("Selecciona un perfil con workspace persistente.");
+  const runtime = resolveVmRuntime(runtimeInputFromProfile(profile, getWsRelayUrl(), { mode: "persistent" }));
+  const disk = createRuntimeCowDisk(runtime, (status) => { state.workspaceStatus = status; });
+  if (!disk) throw new Error("El perfil no declara un disco OverlayFS.");
+  await disk.load();
+  return { runtime, disk };
+}
+
+export async function syncWorkspaceControls(): Promise<void> {
+  await syncProfilePersistenceIndicators();
+  const profile = getSelectedProfile();
+  const hasPersistedWorkspace = Boolean(profile && selectedProfileHasPersistedWorkspace());
+  const persistentModeSelected = getVmRuntimeConfig().workspaceMode === "persistent";
+  const toolbar = $("workspace-toolbar");
+  if (toolbar) toolbar.hidden = !(hasPersistedWorkspace && persistentModeSelected);
+  if (!hasPersistedWorkspace) {
+    state.workspaceStatus = profile ? "temporary" : "none";
+  }
+
+  let workspaceBytes: number | null = null;
+  if (hasPersistedWorkspace && profile) {
+    try {
+      const { disk } = await selectedWorkspace();
+      workspaceBytes = await disk.storedBytes();
+      if (state.workspaceStatus !== "degraded" && state.workspaceStatus !== "syncing") {
+        state.workspaceStatus = await browserStorageStatus();
+      }
+    } catch (error) {
+      state.workspaceStatus = "degraded";
+      logTool(`${NL}[workspace] IndexedDB no disponible: ${errorMessage(error)}${NL}`);
+    }
+  }
+
+  const storageBadge = $("vm-profile-storage-status");
+  if (storageBadge && hasPersistedWorkspace && workspaceBytes != null) {
+    storageBadge.textContent = `${t("vm.profile.persistence.saved")} · ${formatBytes(workspaceBytes)}`;
+    storageBadge.title = storageBadge.textContent;
+  }
+  const blocked = state.vmStarting || state.agentBusy;
+  const resetButton = $<HTMLButtonElement>("workspace-reset");
+  if (resetButton) resetButton.disabled = blocked || !hasPersistedWorkspace || !persistentModeSelected || Boolean(state.vm);
+}
+
+export async function resetWorkspace(): Promise<void> {
+  if (state.vm || state.vmStarting || state.agentBusy) return;
+  const choice = await showBaModal({
+    title: t("vm.workspace.reset"),
+    message: t("vm.workspace.resetConfirm"),
+    buttons: [
+      { id: "cancel", label: t("common.cancel"), variant: "secondary", cancel: true },
+      { id: "reset", label: t("vm.workspace.reset"), variant: "danger" },
+    ],
+  });
+  if (choice !== "reset") return;
+  setAgentBusy(true, t("vm.workspace.resetting"));
+  try {
+    const { disk } = await selectedWorkspace();
+    await disk.reset();
+    state.workspaceStatus = "none";
+    logTool(`${NL}[workspace] reiniciado desde la semilla inmutable.${NL}`);
+  } catch (error) {
+    logTool(`${NL}[workspace] error reiniciando: ${errorMessage(error)}${NL}`);
+  } finally {
+    setAgentBusy(false);
+    await syncWorkspaceControls();
   }
 }
 

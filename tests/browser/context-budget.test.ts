@@ -40,7 +40,7 @@ async function installSpanishCatalog(): Promise<void> {
 test("native tool prompt lists selected active tools instead of profile prefix", async () => {
   await installSpanishCatalog();
   state.profiles = [webProfile];
-  state.activeRuntime = { profile: webProfile };
+  state.activeRuntime = { profile: webProfile } as unknown as typeof state.activeRuntime;
 
   const prompt = llmContextBudget.buildAgentTurnPrompt("usa httpx contra https://example.com", {
     nativeTools: true,

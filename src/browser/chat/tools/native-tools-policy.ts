@@ -38,9 +38,9 @@ function activeRuntimeProfileId(): string {
 
 function getProfileId(): string {
   const stateProfile = activeRuntimeProfileId();
-  if (stateProfile && stateProfile !== "manual") return stateProfile;
+  if (stateProfile) return stateProfile;
   const profileSelect = document.getElementById("vm-profile");
-  return profileSelect instanceof HTMLSelectElement ? profileSelect.value : "manual";
+  return profileSelect instanceof HTMLSelectElement ? profileSelect.value : "";
 }
 
 function getModelConfig(modelConfig?: LlmModelConfig | null): LlmModelConfig {

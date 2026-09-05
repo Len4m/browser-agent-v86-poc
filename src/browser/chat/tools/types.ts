@@ -85,7 +85,6 @@ export interface RuntimeToolContext {
   agentBusy: boolean;
   activeProfile: string;
   networkConfigured: boolean;
-  diskMounted: boolean;
 }
 
 export interface NormalizedToolCall {
@@ -108,7 +107,6 @@ interface PromptRuntimeContextCompactOptions {
 
 export interface LlmToolRegistryApi {
   SECURITY_LEVELS: SecurityLevel[];
-  PROFILE_TOOL_NAMES: Record<string, string[]>;
   getTool: (name: unknown) => ToolDefinition | undefined;
   listTools: (options?: ListToolsOptions) => ToolMetadata[];
   listToolNames: (options?: ListToolsOptions) => string[];

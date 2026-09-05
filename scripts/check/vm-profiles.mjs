@@ -144,6 +144,7 @@ for (const file of profileFiles) {
   }
 
   const packages = Array.isArray(profile.packages) ? profile.packages : [];
+  if (profile.storage?.layout !== "overlay-hda") errors.push(`${path}.storage.layout: managed profiles require overlay-hda`);
   for (const packageName of requiredProfilePackages) {
     if (!packages.includes(packageName)) {
       errors.push(`${path}.packages: missing required package ${packageName} (guest runners depend on it)`);

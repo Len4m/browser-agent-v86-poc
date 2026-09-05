@@ -18,11 +18,6 @@ function setDisabled(el: Element | null, disabled: boolean): void {
   }
 }
 
-function activeRuntimeHasHda(): boolean {
-  const runtime = state.activeRuntime;
-  return Boolean(runtime && typeof runtime === "object" && "hda" in runtime && (runtime as { hda?: unknown }).hda);
-}
-
 export function setBadge(el: Element | null, text: string, tone = ""): void {
   if (!el) return;
   el.textContent = text;
@@ -54,20 +49,6 @@ export function formatLoggedCommand(command: string, max = 360): string {
   const text = command.replace(/\s+/g, " ").trim();
   if (text.length <= max) return text;
   return `${text.slice(0, max)} … ${tn("vm.controls.charsTruncated", text.length)}`;
-}
-
-export function syncDiskCheckButton(): void {
-  const button = $("check-disk");
-  if (!button) return;
-  const hasBootDisk = Boolean(state.vm && activeRuntimeHasHda());
-  button.hidden = !hasBootDisk;
-  setDisabled(button, !hasBootDisk || !state.vmReady || state.agentBusy || Boolean(state.pending) || Boolean(state.bgTools.pending));
-  button.textContent = state.diskMounted
-    ? t("vm.controls.disk.unmount")
-    : t("vm.controls.disk.mount");
-  button.title = state.diskMounted
-    ? t("vm.controls.disk.unmount.title")
-    : t("vm.controls.disk.mount.title");
 }
 
 export function syncSnapshotButtons(): void {
@@ -156,7 +137,6 @@ export function setAgentBusy(value: boolean, detail = ""): void {
 
   if (value) blurSerialConsole();
   syncPowerButtons();
-  syncDiskCheckButton();
   syncSnapshotButtons();
   syncWsButton();
   syncChecksButton();
@@ -174,7 +154,6 @@ export function setAgentBusy(value: boolean, detail = ""): void {
 
 export function initStatusControls(): void {
   appEvents.on("app:language-changed", () => {
-    syncDiskCheckButton();
     syncSnapshotButtons();
     syncPowerButtons();
     syncWsButton();
