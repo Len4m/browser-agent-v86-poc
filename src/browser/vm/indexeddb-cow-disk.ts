@@ -136,6 +136,38 @@ function transactionDone(transaction: IDBTransaction): Promise<void> {
   });
 }
 
+function deleteWorkspaceBlocks(
+  transaction: IDBTransaction,
+  workspaceId: string,
+  keepGeneration?: string,
+): Promise<void> {
+  const blocks = transaction.objectStore("blocks");
+  const request = blocks.index("generation")
+    .openKeyCursor(IDBKeyRange.bound([workspaceId, ""], [workspaceId, "\uffff"]));
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => {
+      try {
+        const cursor = request.result;
+        if (!cursor) {
+          resolve();
+          return;
+        }
+        const key = cursor.primaryKey;
+        if (!keepGeneration || !Array.isArray(key) || key[1] !== keepGeneration) {
+          // Firefox rejects mutation through an index key cursor. Delete via
+          // the read-write object store using the cursor's primary key.
+          blocks.delete(key);
+        }
+        cursor.continue();
+      } catch (error) {
+        try { transaction.abort(); } catch { /* transaction may already be closing */ }
+        reject(error instanceof Error ? error : new Error("No se pudieron eliminar los bloques del workspace."));
+      }
+    };
+    request.onerror = () => reject(request.error || new Error("No se pudieron recorrer los bloques del workspace."));
+  });
+}
+
 class IndexedDbCowBlockStore implements CowBlockStore {
   private databasePromise: Promise<IDBDatabase> | null = null;
 
@@ -259,45 +291,20 @@ class IndexedDbCowBlockStore implements CowBlockStore {
   async pruneGenerations(workspaceId: string, keepGeneration: string): Promise<void> {
     const db = await this.database();
     const tx = db.transaction("blocks", "readwrite", { durability: "strict" });
-    const request = tx.objectStore("blocks").index("generation")
-      .openKeyCursor(IDBKeyRange.bound([workspaceId, ""], [workspaceId, "\uffff"]));
-    await new Promise<void>((resolve, reject) => {
-      request.onsuccess = () => {
-        const cursor = request.result;
-        if (!cursor) {
-          resolve();
-          return;
-        }
-        const key = cursor.primaryKey;
-        if (Array.isArray(key) && key[1] !== keepGeneration) cursor.delete();
-        cursor.continue();
-      };
-      request.onerror = () => reject(request.error || new Error("No se pudieron limpiar generaciones antiguas del workspace."));
-    });
-    await transactionDone(tx);
+    await Promise.all([
+      deleteWorkspaceBlocks(tx, workspaceId, keepGeneration),
+      transactionDone(tx),
+    ]);
   }
 
   async reset(workspaceId: string): Promise<void> {
     const db = await this.database();
     const tx = db.transaction(["blocks", "workspaces"], "readwrite", { durability: "strict" });
-    const done = transactionDone(tx);
-    const blocks = tx.objectStore("blocks");
     tx.objectStore("workspaces").delete(workspaceId);
-    const request = blocks.index("generation")
-      .openKeyCursor(IDBKeyRange.bound([workspaceId, ""], [workspaceId, "\uffff"]));
-    await new Promise<void>((resolve, reject) => {
-      request.onsuccess = () => {
-        const cursor = request.result;
-        if (!cursor) {
-          resolve();
-          return;
-        }
-        blocks.delete(cursor.primaryKey);
-        cursor.continue();
-      };
-      request.onerror = () => reject(request.error || new Error("No se pudieron eliminar los bloques del workspace."));
-    });
-    await done;
+    await Promise.all([
+      deleteWorkspaceBlocks(tx, workspaceId),
+      transactionDone(tx),
+    ]);
   }
 }
 
