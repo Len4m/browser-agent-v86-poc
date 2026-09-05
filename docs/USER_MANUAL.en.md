@@ -82,6 +82,8 @@ The **💾** icon beside a profile means this browser holds compatible persisten
 
 **Reset workspace** appears only when the selected profile has data and **Persistent workspace** is selected under **Keep changes**. It is disabled while the VM is running. With the VM stopped, it removes all local changes for that profile and returns it to its initial state; downloaded snapshots and AI models are not removed.
 
+The **Persistent data · size** indicator also updates while the VM is running, a few seconds after writes have been saved by the browser.
+
 ### VM controls
 
 - **Start VM / Shut down VM** starts or stops the VM. On shutdown, a temporary session loses its changes; a persistent workspace is synchronized before closing.

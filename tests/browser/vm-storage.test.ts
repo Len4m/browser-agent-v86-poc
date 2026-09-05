@@ -98,9 +98,10 @@ test("CoW disk reads seed, commits writes before callback and exports determinis
     return new Response(seed.slice(start, end + 1), { status: 206 });
   };
   const store = new MemoryCowBlockStore();
+  let persistedWrites = 0;
   const disk = new CowDisk({
     workspaceId: "workspace:test", profileHash: HASH_A, seedUrl: "/seed.img", seedHash: HASH_B,
-    sizeBytes, store, fetcher,
+    sizeBytes, store, fetcher, onPersistedWrite: () => { persistedWrites += 1; },
   });
   await disk.load();
   const initial = await new Promise<Uint8Array>((resolve) => disk.get(0, 1, resolve));
@@ -112,8 +113,11 @@ test("CoW disk reads seed, commits writes before callback and exports determinis
     resolve();
   }));
   assert.equal(callbackCalled, true);
+  assert.equal(persistedWrites, 1);
   const changed = await new Promise<Uint8Array>((resolve) => disk.get(65534, 5, resolve));
   assert.deepEqual([...changed], [0, 1, 2, 3, 0]);
+  await new Promise<void>((resolve) => disk.set(10, Uint8Array.of(5), resolve));
+  assert.equal(persistedWrites, 2);
   const blocks = await disk.exportBlocks();
   assert.deepEqual(blocks.map((block) => block.index), [0, 1]);
   assert.equal(await disk.storedBytes(), 2 * 65536);

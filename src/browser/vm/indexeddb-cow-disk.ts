@@ -318,7 +318,7 @@ export interface CowDiskOptions {
   store?: CowBlockStore;
   fetcher?: typeof fetch;
   onStatus?: (status: WorkspacePersistence, error?: unknown) => void;
-  onDirty?: () => void;
+  onPersistedWrite?: () => void;
 }
 
 let sharedBrowserStore: CowBlockStore | null = null;
@@ -444,8 +444,8 @@ export class CowDisk {
       if (this.metadata.checkpoint !== "dirty") {
         await this.store.activate(this.metadata.id, this.metadata.activeGeneration, "dirty");
         this.metadata.checkpoint = "dirty";
-        this.options.onDirty?.();
       }
+      this.options.onPersistedWrite?.();
     });
     this.pending = operation.catch((error: unknown) => {
       this.reportDegraded(error);
@@ -576,7 +576,7 @@ export class CowDisk {
 export function createRuntimeCowDisk(
   runtime: ResolvedVmRuntime,
   onStatus?: CowDiskOptions["onStatus"],
-  onDirty?: CowDiskOptions["onDirty"],
+  onPersistedWrite?: CowDiskOptions["onPersistedWrite"],
 ): CowDisk | null {
   const disk = runtime.storage.disks.find((candidate) => candidate.kind === "overlay-cow");
   if (!disk) return null;
@@ -589,7 +589,7 @@ export function createRuntimeCowDisk(
     blockSize: disk.blockSize,
     ...(disk.persistence === "temporary" ? { store: new MemoryCowBlockStore() } : {}),
     onStatus,
-    onDirty,
+    onPersistedWrite,
   });
 }
 

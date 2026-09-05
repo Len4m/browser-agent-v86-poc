@@ -28,7 +28,7 @@ The profile chooses the system, tools, and minimum RAM/VRAM; the user chooses **
 - Shutdown runs guest `sync`, flushes CoW transactions and fixes a checkpoint before destroying v86.
 - `degraded` means IndexedDB failure or insufficient quota; local persistence is no longer claimed in that state.
 - An abrupt close can lose guest-cached data. ext4 replays its journal at boot.
-- The profile selector shows **💾** when a compatible delta exists. For the selected profile, the UI uses a read-only cursor to total the active generation's blocks and shows **Persistent data · size**. This value does not use `navigator.storage.estimate()`, so it does not mix workspace data with LLM models, caches, or other profiles.
+- The profile selector shows **💾** when a compatible delta exists. For the selected profile, the UI uses a read-only cursor to total the active generation's blocks and shows **Persistent data · size**. While the VM is running, write notifications are grouped for two seconds before measuring again, avoiding an IndexedDB scan for every v86 write. This value does not use `navigator.storage.estimate()`, so it does not mix workspace data with LLM models, caches, or other profiles.
 - **Reset workspace** appears only when the selected profile has data and the user also chooses **Persistent workspace** under **Keep changes**. It can run only while the VM is stopped and returns the profile to its immutable seed.
 
 IndexedDB is not a guaranteed backup. There is no separate workspace import or export. A snapshot is the only portable copy: it includes both execution state and the HDB delta, whether temporary or persistent.
@@ -50,4 +50,4 @@ With v86 `0.5.445+gb0d8f2c`, `save_state()` preserves RAM and devices. `CowDisk.
 
 ## Validation
 
-Run `pnpm check`, `pnpm setup`, and `pnpm test:vm-storage`. The last command uses Chromium to verify that a temporary session is discarded, a workspace preserves `/root` after changing RAM/VRAM, the UI reports only that workspace's size, the reset button follows **Keep changes**, a persistent snapshot restores HDB, consoles, profile, tools, and `serial1` in an empty browser, and the workspace can be reset. The manual matrix covers Firefox, abrupt close/journal replay, networking, and all three serial channels.
+Run `pnpm check`, `pnpm setup`, and `pnpm test:vm-storage`. The last command uses Chromium to verify that a temporary session is discarded, a workspace preserves `/root` after changing RAM/VRAM, the UI reports only that workspace's size and updates it while the VM is running, the reset button follows **Keep changes**, a persistent snapshot restores HDB, consoles, profile, tools, and `serial1` in an empty browser, and the workspace can be reset. The manual matrix covers Firefox, abrupt close/journal replay, networking, and all three serial channels.

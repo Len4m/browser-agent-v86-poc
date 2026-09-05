@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* global document, HTMLButtonElement, HTMLSelectElement, indexedDB */
+/* global document, HTMLButtonElement, HTMLOptionElement, HTMLSelectElement, indexedDB */
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -140,9 +140,19 @@ try {
   if (!(await page.locator('#vm-profile option[value="alpine-base"]').textContent())?.includes("💾")) {
     throw new Error("el perfil con datos persistentes no muestra el icono de guardado");
   }
+  const storedBytesBeforeLiveWrite = Number(await page.locator('#vm-profile option[value="alpine-base"]').getAttribute("data-persistence-bytes"));
+  await command("dd if=/dev/zero of=/root/.ba-budget-e2e bs=256K count=1 conv=fsync >/dev/null 2>&1; echo LIVE_BUDGET_UPDATED", "LIVE_BUDGET_UPDATED");
+  await page.waitForFunction((previousBytes) => {
+    const option = document.querySelector('#vm-profile option[value="alpine-base"]');
+    const badge = document.querySelector("#badge-vm");
+    return badge?.classList.contains("good")
+      && option instanceof HTMLOptionElement
+      && Number(option.dataset.persistenceBytes) > previousBytes;
+  }, storedBytesBeforeLiveWrite, { timeout: 15000 });
   await page.click("#start-vm");
   await page.locator("#ba-modal-actions .ba-modal-button.danger").click();
   await page.waitForFunction(() => (document.querySelector("#save-state") instanceof HTMLButtonElement) && document.querySelector("#save-state").disabled, null, { timeout: 60000 });
+  await page.waitForFunction(() => (document.querySelector("#vm-storage-mode") instanceof HTMLSelectElement) && !document.querySelector("#vm-storage-mode").disabled, null, { timeout: 120000 });
 
   await page.selectOption("#vm-storage-mode", "temporary");
   await page.locator("#workspace-toolbar").waitFor({ state: "hidden" });
@@ -289,6 +299,7 @@ try {
   if (browserErrors.length) throw new Error(`errores de página: ${browserErrors.join(" | ")}`);
 
   console.log(`OK test:vm-storage: sesión temporal descartada y workspace persistió /root (${bootMs} ms primer arranque)`);
+  console.log("OK datos persistentes actualizados en la interfaz con la VM encendida");
   console.log(`OK snapshot persistente restauró HDB, PTY utilizable, nombre y pestaña activa: ${snapshot.suggestedFilename()}`);
   console.log("OK snapshot sincronizó perfil, tools activas y runner serial1");
   console.log("OK workspace local reiniciado desde su semilla inmutable");

@@ -110,6 +110,17 @@ function vmRuntimeWindow(): VmRuntimeWindow {
   return window;
 }
 
+function createWorkspaceSizeSyncScheduler(): () => void {
+  let timer: number | null = null;
+  return () => {
+    if (timer !== null) window.clearTimeout(timer);
+    timer = window.setTimeout(() => {
+      timer = null;
+      void syncWorkspaceControls();
+    }, 2000);
+  };
+}
+
 async function identifyAsset(url: string, bytes: ArrayBuffer | undefined, declared?: AssetIdentity): Promise<AssetIdentity> {
   if (declared) return declared;
   const buffer = bytes || await (await fetch(url, { cache: "force-cache" })).arrayBuffer();
@@ -294,7 +305,7 @@ export async function startVm(options: StartVmOptions = {}): Promise<void> {
       cowDisk = createRuntimeCowDisk(runtime, (status, error) => {
           state.workspaceStatus = status;
           if (error) logTool(`[workspace] ${errorMessage(error)}${NL}`);
-      }, overlayDisk.persistence === "persistent" ? () => { void syncWorkspaceControls(); } : undefined);
+      }, overlayDisk.persistence === "persistent" ? createWorkspaceSizeSyncScheduler() : undefined);
       if (!cowDisk) throw new Error("No se pudo resolver el disco OverlayFS del perfil.");
       await cowDisk.load();
       if (options.restoreDiskBlocks && options.restoreDiskCheckpoint) {

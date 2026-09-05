@@ -82,6 +82,8 @@ El icono **💾** junto a un perfil significa que este navegador tiene datos per
 
 **Reiniciar workspace** aparece únicamente cuando el perfil seleccionado tiene datos y en **Conservar cambios** está elegido **Workspace persistente**. Con la VM encendida se muestra deshabilitado. Con la VM apagada permite borrar todos los cambios locales de ese perfil y volver a su estado inicial; esta acción no borra snapshots descargados ni modelos de IA.
 
+El indicador **Datos persistentes · tamaño** también se actualiza con la VM encendida, unos segundos después de que las escrituras se hayan guardado en el navegador.
+
 ### Controles de VM
 
 - **Arrancar VM / Apagar VM** inicia o detiene la VM. Al apagar, una sesión temporal pierde sus cambios; un workspace persistente los sincroniza antes de cerrarse.
