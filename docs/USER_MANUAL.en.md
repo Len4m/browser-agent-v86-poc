@@ -115,6 +115,7 @@ This form is useful for quick diagnostic commands. Use the console tabs for inte
 
 - **Export** downloads a `.bav86snapshot` containing execution state, modified files, configuration, and VM consoles.
 - **Import** validates the file first, then automatically selects the profile, RAM, VRAM, and storage mode used to create it. You do not need to prepare those selectors beforehand.
+- Tools are recalculated for the imported profile: compatible selections are kept and, if none remain, that profile's priority tools are enabled.
 - If a VM is already running, the application asks before stopping it and restoring the snapshot.
 - Console tabs, their custom names, and the active tab are restored too. The application reconnects and redraws consoles automatically so they are usable without a manual clear.
 - Exact base files for that profile version must still be available. If they are missing or do not match, import is rejected before the current VM is replaced.

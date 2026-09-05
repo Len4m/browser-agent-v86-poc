@@ -56,10 +56,8 @@ function resolveActiveToolNames(modelConfig?: LlmModelConfig | null, profileId =
   const cfg = getModelConfig(modelConfig);
   const max = getMaxNativeTools(cfg);
   const configured = cfg.profile?.activeToolNames || cfg.agent?.activeToolNames || [];
-  const out = (configured.length
-    ? filterProfileOrdered(configured, cfg, profileId)
-    : listAvailableToolNames(cfg, profileId)
-  ).slice(0, max);
+  const compatible = configured.length ? filterProfileOrdered(configured, cfg, profileId) : [];
+  const out = (compatible.length ? compatible : listAvailableToolNames(cfg, profileId)).slice(0, max);
   syncStateNativeTools(out);
   return out;
 }

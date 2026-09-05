@@ -37,7 +37,7 @@ IndexedDB is not a guaranteed backup. There is no separate workspace import or e
 
 `.bav86snapshot` (`BAV86SNP`, v1) contains a fixed header, JSON manifest and identity/gzip sections. It records exact v86 (`0.5.445+gb0d8f2c`), profile/hash, libv86/WASM/BIOS/kernel/initramfs hashes and sizes, RAM/VRAM, cmdline, network, UARTs, 9p, disks, `save_state()`, the HDB delta and visual console metadata (names and active tab). Base assets are not embedded and must remain published with the same identity.
 
-The **Export** button runs `sync`, fixes HDB, pauses, serializes, packages and resumes even if download fails. **Import** validates everything **before** stopping the current VM, automatically selects the recorded profile, RAM, VRAM, and temporary/persistent mode, boots the exact runtime, applies delta/state, revalidates serials/PTYs, restores names and the active tab, requests an automatic repaint from every PTY and recreates WS with the current endpoint. Formats other than `.bav86snapshot` are rejected because they do not provide the complete contract of the current snapshot.
+The **Export** button runs `sync`, fixes HDB, pauses, serializes, packages and resumes even if download fails. **Import** validates everything **before** stopping the current VM, automatically selects the recorded profile, RAM, VRAM, and temporary/persistent mode, recalculates tools from `allowedTools` (falling back to profile priority when the previous selection is incompatible), boots the exact runtime, applies delta/state, revalidates serials/PTYs, restores names and the active tab, requests an automatic repaint from every PTY and recreates WS with the current endpoint. Formats other than `.bav86snapshot` are rejected because they do not provide the complete contract of the current snapshot.
 
 ## Verified v86 behavior
 
@@ -50,4 +50,4 @@ With v86 `0.5.445+gb0d8f2c`, `save_state()` preserves RAM and devices. `CowDisk.
 
 ## Validation
 
-Run `pnpm check`, `pnpm setup`, and `pnpm test:vm-storage`. The last command uses Chromium to verify that a temporary session is discarded, a workspace preserves `/root` after changing RAM/VRAM, the UI reports only that workspace's size, the reset button follows **Keep changes**, a persistent snapshot restores HDB and consoles in an empty browser, and the workspace can be reset. The manual matrix covers Firefox, abrupt close/journal replay, networking, and all three serial channels.
+Run `pnpm check`, `pnpm setup`, and `pnpm test:vm-storage`. The last command uses Chromium to verify that a temporary session is discarded, a workspace preserves `/root` after changing RAM/VRAM, the UI reports only that workspace's size, the reset button follows **Keep changes**, a persistent snapshot restores HDB, consoles, profile, tools, and `serial1` in an empty browser, and the workspace can be reset. The manual matrix covers Firefox, abrupt close/journal replay, networking, and all three serial channels.

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* global document, HTMLButtonElement, indexedDB */
+/* global document, HTMLButtonElement, HTMLSelectElement, indexedDB */
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -177,12 +177,36 @@ try {
   if (!snapshotPath) throw new Error("Playwright no expuso el snapshot descargado para restaurarlo");
 
   const restoreContext = await browser.newContext({ acceptDownloads: true, locale: "es-ES" });
+  await restoreContext.addInitScript((profile) => {
+    localStorage.setItem("ba.llm.lastProfile.v1", JSON.stringify(profile));
+  }, {
+    engine: "transformersjs",
+    modelId: "e2e/profile-tool-sync",
+    toolStrategy: "model-first",
+    toolCalling: "good",
+    maxSteps: 3,
+    maxNativeTools: 4,
+    activeToolNames: ["web_httpx_probe"],
+    temperature: 0.15,
+    topP: 0.85,
+    contextWindowTokens: 4096,
+    safeInputTokens: 1800,
+    maxOutputTokens: 2048,
+    maxNewTokensForPlan: 1024,
+    showThinking: false,
+    device: "auto",
+    dtype: "auto",
+    reuseGenerationCache: true,
+    transformersThinking: { enabled: false, tagName: "think", startWithReasoning: false },
+  });
   const restorePage = await restoreContext.newPage();
   restorePage.on("pageerror", (error) => browserErrors.push(error.message));
   restorePage.on("console", (message) => browserConsole.push(`${message.type()}: ${message.text()}`));
   await restorePage.goto(`http://127.0.0.1:${port}/`, { waitUntil: "domcontentloaded" });
   await restorePage.locator("#vm-profile option[value='alpine-base']").waitFor({ state: "attached", timeout: 30000 });
   page = restorePage;
+  await page.selectOption("#vm-profile", "alpine-pentest-web");
+  await page.locator("#chat-tools-badge").filter({ hasText: "1" }).waitFor({ state: "visible", timeout: 10000 });
   await page.locator("#restore-state-file").setInputFiles(snapshotPath);
   await page.waitForFunction(() => {
     const badge = document.querySelector("#badge-vm");
@@ -197,6 +221,11 @@ try {
   if (await page.locator("#vm-storage-mode").inputValue() !== "persistent") {
     throw new Error("el snapshot persistente no restauró el modo workspace");
   }
+  await page.waitForFunction(() => {
+    const profile = document.querySelector("#vm-profile");
+    const tools = document.querySelector("#chat-tools-badge");
+    return profile instanceof HTMLSelectElement && profile.value === "alpine-base" && tools?.textContent === "4";
+  }, null, { timeout: 10000 });
   await page.locator("#console-tabs-list .console-tab.active .console-tab-label").filter({ hasText: restoredConsoleName }).waitFor({ state: "visible", timeout: 10000 });
   const restoredPty = page.locator("#xterm-console-host .xterm-console-pane:not([hidden]) .xterm-rows");
   await restoredPty.filter({ hasText: "#" }).waitFor({ state: "visible", timeout: 10000 });
@@ -261,6 +290,7 @@ try {
 
   console.log(`OK test:vm-storage: sesión temporal descartada y workspace persistió /root (${bootMs} ms primer arranque)`);
   console.log(`OK snapshot persistente restauró HDB, PTY utilizable, nombre y pestaña activa: ${snapshot.suggestedFilename()}`);
+  console.log("OK snapshot sincronizó perfil, tools activas y runner serial1");
   console.log("OK workspace local reiniciado desde su semilla inmutable");
 } catch (error) {
   if (page) {

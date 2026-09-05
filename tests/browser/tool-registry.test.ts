@@ -101,6 +101,24 @@ test("native active tools are resolved in profile priority order and capped", ()
   );
 });
 
+test("native tools fall back to the imported profile when the saved selection is incompatible", () => {
+  installProfiles();
+  installLocalStorage();
+  const profile = defaultProfile("transformersjs", "org/profile-switch-model");
+  profile.maxNativeTools = 2;
+  profile.activeToolNames = ["web_httpx_probe"];
+  const model = modelConfigFromProfile(profile);
+
+  assert.deepEqual(llmNativeToolsPolicy.resolveActiveToolNames(model, "alpine-pentest-web"), [
+    "web_httpx_probe",
+  ]);
+  assert.deepEqual(llmNativeToolsPolicy.resolveActiveToolNames(model, "alpine-base"), [
+    "vm_python_exec",
+    "vm_sh_exec",
+  ]);
+  assert.deepEqual(profile.activeToolNames, ["web_httpx_probe"]);
+});
+
 test("legacy dotted tool names are normalized at profile and storage boundaries", () => {
   installLocalStorage();
   state.profiles = [{

@@ -115,6 +115,7 @@ Este formulario es útil para comandos cortos de comprobación. Para trabajo int
 
 - **Exportar** descarga un fichero `.bav86snapshot` con el estado de ejecución, los archivos modificados, la configuración y las consolas de la VM.
 - **Importar** valida primero el archivo y después selecciona automáticamente el perfil, RAM, VRAM y modo de almacenamiento con los que se creó. No necesitas preparar esos selectores antes.
+- Las tools se recalculan con el perfil importado: se conservan las seleccionadas que sean compatibles y, si ninguna lo es, se activan las prioritarias de ese perfil.
 - Si ya hay una VM abierta, la aplicación pide confirmación antes de apagarla y restaurar el snapshot.
 - Al restaurar, también se recuperan las pestañas de consola, sus nombres y la pestaña activa. La aplicación reconecta y repinta las consolas automáticamente para que puedan utilizarse sin una limpieza manual.
 - Los archivos base exactos de esa versión del perfil deben seguir disponibles en la aplicación. Si faltan o no coinciden, la importación se rechaza antes de sustituir la VM actual.
