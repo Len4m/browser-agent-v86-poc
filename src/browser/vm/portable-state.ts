@@ -2,11 +2,12 @@ import type { CowBlock } from "./indexeddb-cow-disk";
 import type { ResolvedVmRuntime } from "./runtime-config";
 import type { SnapshotConsoleUiState } from "../console/console-state";
 export type { SnapshotConsoleUiState } from "../console/console-state";
+import runtimeContract from "../../../vm/runtime-contract.json";
 import { V86_BUILD_VERSION } from "./runtime-config";
 import { diskRootHash, sha256 } from "./storage-hash";
 
 export const SNAPSHOT_MAGIC = "BAV86SNP";
-export const PORTABLE_FORMAT_VERSION = 1;
+const PORTABLE_FORMAT_VERSION = runtimeContract.snapshotFormatVersion as 1;
 const HEADER_BYTES = 20;
 
 interface SectionDescriptor {
@@ -20,7 +21,7 @@ interface SectionDescriptor {
 
 interface EnvelopeManifest {
   kind: "snapshot";
-  formatVersion: 1;
+  formatVersion: typeof PORTABLE_FORMAT_VERSION;
   createdAt: string;
   sections: SectionDescriptor[];
   [key: string]: unknown;
@@ -36,7 +37,7 @@ export interface PortableSnapshotManifest extends EnvelopeManifest {
   consoleUi?: SnapshotConsoleUiState;
 }
 
-export interface DecodedPortable<T extends EnvelopeManifest> {
+interface DecodedPortable<T extends EnvelopeManifest> {
   manifest: T;
   sections: Map<string, Uint8Array>;
 }
@@ -61,7 +62,7 @@ function readMagic(bytes: Uint8Array): string {
   return new TextDecoder().decode(bytes.subarray(0, 8));
 }
 
-export async function encodePortable(
+async function encodePortable(
   magic: typeof SNAPSHOT_MAGIC,
   manifestFields: Omit<EnvelopeManifest, "formatVersion" | "createdAt" | "sections">,
   inputs: readonly { name: string; bytes: Uint8Array; gzip?: boolean }[],
@@ -124,7 +125,7 @@ export async function decodePortable<T extends EnvelopeManifest>(
   } catch {
     throw new Error("El manifiesto del contenedor no es JSON válido.");
   }
-  if (manifest.formatVersion !== 1 || !Array.isArray(manifest.sections) || manifest.sections.length !== sectionCount) {
+  if (manifest.formatVersion !== PORTABLE_FORMAT_VERSION || !Array.isArray(manifest.sections) || manifest.sections.length !== sectionCount) {
     throw new Error("Manifiesto de contenedor incoherente.");
   }
   const sections = new Map<string, Uint8Array>();
@@ -148,7 +149,7 @@ export async function decodePortable<T extends EnvelopeManifest>(
   return { manifest, sections };
 }
 
-export function encodeDiskBlocks(blocks: readonly CowBlock[], blockSize: number): Uint8Array {
+function encodeDiskBlocks(blocks: readonly CowBlock[], blockSize: number): Uint8Array {
   const ordered = [...blocks].sort((a, b) => a.index - b.index);
   const result = new Uint8Array(ordered.reduce((sum, block) => sum + 8 + block.bytes.byteLength, 0));
   const view = new DataView(result.buffer);

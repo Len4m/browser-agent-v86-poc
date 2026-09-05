@@ -1,5 +1,5 @@
 import { diskRootHash } from "./storage-hash";
-import type { ResolvedVmRuntime } from "./runtime-config";
+import { VM_DISK_BLOCK_SIZE, type ResolvedVmRuntime } from "./runtime-config";
 
 export type WorkspacePersistence = "persisted" | "evictable" | "degraded";
 
@@ -327,8 +327,8 @@ export class CowDisk {
 
   constructor(private readonly options: CowDiskOptions) {
     this.byteLength = options.sizeBytes;
-    this.blockSize = options.blockSize || 65536;
-    if (this.blockSize !== 65536 || this.byteLength <= 0 || this.byteLength % this.blockSize !== 0) {
+    this.blockSize = options.blockSize || VM_DISK_BLOCK_SIZE;
+    if (this.blockSize !== VM_DISK_BLOCK_SIZE || this.byteLength <= 0 || this.byteLength % this.blockSize !== 0) {
       throw new Error("El disco CoW requiere tamaño múltiplo de 64 KiB.");
     }
   }

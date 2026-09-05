@@ -8,6 +8,7 @@ import { chromium } from "playwright-core";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const manifestPath = join(root, "public/v86/images/profiles/alpine-base.json");
+const runtimeContract = JSON.parse(readFileSync(join(root, "vm", "runtime-contract.json"), "utf8"));
 const chromiumPath = process.env.CHROMIUM_PATH || "/usr/bin/chromium";
 const port = Number(process.env.VM_STORAGE_TEST_PORT || 5186);
 
@@ -33,7 +34,7 @@ for (const asset of [manifest.assets?.kernel, manifest.assets?.initramfs, manife
     process.exit();
   }
 }
-const rootPart = String(manifest.assets?.rootfs?.url || "").replace(/\.img\.zst$/, "-0-4194304.img.zst");
+const rootPart = String(manifest.assets?.rootfs?.url || "").replace(/\.img\.zst$/, `-0-${runtimeContract.rootPartSize}.img.zst`);
 if (!existsSync(join(root, "public", rootPart.replace(/^\//, "")))) {
   fail(`falta la primera parte HDA ${rootPart}. Ejecuta pnpm setup.`);
   process.exit();

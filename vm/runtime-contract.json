@@ -1,0 +1,11 @@
+{
+  "runtimeFormatVersion": 1,
+  "snapshotFormatVersion": 1,
+  "v86Version": "0.5.445+gb0d8f2c",
+  "diskBlockSize": 65536,
+  "rootPartSize": 4194304,
+  "cmdline": "rw rdinit=/init console=ttyS0,115200 console=tty0 edd=off nowatchdog tsc=reliable mitigations=off random.trust_cpu=on",
+  "networkType": "virtio",
+  "uarts": ["serial0", "serial1", "serial2"],
+  "filesystem9p": { "enabled": true, "root": null }
+}

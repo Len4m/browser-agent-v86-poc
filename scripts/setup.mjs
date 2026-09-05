@@ -21,11 +21,12 @@ mkdirSync(generatedProfilesDir, { recursive: true });
 writeFileSync(join(generatedProfilesDir, "index.json"), "[]\n");
 
 const steps = [
+  [process.execPath, ["scripts/check/runtime-contract.mjs"]],
   [process.execPath, ["scripts/check/vm-profiles.mjs"]],
   [process.execPath, ["scripts/setup/runtime-assets.mjs"]],
   ...profileFiles.map((profilePath) => [
     process.execPath,
-    ["scripts/setup/vm-profile-image.mjs", profilePath],
+    ["scripts/setup/vm-profile-image.mjs", profilePath, "--skip-runtime-assets"],
   ]),
 ];
 

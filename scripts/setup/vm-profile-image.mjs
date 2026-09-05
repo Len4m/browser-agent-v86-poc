@@ -7,6 +7,8 @@ import { spawnSync } from "node:child_process";
 const root = fileURLToPath(new URL("../..", import.meta.url));
 const publicRoot = join(root, "public");
 const profilePath = resolve(root, process.argv[2] || "vm/profiles/alpine-pentest-lite.json");
+const runtimeContract = JSON.parse(readFileSync(join(root, "vm", "runtime-contract.json"), "utf8"));
+const { diskBlockSize, rootPartSize } = runtimeContract;
 
 function fail(message) {
   console.error(`ERROR: ${message}`);
@@ -134,7 +136,11 @@ if (extraRepositories.length) console.log(`Repos extra: ${extraRepositories.join
 console.log(`Salida: ${output}`);
 
 console.log("\n== Descargando assets base ==");
-run(process.execPath, ["scripts/setup/runtime-assets.mjs"]);
+if (process.argv.includes("--skip-runtime-assets")) {
+  console.log("Assets base ya preparados por el setup general.");
+} else {
+  run(process.execPath, ["scripts/setup/runtime-assets.mjs"]);
+}
 
 const profileBuildDir = join(root, "build", "profiles", id);
 mkdirSync(profileBuildDir, { recursive: true });
@@ -222,7 +228,7 @@ const assets = {
 const profileIdentity = {
   source: Object.fromEntries(Object.entries(profile).filter(([key]) => key !== "$schema")),
   assets: Object.fromEntries(Object.entries(assets).map(([key, asset]) => [key, { bytes: asset.bytes, sha256: asset.sha256 }])),
-  topology: { hda: "immutable-root", hdb: "overlay-cow", blockSize: 65536, partSize: 4 * 1024 * 1024 },
+  topology: { hda: "immutable-root", hdb: "overlay-cow", blockSize: diskBlockSize, partSize: rootPartSize },
 };
 const profileHash = createHash("sha256").update(canonicalJson(profileIdentity)).digest("hex");
 
@@ -249,18 +255,18 @@ const manifest = {
     layout,
     rootDiskMb: Number(storage.rootDiskMb),
     workspaceDiskMb: Number(storage.workspaceDiskMb),
-    blockSize: 65536,
+    blockSize: diskBlockSize,
     filesystem: "ext4",
     topology: [
-      { role: "hda", kind: "immutable-root", readOnly: true, useParts: true, fixedChunkSize: 4 * 1024 * 1024 },
-      { role: "hdb", kind: "overlay-cow", readOnly: false, blockSize: 65536, persistence: "user-selected" },
+      { role: "hda", kind: "immutable-root", readOnly: true, useParts: true, fixedChunkSize: rootPartSize },
+      { role: "hdb", kind: "overlay-cow", readOnly: false, blockSize: diskBlockSize, persistence: "user-selected" },
     ],
   },
   assets,
-  cmdline: "rw rdinit=/init console=ttyS0,115200 console=tty0 edd=off nowatchdog tsc=reliable mitigations=off random.trust_cpu=on",
-  network: { type: "virtio" },
-  uarts: ["serial0", "serial1", "serial2"],
-  filesystem9p: { enabled: true, root: null },
+  cmdline: runtimeContract.cmdline,
+  network: { type: runtimeContract.networkType },
+  uarts: runtimeContract.uarts,
+  filesystem9p: runtimeContract.filesystem9p,
   extraRepositories,
   generatedAt: new Date().toISOString(),
   notes: [
