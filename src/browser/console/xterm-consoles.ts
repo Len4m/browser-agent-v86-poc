@@ -9,17 +9,13 @@ import { appEvents } from "../core/events";
 import { showBaModal, showBaModalPanel } from "../ui/modal";
 import { blurSerialConsole, logTool, setBadge } from "../ui/status-controls";
 import { backgroundToolsApi } from "../vm/background-tools-serial1";
-import {
-  getSerialTerm,
-  focusSerialConsole,
-  scheduleSerialFit,
-} from "../vm/serial-vm";
+import { focusBootSerialConsole, getSerialTerm, scheduleSerialFit } from "../vm/serial-console";
 import {
   consoleControlApi,
   type ConsoleControlResult,
   type ConsoleControlSession,
 } from "../vm/console-control-serial2";
-import type { SnapshotConsoleUiState } from "../vm/portable-state";
+import type { SnapshotConsoleUiState } from "./console-state";
 
 interface Disposable {
   dispose?: () => void;
@@ -146,6 +142,19 @@ export function getActiveConsoleTab(): ManagedConsoleTab | null {
   return getConsoleTab(state.consoleTabs.activeId)
     || tabs().find((tab) => tab.owner === "human")
     || null;
+}
+
+export function focusSerialConsole(): void {
+  const activeTerm = asXtermTerminal(getActiveConsoleTab()?.term);
+  if (activeTerm?.focus && document.body.classList.contains("xterm-direct-console-mode")) {
+    try {
+      activeTerm.focus();
+      return;
+    } catch {
+      // Fall through to the boot serial console.
+    }
+  }
+  focusBootSerialConsole();
 }
 
 function isConsoleControlBusy(): boolean {

@@ -34,12 +34,18 @@ import { backgroundToolsApi } from "./background-tools-serial1";
 import { consoleControlApi } from "./console-control-serial2";
 import {
   finalizeConsoleTabsReady,
-  getActiveConsoleTab,
+  focusSerialConsole,
   initConsoleTabsAfterBoot,
   renderConsoleTabs,
   resetConsoleTabs,
   syncConsoleTabsFromDaemon,
 } from "../console/xterm-consoles";
+import {
+  resetSerialConsoleDom,
+  scheduleSerialFit,
+  setupSerialTerminalHelpers,
+  teardownSerialTerminalHelpers,
+} from "./serial-console";
 import {
   escapeRegExp,
   extractBetweenLast,
@@ -52,43 +58,9 @@ import {
   type ResolvedVmRuntime,
 } from "./runtime-config";
 import { sha256 } from "./storage-hash";
-import type { SnapshotConsoleUiState } from "./portable-state";
-
-interface TerminalLike {
-  cols?: number;
-  rows?: number;
-  options?: {
-    scrollback?: number;
-    cursorBlink?: boolean;
-  };
-  textarea?: HTMLTextAreaElement | null;
-  _core?: {
-    textarea?: HTMLTextAreaElement | null;
-    _renderService?: {
-      dimensions?: {
-        css?: {
-          cell?: {
-            width?: number;
-            height?: number;
-          };
-        };
-      };
-    };
-  };
-  resize?: (cols: number, rows: number) => void;
-  refresh?: (start: number, end: number) => void;
-  scrollToBottom?: () => void;
-  focus?: () => void;
-  getSelection?: () => string;
-  onWriteParsed?: (handler: () => void) => { dispose?: () => void };
-  attachCustomKeyEventHandler?: (handler: (event: KeyboardEvent) => boolean) => void;
-}
+import type { SnapshotConsoleUiState } from "../console/console-state";
 
 interface V86VmApi {
-  serial_adapter?: {
-    term?: unknown;
-    terminal?: unknown;
-  };
   serial0_send?: (text: string) => void;
   serial_send_bytes?: (port: number, bytes: Uint8Array) => void;
   serial1_send?: (text: string) => void;
@@ -151,10 +123,6 @@ async function identifyAsset(url: string, bytes: ArrayBuffer | undefined, declar
   return { url, bytes: buffer.byteLength, sha256: await sha256(buffer) };
 }
 
-function asTerminalLike(value: unknown): TerminalLike | null {
-  return isRecord(value) ? value : null;
-}
-
 function vmApi(): V86VmApi | null {
   return isRecord(state.vm) ? state.vm : null;
 }
@@ -181,237 +149,6 @@ function setDisabled(el: Element | null, disabled: boolean): void {
     || el instanceof HTMLTextAreaElement
   ) {
     el.disabled = disabled;
-  }
-}
-
-export function getSerialTerm(): TerminalLike | null {
-  const vm = vmApi();
-  const adapter = vm?.serial_adapter;
-  if (!adapter) return null;
-  return asTerminalLike(adapter.term) || asTerminalLike(adapter.terminal);
-}
-
-function getXtermCellSize(term: TerminalLike | null, container: HTMLElement): { width: number; height: number } {
-  const cell = term?._core?._renderService?.dimensions?.css?.cell;
-  if (cell && Number(cell.width) > 0 && Number(cell.height) > 0) {
-    return { width: Number(cell.width), height: Number(cell.height) };
-  }
-
-  const probe = document.createElement("span");
-  probe.textContent = "W";
-  probe.style.position = "absolute";
-  probe.style.visibility = "hidden";
-  probe.style.whiteSpace = "pre";
-  probe.style.font = "15px/18px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace";
-  container.appendChild(probe);
-  const rect = probe.getBoundingClientRect();
-  probe.remove();
-  return { width: rect.width || 9, height: rect.height || 18 };
-}
-
-function sizeSerialContainerToGrid(container: HTMLElement, term: TerminalLike, cols: number, rows: number): void {
-  const cell = getXtermCellSize(term, container);
-
-  // v86 serial does not receive real SIGWINCH from the browser. The boot
-  // console keeps stable geometry; user consoles use separate xterm instances.
-  const width = Math.ceil((cell.width || 9) * cols);
-  const height = Math.ceil((cell.height || 18) * rows + 6);
-  const shell = $("vm-console-shell");
-  const targets = [container, shell].filter((el): el is HTMLElement => Boolean(el));
-
-  for (const el of targets) {
-    el.style.width = `${width}px`;
-    el.style.height = `${height}px`;
-    el.style.minHeight = `${height}px`;
-    el.style.maxHeight = `${height}px`;
-  }
-
-  const wrap = container.closest(".vm-screen-wrap");
-  if (wrap instanceof HTMLElement) {
-    wrap.style.setProperty("--ba-console-width", `${width}px`);
-    wrap.style.setProperty("--ba-console-height", `${height}px`);
-  }
-}
-
-function fitSerialTerminal(): void {
-  const container = $("serial-console");
-  const term = getSerialTerm();
-  if (!container || !term || typeof term.resize !== "function") return;
-
-  const cols = state.consoleTabs.fixedCols || 80;
-  const rows = state.consoleTabs.fixedRows || 24;
-  try {
-    if (term.cols !== cols || term.rows !== rows) term.resize(cols, rows);
-    sizeSerialContainerToGrid(container, term, cols, rows);
-    if (typeof term.refresh === "function") term.refresh(0, Math.max(0, rows - 1));
-    if (typeof term.scrollToBottom === "function") term.scrollToBottom();
-  } catch {
-    // Fitting the terminal is best-effort.
-  }
-}
-
-export function scheduleSerialFit({ focus = false }: { focus?: boolean } = {}): void {
-  if (state.serialFitRaf) window.cancelAnimationFrame(state.serialFitRaf);
-  state.serialFitRaf = window.requestAnimationFrame(() => {
-    state.serialFitRaf = 0;
-    fitSerialTerminal();
-    if (focus) focusSerialConsole();
-  });
-}
-
-function scheduleSerialScrollToBottom(): void {
-  const term = getSerialTerm();
-  if (!term || typeof term.scrollToBottom !== "function") return;
-  if (state.serialScrollRaf) return;
-  state.serialScrollRaf = window.requestAnimationFrame(() => {
-    state.serialScrollRaf = 0;
-    try {
-      term.scrollToBottom?.();
-    } catch {
-      // Scrolling xterm is best-effort.
-    }
-  });
-}
-
-function getSerialSelectionText(term: TerminalLike | null): string {
-  if (!term) return "";
-  try {
-    if (typeof term.getSelection === "function") return String(term.getSelection() || "");
-  } catch {
-    // Selection access is best-effort.
-  }
-  return "";
-}
-
-function getSerialHelperTextarea(term: TerminalLike | null, container = $("serial-console")): HTMLTextAreaElement | null {
-  if (term?.textarea instanceof HTMLTextAreaElement) return term.textarea;
-  if (term?._core?.textarea instanceof HTMLTextAreaElement) return term._core.textarea;
-  return container?.querySelector<HTMLTextAreaElement>(".xterm-helper-textarea") || null;
-}
-
-function primeSerialClipboardTextarea(term: TerminalLike, container: HTMLElement, text: string): boolean {
-  const textarea = getSerialHelperTextarea(term, container);
-  if (!textarea) return false;
-  try {
-    textarea.value = text;
-    textarea.focus({ preventScroll: true });
-    textarea.select();
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function teardownSerialTerminalHelpers(): void {
-  if (state.serialResizeObserver) {
-    try {
-      state.serialResizeObserver.disconnect();
-    } catch {
-      // ResizeObserver cleanup is best-effort.
-    }
-    state.serialResizeObserver = null;
-  }
-  if (state.serialFitRaf) {
-    window.cancelAnimationFrame(state.serialFitRaf);
-    state.serialFitRaf = 0;
-  }
-  if (state.serialScrollRaf) {
-    window.cancelAnimationFrame(state.serialScrollRaf);
-    state.serialScrollRaf = 0;
-  }
-  if (state.serialWriteDisposable?.dispose) {
-    try {
-      state.serialWriteDisposable.dispose();
-    } catch {
-      // xterm disposable cleanup is best-effort.
-    }
-  }
-  state.serialWriteDisposable = null;
-  if (state.serialContextMenuContainer && state.serialContextMenuHandler) {
-    try {
-      state.serialContextMenuContainer.removeEventListener("contextmenu", state.serialContextMenuHandler);
-    } catch {
-      // Listener cleanup is best-effort.
-    }
-  }
-  state.serialContextMenuContainer = null;
-  state.serialContextMenuHandler = null;
-  state.serialKeyHandlerAttached = false;
-}
-
-function setupSerialTerminalHelpers(): void {
-  const container = $("serial-console");
-  const term = getSerialTerm();
-  if (!container || !term) return;
-
-  if (!state.serialResizeObserver && "ResizeObserver" in window) {
-    state.serialResizeObserver = new ResizeObserver(() => scheduleSerialFit());
-    state.serialResizeObserver.observe(container);
-  }
-
-  if (!state.serialWriteDisposable && typeof term.onWriteParsed === "function") {
-    state.serialWriteDisposable = term.onWriteParsed(() => scheduleSerialScrollToBottom());
-  }
-
-  if (!state.serialKeyHandlerAttached && typeof term.attachCustomKeyEventHandler === "function") {
-    term.attachCustomKeyEventHandler((event: KeyboardEvent) => {
-      if (event.type !== "keydown") return true;
-      if (!event.ctrlKey || event.shiftKey || event.altKey || event.metaKey) return true;
-      if (String(event.key || "").toLowerCase() !== "c") return true;
-      try {
-        vmApi()?.serial0_send?.("\x03");
-      } catch {
-        // Serial interrupt is best-effort.
-      }
-      return false;
-    });
-    state.serialKeyHandlerAttached = true;
-  }
-
-  if (!state.serialContextMenuHandler) {
-    state.serialContextMenuHandler = (_event: Event) => {
-      const selected = getSerialSelectionText(term);
-      if (selected) primeSerialClipboardTextarea(term, container, selected);
-    };
-    container.addEventListener("contextmenu", state.serialContextMenuHandler);
-    state.serialContextMenuContainer = container;
-  }
-
-  try {
-    if (!term.options) term.options = {};
-    term.options.scrollback = 0;
-    term.options.cursorBlink = true;
-  } catch {
-    // xterm option assignment is best-effort.
-  }
-
-  scheduleSerialFit({ focus: true });
-}
-
-function resetSerialConsoleDom(): void {
-  teardownSerialTerminalHelpers();
-  const serialConsole = $("serial-console");
-  if (serialConsole) serialConsole.replaceChildren();
-}
-
-export function focusSerialConsole(): void {
-  const activeTab = getActiveConsoleTab();
-  const activeTerm = asTerminalLike(activeTab?.term);
-  if (activeTerm?.focus && document.body.classList.contains("xterm-direct-console-mode")) {
-    try {
-      activeTerm.focus();
-      return;
-    } catch {
-      // Fall through to the boot serial console.
-    }
-  }
-  const term = getSerialTerm();
-  if (term?.focus) {
-    try {
-      term.focus();
-    } catch {
-      // Focus is best-effort.
-    }
   }
 }
 
@@ -448,6 +185,7 @@ async function resyncVmAfterRestore(consoleUi: SnapshotConsoleUiState | null): P
   }
 
   renderConsoleTabs();
+  focusSerialConsole();
   syncSnapshotButtons();
   maybeConfigureNetwork();
 }

@@ -1,5 +1,7 @@
 import type { CowBlock } from "./indexeddb-cow-disk";
 import type { ResolvedVmRuntime } from "./runtime-config";
+import type { SnapshotConsoleUiState } from "../console/console-state";
+export type { SnapshotConsoleUiState } from "../console/console-state";
 import { V86_BUILD_VERSION } from "./runtime-config";
 import { diskRootHash, sha256 } from "./storage-hash";
 
@@ -32,15 +34,6 @@ export interface PortableSnapshotManifest extends EnvelopeManifest {
   blockCount: number;
   stateSha256: string;
   consoleUi?: SnapshotConsoleUiState;
-}
-
-export interface SnapshotConsoleUiState {
-  activeSessionId: string | null;
-  serialTitle: string;
-  sessions: Array<{
-    sessionId: string;
-    title: string;
-  }>;
 }
 
 export interface DecodedPortable<T extends EnvelopeManifest> {

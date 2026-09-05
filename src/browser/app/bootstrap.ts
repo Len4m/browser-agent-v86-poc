@@ -32,7 +32,8 @@ import {
 } from "../vm/operations";
 import { loadProfiles, updateProfileHint } from "../vm/profile-config";
 import { runChecks } from "../ui/checks-panel";
-import { scheduleSerialFit, toggleVmPower } from "../vm/serial-vm";
+import { toggleVmPower } from "../vm/serial-vm";
+import { scheduleSerialFit } from "../vm/serial-console";
 import { appEvents } from "../core/events";
 import {
   syncChecksButton,
