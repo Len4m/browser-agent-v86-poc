@@ -12,7 +12,9 @@ import {
   syncPowerButtons,
   syncSnapshotButtons,
 } from "../ui/status-controls";
-import { maybeConfigureNetwork, syncWorkspaceControls, type ExecVmResult } from "./operations";
+import { execVm, type ExecVmResult } from "./exec-vm";
+import { maybeConfigureNetwork } from "./network-operations";
+import { syncWorkspaceControls } from "./workspace-controls";
 import {
   checkAsset,
   isAbortError,
@@ -481,9 +483,9 @@ export async function stopVm({ confirmShutdown = true }: StopVmOptions = {}): Pr
 
   if (state.vmReady) {
     while (true) {
-      const result = await import("./operations").then(({ execVm }) => execVm("sync", {
+      const result = await execVm("sync", {
         lock: true, log: false, timeoutMs: 30000,
-      }));
+      });
       if (result.code === 0) break;
       const choice = await showBaModal({
         title: t("vm.shutdown.syncFailed"),
