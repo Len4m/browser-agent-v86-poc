@@ -19,6 +19,7 @@ PROFILE_BOOT_MESSAGE="${PROFILE_BOOT_MESSAGE:-Browser Alpine Persistent ready.}"
 PROFILE_VERIFY_PACKAGES="${PROFILE_VERIFY_PACKAGES:-1}"
 PROFILE_ROOT_DISK_MB="${PROFILE_ROOT_DISK_MB:-512}"
 PROFILE_WORKSPACE_DISK_MB="${PROFILE_WORKSPACE_DISK_MB:-512}"
+PROFILE_ROOT_PART_SIZE="${PROFILE_ROOT_PART_SIZE:-}"
 OUT_INITRAMFS="$ROOT_DIR/${PROFILE_OUTPUT:-public/v86/images/profiles/${PROFILE_ID}-initramfs.gz}"
 OUT_ROOT="$ROOT_DIR/${PROFILE_ROOTFS_OUTPUT:-public/v86/images/profiles/${PROFILE_ID}-rootfs.img}"
 OUT_SEED="$ROOT_DIR/${PROFILE_PERSISTENT_SEED_OUTPUT:-public/v86/images/profiles/${PROFILE_ID}-persistent-seed.img}"
@@ -39,6 +40,8 @@ require_build_tools
 for command in mke2fs zstd dd; do
   command -v "$command" >/dev/null 2>&1 || { echo "ERROR: falta $command" >&2; exit 1; }
 done
+[ -n "$PROFILE_ROOT_PART_SIZE" ] || { echo "ERROR: falta PROFILE_ROOT_PART_SIZE; usa scripts/setup/vm-profile-image.mjs" >&2; exit 1; }
+[ "$PROFILE_ROOT_PART_SIZE" -gt 0 ] 2>/dev/null || { echo "ERROR: PROFILE_ROOT_PART_SIZE debe ser un entero positivo" >&2; exit 1; }
 [ -f "$MINIROOTFS" ] || { echo "ERROR: falta $MINIROOTFS; ejecuta pnpm setup" >&2; exit 1; }
 
 mkdir -p "$WORK/rootfs"
@@ -80,7 +83,7 @@ for applet in sh mount mkdir sleep switch_root insmod setsid; do ln -s /bin/busy
   find . -print0 | cpio --null -o -H newc 2>/dev/null | gzip -9 > "$OUT_INITRAMFS"
 )
 
-PART_SIZE=$((4 * 1024 * 1024))
+PART_SIZE="$PROFILE_ROOT_PART_SIZE"
 ROOT_BYTES=$((PROFILE_ROOT_DISK_MB * 1024 * 1024))
 PART_BASE="${OUT_ROOT%.img}"
 rm -f "${PART_BASE}-"*.img.zst

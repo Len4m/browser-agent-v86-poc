@@ -107,6 +107,7 @@ const buildCommands = assertArray(profile.buildCommands || [], "buildCommands");
 const alpineVersion = profile.alpineVersion ? assertString(profile.alpineVersion, "alpineVersion") : "3.23.4";
 const alpineBranch = profile.alpineBranch ? assertString(profile.alpineBranch, "alpineBranch") : `v${alpineVersion.split(".").slice(0, 2).join(".")}`;
 const storage = profile.storage;
+if (storage?.blockSize !== diskBlockSize) fail(`storage.blockSize de ${id} no coincide con el contrato runtime`);
 const layout = "overlay-hda";
 const output = `v86/images/profiles/${id}-initramfs.gz`;
 const rootfsOutput = `v86/images/profiles/${id}-rootfs.img`;
@@ -179,6 +180,7 @@ run("bash", ["scripts/setup/vm-alpine-overlay-hda.sh"], {
     PROFILE_PERSISTENT_SEED_OUTPUT: persistentSeedOutputFile,
     PROFILE_ROOT_DISK_MB: String(storage.rootDiskMb || 512),
     PROFILE_WORKSPACE_DISK_MB: String(storage.workspaceDiskMb || 512),
+    PROFILE_ROOT_PART_SIZE: String(rootPartSize),
     PROFILE_KERNEL_OUTPUT: kernelOutputFile,
     ALPINE_VERSION: alpineVersion,
     ALPINE_BRANCH: alpineBranch,
