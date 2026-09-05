@@ -133,6 +133,73 @@ test("CoW disk reads seed, commits writes before callback and exports determinis
   assert.deepEqual([...await new Promise<Uint8Array>((resolve) => disk.get(65535, 1, resolve))], [1]);
 });
 
+test("snapshot imports prune provisional and superseded generations", async () => {
+  class TrackingStore extends MemoryCowBlockStore {
+    stagedGeneration = "";
+
+    override async stage(workspaceId: string, generation: string, blocks: readonly { index: number; bytes: Uint8Array }[], checkpoint: string): Promise<void> {
+      this.stagedGeneration = generation;
+      await super.stage(workspaceId, generation, blocks, checkpoint);
+    }
+  }
+
+  const workspaceId = "workspace:generations";
+  const store = new TrackingStore();
+  const fetcher: typeof fetch = async () => new Response(new Uint8Array(65536), { status: 206 });
+  const disk = new CowDisk({ workspaceId, profileHash: HASH_A, seedUrl: "/seed.img", seedHash: HASH_B, sizeBytes: 65536, store, fetcher });
+  await disk.load();
+  await new Promise<void>((resolve) => disk.set(0, Uint8Array.of(7), resolve));
+
+  const imported = [{ index: 0, bytes: new Uint8Array(65536).fill(11) }];
+  const checkpoint = await diskRootHash(imported);
+  await disk.importBlocks(imported, checkpoint, { provisional: true });
+  const rolledBackGeneration = store.stagedGeneration;
+  assert.equal(await store.storedBytes(workspaceId, rolledBackGeneration), 65536);
+  await disk.rollbackImport();
+  assert.equal(await store.storedBytes(workspaceId, rolledBackGeneration), 0);
+
+  await disk.importBlocks(imported, checkpoint, { provisional: true });
+  const committedGeneration = store.stagedGeneration;
+  await disk.commitImport();
+  assert.equal((await store.getMetadata(workspaceId))?.activeGeneration, committedGeneration);
+  assert.equal(await store.storedBytes(workspaceId, "main"), 0);
+  assert.equal(await store.storedBytes(workspaceId, committedGeneration), 65536);
+});
+
+test("a failed CoW read reports degradation without poisoning later writes", async () => {
+  class FlakyStore extends MemoryCowBlockStore {
+    failNextRead = true;
+
+    override read(workspaceId: string, generation: string, index: number): Promise<Uint8Array | null> {
+      if (this.failNextRead) {
+        this.failNextRead = false;
+        return Promise.reject(new Error("transient read failure"));
+      }
+      return super.read(workspaceId, generation, index);
+    }
+  }
+
+  const statuses: string[] = [];
+  const store = new FlakyStore();
+  const disk = new CowDisk({
+    workspaceId: "workspace:flaky",
+    profileHash: HASH_A,
+    seedUrl: "/seed.img",
+    seedHash: HASH_B,
+    sizeBytes: 65536,
+    store,
+    fetcher: async () => new Response(new Uint8Array(65536), { status: 206 }),
+    onStatus: (status) => statuses.push(status),
+  });
+  await disk.load();
+
+  await new Promise<void>((resolve) => disk.set(1, Uint8Array.of(3), resolve));
+  await new Promise<void>((resolve) => disk.set(2, Uint8Array.of(4), resolve));
+  await disk.flush();
+  assert.deepEqual(statuses, ["degraded"]);
+  assert.equal((await disk.exportBlocks())[0]?.bytes[2], 4);
+});
+
 test("a profile hash resolves to one deterministic persistent workspace", async () => {
   const store = new MemoryCowBlockStore();
   const fetcher: typeof fetch = async () => new Response(new Uint8Array(65536), { status: 206 });

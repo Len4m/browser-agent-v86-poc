@@ -28,6 +28,7 @@ export interface CowBlockStore {
   storedBytes(workspaceId: string, generation: string): Promise<number>;
   stage(workspaceId: string, generation: string, blocks: readonly CowBlock[], checkpoint: string): Promise<void>;
   activate(workspaceId: string, generation: string, checkpoint: string): Promise<void>;
+  pruneGenerations(workspaceId: string, keepGeneration: string): Promise<void>;
   reset(workspaceId: string): Promise<void>;
 }
 
@@ -93,6 +94,15 @@ export class MemoryCowBlockStore implements CowBlockStore {
     metadata.activeGeneration = generation;
     metadata.checkpoint = checkpoint;
     metadata.updatedAt = Date.now();
+    return Promise.resolve();
+  }
+
+  pruneGenerations(workspaceId: string, keepGeneration: string): Promise<void> {
+    const prefix = `${workspaceId}\u0000`;
+    const keepPrefix = `${workspaceId}\u0000${keepGeneration}\u0000`;
+    for (const key of [...this.blocks.keys()]) {
+      if (key.startsWith(prefix) && !key.startsWith(keepPrefix)) this.blocks.delete(key);
+    }
     return Promise.resolve();
   }
 
@@ -251,6 +261,27 @@ export class IndexedDbCowBlockStore implements CowBlockStore {
     await transactionDone(tx);
   }
 
+  async pruneGenerations(workspaceId: string, keepGeneration: string): Promise<void> {
+    const db = await this.database();
+    const tx = db.transaction("blocks", "readwrite", { durability: "strict" });
+    const request = tx.objectStore("blocks").index("generation")
+      .openKeyCursor(IDBKeyRange.bound([workspaceId, ""], [workspaceId, "\uffff"]));
+    await new Promise<void>((resolve, reject) => {
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) {
+          resolve();
+          return;
+        }
+        const key = cursor.primaryKey;
+        if (Array.isArray(key) && key[1] !== keepGeneration) cursor.delete();
+        cursor.continue();
+      };
+      request.onerror = () => reject(request.error || new Error("No se pudieron limpiar generaciones antiguas del workspace."));
+    });
+    await transactionDone(tx);
+  }
+
   async reset(workspaceId: string): Promise<void> {
     const db = await this.database();
     const readTx = db.transaction("blocks", "readonly");
@@ -306,6 +337,11 @@ export class CowDisk {
     return this.options.store || (this.options.store = browserCowStore());
   }
 
+  private reportDegraded(error: unknown): void {
+    this.degraded = true;
+    this.options.onStatus?.("degraded", error);
+  }
+
   async load(): Promise<void> {
     // V86Starter calls load() even when the host prepared the disk beforehand.
     // Do not reopen IndexedDB here: a restore may be reading a staged generation
@@ -318,6 +354,11 @@ export class CowDisk {
         sizeBytes: this.byteLength,
         blockSize: this.blockSize,
       });
+      try {
+        await this.store.pruneGenerations(this.metadata.id, this.metadata.activeGeneration);
+      } catch (error) {
+        this.reportDegraded(error);
+      }
     }
     this.onload?.({});
   }
@@ -346,7 +387,10 @@ export class CowDisk {
   }
 
   get(offset: number, length: number, callback: (bytes: Uint8Array) => void): void {
-    void this.readRange(offset, length).then(callback);
+    void this.readRange(offset, length).then(callback).catch((error: unknown) => {
+      this.reportDegraded(error);
+      callback(new Uint8Array(Math.max(0, length)));
+    });
   }
 
   private async readRange(offset: number, length: number): Promise<Uint8Array> {
@@ -365,7 +409,7 @@ export class CowDisk {
   }
 
   set(offset: number, bytes: Uint8Array, callback: () => void): void {
-    this.pending = this.pending.then(async () => {
+    const operation = this.pending.catch(() => undefined).then(async () => {
       if (!this.metadata) throw new Error("Disco CoW no cargado.");
       if (offset < 0 || offset + bytes.byteLength > this.byteLength) throw new RangeError("Escritura fuera del disco CoW.");
       const dirty = new Map<number, Uint8Array>();
@@ -375,24 +419,30 @@ export class CowDisk {
         const index = Math.floor(absolute / this.blockSize);
         const within = absolute % this.blockSize;
         const count = Math.min(bytes.byteLength - cursor, this.blockSize - within);
-        const block = (await this.readBlock(index)).slice();
+        const block = within === 0 && count === this.blockSize
+          ? new Uint8Array(this.blockSize)
+          : (await this.readBlock(index)).slice();
         block.set(bytes.subarray(cursor, cursor + count), within);
         this.memory.set(index, block);
         dirty.set(index, block);
         cursor += count;
       }
-      try {
-        await this.store.write(this.metadata.id, this.metadata.activeGeneration, [...dirty].map(([index, block]) => ({ index, bytes: block })));
-        if (this.metadata.checkpoint !== "dirty") {
-          await this.store.activate(this.metadata.id, this.metadata.activeGeneration, "dirty");
-          this.metadata.checkpoint = "dirty";
-          this.options.onDirty?.();
-        }
-      } catch (error) {
-        this.degraded = true;
-        this.options.onStatus?.("degraded", error);
+      await this.store.write(this.metadata.id, this.metadata.activeGeneration, [...dirty].map(([index, block]) => ({ index, bytes: block })));
+      if (this.metadata.checkpoint !== "dirty") {
+        await this.store.activate(this.metadata.id, this.metadata.activeGeneration, "dirty");
+        this.metadata.checkpoint = "dirty";
+        this.options.onDirty?.();
       }
-      callback();
+    });
+    this.pending = operation.catch((error: unknown) => {
+      this.reportDegraded(error);
+    });
+    void this.pending.then(() => {
+      try {
+        callback();
+      } catch (error) {
+        this.reportDegraded(error);
+      }
     });
   }
 
@@ -455,16 +505,25 @@ export class CowDisk {
     if (!this.metadata || !this.importRollback) return;
     await this.store.activate(this.metadata.id, this.metadata.activeGeneration, this.metadata.checkpoint);
     this.importRollback = null;
+    try {
+      await this.store.pruneGenerations(this.metadata.id, this.metadata.activeGeneration);
+    } catch (error) {
+      this.reportDegraded(error);
+    }
   }
 
-  rollbackImport(): Promise<void> {
-    if (!this.metadata || !this.importRollback) return Promise.resolve();
+  async rollbackImport(): Promise<void> {
+    if (!this.metadata || !this.importRollback) return;
     const previous = this.importRollback;
     this.metadata.activeGeneration = previous.generation;
     this.metadata.checkpoint = previous.checkpoint;
     this.importRollback = null;
     this.memory.clear();
-    return Promise.resolve();
+    try {
+      await this.store.pruneGenerations(this.metadata.id, previous.generation);
+    } catch (error) {
+      this.reportDegraded(error);
+    }
   }
 
   async reset(): Promise<void> {
