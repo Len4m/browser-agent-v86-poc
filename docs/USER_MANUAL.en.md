@@ -4,15 +4,15 @@
 
 This manual covers using the application itself. It does not cover installation, development, profile generation, or repository scripts.
 
+Every profile lets you choose a **temporary session** or a **Persistent workspace** saved automatically in this browser. The **Export** and **Import** buttons work with snapshots (`.bav86snapshot`), the only copy you can save as a file and move to another browser or computer. See its [guarantees and recovery](STORAGE_AND_SNAPSHOTS.en.md).
+
 ## Overview
 
 Browser Agent v86 POC has three main work areas:
 
 - **Chat**: conversation with an LLM running locally in the browser or through a local Ollama instance.
-- **VM**: an x86 Linux machine running in v86, with profiles, consoles, disks, and snapshots.
+- **VM**: an x86 Linux machine running in v86, with profiles, consoles, storage, and snapshots.
 - **Bottom panels**: wsnic networking, LLM information, and status checks.
-
-![Browser Agent v86 POC](assets/screen.png)
 
 The header shows global status:
 
@@ -27,10 +27,11 @@ The header shows global status:
 ## Recommended workflow
 
 1. Select the VM **Profile** you want to use.
-2. Press **Start VM**. On first use it may download large assets; wait until the console shows the shell.
-3. If the browser supports **WebGPU**, you can use a local Transformers.js model or connect to a model in Ollama from the **LLM** panel. Transformers.js downloads and caches its models in the browser. If you only have **WASM**, Ollama or another browser/device with WebGPU is usually a better choice for agent and tool use.
-4. Use the chat to request actions inside the VM, or use the consoles to inspect the system and run commands manually.
-5. If you need outbound network access inside the VM, configure **wsnic** from the **WS network** panel.
+2. Under **Keep changes**, leave **No, temporary session** for disposable work or choose **Persistent workspace** to continue on a later visit from this browser.
+3. Press **Start VM**. On first use it may download large files; wait until the console shows the shell.
+4. If the browser supports **WebGPU**, you can use a local Transformers.js model or connect to a model in Ollama from the **LLM** panel. Transformers.js downloads and caches its models in the browser. If you only have **WASM**, Ollama or another browser/device with WebGPU is usually a better choice for agent and tool use.
+5. Use the chat to request actions inside the VM, or use the consoles to inspect the system and run commands manually.
+6. If you need outbound network access inside the VM, configure **wsnic** from the **WS network** panel.
 
 You can press **Run checks** at any time to verify whether the application, VM, network, assets, and tools are healthy.
 
@@ -48,16 +49,16 @@ Use concrete prompts. For example: "check the VM IP", "list /etc", "send a HEAD 
 
 Tool-enabled chat quality depends heavily on the selected model. Some models follow instructions and handle tool calls better than others. The smaller the model's context window, the more useful it is to limit the number of active tools in a request to reduce noise, memory use, and planning errors.
 
-## VM, profiles, and disks
+## VM, profiles, and storage
 
 Before booting you can configure:
 
 | Control | Purpose |
 | --- | --- |
 | **Profile** | Selects a prepared Alpine profile. |
-| **RAM** | Main memory in **Free / manual** mode. Selecting a generated profile applies its recommended value. |
-| **VRAM** | Video memory in **Free / manual** mode. |
-| **Disk** | Selects RAM/initramfs-only execution or a data HDA disk. |
+| **RAM** | Main memory. Changing profile applies its minimum; only equal or higher values can be selected. |
+| **VRAM** | Video memory. Only values equal to or higher than the profile minimum can be selected. |
+| **Keep changes** | Chooses **No, temporary session** or **Persistent workspace**. |
 
 Common profiles:
 
@@ -67,12 +68,26 @@ Common profiles:
 | `alpine-pentest-lite` | Light reconnaissance with tools such as nmap and ffuf. |
 | `alpine-pentest-web` | Broader web testing with additional tools such as nikto/httpx. |
 
-HDA disks are data disks. The system boots from initramfs; if you choose an HDA disk, mount or unmount it with the disk button once the VM is ready. Snapshots save VM state, but they are not a replacement for a persistence strategy for important data.
+Each profile includes a base system that the application mounts automatically; you do not have to select or mount disks. RAM and VRAM can be increased without changing the associated workspace. Snapshots record the exact values required by the VM, and importing one automatically selects a compatible configuration.
+
+### Temporary session, workspace, or snapshot
+
+| Option | Where it is stored | What happens after shutdown or reload | When to use it |
+| --- | --- | --- | --- |
+| **Temporary session** | Only in the current session | Changes disappear unless you press **Export** before shutdown. | Quick tests you do not need to keep. |
+| **Persistent workspace** | Automatically in this browser, for that profile | Files and changes return when you select the same profile and mode. | Regular work you want to continue in this browser. |
+| **Snapshot** | In a `.bav86snapshot` file you download | It does not depend on the browser's local storage. | Backup, moving to another browser/computer, or exact session recovery. |
+
+The **💾** icon beside a profile means this browser holds compatible persistent data for that profile version. Selecting it shows one badge, for example **Persistent data · 192 MB**. That value measures only the stored blocks of this workspace; it excludes AI models, caches, and other profiles.
+
+**Reset workspace** appears only when the selected profile has data and **Persistent workspace** is selected under **Keep changes**. It is disabled while the VM is running. With the VM stopped, it removes all local changes for that profile and returns it to its initial state; downloaded snapshots and AI models are not removed.
 
 ### VM controls
 
-- **Start VM / Shut down VM** starts or stops the VM. Shutting down discards changes that have not been saved in a snapshot or on a persistent disk.
-- **Mount disk / Unmount disk** appears when an HDA disk is selected.
+- **Start VM / Shut down VM** starts or stops the VM. On shutdown, a temporary session loses its changes; a persistent workspace is synchronized before closing.
+- **Export** downloads a snapshot of the running VM.
+- **Import** lets you choose and restore a saved snapshot.
+- **Reset workspace** removes persistent data for the selected profile while the VM is stopped.
 - **New console** creates another xterm tab, up to the four-console limit.
 - **Rename console** lets you change a tab name by double-clicking its label, which helps organize several sessions.
 - **Redraw console** forces the active console to repaint.
@@ -98,12 +113,14 @@ This form is useful for quick diagnostic commands. Use the console tabs for inte
 
 ### Snapshots
 
-- **Save snapshot** downloads a `.v86state` file with the current VM state.
-- **Restore snapshot** prompts for a state file and starts the VM from that saved state.
-- Restore a snapshot with the same RAM, disk, and profile configuration used when it was created.
-- Snapshots may not include data written to HDA disks; check the tool log warnings.
+- **Export** downloads a `.bav86snapshot` containing execution state, modified files, configuration, and VM consoles.
+- **Import** validates the file first, then automatically selects the profile, RAM, VRAM, and storage mode used to create it. You do not need to prepare those selectors beforehand.
+- If a VM is already running, the application asks before stopping it and restoring the snapshot.
+- Console tabs, their custom names, and the active tab are restored too. The application reconnects and redraws consoles automatically so they are usable without a manual clear.
+- Exact base files for that profile version must still be available. If they are missing or do not match, import is rejected before the current VM is replaced.
+- A persistent snapshot restores its data into the profile workspace; a temporary snapshot keeps temporary mode.
 
-Before shutting down the VM, save a snapshot if you want to keep RAM/process state.
+The workspace is a local convenience, not a guaranteed backup. Press **Export** to keep a copy outside the browser or continue on another computer.
 
 ## LLM panel
 
@@ -220,14 +237,13 @@ If a check fails, review its details and the tool log before trying again.
 
 | State or error | Meaning | Recommended action |
 | --- | --- | --- |
-| **v86 inactive / off** | The VM has not started yet. | Choose profile/disk and press **Start VM**. |
+| **v86 inactive / off** | The VM has not started yet. | Choose a profile and storage mode, then press **Start VM**. |
 | **WebGPU unavailable** | The browser or device does not expose compatible WebGPU. | Use another browser/device or a model with WASM fallback. |
 | **serial1 not ready** | The tools runner is not responding inside the VM yet. | Wait for full boot and run **Run checks**. |
 | **tool running** | A background operation is active. | Wait or press **Cancel tool** when appropriate. |
 | **model not loaded** | Chat cannot generate yet. | Open **LLM**, choose backend/model, and press **Load model**. |
 | **wsnic cannot connect** | The local WebSocket proxy is unavailable or not responding. | Check the **WS network** panel URL and local wsnic service. |
-| **snapshot error** | The app could not save or restore state. | Check memory, selected file, and configuration compatibility. |
-| **disk not mounted** | An HDA disk is selected but not mounted in the VM. | Press **Mount disk** when the shell is ready. |
+| **snapshot error** | The app could not export or import state. | Check the file and that the profile version's base assets are still available. |
 
 ## Best practices
 
@@ -235,5 +251,5 @@ If a check fails, review its details and the tool log before trying again.
 - Use an Ollama model if your browser does not support WebGPU properly, or try another browser with WebGPU support. You can check compatibility at [Can I use WebGPU](https://caniuse.com/webgpu).
 - Enable fewer tools if the local model responds poorly or uses too much memory.
 - Keep concurrency low for network tools inside v86.
-- Save a snapshot before long operations or changes you do not want to lose.
+- Press **Export** before long operations or changes you do not want to lose.
 - Check the tool log when chat says a tool failed or generated an artifact.

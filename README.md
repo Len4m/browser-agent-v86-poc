@@ -14,7 +14,7 @@ Current status: **beta `0.9.8-beta.10`**. Version `1.0.0` is reserved for the fi
 
 ## Features
 
-- **In-browser Alpine x86 VM**: initramfs boot, generated profiles, and optional HDA data disks.
+- **In-browser Alpine x86 VM**: profiles with an immutable root, temporary sessions or automatic browser-persistent workspaces, and portable snapshots.
 - **Direct xterm consoles**: up to 4 user tabs; tab 1 uses the real `serial0`, while tabs 2-4 use dedicated PTYs inside the VM.
 - **Background agent tools**: chat commands and checks run through `serial1` / `/dev/ttyS1`, separately from the visible console.
 - **Dedicated console transport**: multiplexed xterm/PTY traffic for tabs 2-4 through `serial2` / `/dev/ttyS2`.

@@ -6,6 +6,8 @@ The application is a **TypeScript + ESM + esbuild** frontend served from `public
 
 The VM runs **v86** and Alpine x86. The LLM layer uses **AI SDK v7** and **Browser AI v3** with Transformers.js and Ollama backends. Agent tools execute inside the VM through a serial channel separate from the visible console.
 
+The immutable HDA root, HDB/IndexedDB workspace and verifiable snapshots are detailed in [VM storage and snapshots](STORAGE_AND_SNAPSHOTS.en.md).
+
 ## Overview
 
 ![Architecture overview](assets/architecture-overview.en.svg)
@@ -48,7 +50,7 @@ flowchart LR
 
   UI --> Chat
   UI --> Xterm
-  UI -->|"boot · snapshots · disk"| V86
+  UI -->|"boot · snapshots · storage"| V86
 
   Chat --> AiSdk
   AiSdk -->|"transformersjs"| Worker
@@ -209,13 +211,34 @@ Both guest runners are written in Python 3 and run as persistent processes super
 
 1. `scripts/check/vm-profiles.mjs`
 2. `scripts/setup/runtime-assets.mjs`
-3. `scripts/setup/vm-alpine-initramfs.sh`
-4. `scripts/setup/vm-profile-image.mjs vm/profiles/*.json` for each valid profile, ordered by filename
-5. `scripts/setup/vm-hda-data-disks.sh`
+3. `scripts/setup/vm-profile-image.mjs vm/profiles/*.json` for each valid profile, ordered by filename
 
 Profiles are discovered from `vm/profiles/*.json`, excluding `profile.schema.json`. If any profile fails schema validation, `setup` stops before generating images.
 
-`scripts/setup/vm-profile-image.mjs` generates manifests in `public/v86/images/profiles/` and maintains `index.json`. Profiles use initramfs; the HDA disks created by `scripts/setup/vm-hda-data-disks.sh` are raw ext2 data images.
+`scripts/setup/vm-profile-image.mjs` produces each profile manifest with `profileHash`, SHA-256 identities, a minimal initramfs, split ext4 HDA and HDB seed. The same `CowDisk` backs HDB in memory for temporary sessions or IndexedDB for the profile's persistent workspace.
+
+### Storage and snapshots
+
+The architecture separates three concepts so the UI does not depend on v86's internal cache:
+
+```text
+immutable profile HDA
+  + in-memory CoW HDB                   -> temporary session
+  + IndexedDB CoW HDB                   -> profile persistent workspace
+
+v86 state + HDB delta + UI metadata     -> .bav86snapshot file
+```
+
+- `ResolvedVmRuntime` pins the profile, assets, RAM/VRAM, network, topology, and storage mode before boot or restore.
+- A workspace is identified by `profileHash`; a different base produces another identity and never reuses incompatible data.
+- `IndexedDbCowBlockStore` stores metadata and 64 KiB blocks by `workspaceId`, generation, and index. `CowDisk` uses the same contract with an in-memory store for temporary sessions.
+- The UI reads metadata to add **💾** to a profile. For the active generation, `storedBytes()` walks records in a read-only transaction and totals their `byteLength`; this excludes Cache Storage, LLM models, and other profiles.
+- **Reset workspace** requires three conditions: compatible data, persistent mode selected, and a stopped VM. `reset()` removes the workspace blocks and returns its metadata to the empty `main` generation.
+- There is no separate portable workspace format. Export and import always operate on `.bav86snapshot`.
+
+The snapshot container includes v86 state, the explicit HDB delta, and visual console state. Import validates the format, hashes, profile, and assets before stopping the current VM; it then reflects the recorded profile, RAM, VRAM, and mode in the UI. After applying state, it reconnects `serial1`/`serial2`, rebuilds tabs, preserves custom names and the active tab, and requests `Ctrl+L` to redraw every restored PTY.
+
+The user-facing explanation is in the [User manual](USER_MANUAL.en.md#temporary-session-workspace-or-snapshot); the detailed contract is in [VM storage and snapshots](STORAGE_AND_SNAPSHOTS.en.md).
 
 ### How a VM profile is built and which files are involved
 
@@ -227,7 +250,7 @@ vm/profiles/<id>.json                  (profile definition)
   -> scripts/setup/vm-profile-image.mjs (profile orchestrator)
        -> build/profiles/<id>/firstboot.sh
        -> build/profiles/<id>/build-commands.sh
-       -> bash scripts/setup/vm-alpine-initramfs.sh  (via PROFILE_*/ALPINE_* env vars)
+       -> bash scripts/setup/vm-alpine-overlay-hda.sh (via PROFILE_*/ALPINE_* env vars)
             -> scripts/setup/lib/common.sh           (require_build_tools, repos, metadata)
             -> scripts/setup/lib/profile-rootfs.sh   (packages via Docker, buildCommands, message)
                  -> scripts/setup/lib/docker-install-packages.sh (run inside the container)
@@ -242,12 +265,12 @@ Files per step:
 
 - Definition: `vm/profiles/<id>.json` (schema in `vm/profiles/profile.schema.json`; the filename must match the `id`).
 - Profile orchestrator: `scripts/setup/vm-profile-image.mjs` reads the JSON, writes `firstboot.sh` and `build-commands.sh` into `build/profiles/<id>/`, and invokes the build passing `PROFILE_*` and `ALPINE_*`.
-- Image build: `scripts/setup/vm-alpine-initramfs.sh` acts as an orchestrator and delegates to `scripts/setup/lib/*.sh`:
+- Image build: `scripts/setup/vm-alpine-overlay-hda.sh` acts as an orchestrator and delegates to `scripts/setup/lib/*.sh`:
   - `common.sh`: host dependency checks, `/etc/apk/repositories`, and rootfs metadata (`browser-agent-build-id`, `-profile-name`, `-profile-id`).
   - `profile-rootfs.sh`: profile package installation via Docker export (with `docker-install-packages.sh` inside the container), `buildCommands` execution, and boot message.
   - `kernel-modules.sh`: downloads `linux-lts`, extracts the kernel, and resolves/copies the network and storage modules, generating `/etc/v86-net-modules.list`.
 - Guest: the `/init` and serial runners are installed from the single source under `vm/overlay/common/` with `install -m 0755`.
-- Outputs: `public/v86/images/profiles/<id>-initramfs.gz`, the shared branch kernel under `public/v86/images/kernels/`, and the manifests in `public/v86/images/profiles/`.
+- Outputs: minimal initramfs, split root HDA, HDB seed, shared kernel, and manifests under `public/v86/images/`.
 
 Serial runners and the guest `/init` are installed from `vm/overlay/common/`. After changing the overlay, profiles, runners, build libraries, or Alpine build, run `pnpm setup`.
 

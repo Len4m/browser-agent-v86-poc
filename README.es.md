@@ -14,7 +14,7 @@ Estado actual: **beta `0.9.8-beta.10`**. La versión `1.0.0` queda reservada par
 
 ## Qué incluye
 
-- **VM Alpine x86 en el navegador**: arranque por initramfs, perfiles generados y discos HDA opcionales como discos de datos.
+- **VM Alpine x86 en el navegador**: perfiles con raíz inmutable, sesión temporal o workspace persistente automático en el navegador, y snapshots portables.
 - **Consolas xterm directas**: hasta 4 pestañas de usuario; la pestaña 1 usa `serial0` real y las pestañas 2-4 usan PTY propia dentro de la VM.
 - **Tools de agente en background**: comandos del chat y checks por `serial1` / `/dev/ttyS1`, separados de la consola visible.
 - **Transporte de consola dedicado**: multiplexado xterm/PTY por `serial2` / `/dev/ttyS2` para las pestañas 2-4.

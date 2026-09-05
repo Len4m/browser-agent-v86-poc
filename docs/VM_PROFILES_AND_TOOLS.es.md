@@ -4,11 +4,13 @@
 
 Esta guia explica como añadir un perfil de VM y como exponer tools del agente para ese perfil usando la arquitectura actual del proyecto. No cubre uso de la aplicacion por parte de usuarios finales.
 
+Todos los perfiles declaran `storage.layout: "overlay-hda"`. El mismo HDB funciona en memoria o en IndexedDB según la elección del usuario; consulta [Almacenamiento y snapshots](STORAGE_AND_SNAPSHOTS.es.md).
+
 ## Idea general
 
 Hay dos contratos separados:
 
-- **Perfil VM**: vive en `vm/profiles/<id>.json`. Define la imagen Alpine, paquetes, comandos de build/arranque, RAM recomendada y la lista `allowedTools`.
+- **Perfil VM**: vive en `vm/profiles/<id>.json`. Define la imagen Alpine, paquetes, comandos de build/arranque, RAM/VRAM mínimas y la lista `allowedTools`.
 - **Tool**: vive en `src/browser/chat/tools/definitions/*.ts`. Define schema AI SDK, normalizacion de argumentos, comando a ejecutar, paquetes requeridos, riesgo, timeout y formato de resultado.
 
 La union entre ambos contratos es:
@@ -45,11 +47,19 @@ Las definiciones de campos, reglas de validación y propiedades obligatorias de 
      "name": "Alpine Demo",
      "description": "Perfil Alpine de ejemplo.",
      "alpineVersion": "3.23.4",
-     "recommendedRamMb": 1024
+     "minimumRamMb": 1024,
+     "minimumVramMb": 8,
+     "storage": {
+       "layout": "overlay-hda",
+       "rootDiskMb": 512,
+       "workspaceDiskMb": 1024,
+       "blockSize": 65536,
+       "filesystem": "ext4"
+     }
    }
    ```
 
-   El builder deriva la salida initramfs desde `id`, por ejemplo `v86/images/profiles/alpine-demo-initramfs.gz`. El kernel usa por defecto el fichero compartido de la rama Alpine efectiva; define `kernelOutput` solo si un perfil necesita una ruta de kernel propia. `defaultDisk` es opcional y por defecto es `initramfs`.
+   El builder genera desde `id` un initramfs mínimo, una HDA rootfs por partes y una semilla HDB. El kernel usa por defecto el fichero compartido de la rama Alpine efectiva; define `kernelOutput` solo si un perfil necesita una ruta propia. `minimumRamMb` y `minimumVramMb` son límites obligatorios: la UI deshabilita valores inferiores y el runtime vuelve a validarlos. La persistencia no forma parte del perfil: el usuario elige HDB temporal o workspace al arrancar.
 
 4. Declara `packages`.
 

@@ -4,11 +4,13 @@
 
 This guide explains how to add a VM profile and how to expose agent tools for that profile using the current project architecture. It is not an end-user manual.
 
+Every profile declares `storage.layout: "overlay-hda"`. The same HDB runs in memory or IndexedDB according to the user's choice; see [Storage and snapshots](STORAGE_AND_SNAPSHOTS.en.md).
+
 ## Overview
 
 There are two separate contracts:
 
-- **VM profile**: lives in `vm/profiles/<id>.json`. It defines the Alpine image, packages, build/boot commands, recommended RAM, and `allowedTools`.
+- **VM profile**: lives in `vm/profiles/<id>.json`. It defines the Alpine image, packages, build/boot commands, minimum RAM/VRAM, and `allowedTools`.
 - **Tool**: lives in `src/browser/chat/tools/definitions/*.ts`. It defines the AI SDK schema, argument normalization, command construction, required packages, risk, timeout, and result formatting.
 
 The connection between them is:
@@ -45,11 +47,19 @@ Field definitions, validation rules, and required properties for `vm/profiles/<i
      "name": "Alpine Demo",
      "description": "Example Alpine profile.",
      "alpineVersion": "3.23.4",
-     "recommendedRamMb": 1024
+     "minimumRamMb": 1024,
+     "minimumVramMb": 8,
+     "storage": {
+       "layout": "overlay-hda",
+       "rootDiskMb": 512,
+       "workspaceDiskMb": 1024,
+       "blockSize": 65536,
+       "filesystem": "ext4"
+     }
    }
    ```
 
-   The builder derives the initramfs output from `id`, for example `v86/images/profiles/alpine-demo-initramfs.gz`. The kernel defaults to the shared file for the effective Alpine branch; set `kernelOutput` only when a profile needs a custom kernel path. `defaultDisk` is optional and defaults to `initramfs`.
+   The builder derives a minimal initramfs, split rootfs HDA and HDB seed from `id`. The kernel defaults to the shared file for the effective Alpine branch; set `kernelOutput` only when a profile needs a custom path. `minimumRamMb` and `minimumVramMb` are mandatory limits: the UI disables lower values and runtime validates them again. Persistence is not a profile property: the user chooses temporary HDB or a workspace at boot.
 
 4. Declare `packages`.
 

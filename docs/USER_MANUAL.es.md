@@ -4,15 +4,15 @@
 
 Este manual explica como usar la aplicacion ya abierta. No cubre instalacion, desarrollo, generacion de perfiles ni scripts del repositorio.
 
+Todos los perfiles permiten elegir una **sesión temporal** o un **Workspace persistente** que se guarda automáticamente en este navegador. Los botones **Exportar** e **Importar** trabajan con snapshots (`.bav86snapshot`), la única copia que puedes guardar en un archivo y llevar a otro navegador o equipo. Consulta sus [garantías y recuperación](STORAGE_AND_SNAPSHOTS.es.md).
+
 ## Vista general
 
 Browser Agent v86 POC combina tres zonas de trabajo:
 
 - **Chat**: conversacion con un LLM local del navegador o con Ollama local.
-- **VM**: maquina Linux x86 ejecutada con v86, con perfiles, consolas, discos y snapshots.
+- **VM**: máquina Linux x86 ejecutada con v86, con perfiles, consolas, almacenamiento y snapshots.
 - **Paneles inferiores**: red wsnic, informacion LLM y comprobaciones de estado.
-
-![Browser Agent v86 POC](assets/screen.png)
 
 La cabecera muestra el estado global:
 
@@ -27,16 +27,17 @@ La cabecera muestra el estado global:
 ## Flujo recomendado
 
 1. Selecciona el **Perfil** de VM que quieres usar.
-2. Pulsa **Arrancar VM**. La primera vez puede descargar assets grandes; espera a que la consola muestre la shell.
-3. Si el navegador acepta **WebGPU**, puedes usar un modelo Transformers.js local o un modelo Ollama y cargarlo desde el panel **LLM**. Transformers.js descarga y cachea el modelo en el navegador. Si solo tienes **WASM**, para uso con agente y tools suele ser mejor usar Ollama o probar otro navegador/equipo con WebGPU.
-4. Habla con el chat para pedir acciones dentro de la VM, o usa las consolas para comprobar y ejecutar lo que necesites manualmente.
-5. Si necesitas salida de red dentro de la VM, configura **wsnic** desde el panel **Red WS**.
+2. En **Conservar cambios**, deja **No, sesión temporal** para una prueba desechable o elige **Workspace persistente** para continuar el trabajo en futuras visitas desde este navegador.
+3. Pulsa **Arrancar VM**. La primera vez puede descargar archivos grandes; espera a que la consola muestre la shell.
+4. Si el navegador acepta **WebGPU**, puedes usar un modelo Transformers.js local o un modelo Ollama y cargarlo desde el panel **LLM**. Transformers.js descarga y cachea el modelo en el navegador. Si solo tienes **WASM**, para uso con agente y tools suele ser mejor usar Ollama o probar otro navegador/equipo con WebGPU.
+5. Habla con el chat para pedir acciones dentro de la VM, o usa las consolas para comprobar y ejecutar lo que necesites manualmente.
+6. Si necesitas salida de red dentro de la VM, configura **wsnic** desde el panel **Red WS**.
 
 Puedes pulsar **Comprobar** en cualquier momento para revisar si la aplicación, la VM, la red, los assets y las tools están en buen estado.
 
 ## Chat
 
-El panel de chat esta a la izquierda en escritorio y arriba en movil.
+El panel de chat está a la izquierda en escritorio y arriba en móvil.
 
 - **Expandir chat** cambia entre vista dividida y chat a ancho completo.
 - **Limpiar chat** borra el historial visible, el historial interno del LLM y todos los artifacts de tools guardados.
@@ -48,45 +49,59 @@ Usa prompts concretos. Por ejemplo: "comprueba la IP de la VM", "lista /etc", "h
 
 La calidad del chat con tools depende mucho del modelo elegido. Algunos modelos siguen instrucciones y llamadas a herramientas mejor que otros. Además, cuanto menor sea el contexto del modelo, más conviene limitar la cantidad de tools activas en una petición para reducir ruido, uso de memoria y errores de planificación.
 
-## VM, perfiles y discos
+## VM, perfiles y almacenamiento
 
 Antes de arrancar puedes configurar:
 
-| Control          | Funcion                                                                                            |
+| Control          | Función                                                                                            |
 | ---------------- | -------------------------------------------------------------------------------------------------- |
 | **Perfil** | Selecciona una imagen Alpine preparada.                                                            |
-| **RAM**    | Memoria principal en modo **Libre / manual**. En perfiles generados se aplica la recomendada. |
-| **VRAM**   | Memoria de video en modo **Libre / manual**.                                                  |
-| **Disco**  | Selecciona ejecucion solo en RAM/initramfs o un disco HDA de datos.                                |
+| **RAM**    | Memoria principal. Al cambiar de perfil se aplica su mínimo; solo se pueden elegir valores iguales o superiores. |
+| **VRAM**   | Memoria de vídeo. Solo se pueden elegir valores iguales o superiores al mínimo del perfil. |
+| **Conservar cambios** | Elige **No, sesión temporal** o **Workspace persistente**. |
 
 Perfiles habituales:
 
 | Perfil                  | Uso recomendado                                                          |
 | ----------------------- | ------------------------------------------------------------------------ |
-| `alpine-base`         | Shell Alpine minima con utilidades basicas.                              |
+| `alpine-base`         | Shell Alpine mínima con utilidades básicas.                              |
 | `alpine-pentest-lite` | Reconocimiento ligero con herramientas como nmap y ffuf.                 |
-| `alpine-pentest-web`  | Pruebas web mas completas con herramientas adicionales como nikto/httpx. |
+| `alpine-pentest-web`  | Pruebas web más completas con herramientas adicionales como nikto/httpx. |
 
-Los discos HDA son discos de datos. El sistema arranca desde initramfs; si eliges un HDA, monta o desmonta el disco con el boton de disco cuando la VM este lista. Los snapshots guardan el estado de la VM, pero no sustituyen a una estrategia de persistencia para datos importantes.
+Cada perfil trae un sistema base que la aplicación monta automáticamente; no tienes que elegir ni montar discos. RAM y VRAM pueden aumentarse sin cambiar el workspace asociado. Los snapshots guardan los valores exactos que necesita la VM y, al importarlos, la aplicación selecciona la configuración compatible de forma automática.
+
+### Sesión temporal, workspace o snapshot
+
+| Opción | Dónde se guarda | Qué ocurre al apagar o recargar | Cuándo usarla |
+| --- | --- | --- | --- |
+| **Sesión temporal** | Solo en la sesión actual | Los cambios desaparecen, salvo que pulses **Exportar** antes de apagar. | Pruebas rápidas que no necesitas conservar. |
+| **Workspace persistente** | Automáticamente en este navegador y para ese perfil | Los archivos y cambios reaparecen al volver a elegir el mismo perfil y modo. | Trabajo habitual que quieres continuar en este navegador. |
+| **Snapshot** | En un archivo `.bav86snapshot` descargado por ti | No depende del almacenamiento local del navegador. | Copia de seguridad, traslado a otro navegador/equipo o recuperación exacta de una sesión. |
+
+El icono **💾** junto a un perfil significa que este navegador tiene datos persistentes compatibles para esa versión. Al seleccionar el perfil aparece una única insignia, por ejemplo **Datos persistentes · 192 MB**. Esa cantidad mide solo los bloques guardados de ese workspace: no incluye modelos de IA, cachés ni datos de otros perfiles.
+
+**Reiniciar workspace** aparece únicamente cuando el perfil seleccionado tiene datos y en **Conservar cambios** está elegido **Workspace persistente**. Con la VM encendida se muestra deshabilitado. Con la VM apagada permite borrar todos los cambios locales de ese perfil y volver a su estado inicial; esta acción no borra snapshots descargados ni modelos de IA.
 
 ### Controles de VM
 
-- **Arrancar VM / Apagar VM** inicia o detiene la VM. Al apagar se pierden cambios que no esten en snapshot o en disco persistente.
-- **Montar disco / Desmontar disco** aparece cuando hay un HDA seleccionado.
-- **Nueva consola** crea una pestaña xterm adicional, hasta el limite de la aplicacion.
+- **Arrancar VM / Apagar VM** inicia o detiene la VM. Al apagar, una sesión temporal pierde sus cambios; un workspace persistente los sincroniza antes de cerrarse.
+- **Exportar** descarga un snapshot de la VM que está funcionando.
+- **Importar** permite elegir y restaurar un snapshot guardado.
+- **Reiniciar workspace** borra los datos persistentes del perfil seleccionado cuando la VM está apagada.
+- **Nueva consola** crea una pestaña xterm adicional, hasta el límite de la aplicación.
 - **Renombrar consola** permite cambiar el nombre de una pestaña con doble clic sobre su etiqueta para organizar mejor varias sesiones.
 - **Redibujar consola** fuerza el repintado de la consola activa.
 - **Cerrar consola** cierra la pestaña xterm activa si no es la consola base.
-- **Ayuda de consola** explica seriales, PTY y separacion de tools.
-- **Cancelar tool** intenta cancelar una herramienta background en ejecucion.
+- **Ayuda de consola** explica seriales, PTY y separación de tools.
+- **Cancelar tool** intenta cancelar una herramienta background en ejecución.
 
 ### Consolas
 
 La primera consola usa `serial0` y muestra el arranque base de la VM. Las consolas adicionales usan PTY dentro de la VM por `serial2`.
 
-Las tools del agente, las comprobaciones y el formulario manual no escriben en la consola visible: usan `serial1` / `/dev/ttyS1`. Esta separacion evita que una tool ensucie o bloquee la sesion interactiva.
+Las tools del agente, las comprobaciones y el formulario manual no escriben en la consola visible: usan `serial1` / `/dev/ttyS1`. Esta separación evita que una tool ensucie o bloquee la sesión interactiva.
 
-### Ejecucion manual y log de tools
+### Ejecución manual y log de tools
 
 Debajo de la VM hay un log de tools y un formulario de comando manual.
 
@@ -94,16 +109,18 @@ Debajo de la VM hay un log de tools y un formulario de comando manual.
 - El campo de comando ejecuta una orden dentro de la VM por `serial1`.
 - Si una tool esta activa, algunos controles se bloquean hasta que termine o se cancele.
 
-Este formulario es util para comandos cortos de comprobacion. Para trabajo interactivo usa las pestañas de consola.
+Este formulario es útil para comandos cortos de comprobación. Para trabajo interactivo usa las pestañas de consola.
 
 ### Snapshots
 
-- **Guardar snapshot** descarga un fichero `.v86state` con el estado actual de la VM.
-- **Restaurar snapshot** pide un fichero de estado y reinicia/restaura la VM.
-- Restaura el snapshot con la misma configuración de RAM, disco y perfil con la que se creó.
-- Los snapshots pueden no incluir datos escritos en discos HDA; revisa los avisos del log.
+- **Exportar** descarga un fichero `.bav86snapshot` con el estado de ejecución, los archivos modificados, la configuración y las consolas de la VM.
+- **Importar** valida primero el archivo y después selecciona automáticamente el perfil, RAM, VRAM y modo de almacenamiento con los que se creó. No necesitas preparar esos selectores antes.
+- Si ya hay una VM abierta, la aplicación pide confirmación antes de apagarla y restaurar el snapshot.
+- Al restaurar, también se recuperan las pestañas de consola, sus nombres y la pestaña activa. La aplicación reconecta y repinta las consolas automáticamente para que puedan utilizarse sin una limpieza manual.
+- Los archivos base exactos de esa versión del perfil deben seguir disponibles en la aplicación. Si faltan o no coinciden, la importación se rechaza antes de sustituir la VM actual.
+- Un snapshot persistente restaura sus datos en el workspace del perfil; uno temporal mantiene el modo temporal.
 
-Antes de apagar la VM, guarda snapshot si quieres conservar el estado de RAM/procesos.
+El workspace es comodidad local, no una copia de seguridad garantizada. Pulsa **Exportar** si quieres conservar una copia fuera del navegador o continuar en otra máquina.
 
 ## Panel LLM
 
@@ -220,14 +237,13 @@ Si una comprobacion falla, revisa el detalle y el log de tools antes de arrancar
 
 | Estado o error                   | Que significa                                              | Accion recomendada                                                         |
 | -------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------- |
-| **v86 inactiva / apagada** | La VM aun no esta arrancada.                               | Elige perfil/disco y pulsa **Arrancar VM**.                           |
+| **v86 inactiva / apagada** | La VM aún no está arrancada. | Elige perfil y almacenamiento y pulsa **Arrancar VM**. |
 | **WebGPU no disponible**   | El navegador o equipo no exponen WebGPU compatible.        | Usa otro navegador/equipo o un modelo con fallback WASM.                   |
 | **serial1 no preparado**   | El runner de tools aun no responde dentro de la VM.        | Espera al arranque completo y ejecuta **Comprobar**.                  |
 | **tool en ejecucion**      | Hay una operacion background activa.                       | Espera o pulsa **Cancelar tool** si procede.                          |
 | **modelo no cargado**      | El chat no puede generar aun.                              | Abre **LLM**, elige backend/modelo y pulsa **Cargar modelo**.   |
 | **wsnic no conecta**       | El proxy WebSocket local no esta disponible o no responde. | Revisa la URL del panel **Red WS** y el servicio wsnic local.         |
-| **snapshot error**         | No se pudo guardar o restaurar estado.                     | Comprueba memoria, fichero seleccionado y compatibilidad de configuracion. |
-| **disco no montado**       | Hay HDA seleccionado, pero no esta montado en la VM.       | Pulsa **Montar disco** cuando la shell este lista.                    |
+| **snapshot error** | No se pudo exportar o importar el estado. | Comprueba el archivo y que sigan disponibles los assets de la versión del perfil. |
 
 ## Buenas practicas
 
@@ -235,5 +251,5 @@ Si una comprobacion falla, revisa el detalle y el log de tools antes de arrancar
 - Usa un modelo Ollama si tu navegador no acepta WebGPU correctamente, o prueba otro navegador con soporte WebGPU. Puedes revisar compatibilidad en [Can I use WebGPU](https://caniuse.com/webgpu).
 - Usa menos tools activas si el modelo local responde mal o consume demasiada memoria.
 - Mantén baja la concurrencia de herramientas de red dentro de v86.
-- Guarda snapshot antes de acciones largas o cambios que no quieras perder.
+- Pulsa **Exportar** antes de acciones largas o cambios que no quieras perder.
 - Consulta el log de tools cuando el chat diga que una herramienta fallo o genero un artifact.

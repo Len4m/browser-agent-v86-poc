@@ -4,6 +4,8 @@
 
 Esta guía cubre cómo ejecutar Browser Agent v86 POC, preparar el entorno de desarrollo, usar la VM/LLM/red y empaquetar un runtime.
 
+Consulta [Almacenamiento y snapshots](STORAGE_AND_SNAPSHOTS.es.md) para las garantías y límites exactos de persistencia, exportación y restore.
+
 ## Demo online
 
 La forma más sencilla de usar Browser Agent v86 POC es la demo publicada:
@@ -95,24 +97,25 @@ Puedes pulsar **Comprobar** en cualquier momento para validar cabeceras, assets,
 
 Los perfiles generados aparecen desde `/v86/images/profiles/index.json`. Si no aparecen, ejecuta `pnpm setup`.
 
-## VM, perfiles y discos
+## VM, perfiles y almacenamiento
 
 Perfiles incluidos:
 
-| Perfil | Uso | RAM recomendada |
+| Perfil | Uso | RAM mínima |
 | --- | --- | --- |
 | `alpine-base` | Alpine mínimo con certificados, curl, nano y Python para el daemon xterm | 512 MB |
 | `alpine-pentest-lite` | Herramientas ligeras: nmap, ffuf, Python, DNS y wordlists web pequeñas | 1024 MB |
 | `alpine-pentest-web` | Pentest web ampliado: nikto, httpx, SSL Perl y wordlists | 1536 MB |
 
-La opción **Libre / manual** usa el kernel e initramfs por defecto y permite cambiar RAM/VRAM. Al elegir un perfil generado, la UI aplica sus valores recomendados.
+Al elegir un perfil, la UI aplica sus mínimos de RAM y VRAM y deshabilita los valores inferiores. Ambos recursos pueden aumentarse antes de arrancar sin cambiar el workspace asociado; el runtime impide arrancar o restaurar por debajo de los mínimos. En **Conservar cambios** se elige **No, sesión temporal** o **Workspace persistente**.
 
 Discos:
 
-- `RAM / initramfs`: el sistema vive en memoria; los cambios se pierden al apagar salvo snapshot.
-- `hda 250 MB`, `hda 512 MB`, `hda 1 GB`: imágenes ext2 raw creadas por `pnpm setup`.
-- Los discos HDA son datos montables en `/mnt/hda`; el sistema sigue arrancando desde initramfs.
-- Los snapshots guardan RAM/CPU/estado de v86, pero no incluyen cambios persistidos en discos HDA.
+- Todos los perfiles usan HDA rootfs inmutable y HDB OverlayFS. **No, sesión temporal** descarta el HDB al apagar; **Workspace persistente** lo guarda automáticamente en IndexedDB después de que el usuario lo active.
+- Cada versión de perfil tiene un único workspace automático en el navegador; no dispone de importación o exportación propia.
+- El selector marca con **💾** los perfiles con datos guardados. El resumen muestra **Datos persistentes · tamaño**, calculado solo con los bloques de ese workspace y sin incluir modelos o cachés.
+- **Reiniciar workspace** aparece cuando el perfil tiene datos y se ha elegido **Workspace persistente**; solo se puede ejecutar con la VM apagada.
+- Los botones **Exportar** e **Importar** trabajan exclusivamente con snapshots `.bav86snapshot`. Funcionan en ambos modos e incluyen identidad verificable, estado de ejecución, delta HDB y metadatos de las consolas.
 
 ## Consola y tools
 
@@ -195,7 +198,7 @@ Permite introducir cualquier URL válida `ws://` o `wss://`. Para WSS usa un cer
 | --- | --- |
 | `pnpm install` | Instala las dependencias del proyecto; no genera los assets pesados |
 | `pnpm prepare:local` | Ejecuta `setup` y `build` para dejar un entorno local usable |
-| `pnpm setup` | Descarga/copia assets base, genera initramfs, perfiles y discos |
+| `pnpm setup` | Descarga/copia assets base y genera los perfiles OverlayFS |
 | `pnpm build` | Genera el worker/bridge LLM y el bundle frontend; no consulta APIs de modelos y requiere haber ejecutado `setup` al menos una vez |
 | `pnpm build:prod` | Genera el runtime minificado para producción: JS/CSS minificados y hashes de caché |
 | `pnpm check` | Ejecuta TypeScript, lint, tests unitarios y checks de integridad del repo/assets |
@@ -208,7 +211,7 @@ Regenera con `pnpm setup` después de tocar:
 
 - `vm/profiles/*.json`
 - `vm/overlay/common/`
-- `scripts/setup/vm-alpine-initramfs.sh`
+- `scripts/setup/vm-alpine-overlay-hda.sh`
 - runners seriales
 
 Los perfiles VM deben mantener `python3` en `packages`, porque los runners seriales del guest dependen de Python 3.
@@ -229,7 +232,7 @@ Regenera con `pnpm build` después de tocar:
 | `src/browser/chat/provider/ai-sdk/` | `public/assets/chat/` | `pnpm build` |
 | `vm/profiles/*.json`, `vm/overlay/common/` | `build/profiles/`, `public/v86/images/profiles/` | `pnpm setup` |
 | v86, xterm, DOMPurify, streaming-markdown, BIOS y Alpine base | `public/vendor/`, `public/v86/build/`, `public/v86/bios/`, `public/v86/images/` | `pnpm setup` |
-| Discos HDA locales | `public/v86/disks/` | `pnpm setup` |
+| HDA raíz por partes y semilla HDB de cada perfil | `public/v86/images/profiles/` | `pnpm setup` |
 
 ## Limpieza
 
@@ -300,7 +303,7 @@ pnpm start
 - **VM no arranca**: ejecuta `pnpm prepare:local` y después `pnpm check`.
 - **No aparecen perfiles**: falta `/v86/images/profiles/index.json`; ejecuta `pnpm setup`.
 - **Cambiaste initramfs, runners o perfiles**: ejecuta `pnpm setup` y arranca una VM nueva.
-- **Disco HDA no monta**: verifica que existe `public/v86/disks/alpine-hda-*.img`; `pnpm setup` los crea.
+- **El almacenamiento del perfil no monta**: verifica que existan la HDA raíz por partes y la semilla HDB en `public/v86/images/profiles/`; `pnpm setup` las crea.
 - **Tools o checks afectan a la consola visible**: valida `/dev/ttyS1`, `/dev/ttyS2` y los procesos `ba-serial1-runner` / `ba-serial2-console-runner`.
 - **Una consola xterm queda desincronizada**: usa refrescar; limpia el xterm local y envía `Ctrl+L` al shell activo.
 - **LLM local falla por WebGPU**: prueba un modelo WASM o reduce el modelo; algunas rutas intentan fallback WASM.
