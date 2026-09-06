@@ -212,11 +212,12 @@ Permite introducir cualquier URL válida `ws://` o `wss://`. Para WSS usa un cer
 Para observar la prueba E2E en Chromium, ejecuta:
 
 ```bash
+pnpm test:e2e --help
 pnpm test:e2e --headed
 pnpm test:e2e --headed --slow-mo=250 --pause-on-end
 ```
 
-`--slow-mo` acepta de 0 a 5000 ms entre acciones. `--pause-on-end` implica `--headed` y mantiene Chromium abierto hasta pulsar Enter; en una ejecución no interactiva se omite la pausa para no bloquear CI.
+`--help` (o `-h`) muestra todas las opciones sin iniciar las pruebas. `--slow-mo` acepta de 0 a 5000 ms entre acciones. `--pause-on-end` implica `--headed` y mantiene Chromium abierto hasta pulsar Enter; en una ejecución no interactiva se omite la pausa para no bloquear CI.
 
 Regenera con `pnpm setup` después de tocar:
 

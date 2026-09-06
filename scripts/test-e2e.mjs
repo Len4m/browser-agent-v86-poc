@@ -9,6 +9,19 @@ import { chromium } from "playwright-core";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const manifestPath = join(root, "public/v86/images/profiles/alpine-base.json");
+const cliArgs = process.argv.slice(2);
+
+if (cliArgs.includes("--help") || cliArgs.includes("-h")) {
+  console.log(`Uso: pnpm test:e2e [opciones]
+
+Opciones:
+  --headed          Muestra Chromium durante las pruebas
+  --slow-mo=<ms>    Espera entre acciones (0-5000 ms)
+  --pause-on-end    Mantiene Chromium abierto hasta pulsar Enter; implica --headed
+  -h, --help        Muestra esta ayuda`);
+  process.exit(0);
+}
+
 const runtimeContract = JSON.parse(readFileSync(join(root, "vm", "runtime-contract.json"), "utf8"));
 const chromiumPath = process.env.CHROMIUM_PATH || "/usr/bin/chromium";
 const port = Number(process.env.VM_STORAGE_TEST_PORT || 5186);
@@ -18,7 +31,6 @@ function fail(message) {
   process.exitCode = 1;
 }
 
-const cliArgs = process.argv.slice(2);
 const pauseOnEnd = cliArgs.includes("--pause-on-end");
 const headed = pauseOnEnd || cliArgs.includes("--headed");
 const slowMoArg = cliArgs.find((arg) => arg.startsWith("--slow-mo="));
