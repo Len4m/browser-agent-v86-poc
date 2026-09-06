@@ -114,7 +114,7 @@ Las definiciones de campos, reglas de validación y propiedades obligatorias de 
 8. Valida el perfil.
 
    ```bash
-   pnpm check
+   pnpm test:all
    ```
 
    Este comando comprueba schema, ids duplicados, `python3`, `allowedTools` desconocidas y `requiredPackages` faltantes. Consulta la [referencia del schema](schema-reference/vm-profile.md) (**en inglés**) si necesitas el detalle de cada campo.
@@ -194,7 +194,7 @@ Las definiciones de campos, reglas de validación y propiedades obligatorias de 
 Despues de añadir o cambiar perfiles/tools:
 
 ```bash
-pnpm check
+pnpm test:all
 ```
 
 Si cambiaste perfiles, overlay o runners:
@@ -224,5 +224,5 @@ pnpm prepare:local
 - Los comandos usan quoting y limites.
 - Las salidas tienen timeout y tamaño maximo.
 - La tool tiene textos i18n si se muestra al usuario/modelo.
-- `pnpm check` pasa.
+- `pnpm test:all` pasa.
 - Tras cambios de perfil, la VM arranca y **Comprobar** no muestra paquetes/tools faltantes.

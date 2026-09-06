@@ -132,7 +132,7 @@ Los runners instalados en el initramfs vienen de:
 - `vm/overlay/common/usr/local/bin/ba-serial1-runner`
 - `vm/overlay/common/usr/local/bin/ba-serial2-console-runner`
 
-Ambos runners guest usan Python 3. Todos los perfiles en `vm/profiles/*.json` deben incluir el paquete `python3`; `pnpm check` y la construcción de perfiles fallan si falta.
+Ambos runners guest usan Python 3. Todos los perfiles en `vm/profiles/*.json` deben incluir el paquete `python3`; `pnpm test:all` y la construcción de perfiles fallan si falta.
 
 Después de cambiar perfiles, overlay, runners o scripts de initramfs, ejecuta:
 
@@ -201,7 +201,9 @@ Permite introducir cualquier URL válida `ws://` o `wss://`. Para WSS usa un cer
 | `pnpm setup` | Descarga/copia assets base y genera los perfiles OverlayFS |
 | `pnpm build` | Genera el worker/bridge LLM y el bundle frontend; no consulta APIs de modelos y requiere haber ejecutado `setup` al menos una vez |
 | `pnpm build:prod` | Genera el runtime minificado para producción: JS/CSS minificados y hashes de caché |
-| `pnpm check` | Ejecuta TypeScript, lint, tests unitarios y checks de integridad del repo/assets |
+| `pnpm test` | Ejecuta los tests rápidos de módulos e integración ligera |
+| `pnpm test:e2e` | Ejecuta las pruebas reales con Chromium y v86 |
+| `pnpm test:all` | Ejecuta TypeScript, lint, tests rápidos, checks de integridad y pruebas E2E |
 | `pnpm clean` | Borra `build/` y las salidas generadas por el build en `public/` |
 | `pnpm clean:runtime` | Borra runtime pesado generado por `setup`: `public/vendor/` y `public/v86/` |
 | `pnpm clean:all` | Ejecuta la limpieza de build y runtime |
@@ -250,7 +252,7 @@ Crear zip:
 
 ```bash
 pnpm prepare:local
-pnpm check
+pnpm test:all
 cd public
 zip -r ../browser-agent-v86-poc-runtime-public.zip .
 ```
@@ -300,7 +302,7 @@ pnpm start
 
 ## Problemas habituales
 
-- **VM no arranca**: ejecuta `pnpm prepare:local` y después `pnpm check`.
+- **VM no arranca**: ejecuta `pnpm prepare:local` y después `pnpm test:all`.
 - **No aparecen perfiles**: falta `/v86/images/profiles/index.json`; ejecuta `pnpm setup`.
 - **Cambiaste initramfs, runners o perfiles**: ejecuta `pnpm setup` y arranca una VM nueva.
 - **El almacenamiento del perfil no monta**: verifica que existan la HDA raíz por partes y la semilla HDB en `public/v86/images/profiles/`; `pnpm setup` las crea.

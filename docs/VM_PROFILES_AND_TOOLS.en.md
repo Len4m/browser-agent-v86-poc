@@ -114,7 +114,7 @@ Field definitions, validation rules, and required properties for `vm/profiles/<i
 8. Validate the profile.
 
    ```bash
-   pnpm check
+   pnpm test:all
    ```
 
    This checks schema, duplicate ids, `python3`, unknown `allowedTools`, and missing `requiredPackages`. See the [schema reference](schema-reference/vm-profile.md) for per-field details.
@@ -194,7 +194,7 @@ Field definitions, validation rules, and required properties for `vm/profiles/<i
 After adding or changing profiles/tools:
 
 ```bash
-pnpm check
+pnpm test:all
 ```
 
 If you changed profiles, the overlay, or runners:
@@ -224,5 +224,5 @@ pnpm prepare:local
 - Commands use quoting and limits.
 - Outputs have timeout and maximum size.
 - The tool has i18n text if it is shown to the user/model.
-- `pnpm check` passes.
+- `pnpm test:all` passes.
 - After profile changes, the VM boots and **Run checks** does not report missing packages/tools.

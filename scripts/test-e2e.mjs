@@ -13,7 +13,7 @@ const chromiumPath = process.env.CHROMIUM_PATH || "/usr/bin/chromium";
 const port = Number(process.env.VM_STORAGE_TEST_PORT || 5186);
 
 function fail(message) {
-  console.error(`ERROR test:vm-storage: ${message}`);
+  console.error(`ERROR test:e2e: ${message}`);
   process.exitCode = 1;
 }
 
@@ -298,7 +298,7 @@ try {
   await restoreContext.close();
   if (browserErrors.length) throw new Error(`errores de página: ${browserErrors.join(" | ")}`);
 
-  console.log(`OK test:vm-storage: sesión temporal descartada y workspace persistió /root (${bootMs} ms primer arranque)`);
+  console.log(`OK test:e2e: sesión temporal descartada y workspace persistió /root (${bootMs} ms primer arranque)`);
   console.log("OK datos persistentes actualizados en la interfaz con la VM encendida");
   console.log(`OK snapshot persistente restauró HDB, PTY utilizable, nombre y pestaña activa: ${snapshot.suggestedFilename()}`);
   console.log("OK snapshot sincronizó perfil, tools activas y runner serial1");

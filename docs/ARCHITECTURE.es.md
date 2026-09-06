@@ -111,7 +111,7 @@ Toda la copy de UI vive en catálogos JSON (`src/web/locales/*.json`) y el códi
 - Idiomas soportados: `es` (base) y `en`.
 - Selección: idioma guardado en `localStorage` (`ba.lang`). Si no hay un valor guardado, la app elige `es` cuando alguno de los idiomas del navegador es español y `en` en caso contrario. El selector de cabecera (`src/browser/app/lang-selector.ts`) cambia el idioma en caliente sin recargar.
 - Los dos catálogos se copian a `public/locales/`, pero el runtime solo mantiene en memoria el catálogo activo.
-- `pnpm check` ejecuta `scripts/check/i18n.mjs` para garantizar paridad de claves entre `es.json` y `en.json`. La paridad de claves no valida la calidad del texto; las cadenas nuevas deben añadirse en ambos catálogos.
+- `pnpm test:all` ejecuta `scripts/check/i18n.mjs` para garantizar paridad de claves entre `es.json` y `en.json`. La paridad de claves no valida la calidad del texto; las cadenas nuevas deben añadirse en ambos catálogos.
 
 ## Build de la app
 
@@ -190,7 +190,7 @@ Usuario / LLM
       -> serial0 / ttyS0 con marcadores __BAGENT_*
 ```
 
-`src/browser/vm/operations.ts` es solo la fachada pública que conserva imports estables. La implementación está separada en `exec-vm.ts`, `network-operations.ts`, `snapshot-operations.ts` y `workspace-controls.ts`. El adaptador `serial-console.ts` aísla el terminal de la gestión del ciclo de vida en `serial-vm.ts`. `pnpm check` verifica que los módulos TypeScript del navegador no formen ciclos de imports estáticos.
+`src/browser/vm/operations.ts` es solo la fachada pública que conserva imports estables. La implementación está separada en `exec-vm.ts`, `network-operations.ts`, `snapshot-operations.ts` y `workspace-controls.ts`. El adaptador `serial-console.ts` aísla el terminal de la gestión del ciclo de vida en `serial-vm.ts`. `pnpm test:all` verifica que los módulos TypeScript del navegador no formen ciclos de imports estáticos.
 
 Contratos actuales:
 
@@ -205,7 +205,7 @@ Fuentes de runners:
 - `vm/overlay/common/usr/local/bin/ba-serial1-runner`
 - `vm/overlay/common/usr/local/bin/ba-serial2-console-runner`
 
-Ambos runners guest están escritos en Python 3 y son procesos persistentes supervisados por el proceso init del guest incluido en el initramfs. Por tanto, `python3` es dependencia obligatoria de todos los perfiles VM; `pnpm check` y `scripts/setup/vm-profile-image.mjs` lo validan.
+Ambos runners guest están escritos en Python 3 y son procesos persistentes supervisados por el proceso init del guest incluido en el initramfs. Por tanto, `python3` es dependencia obligatoria de todos los perfiles VM; `pnpm test:all` y `scripts/setup/vm-profile-image.mjs` lo validan.
 
 ## VM e imágenes
 
@@ -345,12 +345,13 @@ Archivos clave:
 
 ## Checks
 
-`pnpm check` ejecuta:
+`pnpm test:all` ejecuta, en este orden:
 
 - `tsc --noEmit`
 - `pnpm lint`
 - `pnpm test`
 - `scripts/check.mjs`
+- `pnpm test:e2e`
 
 `scripts/check.mjs` ejecuta:
 
@@ -364,7 +365,7 @@ Archivos clave:
 
 `pnpm lint` usa ESLint flat config (`eslint.config.js`). El código TypeScript de navegador se valida con reglas TypeScript type-aware en los módulos modernizados.
 
-`pnpm test` compila `tests/**/*.test.ts` con esbuild hacia `build/test/` y ejecuta `node --test`. Los tests en `tests/browser/` cubren comportamiento de módulos puros de `src/browser/`; no son tests end-to-end en navegador. `scripts/check/` queda reservado para validaciones de integridad del repo, assets generados y reglas de arquitectura.
+`pnpm test` compila `tests/**/*.test.ts` con esbuild hacia `build/test/` y ejecuta `node --test`. Los tests en `tests/browser/` cubren comportamiento de módulos puros de `src/browser/`; no son tests end-to-end en navegador. `pnpm test:e2e` ejecuta `scripts/test-e2e.mjs` como entrada estable para las pruebas reales de Chromium y v86, y podrá agrupar más escenarios en el futuro. `scripts/check/` queda reservado para validaciones de integridad del repo, assets generados y reglas de arquitectura.
 
 ## Limpieza
 
