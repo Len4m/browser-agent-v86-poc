@@ -365,7 +365,7 @@ Archivos clave:
 
 `pnpm lint` usa ESLint flat config (`eslint.config.js`). El código TypeScript de navegador se valida con reglas TypeScript type-aware en los módulos modernizados.
 
-`pnpm test` compila `tests/**/*.test.ts` con esbuild hacia `build/test/` y ejecuta `node --test`. Los tests en `tests/browser/` cubren comportamiento de módulos puros de `src/browser/`; no son tests end-to-end en navegador. `pnpm test:e2e` ejecuta `scripts/test-e2e.mjs` como entrada estable para las pruebas reales de Chromium y v86, y podrá agrupar más escenarios en el futuro. `scripts/check/` queda reservado para validaciones de integridad del repo, assets generados y reglas de arquitectura.
+`pnpm test` compila `tests/**/*.test.ts` con esbuild hacia `build/test/` y ejecuta `node --test`. Los tests en `tests/browser/` cubren comportamiento de módulos puros de `src/browser/`; no son tests end-to-end en navegador. `pnpm test:e2e` ejecuta `scripts/test-e2e.mjs` como entrada estable para las pruebas reales de Chromium y v86, y podrá agrupar más escenarios en el futuro. El runner acepta `--headed`, `--slow-mo=<ms>` y `--pause-on-end` para observación local; sin parámetros conserva el modo headless automatizable. `scripts/check/` queda reservado para validaciones de integridad del repo, assets generados y reglas de arquitectura.
 
 ## Limpieza
 

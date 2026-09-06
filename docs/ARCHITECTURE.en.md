@@ -365,7 +365,7 @@ Key files:
 
 `pnpm lint` uses ESLint flat config (`eslint.config.js`). ESLint applies type-aware TypeScript rules to the modernized browser modules.
 
-`pnpm test` compiles `tests/**/*.test.ts` with esbuild into `build/test/` and runs `node --test`. Tests under `tests/browser/` cover the behavior of pure modules in `src/browser/`; they are not browser end-to-end tests. `pnpm test:e2e` runs `scripts/test-e2e.mjs` as the stable entry point for real Chromium and v86 tests, and it can group additional scenarios in the future. `scripts/check/` is reserved for repository integrity, generated asset, and architecture-rule validation.
+`pnpm test` compiles `tests/**/*.test.ts` with esbuild into `build/test/` and runs `node --test`. Tests under `tests/browser/` cover the behavior of pure modules in `src/browser/`; they are not browser end-to-end tests. `pnpm test:e2e` runs `scripts/test-e2e.mjs` as the stable entry point for real Chromium and v86 tests, and it can group additional scenarios in the future. The runner accepts `--headed`, `--slow-mo=<ms>`, and `--pause-on-end` for local observation; without options it keeps the automatable headless mode. `scripts/check/` is reserved for repository integrity, generated asset, and architecture-rule validation.
 
 ## Cleaning
 

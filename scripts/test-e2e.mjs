@@ -3,6 +3,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 
@@ -15,6 +16,31 @@ const port = Number(process.env.VM_STORAGE_TEST_PORT || 5186);
 function fail(message) {
   console.error(`ERROR test:e2e: ${message}`);
   process.exitCode = 1;
+}
+
+const cliArgs = process.argv.slice(2);
+const pauseOnEnd = cliArgs.includes("--pause-on-end");
+const headed = pauseOnEnd || cliArgs.includes("--headed");
+const slowMoArg = cliArgs.find((arg) => arg.startsWith("--slow-mo="));
+const slowMoText = slowMoArg?.slice("--slow-mo=".length) || "";
+const slowMo = slowMoArg ? Number(slowMoText) : 0;
+if ((slowMoArg && !slowMoText) || !Number.isInteger(slowMo) || slowMo < 0 || slowMo > 5000) {
+  fail("--slow-mo debe ser un número entero entre 0 y 5000 ms");
+  process.exit();
+}
+
+async function pauseBrowserOnEnd() {
+  if (!pauseOnEnd) return;
+  if (!process.stdin.isTTY) {
+    console.warn("[e2e] --pause-on-end omitido: la entrada no es una terminal interactiva.");
+    return;
+  }
+  const readline = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    await readline.question("[e2e] Pruebas terminadas. Pulsa Enter para cerrar Chromium... ");
+  } finally {
+    readline.close();
+  }
 }
 
 if (!existsSync(manifestPath)) {
@@ -66,7 +92,12 @@ const browserErrors = [];
 const browserConsole = [];
 try {
   await waitForServer();
-  browser = await chromium.launch({ executablePath: chromiumPath, headless: true, args: ["--no-sandbox"] });
+  browser = await chromium.launch({
+    executablePath: chromiumPath,
+    headless: !headed,
+    slowMo,
+    args: ["--no-sandbox"],
+  });
   const context = await browser.newContext({ acceptDownloads: true, locale: "es-ES" });
   page = await context.newPage();
   page.on("pageerror", (error) => browserErrors.push(error.message));
@@ -295,7 +326,6 @@ try {
   await page.locator("#badge-vm.good").waitFor({ state: "visible", timeout: 60000 });
   await page.locator("details.tool-log-details > summary").click();
   await command("test ! -e /root/.ba-persistent-e2e && echo WORKSPACE_RESET_OK", "WORKSPACE_RESET_OK");
-  await restoreContext.close();
   if (browserErrors.length) throw new Error(`errores de página: ${browserErrors.join(" | ")}`);
 
   console.log(`OK test:e2e: sesión temporal descartada y workspace persistió /root (${bootMs} ms primer arranque)`);
@@ -303,6 +333,8 @@ try {
   console.log(`OK snapshot persistente restauró HDB, PTY utilizable, nombre y pestaña activa: ${snapshot.suggestedFilename()}`);
   console.log("OK snapshot sincronizó perfil, tools activas y runner serial1");
   console.log("OK workspace local reiniciado desde su semilla inmutable");
+  await pauseBrowserOnEnd();
+  await restoreContext.close();
 } catch (error) {
   if (page) {
     const serial = await page.locator("#serial-console .xterm-rows").innerText().catch(() => "");

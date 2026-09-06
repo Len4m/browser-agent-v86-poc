@@ -209,6 +209,15 @@ Permite introducir cualquier URL válida `ws://` o `wss://`. Para WSS usa un cer
 | `pnpm clean:all` | Ejecuta la limpieza de build y runtime |
 | `pnpm start` | Sirve `public/` con `server.mjs` en `127.0.0.1:5173` |
 
+Para observar la prueba E2E en Chromium, ejecuta:
+
+```bash
+pnpm test:e2e --headed
+pnpm test:e2e --headed --slow-mo=250 --pause-on-end
+```
+
+`--slow-mo` acepta de 0 a 5000 ms entre acciones. `--pause-on-end` implica `--headed` y mantiene Chromium abierto hasta pulsar Enter; en una ejecución no interactiva se omite la pausa para no bloquear CI.
+
 Regenera con `pnpm setup` después de tocar:
 
 - `vm/profiles/*.json`

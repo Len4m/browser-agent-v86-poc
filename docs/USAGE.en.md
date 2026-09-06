@@ -209,6 +209,15 @@ Accepts any valid `ws://` or `wss://` URL. For WSS, use a valid public certifica
 | `pnpm clean:all` | Cleans both build outputs and the runtime |
 | `pnpm start` | Serves `public/` through `server.mjs` at `127.0.0.1:5173` |
 
+To watch the E2E test in Chromium, run:
+
+```bash
+pnpm test:e2e --headed
+pnpm test:e2e --headed --slow-mo=250 --pause-on-end
+```
+
+`--slow-mo` accepts 0 to 5000 ms between actions. `--pause-on-end` implies `--headed` and keeps Chromium open until Enter is pressed; the pause is skipped in non-interactive runs so CI cannot hang.
+
 Regenerate with `pnpm setup` after changing:
 
 - `vm/profiles/*.json`
