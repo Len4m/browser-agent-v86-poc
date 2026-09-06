@@ -160,17 +160,6 @@ function buildLLMPanelHtml(): string {
           <button id="ba-llm-abort" type="button" class="secondary danger-light" data-i18n="panel.llm.action.unloadWorker">panel.llm.action.unloadWorker</button>
         </div>
 
-        <details class="ba-llm-resource-card ba-llm-collapsible-card">
-          <summary class="ba-llm-tool-policy-head ba-llm-collapsible-summary">
-            <strong data-i18n="panel.llm.resources.title">panel.llm.resources.title</strong>
-            <span id="ba-llm-artifact-count" class="ba-llm-card-count">—</span>
-          </summary>
-          <div id="ba-llm-resource-lines" class="ba-llm-resource-lines">
-            <span data-i18n="panel.llm.resources.context">panel.llm.resources.context</span>
-            <span data-i18n="panel.llm.resources.operation">panel.llm.resources.operation</span>
-          </div>
-        </details>
-
         <div id="ba-llm-capabilities" class="ba-llm-note" data-i18n="common.inferencePending">common.inferencePending</div>
       </div>
     `;

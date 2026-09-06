@@ -1,7 +1,9 @@
 import { t, tn } from "../../app/i18n";
+import { showBaModalPanel } from "../../ui/modal";
+import { formatBytes } from "../../vm/runtime-assets";
 import { llmArtifacts, type LlmArtifactSummary } from "../runtime/artifact-store";
 import { llmContextBudget } from "../runtime/context-budget";
-import { llmResourceGovernor } from "../runtime/resource-governor";
+import { llmResourceGovernor, type ResourceSnapshot } from "../runtime/resource-governor";
 import { createTextElement, isRecord, numberValue, textValue } from "./dom-utils";
 import { ensureLlmState, getSelectedModel } from "./state-utils";
 
@@ -42,6 +44,59 @@ function artifactContextLimit(): number {
   const policy = llmContextBudget.getPolicy(getSelectedModel());
   const limit = Number(policy.maxToolResultCharsForSynthesis ?? policy.maxToolResultChars);
   return Number.isFinite(limit) ? Math.max(0, limit) : 0;
+}
+
+function resourceOperationActive(snapshot: ResourceSnapshot): boolean {
+  return Boolean(snapshot.llmBusy || snapshot.toolBusy || snapshot.modelLoading);
+}
+
+function operationLineText(snapshot: ResourceSnapshot): string {
+  return (snapshot.lastOperation
+    ? t("panel.llm.resources.operationLine", { op: snapshot.lastOperation })
+    : t("panel.llm.resources.operation"))
+    + (snapshot.llmBusy ? t("panel.llm.resources.llmBusy") : "")
+    + (snapshot.toolBusy ? t("panel.llm.resources.toolBusy") : "");
+}
+
+function updateChatResourcesButton(snapshot: ResourceSnapshot, artifactCount: number): void {
+  const button = document.getElementById("chat-resources-btn");
+  const badge = document.getElementById("chat-resources-badge");
+  const activity = document.getElementById("chat-resources-activity");
+  if (!button) return;
+
+  const active = resourceOperationActive(snapshot);
+  const title = [
+    t("panel.llm.resources.title"),
+    tn("panel.llm.artifactCount", artifactCount),
+    active ? operationLineText(snapshot) : "",
+  ].filter(Boolean).join(" · ");
+  button.title = title;
+  button.setAttribute("aria-label", title);
+  button.setAttribute("aria-busy", String(active));
+  button.classList.toggle("is-active", active);
+  if (badge) {
+    badge.textContent = artifactCount ? String(artifactCount) : "";
+    badge.hidden = !artifactCount;
+    badge.setAttribute("aria-hidden", String(!artifactCount));
+  }
+  if (activity) {
+    activity.hidden = !active;
+    activity.setAttribute("aria-hidden", String(!active));
+  }
+}
+
+export function openChatResourcesModal(): void {
+  void showBaModalPanel({
+    title: t("panel.llm.resources.title"),
+    onMount(bodyEl) {
+      const resources = document.createElement("div");
+      resources.id = "ba-llm-resource-lines";
+      resources.className = "ba-llm-resource-lines ba-chat-resources-lines";
+      resources.setAttribute("aria-live", "polite");
+      bodyEl.replaceChildren(resources);
+      updateResourceLines();
+    },
+  });
 }
 
 function createArtifactResourceRow(summary: LlmArtifactSummary): HTMLDivElement {
@@ -110,13 +165,17 @@ function createArtifactResourceRow(summary: LlmArtifactSummary): HTMLDivElement 
 }
 
 export function updateResourceLines(extra: ResourceUpdateExtra = {}): void {
-  const box = document.getElementById("ba-llm-resource-lines");
-  if (!box) return;
   const llm = ensureLlmState();
   const snapshot = llmResourceGovernor.getSnapshot();
   const storedContext = resourceContext(llm.lastContextInspect);
   const context = extra.context || storedContext || null;
   if (extra.context) llm.lastContextInspect = extra.context;
+  const usage = llmArtifacts.getUsage();
+  const artifactCount = usage.artifacts;
+  updateChatResourcesButton(snapshot, artifactCount);
+
+  const box = document.getElementById("ba-llm-resource-lines");
+  if (!box) return;
   const selected = getSelectedModel();
   const policy = llmContextBudget.getPolicy(selected);
   const contextWindow = selected.contextWindowTokens ?? policy.contextWindowTokens;
@@ -127,19 +186,11 @@ export function updateResourceLines(extra: ResourceUpdateExtra = {}): void {
     ? t("panel.llm.resources.budget", { context: contextWindow, input: safeInput, output: maxOutput })
       + (planOutput ? t("panel.llm.resources.budgetPlan", { plan: planOutput }) : "")
     : t("panel.llm.resources.budgetPending");
-  const artifactCount = numberValue(snapshot.artifacts ?? llm.artifacts?.length ?? 0);
-  const artifactBadge = document.getElementById("ba-llm-artifact-count");
-  if (artifactBadge) {
-    artifactBadge.textContent = tn("panel.llm.artifactCount", artifactCount);
-    artifactBadge.title = snapshot.lastArtifactId
-      ? t("panel.llm.resources.lastArtifact", { id: snapshot.lastArtifactId })
-      : t("panel.llm.resources.artifactsSaved");
-  }
-  const recentArtifacts = llmArtifacts.listSummaries({ limit: 3 }).filter((item): item is LlmArtifactSummary => Boolean(item));
+  const artifacts = llmArtifacts.listSummaries({ limit: usage.maxArtifacts }).filter((item): item is LlmArtifactSummary => Boolean(item));
   const attachedArtifact = llmArtifacts.getContextArtifact();
   const attachedSummary = attachedArtifact ? llmArtifacts.summarizeArtifact(attachedArtifact) : null;
   const artifactsById = new Map<string, LlmArtifactSummary>();
-  for (const artifact of recentArtifacts.slice().reverse()) artifactsById.set(artifact.id, artifact);
+  for (const artifact of artifacts.slice().reverse()) artifactsById.set(artifact.id, artifact);
   if (attachedSummary && !artifactsById.has(attachedSummary.id)) artifactsById.set(attachedSummary.id, attachedSummary);
   const artifactRows = Array.from(artifactsById.values()).map(createArtifactResourceRow);
   const attachedLine = attachedSummary
@@ -147,11 +198,7 @@ export function updateResourceLines(extra: ResourceUpdateExtra = {}): void {
       ? t("panel.llm.resources.artifactAttachedLine", { id: attachedSummary.id })
       : t("panel.llm.resources.artifactAttachedBlockedLine", { id: attachedSummary.id }))
     : "";
-  const operationLine = (snapshot.lastOperation
-    ? t("panel.llm.resources.operationLine", { op: snapshot.lastOperation })
-    : t("panel.llm.resources.operation"))
-    + (snapshot.llmBusy ? t("panel.llm.resources.llmBusy") : "")
-    + (snapshot.toolBusy ? t("panel.llm.resources.toolBusy") : "");
+  const operationLine = operationLineText(snapshot);
   const lines: HTMLElement[] = [
     createTextElement(
       "span",
@@ -160,6 +207,13 @@ export function updateResourceLines(extra: ResourceUpdateExtra = {}): void {
         + (snapshot.lastArtifactId ? ` · ${snapshot.lastArtifactId}` : "")
         + (attachedLine ? ` · ${attachedLine}` : ""),
     ),
+    createTextElement("span", "ba-llm-artifact-budget", t("panel.llm.resources.artifactBudget", {
+      count: usage.artifacts,
+      max: usage.maxArtifacts,
+      used: formatBytes(usage.storedBytes),
+      total: formatBytes(usage.maxStoredBytes),
+      contextChars: artifactContextLimit(),
+    })),
     ...artifactRows,
     createTextElement("span", "", budgetLine),
     createTextElement("span", "", context

@@ -137,7 +137,7 @@ El panel **LLM** permite elegir y cargar el motor de inferencia:
 - **Cargar modelo** inicializa el backend seleccionado. En Transformers.js descarga o reutiliza el modelo cacheado y arranca un worker; en Ollama comprueba el endpoint y el modelo local. Durante la descarga aparece el overlay general con la fase o componente en curso y **Cancelar descarga** permite detenerla sin recargar la página.
 - Si la carga falla, el error se muestra junto a **Cargar modelo**. Se elimina al elegir otra fuente, modelo o ID para no confundirlo con el siguiente intento.
 - **Mostrar razonamiento del modelo (thinking)** controla si se ve el razonamiento generado.
-- **Recursos y contexto** muestra presupuesto de contexto, artifacts y operacion activa.
+- El botón **Recursos y contexto**, situado en la cabecera del chat a la izquierda de **Limpiar chat visible**, abre un modal con el presupuesto de contexto, los artifacts y la operación activa. Su badge indica cuántos artifacts hay guardados y el indicador animado señala que hay una operación en curso.
 - **Autonomía de tools** se configura junto a **Listo** en el modal **Herramientas del agente** y define el nivel de riesgo máximo que el agente puede ejecutar sin pedir permiso.
 - **Descargar worker** detiene la generación y libera el worker y el modelo activos de Transformers.js. Está deshabilitado con modelos Ollama porque se ejecutan fuera del navegador.
 
@@ -181,13 +181,13 @@ Usa tools de red y pentest solo contra sistemas propios o con autorizacion.
 
 ### Artifacts
 
-Los artifacts son resultados reales de tools guardados por el panel **LLM** para no saturar el chat ni reenviar salidas largas al modelo en cada turno.
+Los artifacts son resultados reales de tools guardados por la aplicación para no saturar el chat ni reenviar salidas largas al modelo en cada turno.
 
 - Se guardan hasta **10 artifacts** recientes, con un limite total aproximado de **1 MB**. Si se supera el limite, se eliminan primero los mas antiguos.
 - Cada artifact puede contener salida recortada: la vista para pantalla y el texto compacto para modelo tienen limites distintos.
-- Puedes abrir la vista previa de un artifact desde **Recursos y contexto**.
+- Puedes abrir la vista previa de un artifact desde el modal **Recursos y contexto** de la cabecera del chat. El modal también muestra el uso y el límite del almacenamiento de artifacts.
 - Puedes adjuntar un artifact al contexto de la siguiente interaccion del chat cuando el modelo tenga presupuesto suficiente. Si no hay margen de contexto, la UI lo marca como no enviable.
-- Puedes quitar un artifact del contexto, eliminar artifacts individuales o limpiar todos los artifacts desde el panel.
+- Puedes quitar un artifact del contexto, eliminar artifacts individuales o limpiar todos los artifacts desde el modal.
 
 ## Red wsnic
 

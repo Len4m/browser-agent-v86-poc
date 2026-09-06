@@ -226,6 +226,30 @@
   box-shadow: 0 0 0 2px var(--ba-color-surface);
 }
 
+:root[data-theme="dark"] .chat-resources-btn.ba-icon-only {
+  border-color: var(--ba-dark-accent-border);
+  background: var(--ba-dark-accent-soft);
+  color: var(--ba-dark-accent-text);
+}
+
+:root[data-theme="dark"] .chat-resources-btn.ba-icon-only:hover,
+:root[data-theme="dark"] .chat-resources-btn.ba-icon-only.is-active {
+  border-color: #60a5fa;
+  background: rgba(59, 130, 246, 0.24);
+  color: #bfdbfe;
+}
+
+:root[data-theme="dark"] .chat-resources-badge,
+:root[data-theme="dark"] .chat-resources-activity {
+  box-shadow: 0 0 0 2px var(--ba-color-surface);
+}
+
+:root[data-theme="dark"] .chat-resources-activity {
+  border-color: var(--ba-dark-accent-border);
+  border-top-color: #93c5fd;
+  background: var(--ba-color-surface);
+}
+
 :root[data-theme="dark"] .vm-options label,
 :root[data-theme="dark"] .tool-log-details summary,
 :root[data-theme="dark"] .ws-help summary,
@@ -481,8 +505,7 @@
 :root[data-theme="dark"] .ba-llm-field input:not([type="checkbox"]),
 :root[data-theme="dark"] .ba-llm-model-meta span,
 :root[data-theme="dark"] .ba-llm-resource-lines span,
-:root[data-theme="dark"] .ba-llm-artifact-row,
-:root[data-theme="dark"] .ba-llm-card-count {
+:root[data-theme="dark"] .ba-llm-artifact-row {
   border-color: var(--ba-color-border-strong);
   background: var(--ba-color-surface);
 }
@@ -507,7 +530,6 @@
 
 :root[data-theme="dark"] .ba-llm-discovery,
 :root[data-theme="dark"] .ba-llm-model-card,
-:root[data-theme="dark"] .ba-llm-resource-card,
 :root[data-theme="dark"] .ba-llm-thinking,
 :root[data-theme="dark"] .ba-llm-native-tools-picker,
 :root[data-theme="dark"] .ba-llm-artifact-preview {
@@ -542,14 +564,12 @@
 :root[data-theme="dark"] .ba-llm-model-load-more:hover,
 :root[data-theme="dark"] .ba-llm-model-load-more:focus-visible,
 :root[data-theme="dark"] .ba-llm-manual-inspect:hover,
-:root[data-theme="dark"] .ba-llm-manual-inspect:focus-visible,
-:root[data-theme="dark"] .ba-llm-collapsible-card > summary.ba-llm-collapsible-summary:hover .ba-llm-card-count {
+:root[data-theme="dark"] .ba-llm-manual-inspect:focus-visible {
   border-color: var(--ba-dark-accent-border);
   background: rgba(59, 130, 246, 0.22);
 }
 
 :root[data-theme="dark"] .ba-llm-repo-path,
-:root[data-theme="dark"] .ba-llm-card-count,
 :root[data-theme="dark"] .ba-llm-collapsible-card > summary.ba-llm-collapsible-summary:hover strong,
 :root[data-theme="dark"] .ba-llm-collapsible-card > summary.ba-llm-collapsible-summary:hover::after {
   color: var(--ba-dark-accent-text);

@@ -14,7 +14,7 @@ import { llmPanelCapabilities } from "./capabilities-view";
 import { createDiscoveryController, type DiscoveryController } from "./discovery-controller";
 import { errorMessage, inputById, setDisabled, textValue } from "./dom-utils";
 import { createProfileControls, type ProfileControls } from "./profile-controls";
-import { resourceContext, updateResourceLines } from "./resources-view";
+import { openChatResourcesModal, resourceContext, updateResourceLines } from "./resources-view";
 import { createRuntimeView } from "./runtime-view";
 import { ensureLlmState, getSelectedModel, isLlmCapabilities } from "./state-utils";
 import { llmPanelTemplate } from "./template";
@@ -222,6 +222,7 @@ function bindCapabilityControls(details: HTMLDetailsElement | null): void {
 function bindPanelControls(): void {
   const llm = ensureLlmState();
   document.getElementById("chat-tools-btn")?.addEventListener("click", openChatToolsModal);
+  document.getElementById("chat-resources-btn")?.addEventListener("click", openChatResourcesModal);
   document.getElementById("vm-profile")?.addEventListener("change", () => {
     updateNativeToolsPickerUi();
   });

@@ -118,6 +118,10 @@ try {
   await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: "domcontentloaded" });
   await page.locator('#vm-profile option[value="alpine-base"]').waitFor({ state: "attached", timeout: 30000 });
   await page.locator("#chat-tools-badge").filter({ hasText: "4" }).waitFor({ state: "visible", timeout: 10000 });
+  await page.click("#chat-resources-btn");
+  await page.locator("#ba-modal-title").filter({ hasText: "Recursos y contexto" }).waitFor({ state: "visible" });
+  await page.locator("#ba-llm-resource-lines").filter({ hasText: "Presupuesto de artefactos" }).waitFor({ state: "visible" });
+  await page.click("#ba-modal-actions .ba-modal-button.primary");
   if (await page.locator('#vm-ram-mb option[value="256"]').count()) throw new Error("la opción RAM de 256 MB sigue visible sin perfiles compatibles");
   await page.selectOption("#vm-profile", "alpine-pentest-web");
   if (await page.locator("#vm-ram-mb").inputValue() !== "1536") throw new Error("el perfil web no aplica su RAM mínima");

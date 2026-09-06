@@ -137,7 +137,7 @@ The **LLM** panel lets you choose and load the inference engine:
 - **Load model** initializes the selected backend. For Transformers.js, it downloads or reuses the cached model and starts a worker; for Ollama, it checks the endpoint and local model. During download, the shared application overlay identifies the current phase or component and **Cancel download** stops it without reloading the page.
 - If loading fails, the error appears next to **Load model**. It is cleared when you select another source, model, or ID so it cannot be mistaken for the next attempt.
 - **Show model reasoning (thinking)** controls whether generated reasoning is visible.
-- **Resources and context** shows context budget, artifacts, and active operation.
+- The **Resources and context** button in the chat header, to the left of **Clear visible chat**, opens a modal with the context budget, artifacts, and active operation. Its badge shows the number of saved artifacts, and its animated indicator signals an operation in progress.
 - **Tool autonomy** is configured beside **Done** in the **Agent tools** modal and sets the highest risk level the agent may execute without asking for confirmation.
 - **Unload worker** stops generation and releases the active Transformers.js worker and model. It is disabled for Ollama models because they run outside the browser.
 
@@ -181,13 +181,13 @@ Use network and pentest tools only against systems you own or are authorized to 
 
 ### Artifacts
 
-Artifacts are actual tool results saved by the **LLM** panel so they do not flood the chat or get resent to the model on every turn.
+Artifacts are actual tool results saved by the application so they do not flood the chat or get resent to the model on every turn.
 
 - The app keeps up to **10 recent artifacts**, with an approximate total limit of **1 MB**. If the limit is exceeded, the oldest artifacts are removed first.
 - Each artifact may contain truncated output: the on-screen preview and the compact text for the model have different limits.
-- You can open an artifact preview from **Resources and context**.
+- You can open an artifact preview from the **Resources and context** modal in the chat header. The modal also shows artifact-storage usage and limits.
 - You can attach an artifact to the next message when the model has enough context budget. If there is no room, the UI marks it as not sendable.
-- You can detach an artifact from context, delete individual artifacts, or clear all artifacts from the panel.
+- You can detach an artifact from context, delete individual artifacts, or clear all artifacts from the modal.
 
 ## wsnic networking
 

@@ -608,22 +608,16 @@
   line-height: 1.35;
 }
 
-.ba-llm-resource-card {
-  display: grid;
-  gap: 0.55rem;
-  padding: 0.82rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 18px;
-  background: #f8fafc;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
-}
-
 .ba-llm-resource-lines {
   display: grid;
   gap: 0.28rem;
   color: #334155;
   font-size: 0.74rem;
   line-height: 1.35;
+}
+
+.ba-chat-resources-lines {
+  padding: 0.1rem;
 }
 
 .ba-llm-resource-lines span {
@@ -879,25 +873,6 @@
 .ba-llm-collapsible-card > summary.ba-llm-collapsible-summary:hover strong,
 .ba-llm-collapsible-card > summary.ba-llm-collapsible-summary:hover::after {
   color: #1d4ed8;
-}
-
-/* v9.52: counters in collapsible LLM card headers. */
-.ba-llm-card-count {
-  margin-left: auto;
-  padding: 0.18rem 0.48rem;
-  border: 1px solid #dbeafe;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #1d4ed8;
-  font-size: 0.72rem;
-  font-weight: 850;
-  line-height: 1.2;
-  white-space: nowrap;
-}
-
-.ba-llm-collapsible-card > summary.ba-llm-collapsible-summary:hover .ba-llm-card-count {
-  border-color: #bfdbfe;
-  background: #eff6ff;
 }
 
 /* v9.60: icono local para cargar modelo. */
