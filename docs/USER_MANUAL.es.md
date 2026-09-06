@@ -138,7 +138,7 @@ El panel **LLM** permite elegir y cargar el motor de inferencia:
 - Si la carga falla, el error se muestra junto a **Cargar modelo**. Se elimina al elegir otra fuente, modelo o ID para no confundirlo con el siguiente intento.
 - **Mostrar razonamiento del modelo (thinking)** controla si se ve el razonamiento generado.
 - **Recursos y contexto** muestra presupuesto de contexto, artifacts y operacion activa.
-- **Autonomia de tools** define el nivel de riesgo máximo que el agente puede ejecutar sin pedir permiso.
+- **Autonomía de tools** se configura junto a **Listo** en el modal **Herramientas del agente** y define el nivel de riesgo máximo que el agente puede ejecutar sin pedir permiso.
 - **Descargar worker** detiene la generación y libera el worker y el modelo activos de Transformers.js. Está deshabilitado con modelos Ollama porque se ejecutan fuera del navegador.
 
 WebGPU es la ruta recomendada para modelos locales. Si WebGPU falla y el modelo lo permite, la aplicacion puede intentar fallback WASM experimental.
@@ -169,12 +169,12 @@ Si sirves la app desde otro puerto o dominio, usa ese origen exacto. Además, el
 
 ### Tools
 
-Dentro del panel **LLM**, las tools controlan como el chat interactua con la VM. Son acciones que el chat puede ejecutar dentro de la VM: leer ficheros, escribir ficheros, ejecutar comandos controlados, consultar paquetes, comprobar red, hacer peticiones HTTP o lanzar herramientas de pentest permitidas por el perfil.
+Las tools controlan cómo el chat interactúa con la VM. Son acciones que el chat puede ejecutar dentro de la VM: leer ficheros, escribir ficheros, ejecutar comandos controlados, consultar paquetes, comprobar red, hacer peticiones HTTP o lanzar herramientas de pentest permitidas por el perfil.
 
-- Activa o desactiva tools desde el boton de llave del chat.
+- Activa o desactiva tools desde el botón de llave del chat.
 - Las tools disponibles dependen del perfil seleccionado. Por ejemplo, los perfiles de pentest muestran herramientas que no aparecen en el perfil base.
 - Cada tool tiene un nivel de seguridad: nivel 1 para lectura acotada, nivel 2 para diagnostico de bajo impacto y nivel 3 para acciones activas como comandos controlados o escaneos ligeros.
-- La **Autonomia de tools** decide hasta que nivel puede actuar el agente sin pedir confirmacion. Los niveles superiores al permitido muestran confirmacion antes de ejecutarse.
+- La **Autonomía de tools**, situada a la izquierda de **Listo** en ese mismo modal, decide hasta qué nivel puede actuar el agente sin pedir confirmación. Los niveles superiores al permitido muestran confirmación antes de ejecutarse.
 - El selector de tools permite reducir cuantas herramientas ve el modelo en una peticion. Esto ayuda con modelos pequeños o con poco contexto.
 
 Usa tools de red y pentest solo contra sistemas propios o con autorizacion.

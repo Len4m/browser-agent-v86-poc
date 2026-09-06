@@ -1,7 +1,6 @@
 import { t, tn } from "../../app/i18n";
-import { state } from "../../app/state";
 import { showBaModalPanel } from "../../ui/modal";
-import { getEffectiveVmProfileId, type VmProfile } from "../../vm/profile-config";
+import { getEffectiveVmProfileId } from "../../vm/profile-config";
 import {
   defaultModelConfig,
   getLlmState,
@@ -9,11 +8,12 @@ import {
   llmModelShortLabel,
   type LlmModelConfig,
 } from "../state/chat-state";
+import { llmAgent } from "../runtime/agent-loop";
 import { llmNativeToolsPolicy, type NativeToolsPolicyApi } from "../tools/native-tools-policy";
 import { llmToolExecutor } from "../tools/tool-executor";
 import { llmToolRegistry } from "../tools/tool-registry";
 import type { ToolMetadata } from "../tools/types";
-import { createTextElement, eventTargetElement, isRecord } from "./dom-utils";
+import { createTextElement, eventTargetElement } from "./dom-utils";
 import { ensureLlmState } from "./state-utils";
 
 interface NativeToolsPickerState {
@@ -23,15 +23,6 @@ interface NativeToolsPickerState {
   active: Set<string>;
   available: ToolMetadata[];
   policy: NativeToolsPolicyApi | null;
-}
-
-function isVmProfile(value: unknown): value is VmProfile {
-  return isRecord(value) && typeof value.id === "string";
-}
-
-function getActiveToolProfileLabel(profileId: string): string {
-  const profile = state.profiles.filter(isVmProfile).find((item) => item.id === profileId);
-  return profile?.name || profileId || t("vm.profile.none");
 }
 
 function getSelectedModelForTools(): LlmModelConfig {
@@ -174,47 +165,41 @@ export function openChatToolsModal(): void {
       bodyEl.replaceChildren(hint, picker);
       updateNativeToolsPickerUi();
     },
+    onActionsMount(actionsEl) {
+      const autonomy = document.createElement("label");
+      autonomy.className = "ba-chat-tools-autonomy";
+
+      const label = document.createElement("span");
+      label.textContent = t("panel.llm.autonomy.title");
+
+      const select = document.createElement("select");
+      select.id = "ba-llm-tool-autonomy";
+      select.setAttribute("aria-label", `${t("panel.llm.autonomy.title")}: ${t("panel.llm.autonomy.runUntil")}`);
+      for (const level of llmToolRegistry.SECURITY_LEVELS) {
+        const option = document.createElement("option");
+        option.value = String(level.level);
+        option.textContent = level.label;
+        select.appendChild(option);
+      }
+      select.addEventListener("change", () => {
+        llmToolExecutor.setAutonomyMaxLevel(select.value);
+        syncToolPolicyUi();
+      });
+
+      autonomy.append(label, select);
+      actionsEl.prepend(autonomy);
+      syncToolPolicyUi();
+    },
     buttons: [{ id: "close", label: t("common.done"), variant: "primary" }],
   });
 }
 
-export function updateAvailableToolsUi(): void {
-  const box = document.getElementById("ba-llm-tool-list");
-  if (!box) return;
-  const countBadge = document.getElementById("ba-llm-tool-count");
-  if (!llmToolRegistry?.listTools) {
-    if (countBadge) countBadge.textContent = "—";
-    const title = document.createElement("b");
-    title.textContent = t("panel.llm.tools.available");
-    box.replaceChildren(title, createTextElement("span", "", t("panel.llm.tools.registryUnavailable")));
-    return;
-  }
-
-  const profileId = getEffectiveVmProfileId();
-  const profileLabel = getActiveToolProfileLabel(profileId);
-  const tools = llmToolRegistry.listTools({ profileId });
-  if (countBadge) {
-    countBadge.textContent = tn("panel.llm.tools.count", tools.length);
-    countBadge.title = t("panel.llm.tools.availableForTitle", { profile: profileLabel });
-  }
-  const title = document.createElement("b");
-  title.textContent = t("panel.llm.tools.availableFor", { profile: profileLabel });
-  const children: HTMLElement[] = [title];
-  for (const tool of tools) {
-    const chip = createTextElement("span", "", t("common.levelChip", { name: tool.name, level: tool.riskLevel }));
-    chip.title = t("common.levelChip", { name: tool.label || tool.name, level: tool.riskLevel });
-    children.push(chip);
-  }
-  if (!tools.length) children.push(createTextElement("span", "", t("panel.llm.tools.noneAvailableForProfile")));
-  box.replaceChildren(...children);
-}
-
 export function syncToolPolicyUi(): void {
   const select = document.getElementById("ba-llm-tool-autonomy");
-  const detail = document.getElementById("ba-llm-tool-autonomy-detail");
   if (!(select instanceof HTMLSelectElement)) return;
   const value = String(llmToolExecutor.getAutonomyMaxLevel() ?? ensureLlmState().settings.toolAutonomyMaxLevel ?? 1);
   if (select.value !== value) select.value = value;
   const level = llmToolRegistry.SECURITY_LEVELS.find((item) => String(item.level) === value);
-  if (detail) detail.textContent = level?.description || t("panel.llm.toolPolicy.defaultDetail");
+  select.title = level?.description || t("panel.llm.toolPolicy.defaultDetail");
+  select.disabled = llmAgent.isChatOperationActive();
 }

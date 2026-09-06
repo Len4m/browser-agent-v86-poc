@@ -271,6 +271,7 @@ export async function loadProfiles(): Promise<void> {
 
   select.value = getProfiles()[0]?.id || "";
   updateProfileHint({ applyDefaults: true });
+  appEvents.emit("llm:native-tools", { source: "profiles-loaded" });
   await syncProfilePersistenceIndicators();
 }
 

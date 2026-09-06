@@ -22,6 +22,7 @@ interface ShowModalOptions {
 interface ShowModalPanelOptions {
   title?: string;
   onMount?: (bodyEl: HTMLElement) => void;
+  onActionsMount?: (actionsEl: HTMLElement) => void;
   buttons?: ModalButton[];
   closeOnBackdrop?: boolean;
   abortSignal?: AbortSignal;
@@ -192,6 +193,7 @@ export function showBaModal({
 export function showBaModalPanel({
   title = t("modal.panelTitle"),
   onMount,
+  onActionsMount,
   buttons = [{ id: "close", label: t("common.done"), variant: "primary" }],
   closeOnBackdrop = true,
   abortSignal,
@@ -267,6 +269,7 @@ export function showBaModalPanel({
 
     try {
       onMount?.(modalBodyEl);
+      onActionsMount?.(modalActionsEl);
     } catch (error) {
       const errorEl = document.createElement("p");
       errorEl.className = "ba-modal-detail";

@@ -10,7 +10,6 @@ import { isAbortError } from "../../vm/runtime-assets";
 import { syncLLMCapabilityBadges } from "../state/capabilities";
 import { getLlmState, getSelectedLlmModel, llmEventsApi, type LlmModelConfig } from "../state/chat-state";
 import { llmAgent } from "../runtime/agent-loop";
-import { llmToolExecutor } from "../tools/tool-executor";
 import { llmPanelCapabilities } from "./capabilities-view";
 import { createDiscoveryController, type DiscoveryController } from "./discovery-controller";
 import { errorMessage, inputById, setDisabled, textValue } from "./dom-utils";
@@ -22,7 +21,6 @@ import { llmPanelTemplate } from "./template";
 import {
   openChatToolsModal,
   syncToolPolicyUi,
-  updateAvailableToolsUi,
   updateChatToolsButton,
   updateNativeToolsPickerUi,
 } from "./tools-view";
@@ -223,14 +221,8 @@ function bindCapabilityControls(details: HTMLDetailsElement | null): void {
 
 function bindPanelControls(): void {
   const llm = ensureLlmState();
-  document.getElementById("ba-llm-tool-autonomy")?.addEventListener("change", (event) => {
-    const select = event.target instanceof HTMLSelectElement ? event.target : null;
-    llmToolExecutor.setAutonomyMaxLevel(select?.value ?? 1);
-    syncToolPolicyUi();
-  });
   document.getElementById("chat-tools-btn")?.addEventListener("click", openChatToolsModal);
   document.getElementById("vm-profile")?.addEventListener("change", () => {
-    updateAvailableToolsUi();
     updateNativeToolsPickerUi();
   });
   llmEventsApi.on("native-tools", () => {
@@ -269,7 +261,6 @@ function mountPanel(): void {
   profiles.sync();
   syncSourceVisibility();
   syncToolPolicyUi();
-  updateAvailableToolsUi();
   updateChatToolsButton();
   updateResourceLines();
 
@@ -300,24 +291,17 @@ function bindApplicationEvents(): void {
       : (isLlmCapabilities(current) ? current : null);
     runtimeView.applyCapabilities(capabilities);
   });
-  llmEventsApi.on("tool-policy", () => {
-    syncToolPolicyUi();
-    updateAvailableToolsUi();
-  });
+  llmEventsApi.on("tool-policy", syncToolPolicyUi);
   llmEventsApi.on("progress", (detail) => runtimeView.setProgress(detail));
   llmEventsApi.on("context", (detail) => updateResourceLines({ context: resourceContext(detail) || {} }));
   for (const event of ["artifact", "artifact-context", "artifact-remove", "artifact-clear"] as const) {
     llmEventsApi.on(event, () => updateResourceLines());
   }
-  llmEventsApi.on("resource", () => {
-    updateResourceLines();
-    updateAvailableToolsUi();
-  });
+  llmEventsApi.on("resource", () => updateResourceLines());
   appEvents.on("app:language-changed", () => {
     discovery.render();
     runtimeView.updateSelectedModelCard();
     updateResourceLines();
-    updateAvailableToolsUi();
     updateChatToolsButton();
     updateNativeToolsPickerUi();
     syncToolPolicyUi();

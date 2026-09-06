@@ -138,7 +138,7 @@ The **LLM** panel lets you choose and load the inference engine:
 - If loading fails, the error appears next to **Load model**. It is cleared when you select another source, model, or ID so it cannot be mistaken for the next attempt.
 - **Show model reasoning (thinking)** controls whether generated reasoning is visible.
 - **Resources and context** shows context budget, artifacts, and active operation.
-- **Tool autonomy** sets the highest risk level the agent may execute without asking for confirmation.
+- **Tool autonomy** is configured beside **Done** in the **Agent tools** modal and sets the highest risk level the agent may execute without asking for confirmation.
 - **Unload worker** stops generation and releases the active Transformers.js worker and model. It is disabled for Ollama models because they run outside the browser.
 
 WebGPU is the recommended path for local models. If WebGPU fails and the model supports it, the app may try the experimental WASM fallback.
@@ -169,12 +169,12 @@ If you serve the app from another port or domain, use that exact origin. The sel
 
 ### Tools
 
-Inside the **LLM** panel, tools control how the chat interacts with the VM. They are actions the chat can execute inside the VM: reading files, writing files, running controlled commands, checking packages, inspecting network state, making HTTP requests, or launching pentest tools allowed by the active profile.
+Tools control how the chat interacts with the VM. They are actions the chat can execute inside the VM: reading files, writing files, running controlled commands, checking packages, inspecting network state, making HTTP requests, or launching pentest tools allowed by the active profile.
 
 - Enable or disable tools from the chat wrench button.
 - Available tools depend on the selected profile. For example, pentest profiles expose tools that do not appear in the base profile.
 - Each tool has a security level: level 1 for bounded reads, level 2 for low-impact diagnostics, and level 3 for active actions such as controlled commands or light scans.
-- **Tool autonomy** sets the highest level the agent can run without confirmation. Tools above that level display a confirmation prompt before running.
+- **Tool autonomy**, to the left of **Done** in that modal, sets the highest level the agent can run without confirmation. Tools above that level display a confirmation prompt before running.
 - The tools selector lets you reduce how many tools the model sees in one request. This helps with smaller models or models with limited context.
 
 Use network and pentest tools only against systems you own or are authorized to test.

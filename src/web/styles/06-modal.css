@@ -103,6 +103,31 @@
   flex-wrap: wrap;
   margin-top: 14px;
 }
+.ba-chat-tools-autonomy {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  min-width: 0;
+  margin-right: auto;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 800;
+  margin-top:-20px;
+}
+.ba-chat-tools-autonomy select {
+  min-width: 0;
+  max-width: min(280px, 44vw);
+  min-height: 38px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  color: #0f172a;
+  font-size: 0.82rem;
+}
+.ba-chat-tools-autonomy ~ .ba-modal-button {
+  align-self: flex-end;
+}
 .ba-modal-button.primary {
   background: #2563eb;
   color: #fff;
@@ -130,5 +155,12 @@
   }
   .ba-modal-actions button {
     flex: 1 1 auto;
+  }
+  .ba-chat-tools-autonomy {
+    flex: 1 1 100%;
+  }
+  .ba-chat-tools-autonomy select {
+    flex: 1 1 auto;
+    max-width: none;
   }
 }

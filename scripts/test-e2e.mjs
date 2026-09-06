@@ -116,6 +116,8 @@ try {
   page.on("console", (message) => browserConsole.push(`${message.type()}: ${message.text()}`));
   page.on("requestfailed", (request) => browserConsole.push(`requestfailed: ${request.url()} ${request.failure()?.errorText || ""}`));
   await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: "domcontentloaded" });
+  await page.locator('#vm-profile option[value="alpine-base"]').waitFor({ state: "attached", timeout: 30000 });
+  await page.locator("#chat-tools-badge").filter({ hasText: "4" }).waitFor({ state: "visible", timeout: 10000 });
   if (await page.locator('#vm-ram-mb option[value="256"]').count()) throw new Error("la opción RAM de 256 MB sigue visible sin perfiles compatibles");
   await page.selectOption("#vm-profile", "alpine-pentest-web");
   if (await page.locator("#vm-ram-mb").inputValue() !== "1536") throw new Error("el perfil web no aplica su RAM mínima");

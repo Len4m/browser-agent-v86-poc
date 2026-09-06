@@ -29,6 +29,10 @@ class FakeElement extends EventTarget {
     return child;
   }
 
+  prepend(child: FakeElement): void {
+    this.children.unshift(child);
+  }
+
   replaceChildren(...children: FakeElement[]): void {
     this.children.splice(0, this.children.length, ...children);
   }
@@ -110,5 +114,27 @@ test("an active confirmation modal closes and rejects when the turn is stopped",
     controller.abort("stopped");
     await assert.rejects(result, { name: "AbortError", message: "stopped" });
     assert.equal(elements.get("ba-modal-overlay")?.getAttribute("aria-hidden"), "true");
+  });
+});
+
+test("panel modals can mount contextual controls before their action buttons", async () => {
+  await withModalDom(async (elements) => {
+    const controller = new AbortController();
+    const customControl = new FakeElement();
+    const result = showBaModalPanel({
+      buttons: [{ id: "close", label: "Done", variant: "primary" }],
+      onActionsMount(actionsEl) {
+        assert.equal(actionsEl.children.length, 1);
+        (actionsEl as unknown as FakeElement).prepend(customControl);
+      },
+      abortSignal: controller.signal,
+    });
+
+    const actions = elements.get("ba-modal-actions");
+    assert.equal(actions?.children.length, 2);
+    assert.equal(actions?.children[0], customControl);
+    assert.equal(actions?.children[1]?.className, "ba-modal-button primary");
+    controller.abort("closed");
+    await assert.rejects(result, { name: "AbortError", message: "closed" });
   });
 });

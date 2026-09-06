@@ -2,11 +2,8 @@
 // Static labels use data-i18n so applyDomTranslations() handles initial render
 // and live language switching. Dynamic values are translated by panel.ts.
 
-import { llmToolRegistry } from "../tools/tool-registry";
-
 interface LlmPanelTemplateApi {
   escapeHtml: (value: unknown) => string;
-  toolPolicyOptionsHtml: () => string;
   buildLLMPanelHtml: () => string;
 }
 
@@ -23,12 +20,6 @@ function escapeHtml(value: unknown): string {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
-}
-
-function toolPolicyOptionsHtml(): string {
-  return llmToolRegistry.SECURITY_LEVELS
-    .map((item) => `<option value="${escapeHtml(item.level)}">${escapeHtml(item.label)}</option>`)
-    .join("");
 }
 
 function buildLLMPanelHtml(): string {
@@ -180,23 +171,6 @@ function buildLLMPanelHtml(): string {
           </div>
         </details>
 
-        <details class="ba-llm-tool-policy ba-llm-collapsible-card">
-          <summary class="ba-llm-tool-policy-head ba-llm-collapsible-summary">
-            <strong data-i18n="panel.llm.autonomy.title">panel.llm.autonomy.title</strong>
-            <span id="ba-llm-tool-count" class="ba-llm-card-count">—</span>
-          </summary>
-          <div class="ba-llm-collapsible-body">
-            <label class="ba-llm-field"><span data-i18n="panel.llm.autonomy.runUntil">panel.llm.autonomy.runUntil</span>
-              <select id="ba-llm-tool-autonomy">${toolPolicyOptionsHtml()}</select>
-            </label>
-            <small id="ba-llm-tool-autonomy-detail"></small>
-            <div id="ba-llm-tool-list" class="ba-llm-tool-list" aria-live="polite">
-              <b data-i18n="panel.llm.tools.available">panel.llm.tools.available</b>
-              <span data-i18n="common.checkingEllipsis">common.checkingEllipsis</span>
-            </div>
-          </div>
-        </details>
-
         <div id="ba-llm-capabilities" class="ba-llm-note" data-i18n="common.inferencePending">common.inferencePending</div>
       </div>
     `;
@@ -204,6 +178,5 @@ function buildLLMPanelHtml(): string {
 
 export const llmPanelTemplate: LlmPanelTemplateApi = {
   escapeHtml,
-  toolPolicyOptionsHtml,
   buildLLMPanelHtml,
 };

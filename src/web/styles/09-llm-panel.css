@@ -608,24 +608,6 @@
   line-height: 1.35;
 }
 
-.ba-llm-tool-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  align-items: center;
-  color: #334155;
-  font-size: 0.72rem;
-}
-
-.ba-llm-tool-list span {
-  padding: 0.18rem 0.42rem;
-  border: 1px solid #bfdbfe;
-  border-radius: 999px;
-  background: #fff;
-  color: #1d4ed8;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-}
-
 .ba-llm-resource-card {
   display: grid;
   gap: 0.55rem;
@@ -850,15 +832,7 @@
   outline-offset: 2px;
 }
 
-/* v9.50: nota compacta dentro de la lista dinámica de tools por perfil. */
-.ba-llm-tool-list small {
-  flex: 1 1 100%;
-  color: #64748b;
-  font-size: 0.72rem;
-  line-height: 1.35;
-}
-
-/* v9.51: Recursos y Autonomía como paneles desplegables dentro del panel LLM. */
+/* v9.51: paneles desplegables dentro de la configuración LLM. */
 .ba-llm-collapsible-card {
   display: block;
 }
